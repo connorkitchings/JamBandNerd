@@ -4,7 +4,7 @@ Aggregate setlist data by song name for WSP using the CK+ (gap-based) method.
 
 import pandas as pd
 
-from utils.logger import get_logger
+from .utils.logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -71,7 +71,7 @@ def aggregate_setlist_features(df: pd.DataFrame, method: str = "mean") -> pd.Dat
             "avg_gap",
             "gap_ratio",
             "gap_z_score",
-            "ck+_score",
+            "ckplus_score",
         ]
     elif method == "median":
         song_stats["gap_ratio"] = song_stats["current_gap"] / song_stats["med_gap"]
@@ -83,16 +83,16 @@ def aggregate_setlist_features(df: pd.DataFrame, method: str = "mean") -> pd.Dat
             "med_gap",
             "gap_ratio",
             "gap_z_score",
-            "ck+_score",
+            "ckplus_score",
         ]
     else:
         raise ValueError("method must be 'mean' or 'median'")
 
     song_stats["gap_z_score"] = song_stats["gap_ratio"] / song_stats["std_gap"]
-    song_stats["ck+_score"] = song_stats["gap_z_score"] * song_stats["gap_ratio"]
+    song_stats["ckplus_score"] = song_stats["gap_z_score"] * song_stats["gap_ratio"]
     song_stats = (
         song_stats[final_columns]
-        .sort_values(by="ck+_score", ascending=False)
+        .sort_values(by="ckplus_score", ascending=False)
         .reset_index(drop=True)
     )
     return song_stats.head(50)

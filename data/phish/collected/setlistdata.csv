@@ -48,11 +48,11 @@ showid,uniqueid,songid,set,position,transition,isreprise,isjam,isjamchart,jamcha
 1251587227,27229,441,1,8,1,0,0,0,,,0,1,,,1
 1251587227,27230,478,1,9,6,0,0,1,"First known performance of ""Run Like An Antelope."" No recording available.",,0,1,,,1
 1249948445,17,29,1,1,1,0,0,0,,,11,1,,First known version.,0
-1249948445,18,100,1,2,1,0,0,0,,,6,1,,,0
+1249948445,18,100,1,2,1,0,0,0,,,5,1,,,0
 1249948445,19,201,1,3,1,0,0,0,,,11,0,,First known Phish version; Bobby Hackney and Jah Roy on vocals.,0
 1249948445,20,511,1,4,1,0,0,0,,,6,1,,With McGrupp lyrics.,0
 1249948445,21,303,1,5,6,0,0,0,,,6,0,,,0
-1251587664,27221,518,1,1,6,0,0,1,Debut. No recording available,,12,0,,First known Phish performance.,0
+1251587664,27221,518,1,1,6,0,0,1,Debut. No recording available,,11,0,,First known Phish performance.,0
 1251587687,27232,22,1,1,1,0,0,0,,,13,1,,First known performance.,0
 1251587687,27233,511,1,2,1,0,0,0,,,2,1,,,0
 1251587687,27234,54,1,3,1,0,0,0,,,8,0,,,0
@@ -307,7 +307,7 @@ showid,uniqueid,songid,set,position,transition,isreprise,isjam,isjamchart,jamcha
 1252188030,27751,273,2,2,1,0,0,0,,,7,1,,,0
 1252188030,27752,431,2,3,1,0,0,0,,,1,0,,,0
 1252188030,27753,552,2,4,1,0,0,0,,,2,0,,,0
-1252188030,27754,518,2,5,1,0,0,0,,,2,0,,,0
+1252188030,27754,518,2,5,1,0,0,0,,,1,0,,,0
 1252188030,27755,359,2,6,1,0,0,0,,,2,1,,,0
 1252188030,27756,510,2,7,2,0,0,0,,,2,0,,,0
 1252188030,27757,119,2,8,1,0,0,0,,,1,0,,,0
@@ -333,7 +333,7 @@ showid,uniqueid,songid,set,position,transition,isreprise,isjam,isjamchart,jamcha
 1252188670,27274,199,2,3,1,0,0,0,,,36,0,,,0
 1252188670,27275,545,2,4,1,0,0,0,,,1,1,,,0
 1252188670,27276,151,2,5,1,0,0,0,,,23,1,,,0
-1252188670,27277,100,2,6,1,0,0,0,,,7,1,,,0
+1252188670,27277,100,2,6,1,0,0,0,,,6,1,,,0
 1252188670,27278,42,2,7,1,0,0,0,,,7,0,,,0
 1252188670,27279,718,2,8,1,0,0,0,,,61,0,,First known Phish performance.,0
 1252188670,27280,121,2,9,1,0,0,0,,,7,1,,,0
@@ -616,7 +616,7 @@ showid,uniqueid,songid,set,position,transition,isreprise,isjam,isjamchart,jamcha
 1252199801,11938,22,2,18,4,0,0,0,,,0,1,,,0
 1252199801,11939,248,3,19,1,0,0,0,,,21,0,,"""The Birthday Dub""",0
 1252199801,11940,235,3,20,1,0,0,0,,,9,0,,,0
-1252199801,11941,472,3,21,1,0,0,0,,,83,0,,First known Phish performance.,0
+1252199801,11941,472,3,21,1,0,0,0,,,81,0,,First known Phish performance.,0
 1252199801,11942,518,3,22,1,0,0,0,,,5,0,,,0
 1252199801,11943,195,3,23,2,0,0,0,,,8,1,,,0
 1252199801,11944,161,3,24,1,0,0,0,,,5,1,,,0
@@ -649,7 +649,7 @@ showid,uniqueid,songid,set,position,transition,isreprise,isjam,isjamchart,jamcha
 1252200355,11985,359,2,15,6,0,0,0,,,3,1,,,0
 1252200779,31536,311,1,1,3,0,0,1,"A free-form jam, apparently played together with the band the Joneses opens the show, with Trey on drums at first. The jam structure improves once Trey jumps to guitar, and includes some ""Low Rider"" teases. -> to ""Whipping Post.""",,36,0,,,0
 1252200779,31537,662,1,2,1,0,0,0,,,18,0,,"""Slice my nipple"" lyric.",0
-1252200779,31538,518,1,3,3,0,0,0,,,9,0,,,0
+1252200779,31538,518,1,3,3,0,0,0,,,8,0,,,0
 1252200779,31539,42,1,4,2,0,0,0,,,15,0,,,0
 1252200779,31540,246,1,5,2,0,0,0,,,18,1,,,0
 1252200779,31541,340,1,6,1,0,0,0,,,17,0,,,0
@@ -720,7 +720,7 @@ showid,uniqueid,songid,set,position,transition,isreprise,isjam,isjamchart,jamcha
 1252201187,35559,662,3,23,1,0,0,1,"Trey deploys some cool, spacey, Duane-like tecniques (almost like he is playing with a bow) in the more open-ended second jam section.",,5,0,,,0
 1252201187,35560,249,3,24,1,0,0,0,,,20,1,,,0
 1252201187,35561,556,3,25,1,0,0,0,,,1,0,,,0
-1252201187,35562,100,3,26,1,0,0,0,,,22,1,,,0
+1252201187,35562,100,3,26,1,0,0,0,,,21,1,,,0
 1252201187,35563,327,3,27,1,0,0,0,,,14,0,,,0
 1252201187,35564,62,3,28,1,0,0,0,,,97,0,,First known Phish performance.,0
 1252201187,35565,512,3,29,6,0,0,0,,,1,1,,,0
@@ -1012,7 +1012,7 @@ showid,uniqueid,songid,set,position,transition,isreprise,isjam,isjamchart,jamcha
 1252374645,25482,249,2,24,5,0,0,0,,,18,1,,,0
 1252374645,25483,199,e,25,6,0,0,0,,,1,0,,,0
 1252374839,88886,220,1,1,1,0,0,0,,,19,0,,,0
-1252374839,88887,518,1,2,1,0,0,0,,,2,0,,,0
+1252374839,88887,518,1,2,1,0,0,0,,,1,0,,,0
 1252374839,88888,22,1,3,2,0,0,0,,,2,1,,,0
 1252374839,88889,335,1,4,2,0,0,0,,,2,1,,"First played by Phish, then played only by Fish.",0
 1252374839,88890,22,1,5,1,0,0,0,,,0,1,,,0
@@ -1030,7 +1030,7 @@ showid,uniqueid,songid,set,position,transition,isreprise,isjam,isjamchart,jamcha
 1252374839,88902,62,2,17,1,0,0,0,,,30,0,,Fish trombone solo.,0
 1252374839,88903,235,2,18,4,0,0,0,,,1,0,,,0
 1252374839,88904,60,3,19,1,0,0,0,,,106,0,,,0
-1252374839,88905,472,3,20,1,0,0,0,,,48,0,,,0
+1252374839,88905,472,3,20,1,0,0,0,,,49,0,,,0
 1252374839,88906,119,3,21,1,0,0,0,,,65,0,,,0
 1252374839,88907,556,3,22,1,0,0,0,,,1,0,,,0
 1252374839,88908,576,3,23,1,0,0,0,,,1,1,,,0
@@ -1038,7 +1038,7 @@ showid,uniqueid,songid,set,position,transition,isreprise,isjam,isjamchart,jamcha
 1252374977,13349,556,1,1,1,0,0,0,,,2,0,,,0
 1252374977,13350,234,1,2,1,0,0,0,,,1,1,,,0
 1252374977,13351,690,1,3,1,0,0,0,,,1,1,,,0
-1252374977,13352,472,1,4,1,0,0,0,,,2,0,,,0
+1252374977,13352,472,1,4,1,0,0,0,,,1,0,,,0
 1252374977,13353,340,1,5,1,0,0,0,,,4,0,,,0
 1252374977,13354,276,1,6,1,0,0,0,,,2,1,,Fish on trombone.,0
 1252374977,13355,431,1,7,2,0,0,0,,,2,0,,,0
@@ -1217,7 +1217,7 @@ showid,uniqueid,songid,set,position,transition,isreprise,isjam,isjamchart,jamcha
 1252894649,19223,424,1,8,1,0,2,0,,,6,0,,Unknown additional percussionist.,0
 1252894649,19224,8,1,9,2,0,2,0,,,1,1,,Unknown additional percussionist.,0
 1252894649,19225,440,1,10,1,0,2,1,"Unknown additional percussionist. The jam begins in a low-key manner, with nice added texture from the percussionist.",8:29,9,1,,Unknown additional percussionist.,0
-1252894649,19226,646,1,11,1,0,2,0,,,152,0,,First known Phish performance; Unknown additional percussionist.,0
+1252894649,19226,646,1,11,1,0,2,0,,,148,0,,First known Phish performance; Unknown additional percussionist.,0
 1252894649,19227,79,1,12,1,0,2,0,,,2,0,,Unknown additional percussionist.,0
 1252894649,19228,411,1,13,1,0,2,0,,,152,1,,First known performance.,0
 1252894649,19229,602,1,14,1,0,2,0,,,12,1,,,0
@@ -1279,7 +1279,7 @@ showid,uniqueid,songid,set,position,transition,isreprise,isjam,isjamchart,jamcha
 1252895003,19296,58,2,9,1,0,0,0,,,12,1,,,0
 1252895003,19297,486,2,10,5,0,0,0,,,47,1,,,0
 1252895003,19298,296,e,11,1,0,0,0,,,21,1,,,0
-1252895003,19299,100,e,12,6,0,0,0,,,53,1,,,0
+1252895003,19299,100,e,12,6,0,0,0,,,52,1,,,0
 1252895238,25283,208,2,1,1,0,0,0,,,1,1,,,0
 1252895238,25284,327,2,2,1,0,0,0,,,2,0,,,0
 1252895238,25285,586,2,3,1,0,0,0,,,2,1,,,0
@@ -1920,7 +1920,7 @@ Unfinished.",,2,1,,Russ Remington on saxophone. Unfinished.,0
 1252812287,18356,22,1,7,1,0,0,0,,,2,1,,,0
 1252812287,18357,234,1,8,1,0,0,0,,,2,1,,,0
 1252812287,25518,79,1,9,1,0,0,0,,,28,0,,,0
-1252812287,25519,209,1,10,6,0,0,0,,,2,1,,,0
+1252812287,25519,209,1,10,6,0,0,0,,,3,1,,,0
 1252812321,27862,690,1,1,1,0,0,0,,,4,1,,,0
 1252812321,27863,195,1,2,1,0,0,0,,,3,1,,,0
 1252812321,27864,686,1,3,1,0,0,0,,,74,0,,,0
@@ -3610,7 +3610,7 @@ Unfinished.",,2,1,,Russ Remington on saxophone. Unfinished.,0
 1250896594,140942,79,2,12,1,0,0,0,,,70,0,,,0
 1250896594,140943,592,2,13,2,0,0,0,,,1,1,,,0
 1250896594,140944,8,2,14,2,0,0,0,,,2,1,,,0
-1250896594,140945,209,2,15,1,0,0,0,,,4,1,,,0
+1250896594,140945,209,2,15,1,0,0,0,,,5,1,,,0
 1250896594,140946,690,2,16,5,0,0,0,,,4,1,,,0
 1250896594,140947,235,e,17,6,0,0,0,,,4,0,,,0
 1250983870,140976,440,1,1,1,0,0,0,,,4,1,,,0
@@ -5160,7 +5160,7 @@ Unfinished.",,2,1,,Russ Remington on saxophone. Unfinished.,0
 1251585920,136226,403,1,9,1,0,0,0,,,2,1,,,0
 1251585920,136227,148,1,10,4,0,0,0,,,2,1,,,0
 1251585920,136228,234,2,11,1,0,0,0,,,2,1,,,0
-1251585920,136229,472,2,12,1,0,0,0,,,39,0,,,0
+1251585920,136229,472,2,12,1,0,0,0,,,41,0,,,0
 1251585920,136230,345,2,13,1,0,0,0,,,1,1,,,0
 1251585920,136231,381,2,14,2,0,0,0,,,1,1,,,0
 1251585920,136232,273,2,15,2,0,0,0,,,1,1,,,0
@@ -5215,13 +5215,13 @@ Unfinished.",,2,1,,Russ Remington on saxophone. Unfinished.,0
 1251586078,145427,314,e,21,1,0,0,0,,,2,0,"The Man Who Stepped Into Yesterday > Avenu Malkenu > The Man Who Stepped Into Yesterday, The Asse Festival, Eliza",John Popper on harmonica.,0
 1251586078,145428,199,e,22,6,0,0,0,,,3,0,"The Man Who Stepped Into Yesterday > Avenu Malkenu > The Man Who Stepped Into Yesterday, The Asse Festival, Eliza",John Popper on harmonica.,0
 1250663188,26829,545,1,1,1,0,0,0,,,1,1,,,0
-1250663188,26830,584,1,2,1,0,0,0,,,1,1,,,0
-1250663188,26831,690,1,3,1,0,0,0,,,1,1,,,0
-1250663188,26832,440,1,4,1,0,0,0,,,1,1,,,0
-1250663188,26833,586,1,5,1,0,0,0,,,1,1,,,0
+1250663188,26830,584,1,2,1,0,0,0,,,0,1,,,0
+1250663188,26831,690,1,3,3,0,0,0,,,1,1,,"Lyric changed from ""God"" to ""Food."" Two Charlie Chan signals, an Oom Pa Pa signal, and a Random Laugh signal.",0
+1250663188,26832,440,1,4,1,0,0,0,,,1,1,,Charlie Chan and Random Note signals in intro.,0
+1250663188,26833,586,1,5,1,0,0,0,,,0,1,,Trey forgot the words to a verse and sang it with no words instead. ,0
 1250663188,26834,276,1,6,1,0,0,0,,,1,1,,,0
 1250663188,26835,345,1,7,5,0,0,0,,,1,1,,,0
-1250663188,26836,234,e,8,6,0,0,0,,,3,1,,,0
+1250663188,26836,234,e,8,6,0,0,0,,,2,1,,,0
 1251007233,3894,455,1,1,1,0,0,0,,,5,1,,,0
 1251007233,3895,584,1,2,2,0,0,0,,,1,1,,,0
 1251007233,3896,84,1,3,1,0,0,0,,,2,1,,,0
@@ -5448,7 +5448,7 @@ Unfinished.",,2,1,,Russ Remington on saxophone. Unfinished.,0
 1250898803,26781,357,2,17,1,0,0,0,,,6,1,,Dave Grippo on saxophone.,0
 1250898803,26782,592,2,18,2,0,0,0,,,2,1,,,0
 1250898803,26783,545,2,19,1,0,0,0,,,2,1,,Dave Grippo on saxophone.,0
-1250898803,26784,472,2,20,1,0,0,1,Dave Grippo and Russ Remington on saxophone. No recording available.,,2,0,,Russell Flanigan on fiddle.,0
+1250898803,26784,472,2,20,1,0,0,1,Dave Grippo and Russ Remington on saxophone. No recording available.,,3,0,,Russell Flanigan on fiddle.,0
 1250898803,26785,686,2,21,1,0,0,0,,,25,0,,Dave Grippo on saxophone and Russell Flanigan on fiddle.,0
 1250898803,26786,478,2,22,5,0,0,0,,,2,1,,Dave Grippo on saxophone and Russell Flanigan on fiddle.,0
 1250898803,26787,329,e,23,1,0,0,0,,,3,1,,Dave Grippo on saxophone.,0
@@ -5659,7 +5659,7 @@ Unfinished.",,2,1,,Russ Remington on saxophone. Unfinished.,0
 1250663338,120073,403,e,25,1,0,0,0,,,1,1,,Russell Flanigan on fiddle.,0
 1250663338,120074,430,e,26,1,0,0,0,,,12,0,,Russell Flanigan on fiddle.,0
 1250663338,120075,327,e,27,7,0,0,0,,,20,0,,Russell Flanigan on fiddle.,0
-1250663338,120076,472,e2,28,6,0,0,0,,,3,0,,Russell Flanigan on fiddle.,0
+1250663338,120076,472,e2,28,6,0,0,0,,,4,0,,Russell Flanigan on fiddle.,0
 1252707066,131560,479,1,1,1,0,0,0,,,1,1,,,0
 1252707066,131561,209,1,2,1,0,0,0,,,2,1,,,0
 1252707066,131562,403,1,3,1,0,0,0,,,1,1,,,0
@@ -5895,7 +5895,7 @@ Unfinished.",,2,1,,Russ Remington on saxophone. Unfinished.,0
 1252715283,120597,696,1,11,1,0,0,0,,,0,0,,,0
 1252715283,120598,478,1,12,6,0,0,1,Aggressive Trey in a dissonant jam with strong Evil Mike in a slightly jazzy mode.,,8,1,,,0
 1252716175,16481,108,1,1,1,0,0,0,,,3,1,,,0
-1252716175,16482,209,1,2,1,0,0,0,,,3,1,,,0
+1252716175,16482,209,1,2,1,0,0,0,,,4,1,,,0
 1252716175,16483,603,1,3,2,0,0,0,,,2,1,,,0
 1252716175,16484,345,1,4,1,0,0,0,,,3,1,,,0
 1252716175,16485,239,1,5,1,0,0,0,,,3,1,,,0
@@ -6848,7 +6848,7 @@ Unfinished.",,2,1,,Russ Remington on saxophone. Unfinished.,0
 1252883764,125439,603,2,21,2,0,0,0,,,1,1,,,0
 1252883764,125440,592,2,22,2,0,0,0,,,1,1,,,0
 1252883764,125441,8,2,23,2,0,0,0,,,5,1,,Dave Grippo on saxophone.,0
-1252883764,125442,472,2,24,5,0,0,0,,,2,0,,Dave Grippo on saxophone.,0
+1252883764,125442,472,2,24,5,0,0,0,,,3,0,,Dave Grippo on saxophone.,0
 1252883764,125443,478,e,25,6,0,0,0,,,13,1,,Dave Grippo on saxophone.,0
 1252884104,125486,96,1,1,2,0,0,0,,,3,1,,,0
 1252884104,125487,234,1,2,1,0,0,0,,,1,1,,,0
@@ -7303,7 +7303,7 @@ Unfinished.",,2,1,,Russ Remington on saxophone. Unfinished.,0
 1252943905,126635,108,2,18,1,0,0,0,,,1,1,"Poor Heart, Crimes of the Mind (with The Dude of Life), Bitchin' Again (with The Dude of Life)",,0
 1252943905,126636,276,2,19,1,0,0,0,,,1,1,"Poor Heart, Crimes of the Mind (with The Dude of Life), Bitchin' Again (with The Dude of Life)",,0
 1252943905,126637,690,2,20,1,0,0,0,,,2,1,"Poor Heart, Crimes of the Mind (with The Dude of Life), Bitchin' Again (with The Dude of Life)","âNo gerbils in your bottom"" vocal jam.",0
-1252943905,126638,472,2,21,4,0,0,0,,,6,0,"Poor Heart, Crimes of the Mind (with The Dude of Life), Bitchin' Again (with The Dude of Life)",,0
+1252943905,126638,472,2,21,4,0,0,0,,,7,0,"Poor Heart, Crimes of the Mind (with The Dude of Life), Bitchin' Again (with The Dude of Life)",,0
 1252943905,126639,538,3,22,1,0,0,0,,,1,1,"Poor Heart, Crimes of the Mind (with The Dude of Life), Bitchin' Again (with The Dude of Life)",,0
 1252943905,126640,686,3,23,1,0,0,0,,,21,0,"Poor Heart, Crimes of the Mind (with The Dude of Life), Bitchin' Again (with The Dude of Life)",,0
 1252943905,126641,208,3,24,2,0,0,0,,,17,1,"Poor Heart, Crimes of the Mind (with The Dude of Life), Bitchin' Again (with The Dude of Life)",,0
@@ -8213,10 +8213,10 @@ Unfinished.",,2,1,,Russ Remington on saxophone. Unfinished.,0
 1253033641,138567,632,1,2,1,0,0,0,,,1,0,,,0
 1253033641,138568,679,1,3,2,0,0,0,,,2,1,,Mrs. Pizza Shit reference.,0
 1253033641,138569,479,1,4,1,0,0,0,,,2,1,,,0
-1253033641,138570,307,1,5,2,0,0,0,,,1,1,,,0
+1253033641,138570,307,1,5,2,0,0,0,,,2,1,,,0
 1253033641,138571,525,1,6,2,0,0,0,,,0,1,,,0
 1253033641,138572,208,1,7,1,0,0,0,,,6,1,,,0
-1253033641,138573,209,1,8,1,0,0,0,,,1,1,,,0
+1253033641,138573,209,1,8,1,0,0,0,,,2,1,,,0
 1253033641,138574,538,1,9,1,0,0,0,,,4,1,,,0
 1253033641,138575,686,1,10,1,0,0,0,,,3,0,,,0
 1253033641,138576,108,1,11,4,0,0,0,,,1,1,,,0
@@ -8232,7 +8232,7 @@ Unfinished.",,2,1,,Russ Remington on saxophone. Unfinished.,0
 1253033641,138586,696,2,21,1,0,0,0,,,0,0,,,0
 1253033641,138587,345,2,22,5,0,0,0,,,1,1,,,0
 1253033641,138588,227,e,23,1,0,0,0,,,1,1,,,0
-1253033641,138589,472,e,24,6,0,0,0,,,7,0,,,0
+1253033641,138589,472,e,24,6,0,0,0,,,8,0,,,0
 1253033958,138642,632,1,1,1,0,0,0,,,1,0,,,0
 1253033958,138643,209,1,2,1,0,0,0,,,1,1,,,0
 1253033958,138644,479,1,3,1,0,0,0,,,1,1,,,0
@@ -8566,7 +8566,7 @@ you say yes? Can I...Boner?"" At 8:53 they return to Possum, teasing ""Wait,"" a
 1250703309,147339,440,2,20,5,0,2,1,Twangy country-like jam becomes more typically high powered. Several signals taboot (see Setlist).,9:25,1,1,,"Simpsons, Turn Turn Turn, Aw Fuck!, and All Fall Down signals.",0
 1250703309,147340,514,e,21,6,0,2,0,,,589,1,,Debut.,0
 1250708734,108932,90,1,1,1,0,2,0,,,2,1,,,0
-1250708734,108933,401,1,2,1,0,2,0,,,594,0,,Phish debut.,0
+1250708734,108933,401,1,2,1,0,2,0,,,590,0,,Phish debut.,0
 1250708734,108934,209,1,3,1,0,2,0,,,2,1,,,0
 1250708734,108935,479,1,4,1,0,2,0,,,2,1,,Simpsons signal.,0
 1250708734,108936,582,1,5,2,0,2,0,,,590,1,,Debut.,0
@@ -12253,7 +12253,7 @@ you say yes? Can I...Boner?"" At 8:53 they return to Possum, teasing ""Wait,"" a
 1251266799,86684,696,2,24,1,0,0,0,,,0,0,,,0
 1251266799,86685,110,2,25,5,0,0,0,,,3,1,,,0
 1251266799,86686,24,e,26,1,0,0,0,,,1,0,,,0
-1251266799,86687,472,e,27,6,0,0,0,,,6,0,,,0
+1251266799,86687,472,e,27,6,0,0,0,,,7,0,,,0
 1251267765,87229,584,1,1,2,0,2,0,,,6,1,"Shaggy Dog, Funky Blues Jam",,0
 1251267765,87230,462,1,2,1,0,2,0,,,2,1,"Shaggy Dog, Funky Blues Jam",,0
 1251267765,87231,239,1,3,1,0,2,0,,,2,1,"Shaggy Dog, Funky Blues Jam",,0
@@ -13266,7 +13266,7 @@ you say yes? Can I...Boner?"" At 8:53 they return to Possum, teasing ""Wait,"" a
 1251673862,105708,8,e,22,1,0,0,0,,,16,1,"Funky Bitch (x2), The Great Gig in the Sky Intro",,0
 1251673862,105709,216,e,23,6,0,0,0,,,2,0,"Funky Bitch (x2), The Great Gig in the Sky Intro",,0
 1251674918,105710,110,1,1,1,0,0,0,,,2,1,"Slave to the Traffic Light, Funky Bitch",,0
-1251674918,105711,239,1,2,1,0,0,0,,,6,1,"Slave to the Traffic Light, Funky Bitch",Simpsons signal.,0
+1251674918,105711,239,1,2,1,0,0,0,,,7,1,"Slave to the Traffic Light, Funky Bitch",Simpsons signal.,0
 1251674918,105712,438,1,3,1,0,0,0,,,2,1,"Slave to the Traffic Light, Funky Bitch",,0
 1251674918,105713,90,1,4,1,0,0,0,,,143,1,"Slave to the Traffic Light, Funky Bitch",,0
 1251674918,105714,592,1,5,2,0,0,0,,,11,1,"Slave to the Traffic Light, Funky Bitch",,0
@@ -13274,7 +13274,7 @@ you say yes? Can I...Boner?"" At 8:53 they return to Possum, teasing ""Wait,"" a
 1251674918,105716,18,1,7,1,0,0,0,,,3,1,"Slave to the Traffic Light, Funky Bitch",,0
 1251674918,105717,48,1,8,3,0,0,1,"After very few performances from Summer '92 - July '93, this ""Gin"" blows open the doors to serious improvisation, including tempo shifts, a ""Sleeping Monkey""-like jam, then some great free-form jamming. -> to ""Makisupa."" ",11:02,28,1,"Slave to the Traffic Light, Funky Bitch",,0
 1251674918,105718,359,1,9,3,0,0,0,,,24,1,"Slave to the Traffic Light, Funky Bitch",,0
-1251674918,105719,401,1,10,2,0,0,0,,,2,0,"Slave to the Traffic Light, Funky Bitch",,0
+1251674918,105719,401,1,10,2,0,0,0,,,3,0,"Slave to the Traffic Light, Funky Bitch",,0
 1251674918,105720,164,1,11,2,0,0,0,,,283,1,"Slave to the Traffic Light, Funky Bitch",,0
 1251674918,105721,327,1,12,4,0,0,0,,,310,0,"Slave to the Traffic Light, Funky Bitch",,0
 1251674918,105722,21,2,13,2,0,0,0,,,2,0,"Slave to the Traffic Light, Funky Bitch",,0
@@ -13410,12 +13410,12 @@ you say yes? Can I...Boner?"" At 8:53 they return to Possum, teasing ""Wait,"" a
 1251692134,106195,690,2,17,3,0,0,1,"""Smoke on the Water"" teases in the jam with Trey quoting ""Here comes Speed Racer"" during one of them. Vocal jam contains verses from ""Psycho Killer."" Great vocal segue into ""Contact.""",22:41,3,1,,,0
 1251692134,106196,130,2,18,2,0,0,0,,,7,1,,,0
 1251692134,106197,138,2,19,5,0,0,0,,,235,0,,The Dude of Life on vocals.,0
-1251692134,106198,472,e,20,6,0,0,0,,,7,0,,,0
+1251692134,106198,472,e,20,6,0,0,0,,,8,0,,,0
 1251692779,161665,96,1,1,2,0,0,0,,,4,1,,,0
 1251692779,161666,479,1,2,2,0,0,1,"Jam gets well beyond ""Jim"" into some interesting exploration. It's August '93, what else would you expect?",,2,1,,,0
 1251692779,161667,655,1,3,2,0,0,0,,,9,1,,,0
 1251692779,161668,307,1,4,1,0,0,0,,,2,1,,,0
-1251692779,161669,223,1,5,2,0,0,0,,,809,0,,"Phish debut; Trey on acoustic guitar, Fish on washboard.",0
+1251692779,161669,223,1,5,2,0,0,0,,,805,0,,"Phish debut; Trey on acoustic guitar, Fish on washboard.",0
 1251692779,161670,397,1,6,1,0,0,1,"A wacky but improvisational outro jam occurs, including a ""YEM""-like vocal jam.",,1,1,,Beginning featured Trey on acoustic guitar.,0
 1251692779,161671,590,1,7,2,0,0,0,,,13,1,,,0
 1251692779,161672,538,1,8,1,0,0,1,"Insane, tension-filled, extremely improvisational ""Stash."" This is a vicious animal. Totally awesome!",,3,1,,,0
@@ -15363,7 +15363,7 @@ you say yes? Can I...Boner?"" At 8:53 they return to Possum, teasing ""Wait,"" a
 1252348567,12937,603,2,20,1,0,0,0,,,5,1,Jive Talkin',,0
 1252348567,12938,138,2,21,5,0,0,0,,,74,0,Jive Talkin',The Dude of Life on vocals.,0
 1252348567,12939,234,e,22,1,0,0,0,,,2,1,Jive Talkin',,0
-1252348567,12940,472,e,23,6,0,0,0,,,6,0,Jive Talkin',,0
+1252348567,12940,472,e,23,6,0,0,0,,,7,0,Jive Talkin',,0
 1252348824,75795,96,1,1,2,0,0,0,,,14,1,,,0
 1252348824,75796,438,1,2,2,0,0,0,,,2,1,,,0
 1252348824,75797,483,1,3,1,0,0,0,,,1,1,,,0
@@ -15786,7 +15786,7 @@ you say yes? Can I...Boner?"" At 8:53 they return to Possum, teasing ""Wait,"" a
 1253165475,76876,211,e,23,1,0,0,0,,,3,0,,Acoustic.,0
 1253165475,76877,234,e,24,6,0,0,0,,,4,1,,,0
 1253165694,76950,508,1,1,1,0,0,0,,,1,1,,,0
-1253165694,76951,307,1,2,2,0,0,1,Good tension build up and at times dissonant. Page leads but all contribute.,9:51,5,1,,,0
+1253165694,76951,307,1,2,2,0,0,1,Good tension build up and at times dissonant. Page leads but all contribute.,9:51,6,1,,,0
 1253165694,76952,404,1,3,2,0,0,0,,,18,1,,,0
 1253165694,76953,478,1,4,1,0,0,1,"Good exploratory section from 5:00 - 6:20, back to ""Antelope,"" more foraging and then dramatic tension ratcheting.",12:53,4,1,,,0
 1253165694,76954,242,1,5,1,0,0,0,,,4,1,,,0
@@ -15808,7 +15808,7 @@ you say yes? Can I...Boner?"" At 8:53 they return to Possum, teasing ""Wait,"" a
 1253165694,76970,136,2,21,2,0,0,0,,11:59,30,0,,,0
 1253165694,76971,696,2,22,1,0,0,0,,,0,0,,,0
 1253165694,76972,148,2,23,5,0,0,1,"""When the cows come out to play"" says Fish in the intro to this diabolical, nasty ""Type 17"" jam.",,3,1,,,0
-1253165694,76973,406,e,24,1,0,0,0,,,4,0,,Acoustic.,0
+1253165694,76973,406,e,24,1,0,0,0,,,5,0,,Acoustic.,0
 1253165694,212527,49,e,25,6,0,0,0,,,5,0,,Acoustic.,0
 1253165694,502088,211,e,26,1,0,0,0,,,0,0,,Acoustic.,0
 1253165694,502089,24,e,27,6,0,0,0,,,2,0,,,0
@@ -16260,7 +16260,7 @@ you say yes? Can I...Boner?"" At 8:53 they return to Possum, teasing ""Wait,"" a
 1253212718,81108,586,2,13,1,0,0,0,,,3,1,,,0
 1253212718,81109,483,2,14,2,0,0,0,,,2,1,,,0
 1253212718,81110,512,2,15,5,0,0,1,"Version featured on A Live One. Like many of the stellar '94s, this ""Slave"" has a huge dynamic shift from the subtle, quiet, early part of the jam, to the soaring, high intensity peak.",,8,1,,,0
-1253212718,81111,472,e,16,6,0,0,0,,,12,0,,,0
+1253212718,81111,472,e,16,6,0,0,0,,,13,0,,,0
 1253158298,81220,110,1,1,1,0,0,0,,,5,1,,,0
 1253158298,81221,21,1,2,1,0,0,0,,,2,0,,,0
 1253158298,81222,490,1,3,1,0,0,0,,,3,1,,,0
@@ -20543,7 +20543,7 @@ you say yes? Can I...Boner?"" At 8:53 they return to Possum, teasing ""Wait,"" a
 1252552477,77760,106,2,11,1,0,2,0,,,1,1,"Funky Bitch, Jam",,0
 1252552477,77761,690,2,12,3,0,2,1,"In one of the longest YEMs since 1995, Phish jam with jazz/fusion quartet Bela Fleck and the Flecktones.  The jam consists primarily of individual solos from each guest, eventually culminating into an ensemble -> to a jam on ""Trane to Conamarra.""  Phish may not have found Pierre, but they found their soul. (For another excellent Flecktones collab, check out 8/21/93.)",33:07,1,1,"Funky Bitch, Jam",BÃ©la Fleck and The Flecktones; Victor Wooten and Mike playing Mike's bass simultaneously. No vocal jam.,0
 1252552477,77762,2962,2,13,3,0,1,1,"A magnificent ""YEM"" jam with Bela Fleck and the Flecktones continues ->  with elements of their tune and funkily works itself -> to ""Ghost"". ",2:38,1127,0,"Funky Bitch, Jam",BÃ©la Fleck and The Flecktones.,0
-1252552477,77763,222,2,14,2,0,2,0,,,3,1,"Funky Bitch, Jam",BÃ©la Fleck and The Flecktones.,0
+1252552477,77763,222,2,14,2,0,2,1,"Two bands join in deftly dealing with each other's newest material when Trey calls an audible in the midst of the Flecktones informed segue jam, counting off the guest-studded ensemble into a highly improvisational take on Ghost.  Featuring, in the first place, Victor Wooten's virtuosic bass work accented by Jeff Coffin's horn stabs and gradually developing into a tightly focused dual-band conversation, the jam moves through both start/stop and call-and-response sections before deconstructing into a soupy play of effects that > to an excellent Poor Heart.",,3,1,"Funky Bitch, Jam",BÃ©la Fleck and The Flecktones.,0
 1252552477,77764,438,2,15,5,0,2,0,,,2,1,"Funky Bitch, Jam",BÃ©la Fleck and The Flecktones.,0
 1252552477,450648,255,e,16,6,0,2,0,,,10,0,"Funky Bitch, Jam",,0
 1252552867,14558,165,1,1,1,0,0,0,,,2,1,"<p>Funky Bitch, work on Limb By Limb</p>
@@ -21053,7 +21053,7 @@ cathartic, Leslie-affected chording brings it home.",,2,1,"Limb By Limb, Twist (
 1252631864,40764,686,1,1,1,0,0,0,,,5,0,"Buffalo Bill, The Old Home Place, Funky Bitch, Crosseyed and Painless",,0
 1252631864,40765,220,1,2,2,0,0,0,,,15,0,"Buffalo Bill, The Old Home Place, Funky Bitch, Crosseyed and Painless",,0
 1252631864,40766,208,1,3,1,0,0,0,,,7,1,"Buffalo Bill, The Old Home Place, Funky Bitch, Crosseyed and Painless",,0
-1252631864,40767,341,1,4,1,0,0,0,,,1,1,"Buffalo Bill, The Old Home Place, Funky Bitch, Crosseyed and Painless",,0
+1252631864,40767,341,1,4,1,0,0,0,,,2,1,"Buffalo Bill, The Old Home Place, Funky Bitch, Crosseyed and Painless",,0
 1252631864,40768,215,1,5,1,0,0,0,,,5,1,"Buffalo Bill, The Old Home Place, Funky Bitch, Crosseyed and Painless",,0
 1252631864,40769,106,1,6,1,0,0,0,,,3,1,"Buffalo Bill, The Old Home Place, Funky Bitch, Crosseyed and Painless",,0
 1252631864,40770,562,1,7,2,0,0,0,,,73,1,"Buffalo Bill, The Old Home Place, Funky Bitch, Crosseyed and Painless",,0
@@ -21070,10 +21070,10 @@ cathartic, Leslie-affected chording brings it home.",,2,1,"Limb By Limb, Twist (
 1252631864,40781,374,2,18,2,0,0,0,,,0,1,"Buffalo Bill, The Old Home Place, Funky Bitch, Crosseyed and Painless",Ken Kesey and the Merry Pranksters.,0
 1252631864,40782,213,2,19,2,0,0,0,,,0,0,"Buffalo Bill, The Old Home Place, Funky Bitch, Crosseyed and Painless",Ken Kesey and the Merry Pranksters.,0
 1252631864,40783,374,2,20,3,0,0,0,,,0,1,"Buffalo Bill, The Old Home Place, Funky Bitch, Crosseyed and Painless",Ken Kesey and the Merry Pranksters.,0
-1252631864,40784,100,2,21,1,0,0,0,,,39,1,"Buffalo Bill, The Old Home Place, Funky Bitch, Crosseyed and Painless",,0
+1252631864,40784,100,2,21,1,0,0,0,,,40,1,"Buffalo Bill, The Old Home Place, Funky Bitch, Crosseyed and Painless",,0
 1252631864,502232,558,2,22,5,0,0,0,,,4,1,"Buffalo Bill, The Old Home Place, Funky Bitch, Crosseyed and Painless",,0
 1252631864,502233,84,e,23,1,0,0,0,,,7,1,"Buffalo Bill, The Old Home Place, Funky Bitch, Crosseyed and Painless",,0
-1252631864,502234,472,e,24,4,0,0,0,,,3,0,"Buffalo Bill, The Old Home Place, Funky Bitch, Crosseyed and Painless",,0
+1252631864,502234,472,e,24,4,0,0,0,,,4,0,"Buffalo Bill, The Old Home Place, Funky Bitch, Crosseyed and Painless",,0
 1252632630,40863,359,1,1,3,0,0,0,,,3,1,,,0
 1252632630,40864,249,1,2,2,0,0,0,,,54,1,,Picked up where the Clifford Ball Harpua left off.,0
 1252632630,40865,110,1,3,1,0,0,1,"Great example of why '97 is such a pivotal year in Phistory. Here they stretch and expand the music everywhere possible without ever really getting beyond ""CDT"" proper.",,1,1,,,0
@@ -21593,7 +21593,7 @@ cathartic, Leslie-affected chording brings it home.",,2,1,"Limb By Limb, Twist (
 ",,0
 1252696628,41439,178,2,8,3,0,0,1,"The jam keeps up a pretty good head of steam until about 12:00 when it settles into 9 minutes of high quality '97-style space funk/quiet bliss enhanced with delay effects. -> to ""Roses Are Free.""",,5,0,"<p>Funky Bitch &gt; Jam, Pomp and Circumstance</p>
 ",,0
-1252696628,41440,475,2,9,3,0,0,0,,,1167,0,"<p>Funky Bitch &gt; Jam, Pomp and Circumstance</p>
+1252696628,41440,475,2,9,3,0,0,0,,,1169,0,"<p>Funky Bitch &gt; Jam, Pomp and Circumstance</p>
 ",Phish debut.,0
 1252696628,41441,58,2,10,2,0,0,1,"Wild version that segues out of Roses Are Free. It's highly improvisational in that after about 3 mins of ""normal"" (so to speak) BBFCFM, a Sturm-und-Drang, plodding jam evolves and trudges along for a few minutes, and then the band drops out as Trey sustains a note, then a chord, and, well, nothing much happens for a minute or so, and then Trey counts-off
 and Ghost begins.",,118,1,"<p>Funky Bitch &gt; Jam, Pomp and Circumstance</p>
@@ -21699,7 +21699,7 @@ and Ghost begins.",,118,1,"<p>Funky Bitch &gt; Jam, Pomp and Circumstance</p>
 ",,0
 1252698164,15766,512,2,18,1,0,0,0,,,5,1,"<p>See Your Boat?,&nbsp;My Mind&#39;s Got a Mind of Its Own, Black-Eyed Katy, Funky Bitch</p>
 ",,0
-1252698164,15767,472,2,19,2,0,0,0,,,2,0,"<p>See Your Boat?,&nbsp;My Mind&#39;s Got a Mind of Its Own, Black-Eyed Katy, Funky Bitch</p>
+1252698164,15767,472,2,19,2,0,0,0,,,3,0,"<p>See Your Boat?,&nbsp;My Mind&#39;s Got a Mind of Its Own, Black-Eyed Katy, Funky Bitch</p>
 ",,0
 1252698164,15768,108,2,20,5,0,0,0,,,6,1,"<p>See Your Boat?,&nbsp;My Mind&#39;s Got a Mind of Its Own, Black-Eyed Katy, Funky Bitch</p>
 ",,0
@@ -21742,7 +21742,7 @@ and Ghost begins.",,118,1,"<p>Funky Bitch &gt; Jam, Pomp and Circumstance</p>
 ",,0
 1252698446,446536,235,e,18,6,0,2,0,,,2,0,"<p>I Can&#39;t Turn You Loose, Funky Bitch -&gt; Jam</p>
 ",,0
-1252698882,137910,518,1,1,3,0,0,1,"First performance in 920 shows, opens first set of a highly regarded show. Nice '97 style funk/rock groove follows the lyrical section. A very unhurried, patient feel to this one. -> to ""Taste"", and is reprised and finished in the 4-part funk-fest encore.",,925,0,,No vocal jam.,0
+1252698882,137910,518,1,1,3,0,0,1,"First performance in 920 shows, opens first set of a highly regarded show. Nice '97 style funk/rock groove follows the lyrical section. A very unhurried, patient feel to this one. -> to ""Taste"", and is reprised and finished in the 4-part funk-fest encore.",,0,0,,No vocal jam.,0
 1252698882,137911,558,1,2,1,0,0,1,"-> in from an historic ""Sneakin' Sally."" Strong version, but quite different from most of the Fall '97 versions. Here, Trey solos beautifully, but Page's role seems far more restrained. There is far less of a full band build towards the end than musical support for Trey's incredible soloing. To some ears, the best ""Taste"" ever. To others, it's too one dimensional. ",,4,1,,,0
 1252698882,137912,650,1,3,2,0,0,0,,,13,1,,,0
 1252698882,137913,447,1,4,2,0,0,0,,,3,1,,,0
@@ -21761,7 +21761,7 @@ and Ghost begins.",,118,1,"<p>Funky Bitch &gt; Jam, Pomp and Circumstance</p>
 1252698882,137926,242,2,17,5,0,0,0,,,4,1,,,0
 1252698882,137927,104,e,18,3,0,0,0,,,64,1,,,0
 1252698882,137928,69,e,19,3,0,0,0,,,9,1,,,0
-1252698882,137929,518,e,20,2,0,0,1,"In from BEK ->, the second ""Sneakin' Sally"" of this fan favorite show functions as a funky reprisal of the major bust-out that opened the evening's festivities. Jumps right into a jammed-out show-closing > Frankenstein.",,0,0,,No vocal jam.,0
+1252698882,137929,518,e,20,2,0,0,1,"In from BEK ->, the second ""Sneakin' Sally"" of this fan favorite show functions as a funky reprisal of the major bust-out that opened the evening's festivities. Jumps right into a jammed-out show-closing > Frankenstein.",,925,0,,No vocal jam.,0
 1252698882,137930,213,e,21,6,0,0,1,"&gt; in from &quot;Sneakin' Sally.&quot; Part 4 of an incredible 4-song encore, and this &quot;Frankenstein&quot; is jammed-out, taboot!",,10,0,,Fish on vacuum.,0
 1252699209,41637,186,1,1,2,0,0,1,"Compared to Hampton, a snappier, more uptempo funk groove unfolds and intensifies in the later stages with brief rock flurries.",,19,0,,,0
 1252699209,41638,686,1,2,1,0,0,0,,,4,0,,,0
@@ -22821,7 +22821,7 @@ and Ghost begins.",,118,1,"<p>Funky Bitch &gt; Jam, Pomp and Circumstance</p>
 1252804964,43646,48,2,14,2,0,0,1,"""Type I"" intense jam that builds to a serious peak with great interplay by all four. Cycles down with no closing. > to ""Piper.""",14:06,7,1,,,0
 1252804964,43647,437,2,15,1,0,0,0,,,4,1,,,0
 1252804964,43648,37,2,16,2,0,0,0,,,13,1,,Contained Axilla II ending.	,0
-1252804964,43649,475,2,17,1,0,0,0,,,27,0,,,0
+1252804964,43649,475,2,17,1,0,0,0,,,28,0,,,0
 1252804964,43650,193,2,18,1,0,0,0,,,2,1,,,0
 1252804964,43651,696,2,19,2,0,0,0,,,3,0,,,0
 1252804964,43652,221,2,20,2,0,0,0,,,0,0,,Phish debut; lyric changed to reference Bob Weaver.,0
@@ -22949,7 +22949,7 @@ and Ghost begins.",,118,1,"<p>Funky Bitch &gt; Jam, Pomp and Circumstance</p>
 1252807243,43941,364,1,9,1,0,0,0,,,7,1,,,0
 1252807243,43942,20,1,10,1,0,0,0,,,0,0,,Phish debut; Seth Yacovone on guitar and vocals.,0
 1252807243,43943,330,1,11,4,0,0,0,,,0,0,,Phish debut; Seth Yacovone on guitar.,0
-1252807243,43944,475,2,12,2,0,0,0,,,5,0,,,0
+1252807243,43944,475,2,12,2,0,0,0,,,6,0,,,0
 1252807243,43945,508,2,13,1,0,0,1,The jam swiftly breaks from the melodic and blissful standard to a high-power and dissonant one.,20:40,5,1,,,0
 1252807243,43946,359,2,14,1,0,0,0,,,16,1,,Keyword referenced Paul Languedoc's recent arrest.,0
 1252807243,43947,440,2,15,3,0,0,1,"""Possum"" -> ""Wipeout"" -> ""Possum."" 30 second ""Wipeout"" jam occurs at the beginning of the ""Possum"" jam.",3:36,4,1,,,0
@@ -24268,7 +24268,7 @@ and Ghost begins.",,118,1,"<p>Funky Bitch &gt; Jam, Pomp and Circumstance</p>
 1252275436,98638,696,2,44,2,0,0,0,,,9,0,,,0
 1252275436,98639,353,2,45,2,0,0,0,,,179,0,,,0
 1252275436,98640,696,2,46,1,0,0,0,,,0,0,,,0
-1252275436,98641,475,2,47,1,0,0,1,Launches into phenomenally intense improv almost from the start as it embarks on an at-times-breathtaking journey. Eventually grows dissonant before briefly regaining its feel-good vibe.,35:03,31,0,,,0
+1252275436,98641,475,2,47,1,0,0,1,Launches into phenomenally intense improv almost from the start as it embarks on an at-times-breathtaking journey. Eventually grows dissonant before briefly regaining its feel-good vibe.,35:03,32,0,,,0
 1252275436,98642,94,2,48,1,0,0,0,,,3,0,,,0
 1252275436,98643,21,2,49,2,0,0,1,"35th song in the second set is the infamous ""Hood"" fake out. Breakdown at 5:40 is sicknasty and Trey sounds as fresh as he did in 1983. Second jam features a reggae filth groove.",13:40,2,0,,Began with the signature Hood drum roll.,0
 1252275436,98644,642,2,50,2,0,0,0,,,4,1,,,0
@@ -24438,7 +24438,7 @@ and Ghost begins.",,118,1,"<p>Funky Bitch &gt; Jam, Pomp and Circumstance</p>
 1251868073,9817,485,2,15,1,0,0,0,,,2,0,"Ginseng Sullivan, Funk Jam -> Crossroads, âSay My Name/Oh Yeah!â Jam",,0
 1251868073,9818,473,2,16,2,0,0,0,,,11,1,"Ginseng Sullivan, Funk Jam -> Crossroads, âSay My Name/Oh Yeah!â Jam",,0
 1251868073,9819,442,2,17,2,0,0,0,,,11,1,"Ginseng Sullivan, Funk Jam -> Crossroads, âSay My Name/Oh Yeah!â Jam",,0
-1251868073,9820,472,2,18,2,0,0,0,,,14,0,"Ginseng Sullivan, Funk Jam -> Crossroads, âSay My Name/Oh Yeah!â Jam",,0
+1251868073,9820,472,2,18,2,0,0,0,,,16,0,"Ginseng Sullivan, Funk Jam -> Crossroads, âSay My Name/Oh Yeah!â Jam",,0
 1251868073,9821,108,2,19,5,0,0,0,,,4,1,"Ginseng Sullivan, Funk Jam -> Crossroads, âSay My Name/Oh Yeah!â Jam","Older, alternate lyrics and a drawn-out, feedback-enhanced ending.",0
 1251868073,9822,88,e,20,1,0,0,0,,,7,1,"Ginseng Sullivan, Funk Jam -> Crossroads, âSay My Name/Oh Yeah!â Jam",,0
 1251868073,9823,235,e,21,6,0,0,0,,,12,0,"Ginseng Sullivan, Funk Jam -> Crossroads, âSay My Name/Oh Yeah!â Jam",,0
@@ -24821,7 +24821,7 @@ and Ghost begins.",,118,1,"<p>Funky Bitch &gt; Jam, Pomp and Circumstance</p>
 1252034378,98832,341,1,3,1,0,0,0,,,4,1,,,0
 1252034378,98833,404,1,4,1,0,0,0,,,5,1,,,0
 1252034378,98834,159,1,5,1,0,0,0,,,10,0,,,0
-1252034378,98835,475,1,6,1,0,0,0,,,30,0,,,0
+1252034378,98835,475,1,6,1,0,0,0,,,32,0,,,0
 1252034378,98836,683,1,7,2,0,0,0,,,5,1,,,0
 1252034378,98837,402,1,8,1,0,0,0,,,5,0,,,0
 1252034378,98838,318,1,9,4,0,0,0,,,8,1,,,0
@@ -27836,8 +27836,8 @@ and Ghost begins.",,118,1,"<p>Funky Bitch &gt; Jam, Pomp and Circumstance</p>
 1268787273,26533,478,1,11,4,0,0,0,,,4,1,,"Lyrics changed to ""Michael Esquandolas.""",0
 1268787273,26534,679,2,12,2,0,0,0,,,5,1,,,0
 1268787273,26535,369,2,13,3,0,0,1,"Extended outro and a -> to ""Saw it Again.""",,57,1,,,0
-1268787273,26536,282,2,14,3,0,0,0,,,89,1,,,0
-1268787273,26537,437,2,15,2,0,0,0,,,5,1,,,0
+1268787273,26536,282,2,14,3,0,0,1,"-> from from an extended ""Meatstick"". This version starts normally until around 3:45, when the music descends into a swirling and dense concoction. Prominent contributions from all four musicians adds to the atmosphere while the band never stops chanting the song's title, until finally relenting and then -> to ""Piper"".",,89,1,,,0
+1268787273,26537,437,2,15,2,0,0,1,"-> from a menacing ""Saw It Again"", with a quote from Trey taboot. The jam remains unrelenting with subtle shifts, the flow ebbing but driven, thanks largely to Fish's exhaustive drumming. A short detour occurs from 9:25-10:45, but doesn't fully settle until around 12:00. Play grooves along until it goes plinko, then works its way to brief space before > ""Ghost"".",,5,1,,,0
 1268787273,26538,222,2,16,3,0,0,0,,,12,1,,,0
 1268787273,26540,899,2,17,3,0,0,0,,,1482,0,,Phish debut.,0
 1268787273,26541,282,2,18,2,0,0,0,,,0,1,,,0
@@ -28519,7 +28519,7 @@ and Ghost begins.",,118,1,"<p>Funky Bitch &gt; Jam, Pomp and Circumstance</p>
 1282687971,99606,222,1,3,3,0,0,0,,,3,1,,,0
 1282687971,99607,532,1,4,2,0,0,0,,,754,0,,,0
 1282687971,99608,161,1,5,1,0,0,0,,,4,1,,,0
-1282687971,99609,475,1,6,2,0,0,0,,,5,0,,,0
+1282687971,99609,475,1,6,2,0,0,0,,,6,0,,,0
 1282687971,99610,220,1,7,1,0,0,0,,,6,0,,,0
 1282687971,99611,80,1,8,1,0,0,0,,,5,0,,,0
 1282687971,99612,538,1,9,1,0,0,1,"Features an unusually melodic, major mode groove that builds beautifully before returning to the norm with great tension. ",13:28,4,1,,,0
@@ -28531,7 +28531,7 @@ and Ghost begins.",,118,1,"<p>Funky Bitch &gt; Jam, Pomp and Circumstance</p>
 1282687971,99618,615,2,15,3,0,0,0,,,29,0,,"Giovanni Hidalgo on percussion, Aaron Johnson on trombone, Stuart Bogie on saxophone, Ian Hendrickson-Smith on saxophone, Michael Leonhart on trumpet, and Eric Biondo on trumpet.",0
 1282687971,99619,937,2,16,1,0,0,0,,,0,0,,"Phish debut; Giovanni Hidalgo on percussion, Aaron Johnson on trombone, Stuart Bogie on saxophone, Ian Hendrickson-Smith on saxophone, Michael Leonhart on trumpet, and Eric Biondo on trumpet.",0
 1282687971,99620,938,2,17,1,0,0,0,,,0,0,,"Phish debut; Giovanni Hidalgo on percussion, Aaron Johnson on trombone, Stuart Bogie on saxophone, Ian Hendrickson-Smith on saxophone, Michael Leonhart on trumpet, and Eric Biondo on trumpet.",0
-1282687971,99621,939,2,18,1,0,0,0,,,1521,0,,"Phish debut; Giovanni Hidalgo on percussion, Aaron Johnson on trombone, Stuart Bogie on saxophone, Ian Hendrickson-Smith on saxophone, Michael Leonhart on trumpet, and Eric Biondo on trumpet.",0
+1282687971,99621,939,2,18,1,0,0,0,,,1517,0,,"Phish debut; Giovanni Hidalgo on percussion, Aaron Johnson on trombone, Stuart Bogie on saxophone, Ian Hendrickson-Smith on saxophone, Michael Leonhart on trumpet, and Eric Biondo on trumpet.",0
 1282687971,99622,940,2,19,3,0,0,0,,,0,0,,"Phish debut; Giovanni Hidalgo on percussion, Aaron Johnson on trombone, Stuart Bogie on saxophone, Ian Hendrickson-Smith on saxophone, Michael Leonhart on trumpet, and Eric Biondo on trumpet.",0
 1282687971,99623,941,2,20,1,0,0,0,,,0,0,,Phish debut; Giovanni Hidalgo on percussion.,0
 1282687971,99624,942,2,21,1,0,0,0,,,0,0,,"Phish debut; Giovanni Hidalgo on percussion, Aaron Johnson on trombone, Stuart Bogie on saxophone, Ian Hendrickson-Smith on saxophone, Michael Leonhart on trumpet, and Eric Biondo on trumpet.",0
@@ -29625,7 +29625,7 @@ and Ghost begins.",,118,1,"<p>Funky Bitch &gt; Jam, Pomp and Circumstance</p>
 1330537173,247439,250,2,20,3,0,0,0,,,2,1,,Unfinished.,0
 1330537173,216951,339,2,21,2,0,0,0,,,3,0,,,0
 1330537173,217111,113,2,22,2,0,0,0,,,1,1,,,0
-1330537173,217135,472,2,23,5,0,0,0,,,1,0,,,0
+1330537173,217135,472,2,23,5,0,0,0,,,2,0,,,0
 1330537173,217160,886,e,24,2,0,0,0,,,4,0,,,0
 1330537173,217161,318,e,25,2,0,0,0,,,1,1,,,0
 1330537173,217162,628,e,26,6,0,0,0,,,6,1,,,0
@@ -31172,10 +31172,10 @@ and Ghost begins.",,118,1,"<p>Funky Bitch &gt; Jam, Pomp and Circumstance</p>
 1374684620,273225,2418,2,14,1,0,0,1,"Debut. First version hints at future jamming potential for ""Fuego.""",,1632,1,,Debut.,0
 1374684620,273240,2419,2,15,1,0,0,0,,,1628,1,,Debut.,0
 1374684620,273256,2428,2,16,1,0,0,0,,,1628,1,,Debut; Acoustic.,0
-1374684620,273273,2420,2,17,1,0,0,0,,,1628,1,,Debut.,0
+1374684620,273273,2420,2,17,1,0,0,0,,,1632,1,,Debut.,0
 1374684620,273291,2421,2,18,1,0,0,1,"Debut with ""Abe Vigoda"" and the Abe Vigoda Dancers.",,1628,1,,Debut; with Abe Vigoda and the Abe Vigoda Dancers.,0
 1374684620,273310,2422,2,19,1,0,0,0,,,1628,1,,Debut; Acoustic.,0
-1374684620,273330,2423,2,20,1,0,0,0,,,1628,1,,Debut.,0
+1374684620,273330,2423,2,20,1,0,0,0,,,1632,1,,Debut.,0
 1374684620,273351,2424,2,21,2,0,0,0,,,1632,1,,Debut.,0
 1374684620,273415,1370,2,22,1,0,0,1,"Phish debut includes Page nicely jumping around from the Fender-Rhodes to the B-3 to the piano, and a rock driven jam from Trey.",,1632,0,,Phish debut.,0
 1374684620,273438,2426,2,23,1,0,0,0,,,1628,1,,Debut; Acoustic.,0
@@ -31856,7 +31856,7 @@ and Ghost begins.",,118,1,"<p>Funky Bitch &gt; Jam, Pomp and Circumstance</p>
 1394572551,299220,2424,1,5,2,0,0,0,,,2,1,Wombat,,0
 1394572551,299226,462,1,6,2,0,0,0,,,4,1,Wombat,,0
 1394572551,299233,483,1,7,1,0,0,0,,,3,1,Wombat,,0
-1394572551,299241,2423,1,8,1,0,0,0,,,3,1,Wombat,,0
+1394572551,299241,2423,1,8,1,0,0,0,,,4,1,Wombat,,0
 1394572551,299250,2413,1,9,2,0,0,0,,,4,1,Wombat,,0
 1394572551,299260,525,1,10,1,0,0,0,,,2,1,Wombat,,0
 1394572551,299281,2417,1,11,2,0,0,0,,,3,1,Wombat,,0
@@ -32113,7 +32113,7 @@ and Ghost begins.",,118,1,"<p>Funky Bitch &gt; Jam, Pomp and Circumstance</p>
 1406053570,306501,2497,2,13,1,0,0,0,,,1671,1,,Debut.,0
 1406053570,306516,2498,2,14,1,0,0,0,,,1671,1,,Debut.,0
 1406053570,306532,2499,2,15,1,0,0,1,"Promising debut. Following Laura Olsher's narration, Phish explodes into arena rock, replete with full-tilt guitar histrionics.  ",,1675,1,,Debut.,0
-1406053570,306549,2500,2,16,1,0,0,0,,,1671,1,,Debut.,0
+1406053570,306549,2500,2,16,1,0,0,0,,,1675,1,,Debut.,0
 1406053570,306567,2501,2,17,1,0,0,1,"Debut.  Following Laura Olsher's narration and ""screaming"" sound effects, a plucky Trey leads the band into a jam that, prior to ""Tube's"" resurgence, would not have sounded out of place in a, well, ""Tube"" jam. ",,1675,1,,Debut.,0
 1406053570,306586,2502,2,18,1,0,0,0,,,1679,1,,Debut.,0
 1406053570,306625,2503,2,19,1,0,0,0,,,1671,1,,Debut.,0
@@ -32563,28 +32563,50 @@ and Ghost begins.",,118,1,"<p>Funky Bitch &gt; Jam, Pomp and Circumstance</p>
 1426718104,325517,491,2,14,1,0,0,1,"Only the second ""S&SS"" with intro (SBIX) in 3.0, this version shows few signs of rust and has excellent vocals throughout. The jam starts off largely in-the-box, but Trey and Mike slowly tug at the seams until Fishman pushes the rest of the band towards a throbbing two-note pattern and a brief peak before more clean vocals bring it back home.",,35,1,Your Pet Cat,,0
 1426718104,325532,250,2,15,5,0,0,0,,,4,1,Your Pet Cat,,0
 1426718104,325578,354,e,16,6,0,0,0,,,11,0,Your Pet Cat,,0
-1426718141,325618,345,1,1,1,0,2,1,"Debut of the slow, funky Llama. See 6/29/16, 10/20/18, and 11/30/19 for other versions.  ",5:14,35,1,"Beauty of a Broken Heart, Scabbard, Wombat",First performance in an alternate arrangement with a slower tempo.,0
-1426718141,325621,110,1,2,1,0,2,0,,,5,1,"Beauty of a Broken Heart, Scabbard, Wombat",,0
-1426718141,325624,591,1,3,1,0,2,1,"Version features an atypical jam segment which modulates to major mode, giving the jam more of a feel good sense, and less the typically rocking style.",8:05,5,1,"Beauty of a Broken Heart, Scabbard, Wombat",,0
-1426718141,325628,2413,1,4,1,0,2,0,,,14,1,"Beauty of a Broken Heart, Scabbard, Wombat",,0
-1426718141,325633,622,1,5,2,0,2,0,,,11,1,"Beauty of a Broken Heart, Scabbard, Wombat",,0
-1426718141,325639,84,1,6,1,0,2,0,,,6,1,"Beauty of a Broken Heart, Scabbard, Wombat",,0
-1426718141,325646,364,1,7,1,0,2,0,,,4,1,"Beauty of a Broken Heart, Scabbard, Wombat",,0
-1426718141,325654,2420,1,8,1,0,2,0,,,6,1,"Beauty of a Broken Heart, Scabbard, Wombat",,0
-1426718141,325663,329,1,9,1,0,2,0,,,7,1,"Beauty of a Broken Heart, Scabbard, Wombat",,0
-1426718141,325692,2423,1,10,1,0,2,0,,,8,1,"Beauty of a Broken Heart, Scabbard, Wombat",,0
-1426718141,325703,683,1,11,1,0,2,0,,,7,1,"Beauty of a Broken Heart, Scabbard, Wombat",,0
-1426718141,325726,545,1,12,4,0,2,0,,,12,1,"Beauty of a Broken Heart, Scabbard, Wombat",,0
-1426718141,325763,607,2,13,1,0,2,0,,,6,1,"Beauty of a Broken Heart, Scabbard, Wombat",,0
-1426718141,325790,867,2,14,2,0,2,1,"Begins with some bouncy funk work and then builds into a rocking groove. Brief ambient interlude before a > to ""Reba"".",13:15,7,0,"Beauty of a Broken Heart, Scabbard, Wombat",,0
-1426718141,325805,455,2,15,2,0,2,0,,,4,1,"Beauty of a Broken Heart, Scabbard, Wombat",,0
-1426718141,325821,381,2,16,2,0,2,0,,,3,1,"Beauty of a Broken Heart, Scabbard, Wombat",,0
-1426718141,325854,222,2,17,2,0,2,0,,,2,1,"Beauty of a Broken Heart, Scabbard, Wombat",,0
-1426718141,325872,1353,2,18,2,0,2,0,,,35,0,"Beauty of a Broken Heart, Scabbard, Wombat",,0
-1426718141,325891,653,2,19,2,0,2,1,"Following some deft playing by Trey, the straightforward jam peaks, then drops into some nice ""No Quarter"" teasing followed by a brief, funky breakdown jam before heading home.",9:42,3,1,"Beauty of a Broken Heart, Scabbard, Wombat",,0
-1426718141,325911,202,2,20,5,0,2,0,,,11,0,"Beauty of a Broken Heart, Scabbard, Wombat",,0
-1426718141,325952,193,e,21,1,0,2,0,,,2,1,"Beauty of a Broken Heart, Scabbard, Wombat",,0
-1426718141,325974,199,e,22,6,0,2,0,,,86,0,"Beauty of a Broken Heart, Scabbard, Wombat",,0
+1426718141,325618,345,1,1,1,0,0,1,"Debut of the slow, funky Llama. See 6/29/16, 10/20/18, and 11/30/19 for other versions.  ",5:14,34,1,"<p>Beauty of a Broken Heart, Scabbard, Wombat</p>
+","First time performed in a slow, funky arrangement.",0
+1426718141,325621,110,1,2,1,0,0,0,,,4,1,"<p>Beauty of a Broken Heart, Scabbard, Wombat</p>
+",,0
+1426718141,325624,591,1,3,1,0,0,1,"Version features an atypical jam segment which modulates to major mode, giving the jam more of a feel good sense, and less the typically rocking style.",8:05,4,1,"<p>Beauty of a Broken Heart, Scabbard, Wombat</p>
+",,0
+1426718141,325628,2413,1,4,1,0,0,0,,,13,1,"<p>Beauty of a Broken Heart, Scabbard, Wombat</p>
+",,0
+1426718141,325633,622,1,5,2,0,0,0,,,10,1,"<p>Beauty of a Broken Heart, Scabbard, Wombat</p>
+",,0
+1426718141,325639,84,1,6,1,0,0,0,,,5,1,"<p>Beauty of a Broken Heart, Scabbard, Wombat</p>
+",,0
+1426718141,325646,364,1,7,1,0,0,0,,,4,1,"<p>Beauty of a Broken Heart, Scabbard, Wombat</p>
+",,0
+1426718141,325654,2420,1,8,1,0,0,0,,,5,1,"<p>Beauty of a Broken Heart, Scabbard, Wombat</p>
+",,0
+1426718141,325663,329,1,9,1,0,0,0,,,6,1,"<p>Beauty of a Broken Heart, Scabbard, Wombat</p>
+",,0
+1426718141,325692,2423,1,10,1,0,0,0,,,7,1,"<p>Beauty of a Broken Heart, Scabbard, Wombat</p>
+",,0
+1426718141,325703,683,1,11,1,0,0,0,,,7,1,"<p>Beauty of a Broken Heart, Scabbard, Wombat</p>
+",,0
+1426718141,325726,545,1,12,4,0,0,0,,,11,1,"<p>Beauty of a Broken Heart, Scabbard, Wombat</p>
+",,0
+1426718141,325763,607,2,13,1,0,0,0,,,5,1,"<p>Beauty of a Broken Heart, Scabbard, Wombat</p>
+",,0
+1426718141,325790,867,2,14,2,0,0,1,"Begins with some bouncy funk work and then builds into a rocking groove. Brief ambient interlude before a > to ""Reba"".",13:15,7,0,"<p>Beauty of a Broken Heart, Scabbard, Wombat</p>
+",,0
+1426718141,325805,455,2,15,2,0,0,0,,,3,1,"<p>Beauty of a Broken Heart, Scabbard, Wombat</p>
+",,0
+1426718141,325821,381,2,16,2,0,0,0,,,2,1,"<p>Beauty of a Broken Heart, Scabbard, Wombat</p>
+",,0
+1426718141,325854,222,2,17,2,0,0,0,,,2,1,"<p>Beauty of a Broken Heart, Scabbard, Wombat</p>
+",,0
+1426718141,325872,1353,2,18,2,0,0,0,,,34,0,"<p>Beauty of a Broken Heart, Scabbard, Wombat</p>
+",,0
+1426718141,325891,653,2,19,2,0,0,1,"Following some deft playing by Trey, the straightforward jam peaks, then drops into some nice ""No Quarter"" teasing followed by a brief, funky breakdown jam before heading home.",9:42,2,1,"<p>Beauty of a Broken Heart, Scabbard, Wombat</p>
+",,0
+1426718141,325911,202,2,20,5,0,0,0,,,10,0,"<p>Beauty of a Broken Heart, Scabbard, Wombat</p>
+",,0
+1426718141,325952,193,e,21,1,0,0,0,,,1,1,"<p>Beauty of a Broken Heart, Scabbard, Wombat</p>
+",,0
+1426718141,325974,199,e,22,6,0,0,0,,,85,0,"<p>Beauty of a Broken Heart, Scabbard, Wombat</p>
+",,0
 1426718165,325997,508,1,1,2,0,0,0,,,12,1,"Sparkle, McGrupp and the Watchful Hosemasters, Friday, Nothing (x5), Stir It Up (instrumental)",,0
 1426718165,326001,227,1,2,1,0,0,0,,,53,1,"Sparkle, McGrupp and the Watchful Hosemasters, Friday, Nothing (x5), Stir It Up (instrumental)",,0
 1426718165,326006,96,1,3,2,0,0,0,,,24,1,"Sparkle, McGrupp and the Watchful Hosemasters, Friday, Nothing (x5), Stir It Up (instrumental)",,0
@@ -33028,28 +33050,50 @@ and Ghost begins.",,118,1,"<p>Funky Bitch &gt; Jam, Pomp and Circumstance</p>
 1454707046,343442,512,2,20,2,0,0,1,"Fish and Mike are out front on this one, giving the jam an early sense of drive and power. Soaring play by Trey and a solidly peaking conclusion all add up to a strong ""Slave.""",,5,1,,,0
 1454707046,392842,690,2,21,5,0,0,0,,,8,1,,Trey on Marimba Lumina.,0
 1454707046,392864,452,e,22,6,0,0,0,,,52,0,,,0
-1454707067,343917,683,1,1,1,0,2,0,,,5,1,"Friends, Tide Turns, Things People Do, Unknown song (unconfirmed and possibly incomplete)",,0
-1454707067,343919,2501,1,2,1,0,2,0,,,9,1,"Friends, Tide Turns, Things People Do, Unknown song (unconfirmed and possibly incomplete)",,0
-1454707067,343922,2570,1,3,1,0,2,0,,,4,1,"Friends, Tide Turns, Things People Do, Unknown song (unconfirmed and possibly incomplete)",,0
-1454707067,343926,2630,1,4,1,0,2,0,,,1715,1,"Friends, Tide Turns, Things People Do, Unknown song (unconfirmed and possibly incomplete)",Debut.,0
-1454707067,343931,345,1,5,1,0,2,0,,,21,1,"Friends, Tide Turns, Things People Do, Unknown song (unconfirmed and possibly incomplete)",Performed in an alternate arrangement.,0
-1454707067,343937,2423,1,6,1,0,2,0,,,21,1,"Friends, Tide Turns, Things People Do, Unknown song (unconfirmed and possibly incomplete)",,0
-1454707067,343944,455,1,7,1,0,2,1,"No mere novelty, the band's incredibly slow take on the composed section (better heard than described) seems to dissolve as muscle memory takes over, the torpid pace impossible to sustain. This inspires several minutes of particularly soulful and melodic jamming, which, in fun Phish fashion, dissolves into an inane whistling section.",13:58,7,1,"Friends, Tide Turns, Things People Do, Unknown song (unconfirmed and possibly incomplete)",,0
-1454707067,343952,381,1,8,2,0,2,0,,,5,1,"Friends, Tide Turns, Things People Do, Unknown song (unconfirmed and possibly incomplete)",,0
-1454707067,343961,269,1,9,2,0,2,0,,,5,1,"Friends, Tide Turns, Things People Do, Unknown song (unconfirmed and possibly incomplete)",,0
-1454707067,343971,193,1,10,2,0,2,1,A sea of trills and melodic waves evoking the ocean's ebb and flow. A harmonious jam where the means are the ends; the musical equivalent to taking a walk through the woods for the sake of walking through the woods.,6:41,6,1,"Friends, Tide Turns, Things People Do, Unknown song (unconfirmed and possibly incomplete)",,0
-1454707067,343982,653,1,11,4,0,2,0,,,5,1,"Friends, Tide Turns, Things People Do, Unknown song (unconfirmed and possibly incomplete)",,0
-1454707067,343994,139,2,12,3,0,2,1,"After departing the typical jam style, this version drops briefly into some murky waters but finds its footing as Fish propels things forward, eventually leading to a feel-good conclusion and a -> to the debut of ""Friends"".  ",15:31,6,0,"Friends, Tide Turns, Things People Do, Unknown song (unconfirmed and possibly incomplete)",,0
-1454707067,344007,2631,2,13,1,0,2,0,,,1715,1,"Friends, Tide Turns, Things People Do, Unknown song (unconfirmed and possibly incomplete)",Debut.,0
-1454707067,344021,174,2,14,2,0,2,0,,,4,1,"Friends, Tide Turns, Things People Do, Unknown song (unconfirmed and possibly incomplete)",Unfinished.,0
-1454707067,344036,657,2,15,2,0,2,0,,,8,1,"Friends, Tide Turns, Things People Do, Unknown song (unconfirmed and possibly incomplete)",,0
-1454707067,344068,369,2,16,2,0,2,0,,,17,1,"Friends, Tide Turns, Things People Do, Unknown song (unconfirmed and possibly incomplete)",,0
-1454707067,344085,2419,2,17,1,0,2,0,,,5,1,"Friends, Tide Turns, Things People Do, Unknown song (unconfirmed and possibly incomplete)",,0
-1454707067,344103,2632,2,18,1,0,2,0,,,1715,1,"Friends, Tide Turns, Things People Do, Unknown song (unconfirmed and possibly incomplete)",Debut.,0
-1454707067,344140,46,2,19,1,0,2,1,"An inspired version showcasing full-band interplay. Trey truly shines, working his line in a number of directions, sprinkling notes and modulating intensity to shape this shimmering summertime stunner.",8:40,4,0,"Friends, Tide Turns, Things People Do, Unknown song (unconfirmed and possibly incomplete)",,0
-1454707067,344160,2524,2,20,5,0,2,0,,,41,0,"Friends, Tide Turns, Things People Do, Unknown song (unconfirmed and possibly incomplete)",,0
-1454707067,344181,152,e,21,2,0,2,0,,,5,0,"Friends, Tide Turns, Things People Do, Unknown song (unconfirmed and possibly incomplete)",,0
-1454707067,344203,250,e,22,6,0,2,1,"After a couple of years of venturing abroad, ""Harry Hood"" proves that a more traditional, but extended trip is equally compelling. This fine encore version also includes a very powerful ending section.",14:21,3,1,"Friends, Tide Turns, Things People Do, Unknown song (unconfirmed and possibly incomplete)",,0
+1454707067,343917,683,1,1,1,0,0,0,,,5,1,"<p>Friends, Tide Turns, Things People Do, Unknown song (unconfirmed and possibly incomplete)</p>
+",,0
+1454707067,343919,2501,1,2,1,0,0,0,,,8,1,"<p>Friends, Tide Turns, Things People Do, Unknown song (unconfirmed and possibly incomplete)</p>
+",,0
+1454707067,343922,2570,1,3,1,0,0,0,,,4,1,"<p>Friends, Tide Turns, Things People Do, Unknown song (unconfirmed and possibly incomplete)</p>
+",,0
+1454707067,343926,2630,1,4,1,0,0,0,,,0,1,"<p>Friends, Tide Turns, Things People Do, Unknown song (unconfirmed and possibly incomplete)</p>
+",Debut.,0
+1454707067,343931,345,1,5,1,0,0,0,,,20,1,"<p>Friends, Tide Turns, Things People Do, Unknown song (unconfirmed and possibly incomplete)</p>
+","Performed in a slow, funky arrangement.",0
+1454707067,343937,2423,1,6,1,0,0,0,,,20,1,"<p>Friends, Tide Turns, Things People Do, Unknown song (unconfirmed and possibly incomplete)</p>
+",,0
+1454707067,343944,455,1,7,1,0,0,1,"No mere novelty, the band's incredibly slow take on the composed section (better heard than described) seems to dissolve as muscle memory takes over, the torpid pace impossible to sustain. This inspires several minutes of particularly soulful and melodic jamming, which, in fun Phish fashion, dissolves into an inane whistling section.",13:58,6,1,"<p>Friends, Tide Turns, Things People Do, Unknown song (unconfirmed and possibly incomplete)</p>
+",,0
+1454707067,343952,381,1,8,2,0,0,0,,,4,1,"<p>Friends, Tide Turns, Things People Do, Unknown song (unconfirmed and possibly incomplete)</p>
+",,0
+1454707067,343961,269,1,9,2,0,0,0,,,4,1,"<p>Friends, Tide Turns, Things People Do, Unknown song (unconfirmed and possibly incomplete)</p>
+",,0
+1454707067,343971,193,1,10,2,0,0,1,A sea of trills and melodic waves evoking the ocean's ebb and flow. A harmonious jam where the means are the ends; the musical equivalent to taking a walk through the woods for the sake of walking through the woods.,6:41,5,1,"<p>Friends, Tide Turns, Things People Do, Unknown song (unconfirmed and possibly incomplete)</p>
+",,0
+1454707067,343982,653,1,11,4,0,0,0,,,4,1,"<p>Friends, Tide Turns, Things People Do, Unknown song (unconfirmed and possibly incomplete)</p>
+",,0
+1454707067,343994,139,2,12,3,0,0,1,"After departing the typical jam style, this version drops briefly into some murky waters but finds its footing as Fish propels things forward, eventually leading to a feel-good conclusion and a -> to the debut of ""Friends"".  ",15:31,5,0,"<p>Friends, Tide Turns, Things People Do, Unknown song (unconfirmed and possibly incomplete)</p>
+",,0
+1454707067,344007,2631,2,13,1,0,0,0,,,0,1,"<p>Friends, Tide Turns, Things People Do, Unknown song (unconfirmed and possibly incomplete)</p>
+",Debut.,0
+1454707067,344021,174,2,14,2,0,0,0,,,3,1,"<p>Friends, Tide Turns, Things People Do, Unknown song (unconfirmed and possibly incomplete)</p>
+",Unfinished.,0
+1454707067,344036,657,2,15,2,0,0,0,,,7,1,"<p>Friends, Tide Turns, Things People Do, Unknown song (unconfirmed and possibly incomplete)</p>
+",,0
+1454707067,344068,369,2,16,2,0,0,0,,,17,1,"<p>Friends, Tide Turns, Things People Do, Unknown song (unconfirmed and possibly incomplete)</p>
+",,0
+1454707067,344085,2419,2,17,1,0,0,0,,,4,1,"<p>Friends, Tide Turns, Things People Do, Unknown song (unconfirmed and possibly incomplete)</p>
+",,0
+1454707067,344103,2632,2,18,1,0,0,0,,,0,1,"<p>Friends, Tide Turns, Things People Do, Unknown song (unconfirmed and possibly incomplete)</p>
+",Debut.,0
+1454707067,344140,46,2,19,1,0,0,1,"An inspired version showcasing full-band interplay. Trey truly shines, working his line in a number of directions, sprinkling notes and modulating intensity to shape this shimmering summertime stunner.",8:40,3,0,"<p>Friends, Tide Turns, Things People Do, Unknown song (unconfirmed and possibly incomplete)</p>
+",,0
+1454707067,344160,2524,2,20,5,0,0,0,,,40,0,"<p>Friends, Tide Turns, Things People Do, Unknown song (unconfirmed and possibly incomplete)</p>
+",,0
+1454707067,344181,152,e,21,2,0,0,0,,,4,0,"<p>Friends, Tide Turns, Things People Do, Unknown song (unconfirmed and possibly incomplete)</p>
+",,0
+1454707067,344203,250,e,22,6,0,0,1,"After a couple of years of venturing abroad, ""Harry Hood"" proves that a more traditional, but extended trip is equally compelling. This fine encore version also includes a very powerful ending section.",14:21,2,1,"<p>Friends, Tide Turns, Things People Do, Unknown song (unconfirmed and possibly incomplete)</p>
+",,0
 1454707102,344402,539,1,1,1,0,0,0,,,11,1,"Alaska, Let's Go, Running Out Of Time, Home",,0
 1454707102,344404,2505,1,2,2,0,0,0,,,45,1,"Alaska, Let's Go, Running Out Of Time, Home",,0
 1454707102,344411,404,1,3,1,0,0,0,,,10,1,"Alaska, Let's Go, Running Out Of Time, Home",,0
@@ -33474,7 +33518,7 @@ and Ghost begins.",,118,1,"<p>Funky Bitch &gt; Jam, Pomp and Circumstance</p>
 1454708735,354654,648,e,17,6,0,0,0,,,5,1,"Dog Log, My Soul",,0
 1475630045,355524,2628,1,1,1,0,0,0,,,0,1,,Ian Hendrickson-Smith on saxophone and David Guy on trumpet.,1
 1475630045,355525,2570,1,2,6,0,0,0,,,0,1,,,1
-1470182793,355639,2495,1,1,1,0,0,0,,,1735,0,,Phish debut.,0
+1470182793,355639,2495,1,1,1,0,0,0,,,1739,0,,Phish debut.,0
 1470182793,355641,222,1,2,1,0,0,0,,,3,1,,,0
 1470182793,355642,254,1,3,1,0,0,0,,,3,1,,,0
 1470182793,355643,2640,1,4,1,0,0,0,,,1735,1,,Debut.,0
@@ -34033,7 +34077,7 @@ and Ghost begins.",,118,1,"<p>Funky Bitch &gt; Jam, Pomp and Circumstance</p>
 1485905853,378240,473,1,8,1,0,0,1,"Beautiful ""Baker's Dozen"" version quickly assumes a measured, metered pace, affording all four musicians room to seemingly solo independently, yet in unison, resulting in that special sort of cohesion wherein the band uses music to channel their collective energy to uncover a particular charmed and enchanted space.   ",,3,1,,,0
 1485905853,378249,603,1,9,4,0,0,0,,,3,1,,,0
 1485905853,378268,174,2,10,2,0,0,0,,,3,1,,,0
-1485905853,378279,2703,2,11,2,0,0,0,,,1761,0,,Phish debut.,0
+1485905853,378279,2703,2,11,2,0,0,0,,,1765,0,,Phish debut.,0
 1485905853,378291,65,2,12,1,0,0,0,,,4,1,,,0
 1485905853,378304,2638,2,13,2,0,0,0,,,16,1,,With Trey on Marimba Lumina.,0
 1485905853,378318,19,2,14,1,0,0,0,,,251,1,,,0
@@ -34829,24 +34873,24 @@ exploding Dark Star. [One may not need not a chamber to be haunted, but the best
 1526437627,400614,369,2,16,2,0,0,0,,,8,1,,,0
 1526437627,400631,529,2,17,5,0,0,0,,,9,1,,,0
 1526437627,400666,586,e,18,6,0,0,0,,,17,1,,,0
-1526437668,400667,345,1,1,1,0,2,0,,,7,1,,Performed in an alternate arrangement.,0
-1526437668,400671,2418,1,2,2,0,2,0,,,5,1,,,0
-1526437668,400674,479,1,3,1,0,2,1,"A nice, Page and Trey-led mini jam occurs during the first instrumental bridge. In the main jam segment, soothing, straightforward, and relaxed playing rapidly gives way to an inspired crescendo, with great Page and Fish. ",10:06,9,1,,,0
-1526437668,400678,94,1,4,2,0,2,0,,,7,0,,,0
-1526437668,400683,392,1,5,1,0,2,0,,,43,1,,,0
-1526437668,400689,562,1,6,2,0,2,0,,,20,1,,,0
-1526437668,400696,2,1,7,1,0,2,1,"Here we find ""46 Days"" at its most punishing in a jam that gets downright grisly as the tension mounts past 5:30 and builds to the first seismic peak. Not to be outdone, in the post-lyrics section Fish thrashes his kit for a bone-crunching finale.",9:12,4,1,,,0
-1526437668,400704,208,1,8,4,0,2,0,,,20,1,,,0
-1526437668,400721,202,2,9,2,0,2,0,,,14,0,,,0
-1526437668,400731,627,2,10,2,0,2,1,"Punchy from the start, this version cooks for several minutes before a major-key improvisation occurs, in which Trey hoses everyone down mellifluously. The jam then segues smoothly into a spacey, divinely-melodic interlude, and a patient, steady build transpires, eventually reaching a spectacular peak. The improv then dramatically melts down, but instead of concluding, the jam surprisingly shoots skyward to a second powerful-but-fleeting peak, before ""Dirt"" abruptly begins.",18:40,4,1,,,0
-1526437668,400742,159,2,11,2,0,2,0,,,15,0,,,0
-1526437668,400765,46,2,12,2,0,2,0,,,7,0,,,0
-1526437668,400778,2572,2,13,2,0,2,0,,,3,1,,,0
-1526437668,400792,108,2,14,2,0,2,0,,,6,1,,,0
-1526437668,400807,237,2,15,2,0,2,0,,,4,0,,,0
-1526437668,400823,592,2,16,2,0,2,0,,,39,1,,,0
-1526437668,400840,545,2,17,5,0,2,0,,,4,1,,,0
-1526437668,400875,857,e,18,6,0,2,0,,,43,0,,,0
+1526437668,400667,345,1,1,1,0,0,0,,,6,1,,"Performed in a slow, funky arrangement.",0
+1526437668,400671,2418,1,2,2,0,0,0,,,4,1,,,0
+1526437668,400674,479,1,3,1,0,0,1,"A nice, Page and Trey-led mini jam occurs during the first instrumental bridge. In the main jam segment, soothing, straightforward, and relaxed playing rapidly gives way to an inspired crescendo, with great Page and Fish. ",10:06,9,1,,,0
+1526437668,400678,94,1,4,2,0,0,0,,,6,0,,,0
+1526437668,400683,392,1,5,1,0,0,0,,,42,1,,,0
+1526437668,400689,562,1,6,2,0,0,0,,,19,1,,,0
+1526437668,400696,2,1,7,1,0,0,1,"Here we find ""46 Days"" at its most punishing in a jam that gets downright grisly as the tension mounts past 5:30 and builds to the first seismic peak. Not to be outdone, in the post-lyrics section Fish thrashes his kit for a bone-crunching finale.",9:12,3,1,,,0
+1526437668,400704,208,1,8,4,0,0,0,,,20,1,,,0
+1526437668,400721,202,2,9,2,0,0,0,,,13,0,,,0
+1526437668,400731,627,2,10,2,0,0,1,"Punchy from the start, this version cooks for several minutes before a major-key improvisation occurs, in which Trey hoses everyone down mellifluously. The jam then segues smoothly into a spacey, divinely-melodic interlude, and a patient, steady build transpires, eventually reaching a spectacular peak. The improv then dramatically melts down, but instead of concluding, the jam surprisingly shoots skyward to a second powerful-but-fleeting peak, before ""Dirt"" abruptly begins.",18:40,4,1,,,0
+1526437668,400742,159,2,11,2,0,0,0,,,14,0,,,0
+1526437668,400765,46,2,12,2,0,0,0,,,6,0,,,0
+1526437668,400778,2572,2,13,2,0,0,0,,,2,1,,,0
+1526437668,400792,108,2,14,2,0,0,0,,,5,1,,,0
+1526437668,400807,237,2,15,2,0,0,0,,,3,0,,,0
+1526437668,400823,592,2,16,2,0,0,0,,,38,1,,,0
+1526437668,400840,545,2,17,5,0,0,0,,,3,1,,,0
+1526437668,400875,857,e,18,6,0,0,0,,,42,0,,,0
 1526437700,400894,539,1,1,1,0,0,0,,,10,1,,,0
 1526437700,400896,510,1,2,1,0,0,1,"The entire band is locked in from the start on this version. While it may never stretch outside the confines of the song proper, the jam features tight playing all around.",,113,0,,,0
 1526437700,400903,88,1,3,1,0,0,0,,,16,1,,,0
@@ -36031,55 +36075,55 @@ After an appropriately funky opening, things relax a bit with Mike making his pr
 ",,0
 1565719784,430294,94,e,28,6,0,0,0,,,2,0,"<p>Victim, Ghosts of the Forest, Steps (this soundcheck is possibly incomplete)</p>
 ",,0
-1565719806,430351,2792,1,1,1,0,2,0,,,2,1,"<p>Jam, Drift While You&#39;re Sleeping, About to Run</p>
+1565719806,430351,2792,1,1,1,0,0,0,,,2,1,"<p>Jam, Drift While You&#39;re Sleeping, About to Run</p>
 ",,0
-1565719806,430353,447,1,2,1,0,2,0,,,14,1,"<p>Jam, Drift While You&#39;re Sleeping, About to Run</p>
+1565719806,430353,447,1,2,1,0,0,0,,,14,1,"<p>Jam, Drift While You&#39;re Sleeping, About to Run</p>
 ",,0
-1565719806,430356,345,1,3,1,0,2,0,,,12,1,"<p>Jam, Drift While You&#39;re Sleeping, About to Run</p>
-",Performed in an alternate arrangement.,0
-1565719806,430360,367,1,4,1,0,2,0,,,13,1,"<p>Jam, Drift While You&#39;re Sleeping, About to Run</p>
+1565719806,430356,345,1,3,1,0,0,0,,,11,1,"<p>Jam, Drift While You&#39;re Sleeping, About to Run</p>
+","Performed in a slow, funky arrangement.",0
+1565719806,430360,367,1,4,1,0,0,0,,,12,1,"<p>Jam, Drift While You&#39;re Sleeping, About to Run</p>
 ",,0
-1565719806,430365,593,1,5,1,0,2,0,,,16,0,"<p>Jam, Drift While You&#39;re Sleeping, About to Run</p>
+1565719806,430365,593,1,5,1,0,0,0,,,15,0,"<p>Jam, Drift While You&#39;re Sleeping, About to Run</p>
 ",,0
-1565719806,430371,329,1,6,1,0,2,0,,,7,1,"<p>Jam, Drift While You&#39;re Sleeping, About to Run</p>
+1565719806,430371,329,1,6,1,0,0,0,,,6,1,"<p>Jam, Drift While You&#39;re Sleeping, About to Run</p>
 ",,0
-1565719806,430378,276,1,7,1,0,2,0,,,5,1,"<p>Jam, Drift While You&#39;re Sleeping, About to Run</p>
+1565719806,430378,276,1,7,1,0,0,0,,,5,1,"<p>Jam, Drift While You&#39;re Sleeping, About to Run</p>
 ",,0
-1565719806,430386,364,1,8,1,0,2,0,,,9,1,"<p>Jam, Drift While You&#39;re Sleeping, About to Run</p>
+1565719806,430386,364,1,8,1,0,0,0,,,9,1,"<p>Jam, Drift While You&#39;re Sleeping, About to Run</p>
 ",,0
-1565719806,430395,269,1,9,1,0,2,0,,,16,1,"<p>Jam, Drift While You&#39;re Sleeping, About to Run</p>
+1565719806,430395,269,1,9,1,0,0,0,,,15,1,"<p>Jam, Drift While You&#39;re Sleeping, About to Run</p>
 ",,0
-1565719806,430405,237,1,10,2,0,2,0,,,17,0,"<p>Jam, Drift While You&#39;re Sleeping, About to Run</p>
+1565719806,430405,237,1,10,2,0,0,0,,,16,0,"<p>Jam, Drift While You&#39;re Sleeping, About to Run</p>
 ",,0
-1565719806,430416,538,1,11,3,0,2,0,,,8,1,"<p>Jam, Drift While You&#39;re Sleeping, About to Run</p>
+1565719806,430416,538,1,11,3,0,0,0,,,8,1,"<p>Jam, Drift While You&#39;re Sleeping, About to Run</p>
 ",Unfinished.,0
-1565719806,430428,1085,1,12,2,0,2,0,,,0,0,"<p>Jam, Drift While You&#39;re Sleeping, About to Run</p>
+1565719806,430428,1085,1,12,2,0,0,0,,,0,0,"<p>Jam, Drift While You&#39;re Sleeping, About to Run</p>
 ",Ending only.,0
-1565719806,430441,234,1,13,4,0,2,0,,,9,1,"<p>Jam, Drift While You&#39;re Sleeping, About to Run</p>
+1565719806,430441,234,1,13,4,0,0,0,,,8,1,"<p>Jam, Drift While You&#39;re Sleeping, About to Run</p>
 ",,0
-1565719806,430550,48,2,14,2,0,2,0,,,2,1,"<p>Jam, Drift While You&#39;re Sleeping, About to Run</p>
+1565719806,430550,48,2,14,2,0,0,0,,,1,1,"<p>Jam, Drift While You&#39;re Sleeping, About to Run</p>
 ",,0
-1565719806,430565,14,2,15,2,0,2,1,"> from a big ""Gin"" (and THX effects) , the band performs one of the finest versions to date.  Early, everything drips with a bit of ""gusto,"" before Trey, around 5:00, augments his tone and shapes sound, creating a crunchy, ""Martian Monster"" sort of stomp.  Fish splashes in compliment as the band toys with tempo and meter, before a cool outro (the version remains unfinished) > ""What's The Use?"".    ",9:15,17,0,"<p>Jam, Drift While You&#39;re Sleeping, About to Run</p>
+1565719806,430565,14,2,15,2,0,0,1,"> from a big ""Gin"" (and THX effects) , the band performs one of the finest versions to date.  Early, everything drips with a bit of ""gusto,"" before Trey, around 5:00, augments his tone and shapes sound, creating a crunchy, ""Martian Monster"" sort of stomp.  Fish splashes in compliment as the band toys with tempo and meter, before a cool outro (the version remains unfinished) > ""What's The Use?"".    ",9:15,16,0,"<p>Jam, Drift While You&#39;re Sleeping, About to Run</p>
 ",Unfinished.,0
-1565719806,430581,657,2,16,2,0,2,0,,,4,1,"<p>Jam, Drift While You&#39;re Sleeping, About to Run</p>
+1565719806,430581,657,2,16,2,0,0,0,,,3,1,"<p>Jam, Drift While You&#39;re Sleeping, About to Run</p>
 ",,0
-1565719806,430598,437,2,17,2,0,2,0,,,2,1,"<p>Jam, Drift While You&#39;re Sleeping, About to Run</p>
+1565719806,430598,437,2,17,2,0,0,0,,,1,1,"<p>Jam, Drift While You&#39;re Sleeping, About to Run</p>
 ",,0
-1565719806,430633,867,2,18,3,0,2,0,,,6,0,"<p>Jam, Drift While You&#39;re Sleeping, About to Run</p>
+1565719806,430633,867,2,18,3,0,0,0,,,6,0,"<p>Jam, Drift While You&#39;re Sleeping, About to Run</p>
 ",,0
-1565719806,430652,1085,2,19,2,0,2,0,,,0,0,"<p>Jam, Drift While You&#39;re Sleeping, About to Run</p>
+1565719806,430652,1085,2,19,2,0,0,0,,,0,0,"<p>Jam, Drift While You&#39;re Sleeping, About to Run</p>
 ",Ending only.,0
-1565719806,430672,250,2,20,5,0,2,1,"Following a warm, directed opening, the jam slips into the now familiar minor mode play. What distinguishes this version is Trey's rapid-fire note picking, trilling, and spirited playing, which continues even as this ""Hood"" shifts back for a traditional closing.",14:24,4,1,"<p>Jam, Drift While You&#39;re Sleeping, About to Run</p>
+1565719806,430672,250,2,20,5,0,0,1,"Following a warm, directed opening, the jam slips into the now familiar minor mode play. What distinguishes this version is Trey's rapid-fire note picking, trilling, and spirited playing, which continues even as this ""Hood"" shifts back for a traditional closing.",14:24,3,1,"<p>Jam, Drift While You&#39;re Sleeping, About to Run</p>
 ",,0
-1565719806,430713,58,e,21,2,0,2,0,,,14,1,"<p>Jam, Drift While You&#39;re Sleeping, About to Run</p>
+1565719806,430713,58,e,21,2,0,0,0,,,13,1,"<p>Jam, Drift While You&#39;re Sleeping, About to Run</p>
 ",Unfinished.,0
-1565719806,430735,325,e,22,2,0,2,0,,,8,1,"<p>Jam, Drift While You&#39;re Sleeping, About to Run</p>
+1565719806,430735,325,e,22,2,0,0,0,,,7,1,"<p>Jam, Drift While You&#39;re Sleeping, About to Run</p>
 ",,0
-1565719806,430758,2421,e,23,1,0,2,0,,,16,1,"<p>Jam, Drift While You&#39;re Sleeping, About to Run</p>
+1565719806,430758,2421,e,23,1,0,0,0,,,15,1,"<p>Jam, Drift While You&#39;re Sleeping, About to Run</p>
 ",,0
-1565719806,430829,440,e,24,2,0,2,0,,,10,1,"<p>Jam, Drift While You&#39;re Sleeping, About to Run</p>
+1565719806,430829,440,e,24,2,0,0,0,,,10,1,"<p>Jam, Drift While You&#39;re Sleeping, About to Run</p>
 ",,0
-1565719806,430854,1085,e,25,6,0,2,0,,,1,0,"<p>Jam, Drift While You&#39;re Sleeping, About to Run</p>
+1565719806,430854,1085,e,25,6,0,0,0,,,0,0,"<p>Jam, Drift While You&#39;re Sleeping, About to Run</p>
 ",Ending only.,0
 1565719857,430930,222,1,1,2,0,0,0,,,4,1,"<p>Drift While You&#39;re Sleeping (this soundcheck is possibly incomplete)</p>
 ",,0
@@ -36895,43 +36939,43 @@ After an appropriately funky opening, things relax a bit with Mike making his pr
 ",,0
 1588526318,455751,354,e,17,6,0,2,0,,,7,0,"<p>Theme From the Bottom, My Soul, We Are Come To Outlive Our Brains, Lonely Trip</p>
 ",,0
-1588526341,455804,345,1,1,1,0,2,0,,,3,1,"<p>Funky Bitch, Jam</p>
-",Performed in an alternate arrangement.,0
-1588526341,455806,622,1,2,1,0,2,0,,,6,1,"<p>Funky Bitch, Jam</p>
+1588526341,455804,345,1,1,1,0,0,0,,,2,1,"<p>Funky Bitch, Jam</p>
+","Performed in a slow, funky arrangement.",0
+1588526341,455806,622,1,2,1,0,0,0,,,5,1,"<p>Funky Bitch, Jam</p>
 ",,0
-1588526341,455809,154,1,3,2,0,2,0,,,10,1,"<p>Funky Bitch, Jam</p>
+1588526341,455809,154,1,3,2,0,0,0,,,9,1,"<p>Funky Bitch, Jam</p>
 ",,0
-1588526341,455813,686,1,4,1,0,2,0,,,5,0,"<p>Funky Bitch, Jam</p>
+1588526341,455813,686,1,4,1,0,0,0,,,4,0,"<p>Funky Bitch, Jam</p>
 ",,0
-1588526341,455818,2,1,5,1,0,2,0,,,4,1,"<p>Funky Bitch, Jam</p>
+1588526341,455818,2,1,5,1,0,0,0,,,3,1,"<p>Funky Bitch, Jam</p>
 ",,0
-1588526341,455824,455,1,6,1,0,2,0,,,9,1,"<p>Funky Bitch, Jam</p>
+1588526341,455824,455,1,6,1,0,0,0,,,8,1,"<p>Funky Bitch, Jam</p>
 ",No whistling.,0
-1588526341,455831,523,1,7,1,0,2,0,,,88,0,"<p>Funky Bitch, Jam</p>
+1588526341,455831,523,1,7,1,0,0,0,,,87,0,"<p>Funky Bitch, Jam</p>
 ",,0
-1588526341,455839,529,1,8,1,0,2,0,,,7,1,"<p>Funky Bitch, Jam</p>
+1588526341,455839,529,1,8,1,0,0,0,,,7,1,"<p>Funky Bitch, Jam</p>
 ",,0
-1588526341,455848,603,1,9,4,0,2,0,,,8,1,"<p>Funky Bitch, Jam</p>
+1588526341,455848,603,1,9,4,0,0,0,,,7,1,"<p>Funky Bitch, Jam</p>
 ",,0
-1588526341,455886,2935,2,10,1,0,2,0,,,6,0,"<p>Funky Bitch, Jam</p>
+1588526341,455886,2935,2,10,1,0,0,0,,,5,0,"<p>Funky Bitch, Jam</p>
 ",,0
-1588526341,455897,178,2,11,2,0,2,1,"While staying somewhat close to typical ""Drowned"" jamming, the music explores those bounds widely until 10:30, when there is a distinctive shift to new terrain. The jam becomes pulsing and percussive before finally settling to quiet transition space. ",15:54,20,0,"<p>Funky Bitch, Jam</p>
+1588526341,455897,178,2,11,2,0,0,1,"While staying somewhat close to typical ""Drowned"" jamming, the music explores those bounds widely until 10:30, when there is a distinctive shift to new terrain. The jam becomes pulsing and percussive before finally settling to quiet transition space. ",15:54,19,0,"<p>Funky Bitch, Jam</p>
 ",,0
-1588526341,455909,222,2,12,3,0,2,0,,,4,1,"<p>Funky Bitch, Jam</p>
+1588526341,455909,222,2,12,3,0,0,0,,,4,1,"<p>Funky Bitch, Jam</p>
 ",,0
-1588526341,455922,491,2,13,2,0,2,0,,,23,1,"<p>Funky Bitch, Jam</p>
+1588526341,455922,491,2,13,2,0,0,0,,,22,1,"<p>Funky Bitch, Jam</p>
 ",Did not contain the intro.,0
-1588526341,455936,110,2,14,2,0,2,0,,,2,1,"<p>Funky Bitch, Jam</p>
+1588526341,455936,110,2,14,2,0,0,0,,,1,1,"<p>Funky Bitch, Jam</p>
 ",Unfinished.,0
-1588526341,455951,1353,2,15,2,0,2,0,,,23,0,"<p>Funky Bitch, Jam</p>
+1588526341,455951,1353,2,15,2,0,0,0,,,22,0,"<p>Funky Bitch, Jam</p>
 ",,0
-1588526341,455967,512,2,16,2,0,2,0,,,4,1,"<p>Funky Bitch, Jam</p>
+1588526341,455967,512,2,16,2,0,0,0,,,4,1,"<p>Funky Bitch, Jam</p>
 ",,0
-1588526341,455984,545,2,17,5,0,2,0,,,7,1,"<p>Funky Bitch, Jam</p>
+1588526341,455984,545,2,17,5,0,0,0,,,6,1,"<p>Funky Bitch, Jam</p>
 ",,0
-1588526341,456019,2845,e,18,1,0,2,0,,,10,0,"<p>Funky Bitch, Jam</p>
+1588526341,456019,2845,e,18,1,0,0,0,,,10,0,"<p>Funky Bitch, Jam</p>
 ",,0
-1588526341,456038,628,e,19,6,0,2,0,,,9,1,"<p>Funky Bitch, Jam</p>
+1588526341,456038,628,e,19,6,0,0,0,,,9,1,"<p>Funky Bitch, Jam</p>
 ",,0
 1588526365,456080,584,1,1,1,0,0,0,,,17,1,"<p>Jam</p>
 ",,0
@@ -37334,35 +37378,35 @@ After an appropriately funky opening, things relax a bit with Mike making his pr
 1620929830,461048,250,2,16,5,0,2,0,,,5,1,,,0
 1620929830,461049,545,e,17,2,0,2,0,,,15,1,,,0
 1620929830,461050,108,e,18,6,0,2,0,,,8,1,,,0
-1620929941,461069,208,1,1,3,0,2,1,"""Fluff"" is tough to play, and few versions approach Phish perfection. Here, however, the band delivers. The technically challenging sections are super clean; more interesting than this, however, is the tempo, with Trey and Page noticeably at ease.  Plausibly because there is no deliberation, the band finds innovation, the jam not only ""Arriving,"" but passing through an extended passage of really cool play to deliver a -> into ""NICU.""",17:22,10,1,"<p>Corona, Bye Bye Foot, My Soul</p>
+1620929941,461069,208,1,1,3,0,0,1,"""Fluff"" is tough to play, and few versions approach Phish perfection. Here, however, the band delivers. The technically challenging sections are super clean; more interesting than this, however, is the tempo, with Trey and Page noticeably at ease.  Plausibly because there is no deliberation, the band finds innovation, the jam not only ""Arriving,"" but passing through an extended passage of really cool play to deliver a -> into ""NICU.""",17:22,10,1,"<p>Corona, Bye Bye Foot, My Soul</p>
 ",Unfinished.,0
-1620929941,461070,404,1,2,3,0,2,1,"A very neat and surprising -> out of ""Fluffhead"", and a tremendous jam befitting the North Island Credit Union Amphitheatre. After an extended take on the usual ""NICU"" jam, Mike suggests minor key and things get good and dark, before they slide into something more tropical, allowing Trey to weave in the ""NICU"" solo we all know and love (as he will several times in this show). The band snaps into a quicksilver groove at Fish's urging, which gives way to an effects-laden pitch-black zone, before briefly brightening and then dissolving into ambiance and a wonderful -> to a surprise ""Bye Bye Foot"". Nearly twice as long as any other ""NICU"", and well worth the run time.",17:00,19,1,"<p>Corona, Bye Bye Foot, My Soul</p>
+1620929941,461070,404,1,2,3,0,0,1,"A very neat and surprising -> out of ""Fluffhead"", and a tremendous jam befitting the North Island Credit Union Amphitheatre. After an extended take on the usual ""NICU"" jam, Mike suggests minor key and things get good and dark, before they slide into something more tropical, allowing Trey to weave in the ""NICU"" solo we all know and love (as he will several times in this show). The band snaps into a quicksilver groove at Fish's urging, which gives way to an effects-laden pitch-black zone, before briefly brightening and then dissolving into ambiance and a wonderful -> to a surprise ""Bye Bye Foot"". Nearly twice as long as any other ""NICU"", and well worth the run time.",17:00,18,1,"<p>Corona, Bye Bye Foot, My Soul</p>
 ",,0
-1620929941,461071,99,1,3,1,0,2,0,,,44,1,"<p>Corona, Bye Bye Foot, My Soul</p>
+1620929941,461071,99,1,3,1,0,0,0,,,43,1,"<p>Corona, Bye Bye Foot, My Soul</p>
 ",,0
-1620929941,461072,622,1,4,2,0,2,1,"Precisely at 5:15 the jam flips to major forming an upbeat ""Weekapaug""-esque groove, and Trey slips in the first of three ""NICU"" teases. After some transition riffing at 7:00, the next segment launches with Moog waves from Page and beautifully coalesces into a fully-baked bliss jam from 8:00 - 10:00. Then, another round of minor funk (w/""NICU"" tease) gets heavier with delays and leads into the last verse and one final ""NICU"" tease > ""Slave"". ",15:20,6,1,"<p>Corona, Bye Bye Foot, My Soul</p>
+1620929941,461072,622,1,4,2,0,0,1,"Precisely at 5:15 the jam flips to major forming an upbeat ""Weekapaug""-esque groove, and Trey slips in the first of three ""NICU"" teases. After some transition riffing at 7:00, the next segment launches with Moog waves from Page and beautifully coalesces into a fully-baked bliss jam from 8:00 - 10:00. Then, another round of minor funk (w/""NICU"" tease) gets heavier with delays and leads into the last verse and one final ""NICU"" tease > ""Slave"". ",15:20,5,1,"<p>Corona, Bye Bye Foot, My Soul</p>
 ",,0
-1620929941,461073,512,1,5,2,0,2,0,,,5,1,"<p>Corona, Bye Bye Foot, My Soul</p>
+1620929941,461073,512,1,5,2,0,0,0,,,5,1,"<p>Corona, Bye Bye Foot, My Soul</p>
 ",,0
-1620929941,461074,345,1,6,2,0,2,0,,,16,1,"<p>Corona, Bye Bye Foot, My Soul</p>
-",Performed in an alternate arrangement.,0
-1620929941,461075,2659,1,7,4,0,2,0,,,9,0,"<p>Corona, Bye Bye Foot, My Soul</p>
+1620929941,461074,345,1,6,2,0,0,0,,,15,1,"<p>Corona, Bye Bye Foot, My Soul</p>
+","Performed in a slow, funky arrangement.",0
+1620929941,461075,2659,1,7,4,0,0,0,,,8,0,"<p>Corona, Bye Bye Foot, My Soul</p>
 ",,0
-1620929941,461076,2572,2,8,2,0,2,1,"As was his wont in 2021, Jon Fishman takes this jam over. He puts on yet another master class in drumming. Trey's soloing over Page's synth gives the jam an ethereal feel. Fish faithfully follows Trey wherever he leads during this one, and stands out the entire time. > into ""Free"". ",16:12,14,1,"<p>Corona, Bye Bye Foot, My Soul</p>
+1620929941,461076,2572,2,8,2,0,0,1,"As was his wont in 2021, Jon Fishman takes this jam over. He puts on yet another master class in drumming. Trey's soloing over Page's synth gives the jam an ethereal feel. Fish faithfully follows Trey wherever he leads during this one, and stands out the entire time. > into ""Free"". ",16:12,13,1,"<p>Corona, Bye Bye Foot, My Soul</p>
 ",,0
-1620929941,461077,215,2,9,2,0,2,1,"> out of ""NMINML"". Trey weaves in one of the many ""NICU"" teases from this show into the first jam, then he suggests minor-key and Page follows him on synths, leading to a lower-boil groove replete with repeating loops and Mike goodness. The band climbs out of the muck and returns to a more upbeat rock jam, with the loops still going, and very neatly returns to ""Free"" proper. ",16:30,6,1,"<p>Corona, Bye Bye Foot, My Soul</p>
+1620929941,461077,215,2,9,2,0,0,1,"> out of ""NMINML"". Trey weaves in one of the many ""NICU"" teases from this show into the first jam, then he suggests minor-key and Page follows him on synths, leading to a lower-boil groove replete with repeating loops and Mike goodness. The band climbs out of the muck and returns to a more upbeat rock jam, with the loops still going, and very neatly returns to ""Free"" proper. ",16:30,5,1,"<p>Corona, Bye Bye Foot, My Soul</p>
 ",,0
-1620929941,461078,316,2,10,2,0,2,0,,,19,1,"<p>Corona, Bye Bye Foot, My Soul</p>
+1620929941,461078,316,2,10,2,0,0,0,,,19,1,"<p>Corona, Bye Bye Foot, My Soul</p>
 ",,0
-1620929941,461079,485,2,11,3,0,2,0,,,6,0,"<p>Corona, Bye Bye Foot, My Soul</p>
+1620929941,461079,485,2,11,3,0,0,0,,,6,0,"<p>Corona, Bye Bye Foot, My Soul</p>
 ",,0
-1620929941,461080,437,2,12,2,0,2,1,"Excellent -> out of ""Sand"". A driving, almost composed jam segment emerges from ""Piper"" proper, Trey hitting on a particularly catchy 70s-esque riff and Fish kicking into third gear. The beat switches up and Page moves to his synths as a new sound emerges, Trey going to his effects to really add substance to the on-stage roux. Fish picks up the pace again and the band moves into a hard-driving rockout, and then a cloud of ambient noise settles over the stage as the jam dies away and Fish hammers on his kit. But rather than end the jam, the band deepens and thickens the ambient cloud, everyone firing off whatever effects they can, Mike going to the drill to add some ear-splitting nastiness. Extraordinarily reminiscent of one of the more wicked improvisations from IT. A true Monster Jam.",17:55,6,1,"<p>Corona, Bye Bye Foot, My Soul</p>
+1620929941,461080,437,2,12,2,0,0,1,"Excellent -> out of ""Sand"". A driving, almost composed jam segment emerges from ""Piper"" proper, Trey hitting on a particularly catchy 70s-esque riff and Fish kicking into third gear. The beat switches up and Page moves to his synths as a new sound emerges, Trey going to his effects to really add substance to the on-stage roux. Fish picks up the pace again and the band moves into a hard-driving rockout, and then a cloud of ambient noise settles over the stage as the jam dies away and Fish hammers on his kit. But rather than end the jam, the band deepens and thickens the ambient cloud, everyone firing off whatever effects they can, Mike going to the drill to add some ear-splitting nastiness. Extraordinarily reminiscent of one of the more wicked improvisations from IT. A true Monster Jam.",17:55,5,1,"<p>Corona, Bye Bye Foot, My Soul</p>
 ",,0
-1620929941,461081,491,2,13,5,0,2,0,,,6,1,"<p>Corona, Bye Bye Foot, My Soul</p>
+1620929941,461081,491,2,13,5,0,0,0,,,5,1,"<p>Corona, Bye Bye Foot, My Soul</p>
 ",,0
-1620929941,461082,2932,e,14,1,0,2,0,,,2,0,"<p>Corona, Bye Bye Foot, My Soul</p>
+1620929941,461082,2932,e,14,1,0,0,0,,,1,0,"<p>Corona, Bye Bye Foot, My Soul</p>
 ",,0
-1620929941,461083,202,e,15,6,0,2,0,,,12,0,"<p>Corona, Bye Bye Foot, My Soul</p>
+1620929941,461083,202,e,15,6,0,0,0,,,11,0,"<p>Corona, Bye Bye Foot, My Soul</p>
 ",,0
 1620929279,461196,2946,1,1,2,0,2,0,,,22,0,,,0
 1620929279,461197,690,1,2,2,0,2,1,"While Trey isn't perfect in the opening composed section, the BMGS, WUDMTF, and tramps sections are good, but the jam is awe-inspiring, with distinct sections. It begins in traditional YEM jam segment fashion, smooth and funky, but with more swing than usual. And when Trey begins soloing using the envelope filter, it builds to a sweet-yet-modest peak before mellifluously mellowing into a groove, an interlude that coasts along wondrously for several minutes before COOKING! You can't not dance in the concluding few mins of the jam, which segues masterfully into a SIIIIICK Mike and Fish, Bass and Drums, section before the vocal jam begins, and the VJ is delightfully short and segues into Moma Dance. MORE YEMS LIKE THIS PLEASE. (And yes Mike repeatedly teases the ""Things That Make You Go Hmm"" bass line in the first section of the jam, but we don't note him teasing that in the setlists, since he began doing it regularly in YEM in summer 1998.)",,9,1,,,0
@@ -37467,7 +37511,7 @@ After an appropriately funky opening, things relax a bit with Mike making his pr
 1620930007,462078,514,e,24,2,0,2,0,,,30,1,,,0
 1620930007,462079,440,e,25,6,0,2,0,,,10,1,,,0
 1620930022,462130,96,1,1,1,0,0,0,,,31,1,,,0
-1620930022,462132,475,1,2,2,0,0,0,,,47,0,,,0
+1620930022,462132,475,1,2,2,0,0,0,,,48,0,,,0
 1620930022,462135,222,1,3,1,0,0,1,"""Ghost"" gets its almost-always-spot on Halloween night and it does not disappoint. At 10:30, the band locks in after searching around. Fish's play drives the jam and Trey's soloing leads the way. The upbeat jam slows considerably at 14:00, with the ensuing play sounding reminiscent of a ""BASOS"" jam. From that, emerges a murky, effects-laden jam. Mike's bass playing towards the end is a highlight in the longest version of the song since the IT Festival. ",26:30,7,1,,,0
 1620930022,462145,683,1,4,1,0,0,0,,,10,1,,,0
 1620930022,462150,323,1,5,2,0,0,1,"Trey's favorite delay signals this version will break the mold, and a fully-formed, feel-good jam quickly emerges. A bit of the 2021 ""Sci-Fi Soldier"" sound creeps in before the final lyrics and becomes more pronounced in the outro until > ""Free"".",12:30,31,1,,,0
@@ -37683,49 +37727,49 @@ After an appropriately funky opening, things relax a bit with Mike making his pr
 1640291674,466655,679,e,17,2,0,2,0,,,17,1,,,0
 1640291674,466673,148,e,18,1,0,2,0,,,9,1,,,0
 1640291674,466692,2639,e,19,6,0,2,0,,,16,1,,,0
-1644952560,467387,630,1,1,2,0,0,0,,,4,1,"<p>Jam, Lonely Trip, The Final Hurrah, Gumbo</p>
+1644952560,467387,630,1,1,2,0,0,0,,,3,1,"<p>Jam, Lonely Trip, The Final Hurrah, Gumbo</p>
 ",,0
-1644952560,467389,246,1,2,2,0,0,0,,,7,1,"<p>Jam, Lonely Trip, The Final Hurrah, Gumbo</p>
+1644952560,467389,246,1,2,2,0,0,0,,,6,1,"<p>Jam, Lonely Trip, The Final Hurrah, Gumbo</p>
 ",,0
 1644952560,467392,485,1,3,1,0,0,0,,,2,0,"<p>Jam, Lonely Trip, The Final Hurrah, Gumbo</p>
 ",,0
-1644952560,467396,593,1,4,1,0,0,0,,,59,0,"<p>Jam, Lonely Trip, The Final Hurrah, Gumbo</p>
+1644952560,467396,593,1,4,1,0,0,0,,,58,0,"<p>Jam, Lonely Trip, The Final Hurrah, Gumbo</p>
 ",,0
-1644952560,467409,2506,1,5,1,0,0,0,,,17,1,"<p>Jam, Lonely Trip, The Final Hurrah, Gumbo</p>
+1644952560,467409,2506,1,5,1,0,0,0,,,16,1,"<p>Jam, Lonely Trip, The Final Hurrah, Gumbo</p>
 ",,0
-1644952560,467415,165,1,6,1,0,0,0,,,11,1,"<p>Jam, Lonely Trip, The Final Hurrah, Gumbo</p>
+1644952560,467415,165,1,6,1,0,0,0,,,10,1,"<p>Jam, Lonely Trip, The Final Hurrah, Gumbo</p>
 ",,0
-1644952560,467422,892,1,7,1,0,0,0,,,39,1,"<p>Jam, Lonely Trip, The Final Hurrah, Gumbo</p>
+1644952560,467422,892,1,7,1,0,0,0,,,38,1,"<p>Jam, Lonely Trip, The Final Hurrah, Gumbo</p>
 ",,0
 1644952560,467430,538,1,8,1,0,0,0,,,4,1,"<p>Jam, Lonely Trip, The Final Hurrah, Gumbo</p>
 ",,0
 1644952560,467439,2571,1,9,1,0,0,0,,,8,1,"<p>Jam, Lonely Trip, The Final Hurrah, Gumbo</p>
 ",,0
-1644952560,467458,2935,1,10,1,0,0,0,,,8,0,"<p>Jam, Lonely Trip, The Final Hurrah, Gumbo</p>
+1644952560,467458,2935,1,10,1,0,0,0,,,7,0,"<p>Jam, Lonely Trip, The Final Hurrah, Gumbo</p>
 ",,0
-1644952560,467469,48,1,11,4,0,0,0,,,2,1,"<p>Jam, Lonely Trip, The Final Hurrah, Gumbo</p>
+1644952560,467469,48,1,11,4,0,0,0,,,1,1,"<p>Jam, Lonely Trip, The Final Hurrah, Gumbo</p>
 ",,0
-1644952560,467492,345,2,12,1,0,0,0,,,11,1,"<p>Jam, Lonely Trip, The Final Hurrah, Gumbo</p>
-",Performed in an alternate arrangement.,0
+1644952560,467492,345,2,12,1,0,0,0,,,10,1,"<p>Jam, Lonely Trip, The Final Hurrah, Gumbo</p>
+","Performed in a slow, funky arrangement.",0
 1644952560,467542,2744,2,13,3,0,0,1,"A handful of peaks scattered about a casual stroll through multiple musical ideas, both major and minor. Towards the back end, the jam becomes upbeat and bubbly and segues -> into ""Quadrophonic Toppling"".",17:38,8,0,"<p>Jam, Lonely Trip, The Final Hurrah, Gumbo</p>
 ",,0
 1644952560,467653,451,2,14,3,0,0,1,"Emerges -> out ""Soul Planet's"" jam for only its second full-throated performance alongside a bevy of Fish's samples and -> back to ""Soul Planet"". 
 
-",,606,1,"<p>Jam, Lonely Trip, The Final Hurrah, Gumbo</p>
+",1:57,605,1,"<p>Jam, Lonely Trip, The Final Hurrah, Gumbo</p>
 ",,0
-1644952560,467670,2744,2,15,2,0,0,1,"-> from ""Quadrophonic Toppling"" to bookend ""Soul Planet's"" jam. ",,0,0,"<p>Jam, Lonely Trip, The Final Hurrah, Gumbo</p>
+1644952560,467670,2744,2,15,2,0,0,1,"-> from ""Quadrophonic Toppling"" to bookend ""Soul Planet's"" jam. ",1:11,0,0,"<p>Jam, Lonely Trip, The Final Hurrah, Gumbo</p>
 ",,0
-1644952560,467688,222,2,16,3,0,0,0,,17:03,3,1,"<p>Jam, Lonely Trip, The Final Hurrah, Gumbo</p>
+1644952560,467688,222,2,16,3,0,0,0,,,3,1,"<p>Jam, Lonely Trip, The Final Hurrah, Gumbo</p>
 ",,0
-1644952560,467725,491,2,17,3,0,0,0,,,6,1,"<p>Jam, Lonely Trip, The Final Hurrah, Gumbo</p>
+1644952560,467725,491,2,17,3,0,0,0,,,5,1,"<p>Jam, Lonely Trip, The Final Hurrah, Gumbo</p>
 ",,0
-1644952560,467764,110,2,18,1,0,0,1,"-> out of ""SaSS"". Goes grimy and effects-laden right out of the verses, Mike stepping to the forefront, then moves into a low-key upbeat groove. Things grow hazy and warm, almost ambient, and Fish picks up the pace to change the tenor of the jam. Page lays on the synths thick and heavy and something out of a monster movie soundtrack emerges, before Trey steers the jam back to ""CDT"" for the ending. Heavy stuff.",,3,1,"<p>Jam, Lonely Trip, The Final Hurrah, Gumbo</p>
+1644952560,467764,110,2,18,1,0,0,1,"-> out of ""SaSS"". Goes grimy and effects-laden right out of the verses, Mike stepping to the forefront, then moves into a low-key upbeat groove. Things grow hazy and warm, almost ambient, and Fish picks up the pace to change the tenor of the jam. Page lays on the synths thick and heavy and something out of a monster movie soundtrack emerges, before Trey steers the jam back to ""CDT"" for the ending. Heavy stuff.",17:03,2,1,"<p>Jam, Lonely Trip, The Final Hurrah, Gumbo</p>
 ",,0
-1644952560,467765,354,2,19,5,0,0,0,,,17,0,"<p>Jam, Lonely Trip, The Final Hurrah, Gumbo</p>
+1644952560,467765,354,2,19,5,0,0,0,,,16,0,"<p>Jam, Lonely Trip, The Final Hurrah, Gumbo</p>
 ",,0
-1644952560,488831,649,e,20,1,2,2,0,,,6,1,"<p>Jam, Lonely Trip, The Final Hurrah, Gumbo</p>
+1644952560,488831,649,e,20,1,0,0,0,,,5,1,"<p>Jam, Lonely Trip, The Final Hurrah, Gumbo</p>
 ",,0
-1644952560,488832,2796,e,21,6,2,2,0,,,2,1,"<p>Jam, Lonely Trip, The Final Hurrah, Gumbo</p>
+1644952560,488832,2796,e,21,6,0,0,0,,,1,1,"<p>Jam, Lonely Trip, The Final Hurrah, Gumbo</p>
 ",,0
 1644952603,467906,2803,1,1,1,0,2,1,"In a string of strong openers, Sigma Oasis gets the extended treatment for the second time. Soaring play from Trey kicks the jam off, which gives way to a breakdown jam. Mike is inventive and creative throughout.",,5,0,"<p>Knuckle Bone Broth Avenue, Foam</p>
 ",,0
@@ -38151,7 +38195,7 @@ polyrhythmic jam that grooves like a mutha and pulls off a nice -> into ""Light.
 1644953315,471323,234,1,1,2,0,2,1,"While there are scores of clever ways to approach this surprise show opener, it's simple enough to say that those with a stub in hand were on hand for some of the summer's best music. Forget that those who simply love the song heard precision play; Trey, post some of his coolest rhythm guitar (it's such a great song), tacks on an utterly atypical jam segment, but one that, like charming a snake, feels mesmerizing, organic, and pure. And the crowd is there to help stick the landing. What a terrific moment.  (See 8.6.22 for more fun play.)",,10,1,,,0
 1644953315,471325,483,1,2,1,0,2,1,"> from a jammed out ""Golgi Apparatus"", the band plays what was at the time the longest version of ""Sample"" to date. Some slinky work by Page kicks this jam off and the rest of the band follows suit. The jam eventually winds its way back to the song proper, as was custom in Summer '22.",,10,1,,,0
 1644953315,471328,402,1,3,1,0,2,0,,,6,0,,,0
-1644953315,471332,240,1,4,3,0,2,1,"In a summer full of surprise jamming tunes, the return of the ""Gumbo"" jam is surely one of the most welcome for fans of the song's output from '97-'03. This longest version since that heyday touches on familiar staccato funk and upbeat calypso before ending with a rough-and-tumble -> to ""Saw it Again"".",,9,1,,Unfinished.,0
+1644953315,471332,240,1,4,3,0,2,1,"In a summer full of surprise jamming tunes, the return of the ""Gumbo"" jam is surely one of the most welcome for fans of the song's output from '97-'03. This longest version since that heyday (now surpassed) touches on familiar staccato funk and upbeat calypso before ending with a rough-and-tumble -> to ""Saw it Again"".",,9,1,,Unfinished.,0
 1644953315,471337,282,1,5,2,0,2,0,,,5,1,,,0
 1644953315,471348,613,1,6,2,0,2,1,"Before there was ""Plasma,"" Phish explored similar sonic terrain via ""Timber,"" a soulful cover with dark undertones, rich and dynamic Fish, a tune affording space for Trey to deliver some of his most devilish licks. No surprise, then, that following one of 22's most inventive opening sequences, the ""science"" here so applies, a version arguably featuring the best ""Timber"" full-band improvisation since... Well, who cares: Just tune in for some of the Finest in the Nation.",,7,0,,,0
 1644953315,471355,367,1,7,1,0,2,0,,,10,1,,,0
@@ -39508,7 +39552,7 @@ a tease of Pink Floyd's ""The Nile Song"". This then builds to a celebratory and
 ",,0
 1676425148,487124,628,e,19,6,0,0,0,,,6,1,"<p>My Soul, Blues Jam, Broken Into Pieces (x3), Blues Jam (this soundcheck may be incomplete)</p>
 ",,0
-1676425195,487144,2703,1,1,2,0,0,0,,,12,0,"<p>Horn, The Squirming Coil, Mound, Funky Bitch (this soundcheck is possibly incomplete)</p>
+1676425195,487144,2703,1,1,2,0,0,0,,,13,0,"<p>Horn, The Squirming Coil, Mound, Funky Bitch (this soundcheck is possibly incomplete)</p>
 ",,0
 1676425195,487145,48,1,2,3,0,0,1,"Fans of Mike will want to seek out this excellent version. Listen for his deft finger work and fluid fret runs throughout to propel the improvisational conversation. Segues neatly into ""BOTT"".",,6,1,"<p>Horn, The Squirming Coil, Mound, Funky Bitch (this soundcheck is possibly incomplete)</p>
 ",Unfinished.,0
@@ -39906,28 +39950,28 @@ melodic conversation between himself, Page and Mike. Gorgeous.",,18,1,"<p>Ether 
 ",,0
 1688049208,492221,478,e,18,6,0,0,0,,,2,1,"<p>Julius (this soundcheck is incomplete)</p>
 ",,0
-1687889229,492281,21,1,1,2,0,0,0,,,2,0,,,0
+1687889229,492281,21,1,1,2,0,0,0,,,1,0,,,0
 1687889229,492282,240,1,2,1,0,0,0,,,2,1,,,0
-1687889229,492283,50,1,3,1,0,0,0,,,98,0,,,0
-1687889229,492284,2970,1,4,3,0,0,1,"Great ""Mull,"" with more than a few ""Destiny Unbound"" undertones. Jamming breaks for a bit of ""2001,"" a callback to the show's strong show-opener, before > back to ""Mull.""",,7,1,,,0
-1687889229,492285,21,1,5,2,0,0,1,"> ""Mull"" and > back to ""Mull"" to inform part of a snappy first-set passage of musical exploration.",,0,0,,,0
-1687889229,492286,2970,1,6,1,0,0,1,"> ""2001"" to close a snappy first-set passage of musical exploration.",,0,1,,,0
-1687889229,492287,159,1,7,1,0,0,0,,,72,0,,,0
-1687889229,492288,538,1,8,1,0,0,1,"A fun first set jaunt. Starting slow and bluesy, the tempo builds and builds until the band is in a controlled frenzy. It's a mix of old and new Phish, alike. In a jam-heavy first set, this may be the crown jewel.",,4,1,,,0
+1687889229,492283,50,1,3,1,0,0,0,,,97,0,,,0
+1687889229,492284,2970,1,4,3,0,0,1,"Great ""Mull,"" with more than a few ""Destiny Unbound"" undertones. Jamming breaks for a bit of ""2001,"" a callback to the show's strong show-opener, before > back to ""Mull.""",7:58,6,1,,,0
+1687889229,492285,21,1,5,2,0,0,1,"> ""Mull"" and > back to ""Mull"" to inform part of a snappy first-set passage of musical exploration.",1:21,1,0,,,0
+1687889229,492286,2970,1,6,1,0,0,1,"> ""2001"" to close a snappy first-set passage of musical exploration.",0:34,6,1,,,0
+1687889229,492287,159,1,7,1,0,0,0,,,71,0,,,0
+1687889229,492288,538,1,8,1,0,0,1,"A fun first set jaunt. Starting slow and bluesy, the tempo builds and builds until the band is in a controlled frenzy. It's a mix of old and new Phish, alike. In a jam-heavy first set, this may be the crown jewel.",15:02,4,1,,,0
 1687889229,492289,3078,1,9,1,0,0,0,,,3,0,,,0
 1687889229,492290,2831,1,10,1,0,0,0,,,2,0,,,0
-1687889229,492291,529,1,11,4,0,0,1,"A fine example of ""SOAMelt's"" late-period renaissance, with an ambitious, multipart jam which remains uncommonly coherent even while exploring a number of dizzying directions before a celebratory knockout ending leads back into ""Melt"". ",,4,1,,,0
-1687889229,492292,3100,2,12,3,0,0,0,,,12,1,,,0
+1687889229,492291,529,1,11,4,0,0,1,"A fine example of ""SOAMelt's"" late-period renaissance, with an ambitious, multipart jam which remains uncommonly coherent even while exploring a number of dizzying directions before a celebratory knockout ending leads back into ""Melt"". ",18:19,4,1,,,0
+1687889229,492292,3100,2,12,3,0,0,0,,,11,1,,,0
 1687889229,492293,485,2,13,2,0,0,0,,,4,0,,,0
 1687889229,492294,2656,2,14,3,0,0,0,,,2,0,,,0
 1687889229,492295,119,2,15,3,0,0,1,"The ""Music City"" inspires another big 2023 version of ""Cities"". Mike's fat synth bass carves out the initial funky path. Trey and Page dial in the murk in response, crossing through some vague ""MLB""-isms on the way to a 
 major mode shift. The music turns on a dime toward celebratory fare, but retains some of its spacious-ness, as Trey alternates between clean melodic phrasing and long echoed notes. Play then cools back towards da 
-funk and -> ""Llama"".",,14,0,,,0
-1687889229,492296,345,2,16,1,0,0,0,,,4,1,,Performed in an alternate arrangement.,0
-1687889229,492297,2638,2,17,1,0,0,0,,,23,1,,,0
-1687889229,492298,94,2,18,5,0,0,0,,,13,0,,,0
-1687889229,492299,2932,e,19,1,0,0,0,,,12,0,,,0
-1687889229,492300,250,e,20,6,0,0,0,,,2,1,,,0
+funk and -> ""Llama"".",16:04,13,0,,,0
+1687889229,492296,345,2,16,1,0,0,0,,,3,1,,"Performed in a slow, funky arrangement.",0
+1687889229,492297,2638,2,17,1,0,0,0,,,22,1,,,0
+1687889229,492298,94,2,18,5,0,0,0,,,12,0,,,0
+1687889229,492299,2932,e,19,1,0,0,0,,,11,0,,,0
+1687889229,492300,250,e,20,6,0,0,0,,,1,1,,,0
 1687889275,492321,96,1,1,2,0,0,0,,,10,1,,,0
 1687889275,492322,8,1,2,2,0,0,0,,,4,1,,,0
 1687889275,492323,215,1,3,1,0,0,0,,,3,1,,,0
@@ -39971,37 +40015,37 @@ layered and stunningly spacious melodic section, replete with gorgeous loops fro
 1687889360,492571,93,e,20,1,0,0,0,,,64,1,,,0
 1687889360,492572,679,e,21,2,0,0,0,,,6,1,,,0
 1687889360,492573,202,e,22,6,0,0,0,,,4,0,,,0
-1687889413,492574,2743,1,1,1,0,0,0,,,7,0,"<p>My Soul</p>
+1687889413,492574,2743,1,1,1,0,0,0,,,8,0,"<p>My Soul</p>
 ",,0
 1687889413,492576,220,1,2,1,0,0,0,,,13,0,"<p>My Soul</p>
 ",,0
-1687889413,492579,473,1,3,1,0,0,0,,,4,1,"<p>My Soul</p>
+1687889413,492579,473,1,3,1,0,0,0,,,5,1,"<p>My Soul</p>
 ",,0
-1687889413,492583,323,1,4,1,0,0,0,,,4,1,"<p>My Soul</p>
+1687889413,492583,323,1,4,1,0,0,0,,,5,1,"<p>My Soul</p>
 ",,0
 1687889413,492588,1355,1,5,2,0,0,0,,,10,1,"<p>My Soul</p>
 ",,0
-1687889413,492594,397,1,6,2,0,0,0,,,14,1,"<p>My Soul</p>
+1687889413,492594,397,1,6,2,0,0,0,,,15,1,"<p>My Soul</p>
 ","No ""Myfe"" ending.",0
 1687889413,492601,2608,1,7,1,0,0,0,,,131,0,"<p>My Soul</p>
 ",,0
-1687889413,492609,648,1,8,4,0,0,0,,,18,1,"<p>My Soul</p>
+1687889413,492609,648,1,8,4,0,0,0,,,19,1,"<p>My Soul</p>
 ",,0
-1687889413,492618,174,2,9,2,0,0,0,,,4,1,"<p>My Soul</p>
+1687889413,492618,174,2,9,2,0,0,0,,,5,1,"<p>My Soul</p>
 ",,0
-1687889413,492628,1102,2,10,1,0,0,1,"A multi-section monstrosity that features highly inspired melodic playing, atypical modulations, an extended passage based on either ""Roll with the Changes"" or ""Paradise City"", and a false ending that catalyzes a deep dive of inter-dimensional sonic alchemy rarely heard in the modern era. Must-hear.",30:28,7,0,"<p>My Soul</p>
+1687889413,492628,1102,2,10,1,0,0,1,"A multi-section monstrosity that features highly inspired melodic playing, atypical modulations, an extended passage based on either ""Roll with the Changes"" or ""Paradise City"", and a false ending that catalyzes a deep dive of inter-dimensional sonic alchemy rarely heard in the modern era. Must-hear.",30:28,8,0,"<p>My Soul</p>
 ",,0
 1687889413,492639,338,2,11,2,0,0,0,,,61,1,"<p>My Soul</p>
 ",,0
-1687889413,492651,437,2,12,2,0,0,0,,,5,1,"<p>My Soul</p>
+1687889413,492651,437,2,12,2,0,0,0,,,6,1,"<p>My Soul</p>
 ",,0
-1687889413,492664,46,2,13,1,0,0,0,,,10,0,"<p>My Soul</p>
+1687889413,492664,46,2,13,1,0,0,0,,,11,0,"<p>My Soul</p>
 ",,0
 1687889413,492678,900,2,14,5,0,0,0,,,13,0,"<p>My Soul</p>
 ",,0
 1687889413,492693,2976,e,15,2,0,0,0,,,74,1,"<p>My Soul</p>
 ",,0
-1687889413,492709,440,e,16,6,0,0,0,,,8,1,"<p>My Soul</p>
+1687889413,492709,440,e,16,6,0,0,0,,,9,1,"<p>My Soul</p>
 ",,0
 1687889473,492806,104,1,1,1,0,0,0,,,9,1,,,0
 1687889473,492807,462,1,2,1,0,0,0,,,27,1,,,0
@@ -40351,7 +40395,7 @@ suddenly, a portal rips through space-time, catalyzing a dance with
 ",,0
 1709061690,498594,3147,1,6,2,0,0,0,,,0,1,"<p>My Soul</p>
 ",Phish debut.,0
-1709061690,498601,307,1,7,2,0,0,0,,,10,1,"<p>My Soul</p>
+1709061690,498601,307,1,7,2,0,0,0,,,11,1,"<p>My Soul</p>
 ",,0
 1709061690,498602,683,1,8,1,0,0,0,,,5,1,"<p>My Soul</p>
 ",,0
@@ -40369,7 +40413,7 @@ suddenly, a portal rips through space-time, catalyzing a dance with
 ",,0
 1709061690,498633,110,2,15,5,0,0,1,"> from ""2001,"" this electric version, quite similar to several ""compact"" jams of late (check out the song's JC), strikes that fine, Phishy line between melody and cacophony. Perhaps most notable, here, is Treyâs excellent, sustained, soloing.  ",,3,1,"<p>My Soul</p>
 ",,0
-1709061690,498634,660,e,16,1,0,0,0,,,6,0,"<p>My Soul</p>
+1709061690,498634,660,e,16,1,0,0,0,,,7,0,"<p>My Soul</p>
 ",,0
 1709061690,498635,148,e,17,2,0,0,0,,,11,1,"<p>My Soul</p>
 ",,0
@@ -40385,7 +40429,7 @@ suddenly, a portal rips through space-time, catalyzing a dance with
 ",,0
 1709061711,498659,573,1,5,1,0,0,0,,,150,1,"<p>Plasma, My Soul</p>
 ",,0
-1709061711,498660,2699,1,6,1,0,0,0,,,122,1,"<p>Plasma, My Soul</p>
+1709061711,498660,2699,1,6,1,0,0,0,,,123,1,"<p>Plasma, My Soul</p>
 ",,0
 1709061711,498661,316,1,7,1,0,0,0,,,19,1,"<p>Plasma, My Soul</p>
 ",,0
@@ -40565,7 +40609,7 @@ into ""Carini"".",,9,1,"<p>My Soul, Guyute, Walls of the Cave, Fluffhead (this s
 1709061823,498900,159,2,12,1,0,0,0,,,11,0,,,0
 1709061823,498901,3076,2,13,2,0,0,0,,,6,0,,,0
 1709061823,498902,339,2,14,3,0,0,0,,,7,0,,,0
-1709061823,498903,629,2,15,2,0,0,0,,,46,1,,,0
+1709061823,498903,629,2,15,2,0,0,0,,,47,1,,,0
 1709061823,498904,21,2,16,2,0,0,0,,,6,0,,,0
 1709061823,498905,529,2,17,5,0,0,0,,,7,1,,,0
 1709061823,498906,607,e,18,1,0,0,0,,,28,1,,,0
@@ -40620,7 +40664,7 @@ Excellent.",,7,1,,,0
 ",,0
 1709061889,499120,3100,1,5,1,0,0,0,,,8,1,"<p>My Soul, The Oh Kee Pa Ceremony, Axilla (beginning only), Life Saving Gun</p>
 ",,0
-1709061889,499121,2571,1,6,2,0,0,0,,,10,1,"<p>My Soul, The Oh Kee Pa Ceremony, Axilla (beginning only), Life Saving Gun</p>
+1709061889,499121,2571,1,6,2,0,0,0,,,11,1,"<p>My Soul, The Oh Kee Pa Ceremony, Axilla (beginning only), Life Saving Gun</p>
 ",,0
 1709061889,499122,490,1,7,1,0,0,0,,,74,1,"<p>My Soul, The Oh Kee Pa Ceremony, Axilla (beginning only), Life Saving Gun</p>
 ",,0
@@ -40664,7 +40708,7 @@ Excellent.",,7,1,,,0
 ",,0
 1709061909,499163,364,1,6,1,0,0,0,,,7,1,"<p>Everything&#39;s Right</p>
 ",,0
-1709061909,499164,276,1,7,1,0,0,0,,,46,1,"<p>Everything&#39;s Right</p>
+1709061909,499164,276,1,7,1,0,0,0,,,47,1,"<p>Everything&#39;s Right</p>
 ",Lyrics changed to reference Mike.,0
 1709061909,499165,455,1,8,1,0,0,0,,,7,1,"<p>Everything&#39;s Right</p>
 ",No whistling.,0
@@ -40684,13 +40728,13 @@ Excellent.",,7,1,,,0
 ",,0
 1709061909,499182,2418,2,16,5,0,0,1,"""Fuego"" admirably fills the role of set-closer for the first time with a tight, well-executed jam featuring melodic leads out of the verses and later a grittier section which brings certified ""set-closer energy"" to the rocking conclusion.",,7,1,"<p>Everything&#39;s Right</p>
 ",,0
-1709061909,499199,466,e,17,6,0,0,0,,,36,0,"<p>Everything&#39;s Right</p>
+1709061909,499199,466,e,17,6,0,0,0,,,37,0,"<p>Everything&#39;s Right</p>
 ",,0
 1709061924,499234,723,1,1,1,0,0,0,,,49,1,My Soul,,0
-1709061924,499235,2797,1,2,1,0,0,0,,,49,1,My Soul,,0
+1709061924,499235,2797,1,2,1,0,0,0,,,50,1,My Soul,,0
 1709061924,499236,2974,1,3,1,0,0,0,,,102,1,My Soul,,0
 1709061924,499237,539,1,4,1,0,0,0,,,47,1,My Soul,,0
-1709061924,499238,2499,1,5,1,0,0,0,,,43,1,My Soul,,0
+1709061924,499238,2499,1,5,1,0,0,0,,,44,1,My Soul,,0
 1709061924,499239,154,1,6,2,0,0,0,,,19,1,My Soul,,0
 1709061924,499240,2,1,7,1,0,0,1,"Cool version. Near the 6:00 mark, Trey lays into languid, off-kilter, near-melodic variation, his soloing seemingly aimless before, with Fish, settling on a great passage unsettling previous play, the segment completely discordant, before abruptly, yet adroitly, returning to close and > ""McGrupp.""",,7,1,My Soul,,0
 1709061924,499241,365,1,8,1,0,0,0,,,20,1,My Soul,,0
@@ -40698,11 +40742,11 @@ Excellent.",,7,1,,,0
 1709061924,499243,369,1,10,2,0,0,0,,,41,1,My Soul,,0
 1709061924,499244,478,1,11,4,0,0,0,,,7,1,My Soul,,0
 1709061924,499245,222,2,12,1,0,0,1,"In latter-day Phish, extended ""Ghost"" intros typically portend greatness and this version is no different. Around 23:00, Trey and Mike link up and push the jam into a new territory and it takes off. Fish's driving play ensures the entire band keeps exploring the space. When the jam is seemingly still in a cool place, Trey forces the band back to the ""Ghost"" melody. He can be forgiven, given the huge version of ""Soul Planet"" that follows.",,7,1,My Soul,,0
-1709061924,499246,2744,2,13,2,0,0,1,"Along with preceding ""Ghost"", this ""Soul Planet"" makes up one of the great 1-2 punches of the year as it sets off at a good pace and introduces dial-tone and other wonky effects in the opening minutes before a shift around 8:00. From there it drifts upwards into major bliss and is driven into gorgeously inspirational territory by Trey's coalescing riff for a terrific mid-jam hosing, after which the band briefly gestures towards a return home, only to quickly launch into more locked-in improvisation. With the vibe now turning towards hard-rock, the jam once again gels around Trey's riffage and surges to a head-banging peak, then > ""Billy Breathes"".",,48,0,My Soul,,0
+1709061924,499246,2744,2,13,2,0,0,1,"Along with preceding ""Ghost"", this ""Soul Planet"" makes up one of the great 1-2 punches of the year as it sets off at a good pace and introduces dial-tone and other wonky effects in the opening minutes before a shift around 8:00. From there it drifts upwards into major bliss and is driven into gorgeously inspirational territory by Trey's coalescing riff for a terrific mid-jam hosing, after which the band briefly gestures towards a return home, only to quickly launch into more locked-in improvisation. With the vibe now turning towards hard-rock, the jam once again gels around Trey's riffage and surges to a head-banging peak, then > ""Billy Breathes"".",,49,0,My Soul,,0
 1709061924,499247,64,2,14,1,0,0,0,,,129,1,My Soul,,0
 1709061924,499248,529,2,15,5,0,0,0,,,5,1,My Soul,,0
 1709061924,499264,512,e,16,6,2,2,0,,,10,1,My Soul,,0
-1709061944,499308,2703,1,1,2,0,0,0,,,47,0,"Peaches en Regalia, Beauty of My Dreams (this soundcheck is unconfirmed and possibly incomplete)",,0
+1709061944,499308,2703,1,1,2,0,0,0,,,48,0,"Peaches en Regalia, Beauty of My Dreams (this soundcheck is unconfirmed and possibly incomplete)",,0
 1709061944,499310,2803,1,2,1,0,0,1,"Less by way of bells and whistles than vim and vigor, play is fierce. Trey seemingly signals for a shift after the five-minute mark; Page, however, blows through the stop sign, igniting an exciting audible - one which underscores what makes ""basic"" Phish c. 2024 (hint: Trey, here) so very peak.",,7,0,"Peaches en Regalia, Beauty of My Dreams (this soundcheck is unconfirmed and possibly incomplete)",,0
 1709061944,499313,431,1,3,1,0,0,0,,,116,0,"Peaches en Regalia, Beauty of My Dreams (this soundcheck is unconfirmed and possibly incomplete)",,0
 1709061944,499314,622,1,4,1,0,0,0,,,6,1,"Peaches en Regalia, Beauty of My Dreams (this soundcheck is unconfirmed and possibly incomplete)",,0
@@ -40719,7 +40763,7 @@ Excellent.",,7,1,,,0
 1709061944,499370,591,2,15,1,0,0,1,"This ""Moma"" is the first song Billy Strings sits in on over two nights of shows. His presence is felt and appreciated mere seconds into the song. As the jam begins, Trey and Billy engage in some fantastic interplay which sets the tone that this won't be a typical sit-in. This is the longest ""Moma"" to date and gets way out there.",,8,1,"Peaches en Regalia, Beauty of My Dreams (this soundcheck is unconfirmed and possibly incomplete)",Billy Strings on guitar.,0
 1709061944,499401,440,2,16,1,0,0,1,Billy Strings takes lead vocals and swaps geetar solos on this short but sweet version.,,6,1,"Peaches en Regalia, Beauty of My Dreams (this soundcheck is unconfirmed and possibly incomplete)",Billy Strings on guitar and lead vocals.,0
 1709061944,499418,2656,2,17,5,0,0,1,"Play showcases the twin-guitar stylings of Trey Anastasio and Billy Strings. A powerful, fairly straightforward version with, unsurprisingly, heavy Allman Brothers over- and undertones.",,5,0,"Peaches en Regalia, Beauty of My Dreams (this soundcheck is unconfirmed and possibly incomplete)",Billy Strings on guitar.,0
-1709061944,499436,406,e,18,1,0,0,0,,,145,0,"Peaches en Regalia, Beauty of My Dreams (this soundcheck is unconfirmed and possibly incomplete)",Trey and Billy Strings on acoustic guitars; Billy on lead vocals.,0
+1709061944,499436,406,e,18,1,0,0,0,,,146,0,"Peaches en Regalia, Beauty of My Dreams (this soundcheck is unconfirmed and possibly incomplete)",Trey and Billy Strings on acoustic guitars; Billy on lead vocals.,0
 1709061944,499437,50,e,19,1,0,0,0,,,31,0,"Peaches en Regalia, Beauty of My Dreams (this soundcheck is unconfirmed and possibly incomplete)",Trey and Billy Strings on acoustic guitars and lead vocals.,0
 1709061944,499476,104,e,20,6,0,0,1,"A scrappy, high-energy take featuring Billy Strings on second guitar that 
 oscillates between the psychedelic hard rock-isms that Carini typically
@@ -40732,7 +40776,7 @@ seems to naturally flow out of Trey and Billy like an unencumbered river. ",,6,1
 1709061965,499531,2424,1,5,1,0,0,0,,,7,1,,,0
 1709061965,499537,65,1,6,1,0,0,0,,,8,1,,,0
 1709061965,499544,3078,1,7,3,0,0,0,,,6,0,,,0
-1709061965,499552,307,1,8,1,0,0,0,,,12,1,,,0
+1709061965,499552,307,1,8,1,0,0,0,,,13,1,,,0
 1709061965,499561,2831,1,9,1,0,0,0,,,11,0,,,0
 1709061965,499571,648,1,10,4,0,0,0,,,11,1,,,0
 1709061965,499582,2796,2,11,2,0,0,0,,,13,1,,,0
@@ -40746,7 +40790,7 @@ seems to naturally flow out of Trey and Billy like an unencumbered river. ",,6,1
 1709061965,499772,2944,2,19,1,0,0,1,"Guest Billy Strings accents the verses with a country twinge that adds to the feeling of being one tiny part of a giant calculus of the universe. This deviation continues past the lyrics, providing an exceptionally spirited extended type-1 jam with noticeable roots in the expansive rural nothingness. (H/t to @maxhog for this note.)",,6,0,,Billy Strings on guitar.,0
 1709061965,499792,393,2,20,1,0,0,1,"Remarkable version, featuring Billy Strings on acoustic guitar.",,8,0,,Billy Strings on acoustic guitar.,0
 1709061965,499833,2570,2,21,5,0,0,1,Billy Strings blazes and shreds in this two guitar guest sit-in version,,6,1,,Billy Strings on guitar.,0
-1709061965,499876,223,e,22,1,0,0,0,,,188,0,,Billy Strings on acoustic guitar and vocals.,0
+1709061965,499876,223,e,22,1,0,0,0,,,189,0,,Billy Strings on acoustic guitar and vocals.,0
 1709061965,499944,593,e,23,1,0,0,0,,,47,0,,Billy Strings on acoustic guitar and vocals.,0
 1709061965,499968,213,e,24,6,0,0,1,"Story goes, Billy heard ""Frankenstein's"" riff while rehearsing for the sit-in, and asks to play the song. Trey says, ""Sure."" They run it through. Humorous banter and a great version ensues, night two.  ",,42,0,,Billy Strings on guitar and Page on keytar.,0
 1709061985,500017,202,1,1,1,0,0,0,,,6,0,"My Soul, Dinner and a Movie, Waves, Tequila x2, Jam ",,0
@@ -40754,7 +40798,7 @@ seems to naturally flow out of Trey and Billy like an unencumbered river. ",,6,1
 1709061985,500022,108,1,3,1,0,0,0,,,10,1,"My Soul, Dinner and a Movie, Waves, Tequila x2, Jam ",,0
 1709061985,500026,397,1,4,1,0,0,1,"Atoning for a somewhat ugly composed section, Trey slashes his way through a jam ignited by near full-band ""Fuego"" teasing, the four then yielding to a cool idea come 8:45, which builds to scattershot, yet engaging and musical improvisation, Trey finally finding a fun, atonal line before turning all ""Crosseyed and Painless,"" which, bettered by Page on his piano, leads to raucous improv, all of this building to inform a fun, playful, 'What the hell was that?' conclusion. Maybe so? Why not.  ",,10,1,"My Soul, Dinner and a Movie, Waves, Tequila x2, Jam ","No ""Myfe"" ending.",0
 1709061985,500031,94,1,5,1,0,0,0,,,8,0,"My Soul, Dinner and a Movie, Waves, Tequila x2, Jam ",,0
-1709061985,500037,318,1,6,1,0,0,0,,,11,1,"My Soul, Dinner and a Movie, Waves, Tequila x2, Jam ",,0
+1709061985,500037,318,1,6,1,0,0,0,,,12,1,"My Soul, Dinner and a Movie, Waves, Tequila x2, Jam ",,0
 1709061985,500044,21,1,7,2,0,0,0,,,8,0,"My Soul, Dinner and a Movie, Waves, Tequila x2, Jam ",,0
 1709061985,500052,558,1,8,1,0,0,0,,,10,1,"My Soul, Dinner and a Movie, Waves, Tequila x2, Jam ",,0
 1709061985,500061,113,1,9,4,0,0,0,,,4,1,"My Soul, Dinner and a Movie, Waves, Tequila x2, Jam ",,0
@@ -40948,7 +40992,7 @@ to create a harmonically minimalist, but texturally dense sonic landscape.",,10,
 1709062071,501099,45,1,1,1,0,0,0,,,5,0,"Jam, Jam, ""Bruno""",,0
 1709062071,501100,683,1,2,1,0,0,0,,,5,1,"Jam, Jam, ""Bruno""",,0
 1709062071,501101,3004,1,3,1,0,0,0,,,7,0,"Jam, Jam, ""Bruno""",,0
-1709062071,501102,239,1,4,1,0,0,0,,,104,1,"Jam, Jam, ""Bruno""",,0
+1709062071,501102,239,1,4,1,0,0,0,,,105,1,"Jam, Jam, ""Bruno""",,0
 1709062071,501103,2572,1,5,1,0,0,0,,,4,1,"Jam, Jam, ""Bruno""",,0
 1709062071,501104,1355,1,6,1,0,0,0,,,2,1,"Jam, Jam, ""Bruno""",,0
 1709062071,501105,2944,1,7,1,0,0,0,,,3,0,"Jam, Jam, ""Bruno""",,0
@@ -41046,9 +41090,9 @@ psychedelic goo.",,18,0,My Soul,,0
 1725991676,501739,254,1,1,1,0,0,0,,,17,1,,,0
 1725991676,501740,3139,1,2,1,0,0,0,,,3,0,,,0
 1725991676,501741,9,1,3,1,0,0,0,,,184,1,,,0
-1725991676,501742,397,1,4,1,0,0,0,,,2,1,,"No ""Myfe"" ending.",0
+1725991676,501742,397,1,4,1,0,0,0,,,3,1,,"No ""Myfe"" ending.",0
 1725991676,501743,403,1,5,1,0,0,0,,,96,1,,,0
-1725991676,501744,341,1,6,1,0,0,0,,,10,1,,,0
+1725991676,501744,341,1,6,1,0,0,0,,,11,1,,,0
 1725991676,501745,393,1,7,1,0,0,0,,,8,0,,,0
 1725991676,501746,323,1,8,1,0,0,1,"Bursting out of the compositional portion of the song, ""Kill Devil Falls"" 
 finds inspiration early yet again in 2024, as an engaging Type 1 attack 
@@ -41057,10 +41101,10 @@ indefatigable pulse anchors an effects-heavy, psychedelic buffet that
 traverses from minor key pastures towards serene major key play and 
 back again, at points abstracting into a polyrhythmic synth-filled Eden. 
 The music then shifts towards a celebratory major-key romp, before 
-resolving back towards ""KDF's"" jam/vocals for one last crescendo. ",17:51,3,1,,,0
-1725991676,501747,648,1,9,4,0,0,0,,,13,1,,,0
-1725991676,501748,2656,2,10,2,0,0,0,,,4,0,,,0
-1725991676,501749,110,2,11,1,0,0,1,"Chalk Dust becomes fuel for a thunderous full burn by the rhythm section which propels the improv irrepressibly forward, arcing through low earth orbit by way of a brief ""Stash"" tease and yet beyond, the band shedding stages, pushes into a space where relative motion becomes obscured and transmissions are sent and received without atmospheric interference. Rather than merely glancing toward the rafters, Trey rides the band to the starry realm of The Muse and back, splashing down triumphantly. ",22:35,4,1,,,0
+resolving back towards ""KDF's"" jam/vocals for one last crescendo. ",17:51,4,1,,,0
+1725991676,501747,648,1,9,4,0,0,0,,,14,1,,,0
+1725991676,501748,2656,2,10,2,0,0,0,,,5,0,,,0
+1725991676,501749,110,2,11,1,0,0,1,"Chalk Dust becomes fuel for a thunderous full burn by the rhythm section which propels the improv irrepressibly forward, arcing through low earth orbit by way of a brief ""Stash"" tease and yet beyond, the band shedding stages, pushes into a space where relative motion becomes obscured and transmissions are sent and received without atmospheric interference. Rather than merely glancing toward the rafters, Trey rides the band to the starry realm of The Muse and back, splashing down triumphantly. ",22:35,5,1,,,0
 1725991676,501750,2573,2,12,1,0,0,1,"Emerging from the compositional portion of ""Mercury"" with ample 
 aplomb, the jam immediately takes on a family-style, delayed-out 
 electro funk vibe. With each member actively engaged in the melodic 
@@ -41068,10 +41112,10 @@ conversation, the jam stays in ""Type 1"" territory, opting for dynamic
 escalation over deep exploration before closing out with ""Mercury's"" 
 vocal ending. ",14:04,22,1,,,0
 1725991676,501751,642,2,13,1,0,0,1,"Showing up as the penultimate song in Set 2, this ""Wading"" is not at all perfunctory. Beautiful and emotive play shines through, hearkening back to the nascent days of the song.",7:22,11,1,,,0
-1725991676,501752,1303,2,14,5,0,0,0,,,3,0,,,0
+1725991676,501752,1303,2,14,5,0,0,0,,,4,0,,,0
 1725991676,501753,237,e,15,1,0,0,0,,,7,0,,,0
-1725991676,501754,649,e,16,2,0,0,0,,,24,1,,,0
-1725991676,501755,94,e,17,2,0,0,0,,,3,0,,,0
+1725991676,501754,649,e,16,2,0,0,0,,,25,1,,,0
+1725991676,501755,94,e,17,2,0,0,0,,,4,0,,,0
 1725991676,501756,113,e,18,6,0,0,0,,,2,1,,,0
 1727805806,502263,508,1,1,1,0,0,1,"Opens the NYE run with a bang right out of the gates with a jam that first plays on the usual ""Simple"" theme with gusto and then flows directly into a more rhythmic transition segment. From there, the intensity quickly rises to a frenzy and concludes with a celebratory peak before returning home.",,8,1,,,0
 1727805806,502264,215,1,2,1,0,0,0,,,3,1,,,0
@@ -41182,7 +41226,7 @@ back to the ""Ruby Waves"" theme, concluding the epic journey.",,3,0,,,0
 1718730861,503017,222,1,6,1,0,0,0,,,3,1,,,0
 1718730861,503024,2944,1,7,1,0,0,0,,,1,0,,,0
 1718730861,503032,478,1,8,4,0,0,0,,,4,1,,,0
-1718730861,503049,2743,2,9,2,0,0,0,,,7,0,,,0
+1718730861,503049,2743,2,9,2,0,0,0,,,8,0,,,0
 1718730861,503059,119,2,10,2,0,0,1,"Things build slowly at first as Trey and Page politely occupy the same tonal space. Mike and Fish, by contrast, are driven and focused throughout. Trey eventually finds firm footing and digs his heels into more rocking and rif laden territory, and with the help of Page, now on piano, they push the improv to a satisfying peak and return. ",,11,0,,,0
 1718730861,503070,339,2,11,2,0,0,0,,,7,0,,,0
 1718730861,503082,381,2,12,2,0,0,0,,,1,1,,,0
@@ -41206,10 +41250,10 @@ territory. As the band luxuriates in this space, effects-based play gradually be
 1718730894,503257,108,1,11,4,0,0,0,,,5,1,,,0
 1718730894,503280,2656,2,12,2,0,0,0,,,3,0,,,0
 1718730894,503293,2572,2,13,1,0,0,0,,,3,1,,,0
-1718730894,503307,629,2,14,2,0,0,1,"Another nod to the sea (if not the scene), the song appears in the centerpiece slot, anchoring the second set, following a strong ""NMINML."" Tight, terse, and largely compact (play before the segue eventually bleeds) strong, if somewhat familiar play, seems to function as foundation for the night's heady highlight - Piper - which pleasantly, after a strong '24, remains on Trey's radar.",,26,1,,,0
+1718730894,503307,629,2,14,2,0,0,1,"Another nod to the sea (if not the scene), the song appears in the centerpiece slot, anchoring the second set, following a strong ""NMINML."" Tight, terse, and largely compact (play before the segue eventually bleeds) strong, if somewhat familiar play, seems to function as foundation for the night's heady highlight - Piper - which pleasantly, after a strong '24, remains on Trey's radar.",,27,1,,,0
 1718730894,503322,437,2,15,2,0,0,1,"> from a big-time ""Twenty Years Later"". Traversing all kinds of ground, this jam shows off the band's versatility. From the frenzied end of the song proper to a subdued, cymbal-filled brooding jam. There are recurring teases of ""Norwegian Wood"" and a frenzied maelstrom of a peak at the end, before > into ""Taste"".",,3,1,,,0
 1718730894,503338,558,2,16,1,0,0,0,,,2,1,,,0
-1718730894,503355,2571,2,17,1,0,0,0,,,23,1,,,0
+1718730894,503355,2571,2,17,1,0,0,0,,,24,1,,,0
 1718730894,503373,607,2,18,1,0,0,0,,,8,1,,,0
 1718730894,503392,113,2,19,5,0,0,0,,,2,1,,"Lyrics changed to ""to play that song in the key of A.""",0
 1718730894,503450,250,e,20,6,0,0,0,,,3,1,,,0
@@ -41282,14 +41326,14 @@ around a groove similar to ""Split Open and Melt"", before
 1737486683,507641,432,1,5,1,0,0,0,,,29,0,,,0
 1737486683,507642,193,1,6,1,0,0,0,,,1,1,,,0
 1737486683,507643,545,1,7,2,0,0,0,,,38,1,,,0
-1737486683,507644,648,1,8,4,0,0,0,,,9,1,,,0
+1737486683,507644,648,1,8,4,0,0,0,,,10,1,,,0
 1737486683,507645,110,2,9,2,0,0,0,,,3,1,,,0
 1737486683,507646,339,2,10,2,0,0,0,,,5,0,,,0
 1737486683,507647,110,2,11,2,0,0,0,,,0,1,,,0
 1737486683,507648,2418,2,12,3,0,0,0,,,3,1,,,0
-1737486683,507649,3075,2,13,1,0,0,0,,,7,0,,,0
+1737486683,507649,3075,2,13,1,0,0,0,,,8,0,,,0
 1737486683,507650,437,2,14,2,0,0,0,,,4,1,,,0
-1737486683,507651,46,2,15,5,0,0,0,,,4,0,,,0
+1737486683,507651,46,2,15,5,0,0,0,,,5,0,,,0
 1737486683,507652,514,e,16,1,0,0,0,,,11,1,,,0
 1737486683,507653,397,e,17,6,0,0,0,,,2,1,,"No ""Myfe"" ending.",0
 1737486760,507688,2,1,1,1,0,0,1,Show opening version kicks things off with swagger and wastes little time getting aggressively rhythmic. Mike sets a gritty tone while Page and Trey add lift. A weighty conversation develops that blooms into a delicate and satisfying peak and return. ,,5,1,,,0
@@ -41333,11 +41377,11 @@ vocals for ""Halley's"" return and bring the jam to its conclusion.",,6,1,,,0
 1737486782,507720,657,2,15,2,0,0,0,,,8,1,,,0
 1737486782,507721,174,2,16,5,0,0,0,,,9,1,,,0
 1737486782,507722,208,e,17,6,0,0,0,,,9,1,,,0
-1737486800,507723,508,1,1,3,0,0,0,,,11,1,,,0
-1737486800,507724,447,1,2,2,0,0,0,,,30,1,,,0
-1737486800,507725,240,1,3,2,0,0,1,"Centerpiece of a classic first set, Trey directly breaks directly to jam, a la ""Cities."" There is a sense of unencumbered determinism as, through the 5:00 mark, with Fish nuts on his cymbals, Trey sets off to strum. He then picks a melodic line made very much of the stuff of the song, which contributes to the evening's old-school air. Play pools a few minutes later to stew and it is from this brew, pleasantly offset by splashes of ""Manteca"" and dashes ""Tweezer,"" where we get a sense this jam is going to be different. Only a few minutes remain, and it is here where you may find some of your favorite Trey of the tour before the band, as if the song hasn't been forgotten since 2003 (hyperbole), neatly drives the version to a close.",,6,1,,,0
+1737486800,507723,508,1,1,3,0,0,0,,,12,1,,,0
+1737486800,507724,447,1,2,2,0,0,0,,,31,1,,,0
+1737486800,507725,240,1,3,2,0,0,1,"Centerpiece of a classic first set, Trey directly breaks directly to jam, a la ""Cities."" There is a sense of unencumbered determinism as, through the 5:00 mark, with Fish nuts on his cymbals, Trey sets off to strum. He then picks a melodic line made very much of the stuff of the song, which contributes to the evening's old-school air. Play pools a few minutes later to stew and it is from this brew, pleasantly offset by splashes of ""Manteca"" and dashes ""Tweezer,"" where we get a sense this jam is going to be different. Only a few minutes remain, and it is here where you may find some of your favorite Trey of the tour before the band, as if the song hasn't been forgotten since 2003 (hyperbole), neatly drives the version to a close.",,7,1,,,0
 1737486800,507726,455,1,4,1,0,0,0,,,5,1,,,0
-1737486800,507727,3077,1,5,2,0,0,0,,,35,0,,,0
+1737486800,507727,3077,1,5,2,0,0,0,,,36,0,,,0
 1737486800,507728,148,1,6,1,0,0,1,"A ""long"" intro, when measured against recent versions: Hear the first indication this time's gonna be different. Trey scratches. We're off. A near-perfect composed section. Great tempo. Measured, highly musical and if not dark, nothing by way of light play ensues. Yet. Listen for ""McGrupp."" A change. More by way of major play, now, and more ""McGrupp."" Seamless. Trey and Page swap a lovely melody. Great almost stop-start playing. Almost. No ""woos."" Great - great - sustain with Page pounding his keys and listen to the release, a bit of trilling with the band as one roiling and rolling to ""Bowie's"" signature close. One of the best versions since the band returned. ",,12,1,,,0
 1737486800,507729,113,1,7,4,0,0,0,,,7,1,,,0
 1737486800,507737,483,2,8,2,0,0,0,,,11,1,,,0
@@ -41411,18 +41455,18 @@ song's traditional ending > ""Lifeboy"".",,7,1,,,0
 1737486860,507796,2418,e,17,6,0,0,1,"Don't leave yet! This is no perfunctory Encore on the last night of the tour as the band drops one of their longest jams ever in the extra period. Trey leads the band through multiple distinct sections of jamming. After returning to the chorus, even the feedback ending gets extended.",,6,1,,,0
 1739905672,508028,591,1,1,1,0,0,0,,,2,1,,,0
 1739905672,508029,45,1,2,1,0,0,0,,,7,0,,,0
-1739905672,508030,683,1,3,1,0,0,0,,,2,1,,,0
-1739905672,508031,609,1,4,1,0,0,0,,,7,1,,,0
+1739905672,508030,683,1,3,1,0,0,0,,,3,1,,,0
+1739905672,508031,609,1,4,1,0,0,0,,,8,1,,,0
 1739905672,508032,593,1,5,1,0,0,0,,,30,0,,,0
 1739905672,508033,2,1,6,1,0,0,0,,,2,1,,,0
 1739905672,508034,65,1,7,1,0,0,0,,,1,1,,,0
-1739905672,508035,512,1,8,4,0,0,0,,,1,1,,,0
-1739905672,508036,84,2,9,1,0,0,0,,,5,1,,,0
-1739905672,508037,483,2,10,1,0,0,0,,,3,1,,,0
-1739905672,508038,3100,2,11,2,0,0,0,,,1,1,,Unfinished,0
-1739905672,508039,630,2,12,2,0,0,0,,,0,1,,Unfinished,0
-1739905672,508040,437,2,13,2,0,0,0,,,2,1,,,0
-1739905672,508067,2656,2,14,5,0,0,0,,,1,0,,,0
+1739905672,508035,512,1,8,4,0,0,0,,,2,1,,,0
+1739905672,508036,84,2,9,1,0,0,0,,,6,1,,,0
+1739905672,508037,483,2,10,1,0,0,0,,,4,1,,,0
+1739905672,508038,3100,2,11,2,0,0,0,,,2,1,,Unfinished.,0
+1739905672,508039,630,2,12,2,0,0,0,,,1,1,,Unfinished.,0
+1739905672,508040,437,2,13,2,0,0,0,,,3,1,,,0
+1739905672,508067,2656,2,14,5,0,0,0,,,2,0,,,0
 1739905672,508096,542,e,15,2,0,0,0,,,21,1,,,0
 1739905672,508112,250,e,16,2,0,0,0,,,2,1,,,0
 1739905672,508129,545,e,17,6,0,0,0,,,7,1,,,0
@@ -41444,26 +41488,26 @@ song's traditional ending > ""Lifeboy"".",,7,1,,,0
 1739905708,508145,79,e,16,2,0,0,0,,,16,0,,,0
 1739905708,508146,148,e,17,1,0,0,0,,,5,1,,,0
 1739905708,508147,679,e,18,6,0,0,0,,,7,1,,,0
-1739905740,508148,479,1,1,1,0,0,0,,,3,1,,,0
-1739905740,508149,3076,1,2,1,0,0,0,,,3,0,,,0
-1739905740,508150,576,1,3,1,0,0,0,,,42,1,,,0
-1739905740,508151,345,1,4,1,0,0,0,,,2,1,,,0
+1739905740,508148,479,1,1,1,0,0,0,,,4,1,,,0
+1739905740,508149,3076,1,2,1,0,0,0,,,4,0,,,0
+1739905740,508150,576,1,3,1,0,0,0,,,43,1,,,0
+1739905740,508151,345,1,4,1,0,0,0,,,3,1,,,0
 1739905740,508152,194,1,5,1,0,0,0,,,52,1,,,0
 1739905740,508153,607,1,6,1,0,0,0,,,12,1,,,0
-1739905740,508154,432,1,7,1,0,0,0,,,8,0,,,0
-1739905740,508155,397,1,8,3,0,0,0,,,8,1,,"No ""Myfe"" ending.",0
+1739905740,508154,432,1,7,1,0,0,0,,,9,0,,,0
+1739905740,508155,397,1,8,3,0,0,0,,,9,1,,"No ""Myfe"" ending.",0
 1739905740,508156,2976,1,9,1,0,0,0,,,62,1,,,0
-1739905740,508157,208,1,10,4,0,0,0,,,6,1,,,0
-1739905740,508158,38,2,11,2,0,0,0,,,6,1,,,0
-1739905740,508159,627,2,12,2,0,0,0,,,5,1,,,0
+1739905740,508157,208,1,10,4,0,0,0,,,7,1,,,0
+1739905740,508158,38,2,11,2,0,0,0,,,7,1,,,0
+1739905740,508159,627,2,12,2,0,0,0,,,6,1,,,0
 1739905740,508160,2573,2,13,2,0,0,0,,,4,1,,,0
-1739905740,508161,627,2,14,2,0,0,0,,,5,1,,,0
-1739905740,508162,3080,2,15,2,0,0,0,,,5,0,,,0
-1739905740,508163,627,2,16,2,0,0,0,,,5,1,,,0
+1739905740,508161,627,2,14,2,0,0,0,,,0,1,,,0
+1739905740,508162,3080,2,15,2,0,0,0,,,6,0,,,0
+1739905740,508163,627,2,16,2,0,0,0,,,0,1,,,0
 1739905740,508164,234,2,17,5,0,0,0,,,14,1,,,0
-1739905740,508165,94,e,18,2,0,0,0,,,9,0,,,0
-1739905740,508166,628,e,19,6,0,0,0,,,4,1,,,0
-1739906123,508220,8,1,1,2,0,0,0,,,4,1,"<p>Paul and Silas, I Always Wanted It This Way, Dogs Stole Things, Water in the Sky, Stealing Time From the Faulty Plan (this soundcheck may be incomplete)</p>
+1739905740,508165,94,e,18,2,0,0,0,,,10,0,,,0
+1739905740,508166,628,e,19,6,0,0,0,,,5,1,,,0
+1739906123,508220,8,1,1,2,0,0,0,,,5,1,"<p>Paul and Silas, I Always Wanted It This Way, Dogs Stole Things, Water in the Sky, Stealing Time From the Faulty Plan (this soundcheck may be incomplete)</p>
 ",,0
 1739906123,508222,165,1,2,1,0,0,0,,,122,1,"<p>Paul and Silas, I Always Wanted It This Way, Dogs Stole Things, Water in the Sky, Stealing Time From the Faulty Plan (this soundcheck may be incomplete)</p>
 ",,0
@@ -41477,21 +41521,295 @@ song's traditional ending > ""Lifeboy"".",,7,1,,,0
 ",,0
 1739906123,508247,686,1,7,1,0,0,0,,,26,0,"<p>Paul and Silas, I Always Wanted It This Way, Dogs Stole Things, Water in the Sky, Stealing Time From the Faulty Plan (this soundcheck may be incomplete)</p>
 ",,0
-1739906123,508255,240,1,8,1,0,0,0,,,6,1,"<p>Paul and Silas, I Always Wanted It This Way, Dogs Stole Things, Water in the Sky, Stealing Time From the Faulty Plan (this soundcheck may be incomplete)</p>
+1739906123,508255,240,1,8,1,0,0,0,,,7,1,"<p>Paul and Silas, I Always Wanted It This Way, Dogs Stole Things, Water in the Sky, Stealing Time From the Faulty Plan (this soundcheck may be incomplete)</p>
 ",,0
-1739906123,508264,648,1,9,4,0,0,0,,,9,1,"<p>Paul and Silas, I Always Wanted It This Way, Dogs Stole Things, Water in the Sky, Stealing Time From the Faulty Plan (this soundcheck may be incomplete)</p>
+1739906123,508264,648,1,9,4,0,0,0,,,10,1,"<p>Paul and Silas, I Always Wanted It This Way, Dogs Stole Things, Water in the Sky, Stealing Time From the Faulty Plan (this soundcheck may be incomplete)</p>
 ",,0
-1739906123,508283,690,2,10,3,0,0,0,,,3,1,"<p>Paul and Silas, I Always Wanted It This Way, Dogs Stole Things, Water in the Sky, Stealing Time From the Faulty Plan (this soundcheck may be incomplete)</p>
+1739906123,508283,690,2,10,3,0,0,0,,,4,1,"<p>Paul and Silas, I Always Wanted It This Way, Dogs Stole Things, Water in the Sky, Stealing Time From the Faulty Plan (this soundcheck may be incomplete)</p>
 ",,0
 1739906123,508294,3139,2,11,1,0,0,0,,,5,0,"<p>Paul and Silas, I Always Wanted It This Way, Dogs Stole Things, Water in the Sky, Stealing Time From the Faulty Plan (this soundcheck may be incomplete)</p>
 ",,0
-1739906123,508306,442,2,12,2,0,0,0,,,12,1,"<p>Paul and Silas, I Always Wanted It This Way, Dogs Stole Things, Water in the Sky, Stealing Time From the Faulty Plan (this soundcheck may be incomplete)</p>
+1739906123,508306,442,2,12,2,0,0,0,,,13,1,"<p>Paul and Silas, I Always Wanted It This Way, Dogs Stole Things, Water in the Sky, Stealing Time From the Faulty Plan (this soundcheck may be incomplete)</p>
 ",,0
-1739906123,508319,318,2,13,2,0,0,0,,,32,1,"<p>Paul and Silas, I Always Wanted It This Way, Dogs Stole Things, Water in the Sky, Stealing Time From the Faulty Plan (this soundcheck may be incomplete)</p>
+1739906123,508319,318,2,13,2,0,0,0,,,33,1,"<p>Paul and Silas, I Always Wanted It This Way, Dogs Stole Things, Water in the Sky, Stealing Time From the Faulty Plan (this soundcheck may be incomplete)</p>
 ",,0
-1739906123,508346,2570,2,14,5,0,0,0,,,4,1,"<p>Paul and Silas, I Always Wanted It This Way, Dogs Stole Things, Water in the Sky, Stealing Time From the Faulty Plan (this soundcheck may be incomplete)</p>
+1739906123,508346,2570,2,14,5,0,0,0,,,5,1,"<p>Paul and Silas, I Always Wanted It This Way, Dogs Stole Things, Water in the Sky, Stealing Time From the Faulty Plan (this soundcheck may be incomplete)</p>
 ",,0
 1739906123,508375,2984,e,15,2,0,0,0,,,4,1,"<p>Paul and Silas, I Always Wanted It This Way, Dogs Stole Things, Water in the Sky, Stealing Time From the Faulty Plan (this soundcheck may be incomplete)</p>
 ",,0
-1739906123,508391,222,e,16,6,0,0,0,,,5,1,"<p>Paul and Silas, I Always Wanted It This Way, Dogs Stole Things, Water in the Sky, Stealing Time From the Faulty Plan (this soundcheck may be incomplete)</p>
+1739906123,508391,222,e,16,6,0,0,0,,,6,1,"<p>Paul and Silas, I Always Wanted It This Way, Dogs Stole Things, Water in the Sky, Stealing Time From the Faulty Plan (this soundcheck may be incomplete)</p>
+",,0
+1739906224,508480,141,1,1,1,0,0,0,,,122,1,,,0
+1739906224,508482,381,1,2,2,0,0,0,,,8,1,,,0
+1739906224,508485,119,1,3,1,0,0,0,,,9,0,,,0
+1739906224,508489,161,1,4,1,0,0,0,,,5,1,,,0
+1739906224,508494,3077,1,5,1,0,0,0,,,8,0,,,0
+1739906224,508500,146,1,6,1,0,0,0,,,283,0,,,0
+1739906224,508507,558,1,7,1,0,0,0,,,6,1,,,0
+1739906224,508515,159,1,8,1,0,0,0,,,22,0,,,0
+1739906224,508524,653,1,9,4,0,0,0,,,8,1,,,0
+1739906224,508543,2572,2,10,1,0,0,0,,,8,1,,,0
+1739906224,508554,2418,2,11,2,0,0,0,,,4,1,,,0
+1739906224,508566,867,2,12,1,0,0,0,,,12,0,,,0
+1739906224,508579,603,2,13,1,0,0,0,,,5,1,,,0
+1739906224,508593,485,2,14,1,0,0,0,,,5,0,,,0
+1739906224,508608,113,2,15,5,0,0,0,,,7,1,,,0
+1739906224,508639,2845,e,16,1,0,0,0,,,7,0,,,0
+1739906224,508656,202,e,17,6,2,2,0,,,8,0,,,0
+1739906954,508657,447,1,1,2,0,0,0,,,9,1,,,0
+1739906954,508658,215,1,2,1,0,0,0,,,4,1,,,0
+1739906954,508659,402,1,3,1,0,0,0,,,9,0,,,0
+1739906954,508660,2424,1,4,1,0,0,0,,,7,1,,,0
+1739906954,508661,455,1,5,1,0,0,0,,,4,1,,No whistling.,0
+1739906954,508662,3004,1,6,1,0,0,0,,,6,0,,,0
+1739906954,508669,1085,1,7,1,0,0,0,,,10,0,,,0
+1739906954,508670,239,1,8,1,0,0,0,,,27,1,,,0
+1739906954,508671,2643,1,9,4,0,0,0,,,43,0,,,0
+1739906954,508672,110,2,10,2,0,0,0,,,8,1,,Unfinished.,0
+1739906954,508673,630,2,11,2,0,0,0,,,5,1,,,0
+1739906954,508674,1102,2,12,2,0,0,0,,,9,0,,Unfinished.,0
+1739906954,508675,3075,2,13,1,0,0,0,,,11,0,,,0
+1739906954,508676,341,2,14,1,0,0,0,,,21,1,,,0
+1739906954,508677,529,2,15,1,0,0,0,,,10,1,,,0
+1739906954,508678,466,2,16,5,0,0,0,,,38,0,,,0
+1739906954,508679,649,e,17,1,0,0,0,,,9,1,,,0
+1739906954,508680,2796,e,18,6,0,0,0,,,5,1,,,0
+1739906330,508774,683,1,1,1,0,0,0,,,6,1,"<p>The Well</p>
+",,0
+1739906330,508775,622,1,2,1,0,0,0,,,14,1,"<p>The Well</p>
+",,0
+1739906330,508776,475,1,3,2,0,0,0,,,136,0,"<p>The Well</p>
+",,0
+1739906330,508777,364,1,4,1,0,0,0,,,11,1,"<p>The Well</p>
+",,0
+1739906330,508778,84,1,5,1,0,0,0,,,6,1,"<p>The Well</p>
+",,0
+1739906330,508779,406,1,6,1,0,0,0,,,38,0,"<p>The Well</p>
+",,0
+1739906330,508780,323,1,7,1,0,0,0,,,7,1,"<p>The Well</p>
+",,0
+1739906330,508781,485,1,8,2,0,0,0,,,2,0,"<p>The Well</p>
+",,0
+1739906330,508782,208,1,9,4,0,0,0,,,4,1,"<p>The Well</p>
+",,0
+1739906330,508783,104,2,10,2,0,0,0,,,5,1,"<p>The Well</p>
+",,0
+1739906330,508784,690,2,11,2,0,0,0,,,3,1,"<p>The Well</p>
+",,0
+1739906330,508785,518,2,12,1,0,0,0,,,81,0,"<p>The Well</p>
+",,0
+1739906330,508786,339,2,13,2,0,0,0,,,9,0,"<p>The Well</p>
+",,0
+1739906330,508787,657,2,14,1,0,0,0,,,11,1,"<p>The Well</p>
+",,0
+1739906330,508788,3080,2,15,2,0,0,0,,,4,0,"<p>The Well</p>
+",,0
+1739906330,508789,21,2,16,2,0,0,0,,,5,0,"<p>The Well</p>
+",,0
+1739906330,508790,440,2,17,5,0,0,0,,,5,1,"<p>The Well</p>
+",,0
+1739906330,508791,538,e,18,1,0,0,0,,,5,1,"<p>The Well</p>
+",,0
+1739906330,508792,472,e,19,6,0,0,0,,,198,0,"<p>The Well</p>
+",,0
+1739906355,508793,48,1,1,1,0,0,0,,,13,1,"<p>Evolve, My Soul</p>
+",,0
+1739906355,508795,591,1,2,1,0,0,0,,,6,1,"<p>Evolve, My Soul</p>
+",,0
+1739906355,508798,50,1,3,1,0,0,0,,,38,0,"<p>Evolve, My Soul</p>
+",,0
+1739906355,508802,609,1,4,1,0,0,0,,,7,1,"<p>Evolve, My Soul</p>
+",,0
+1739906355,508807,462,1,5,1,0,0,0,,,10,1,"<p>Evolve, My Soul</p>
+",,0
+1739906355,508813,3076,1,6,1,0,0,0,,,4,0,"<p>Evolve, My Soul</p>
+",,0
+1739906355,508814,613,1,7,1,0,0,0,,,7,0,"<p>Evolve, My Soul</p>
+",,0
+1739906355,508822,242,1,8,1,0,0,0,,,48,1,"<p>Evolve, My Soul</p>
+",,0
+1739906355,508823,45,1,9,1,0,0,0,,,6,0,"<p>Evolve, My Soul</p>
+",,0
+1739906355,508833,1303,1,10,4,0,0,0,,,7,0,"<p>Evolve, My Soul</p>
+",,0
+1739906355,508834,508,2,11,3,0,0,0,,,11,1,"<p>Evolve, My Soul</p>
+",,0
+1739906355,508846,3139,2,12,2,0,0,0,,,3,0,"<p>Evolve, My Soul</p>
+",,0
+1739906355,508859,627,2,13,2,0,0,0,,,5,1,"<p>Evolve, My Soul</p>
+",,0
+1739906355,508873,1353,2,14,2,0,0,0,,,65,0,"<p>Evolve, My Soul</p>
+",,0
+1739906355,508888,174,2,15,2,0,0,0,,,6,1,"<p>Evolve, My Soul</p>
+",,0
+1739906355,508904,222,2,16,5,0,0,0,,,4,1,"<p>Evolve, My Soul</p>
+",,0
+1739906355,508937,113,e,17,2,0,0,0,,,2,1,"<p>Evolve, My Soul</p>
+",,0
+1739906355,508955,628,e,18,6,2,2,0,,,5,1,"<p>Evolve, My Soul</p>
+",,0
+1739906380,508956,96,1,1,2,0,0,0,,,12,1,,,0
+1739906380,508958,2,1,2,1,0,0,0,,,7,1,,,0
+1739906380,508961,65,1,3,1,0,0,0,,,7,1,,,0
+1739906380,508965,2803,1,4,1,0,0,0,,,13,0,,,0
+1739906380,508970,148,1,5,1,0,0,0,,,7,1,,,0
+1739906380,508976,2944,1,6,1,0,0,0,,,11,0,,,0
+1739906380,508983,2570,1,7,1,0,0,0,,,5,1,,,0
+1739906380,508991,586,1,8,1,0,0,0,,,8,1,,,0
+1739906380,509000,6,1,9,4,0,0,0,,,42,0,,,0
+1739906380,509010,679,2,10,1,0,0,0,,,7,1,,,0
+1739906380,509031,2418,2,11,3,0,0,0,,,3,1,,,0
+1739906380,509043,397,2,12,3,0,0,0,,,6,1,,"No ""Myfe"" ending.",0
+1739906380,509056,2418,2,13,2,0,0,0,,,3,1,,,0
+1739906380,509083,139,2,14,2,0,0,0,,,11,0,,,0
+1739906380,509098,2656,2,15,1,0,0,0,,,8,0,,,0
+1739906380,509114,2639,2,16,1,0,0,0,,,8,1,,,0
+1739906380,509147,512,2,17,5,0,0,0,,,8,1,,,0
+1739906380,509165,93,e,18,1,0,0,0,,,69,1,,,0
+1739906380,509202,250,e,19,6,0,0,0,,,7,1,,,0
+1739906489,509295,8,1,1,1,0,0,0,,,6,1,,,0
+1739906489,509296,473,1,2,1,0,0,0,,,14,1,,,0
+1739906489,509297,641,1,3,1,0,0,0,,,46,1,,,0
+1739906489,509298,2506,1,4,1,0,0,0,,,11,1,,,0
+1739906489,509299,2970,1,5,1,0,0,0,,,17,1,,,0
+1739906489,509300,2703,1,6,2,0,0,0,,,41,0,,,0
+1739906489,509301,634,1,7,1,0,0,0,,,30,0,,,0
+1739906489,509302,2495,1,8,1,0,0,0,,,121,0,,,0
+1739906489,509303,3100,1,9,4,0,0,0,,,9,1,,,0
+1739906489,509304,483,2,10,2,0,0,0,,,9,1,,,0
+1739906489,509305,2946,2,11,1,0,0,0,,,8,0,,,0
+1739906489,509306,2420,2,12,1,0,0,0,,,164,1,,,0
+1739906489,509307,38,2,13,3,0,0,0,,,7,1,,,0
+1739906489,509308,437,2,14,2,0,0,0,,,9,1,,,0
+1739906489,509309,2932,2,15,1,0,0,0,,,13,0,,,0
+1739906489,509310,46,2,16,1,0,0,0,,,16,0,,,0
+1739906489,509311,354,2,17,5,0,0,0,,,30,0,,,0
+1739906489,509312,94,e,18,1,0,0,0,,,7,0,,,0
+1739906489,509313,590,e,19,2,0,0,0,,,25,1,,,0
+1739906489,509314,478,e,20,6,0,0,0,,,11,1,,,0
+1739906512,509315,215,1,1,1,0,0,0,,,4,1,,,0
+1739906512,509316,462,1,2,1,0,0,0,,,2,1,,,0
+1739906512,509317,939,1,3,1,0,0,0,,,67,0,,,0
+1739906512,509318,455,1,4,1,0,0,0,,,4,1,,No whistling.,0
+1739906512,509319,2423,1,5,1,0,0,0,,,321,1,,,0
+1739906512,509320,2797,1,6,1,0,0,0,,,42,1,,,0
+1739906512,509321,401,1,7,1,0,0,0,,,148,0,,,0
+1739906512,509322,3004,1,8,1,0,0,0,,,4,0,,,0
+1739906512,509331,558,1,9,1,0,0,0,,,5,1,,,0
+1739906512,509332,648,1,10,4,0,0,0,,,6,1,,,0
+1739906512,509333,345,2,11,2,0,0,0,,,7,1,,"Performed in a slow, funky arrangement.",0
+1739906512,509345,174,2,12,2,0,0,0,,,2,1,,,0
+1739906512,509346,630,2,13,1,0,0,0,,,4,1,,,0
+1739906512,509347,3077,2,14,1,0,0,0,,,5,0,,,0
+1739906512,509348,2837,2,15,3,0,0,0,,,19,0,,,0
+1739906512,509349,110,2,16,1,0,0,0,,,4,1,,,0
+1739906512,509350,545,2,17,5,0,0,0,,,9,1,,,0
+1739906512,509351,660,e,18,1,0,0,0,,,53,0,,,0
+1739906512,509352,202,e,19,6,0,0,0,,,5,0,,,0
+1739906539,509534,591,1,1,1,0,0,0,,,3,1,,,0
+1739906539,509536,404,1,2,1,0,0,0,,,37,1,,,0
+1739906539,509539,314,1,3,1,0,0,0,,,207,0,,,0
+1739906539,509543,161,1,4,1,0,0,0,,,6,1,,,0
+1739906539,509548,154,1,5,1,0,0,0,,,43,1,,,0
+1739906539,509554,3075,1,6,1,0,0,0,,,5,0,,,0
+1739906539,509561,1085,1,7,1,0,0,0,,,5,0,,,0
+1739906539,509569,48,1,8,4,0,0,0,,,3,1,,,0
+1739906539,509578,381,2,9,2,0,0,0,,,6,1,,,0
+1739906539,509597,273,2,10,2,0,0,0,,,15,1,,,0
+1739906539,509598,653,2,11,1,0,0,0,,,6,1,,,0
+1739906539,509610,2573,2,12,2,0,0,0,,,8,1,,,0
+1739906539,509623,2744,2,13,1,0,0,0,,,43,0,,,0
+1739906539,509624,316,2,14,1,0,0,0,,,11,1,,,0
+1739906539,509639,250,2,15,1,0,0,0,,,2,1,,,0
+1739906539,509655,900,2,16,5,0,0,0,,,71,0,,,0
+1739906539,509672,105,e,17,1,0,0,0,,,205,0,,,0
+1739906539,509690,2796,e,18,6,0,0,0,,,5,1,,,0
+1739906558,509709,479,1,1,1,0,0,0,,,10,1,,,0
+1739906558,509710,209,1,2,1,0,0,0,,,51,1,,,0
+1739906558,509711,683,1,3,1,0,0,0,,,6,1,,,0
+1739906558,509712,2699,1,4,1,0,0,0,,,55,1,,,0
+1739906558,509713,538,1,5,1,0,0,0,,,6,1,,,0
+1739906558,509714,2424,1,6,2,0,0,0,,,7,1,,,0
+1739906558,509715,646,1,7,1,0,0,0,,,93,0,,,0
+1739906558,509716,2829,1,8,4,0,0,0,,,11,0,,,0
+1739906558,509717,2743,2,9,1,0,0,0,,,24,0,,,0
+1739906558,509718,627,2,10,3,0,0,0,,,5,1,,,0
+1739906558,509719,222,2,11,1,0,0,0,,,5,1,,,0
+1739906558,509720,867,2,12,1,0,0,0,,,8,0,,,0
+1739906558,509721,2845,2,13,1,0,0,0,,,8,0,,,0
+1739906558,509722,512,2,14,5,0,0,0,,,4,1,,,0
+1739906558,509723,369,e,15,1,0,0,0,,,11,1,,,0
+1739906558,509724,2792,e,16,1,0,0,0,,,48,1,,,0
+1739906558,509725,628,e,17,6,0,0,0,,,5,1,,,0
+1739906591,509726,447,1,1,2,0,0,0,,,7,1,"<p>I Never Needed You Like This Before (x7)</p>
+",,0
+1739906591,509727,2656,1,2,1,0,0,0,,,4,0,"<p>I Never Needed You Like This Before (x7)</p>
+",,0
+1739906591,509728,100,1,3,1,0,0,0,,,97,1,"<p>I Never Needed You Like This Before (x7)</p>
+",,0
+1739906591,509729,609,1,4,2,0,0,0,,,5,1,"<p>I Never Needed You Like This Before (x7)</p>
+",,0
+1739906591,509730,442,1,5,2,0,0,0,,,9,1,"<p>I Never Needed You Like This Before (x7)</p>
+",,0
+1739906591,509731,307,1,6,1,0,0,0,,,43,1,"<p>I Never Needed You Like This Before (x7)</p>
+",,0
+1739906591,509732,2831,1,7,1,0,0,0,,,11,0,"<p>I Never Needed You Like This Before (x7)</p>
+",,0
+1739906591,509733,148,1,8,4,0,0,0,,,4,1,"<p>I Never Needed You Like This Before (x7)</p>
+",,0
+1739906591,509734,485,2,9,1,0,0,0,,,6,0,"<p>I Never Needed You Like This Before (x7)</p>
+",,0
+1739906591,509735,397,2,10,1,0,0,0,,,4,1,"<p>I Never Needed You Like This Before (x7)</p>
+",,0
+1739906591,509736,80,2,11,1,0,0,0,,,18,0,"<p>I Never Needed You Like This Before (x7)</p>
+",,0
+1739906591,509737,2570,2,12,2,0,0,0,,,4,1,"<p>I Never Needed You Like This Before (x7)</p>
+",,0
+1739906591,509738,104,2,13,5,0,0,0,,,6,1,"<p>I Never Needed You Like This Before (x7)</p>
+",,0
+1739906591,509739,2571,e,14,1,0,0,0,,,23,1,"<p>I Never Needed You Like This Before (x7)</p>
+",,0
+1739906591,509740,276,e,15,1,0,0,0,,,46,1,"<p>I Never Needed You Like This Before (x7)</p>
+",With alternate lyrics.,0
+1739906591,509756,679,e,16,2,0,0,0,,,4,1,"<p>I Never Needed You Like This Before (x7)</p>
+",,0
+1739906591,509757,440,e,17,6,0,0,0,,,7,1,"<p>I Never Needed You Like This Before (x7)</p>
+",,0
+1739906636,509775,2499,1,1,1,0,0,0,,,47,1,"<p>My Soul</p>
+",,0
+1739906636,509776,2944,1,2,1,0,0,0,,,6,0,"<p>My Soul</p>
+",,0
+1739906636,509777,208,1,3,1,0,0,0,,,8,1,"<p>My Soul</p>
+",,0
+1739906636,509778,240,1,4,1,0,0,0,,,11,1,"<p>My Soul</p>
+",,0
+1739906636,509779,432,1,5,1,0,0,0,,,12,0,"<p>My Soul</p>
+",,0
+1739906636,509780,473,1,6,1,0,0,0,,,5,1,"<p>My Soul</p>
+",,0
+1739906636,509781,223,1,7,1,0,0,0,,,45,0,"<p>My Soul</p>
+",,0
+1739906636,509782,239,1,8,1,0,0,0,,,9,1,"<p>My Soul</p>
+",,0
+1739906636,509783,318,1,9,1,0,0,0,,,11,1,"<p>My Soul</p>
+",,0
+1739906636,509784,529,1,10,4,0,0,0,,,9,1,"<p>My Soul</p>
+",,0
+1739906636,509785,576,2,11,1,0,0,0,,,12,1,"<p>My Soul</p>
+",,0
+1739906636,509786,2946,2,12,3,0,0,0,,,5,0,"<p>My Soul</p>
+",,0
+1739906636,509787,2957,2,13,2,0,0,0,,,23,0,"<p>My Soul</p>
+",,0
+1739906636,509788,508,2,14,2,0,0,0,,,7,1,"<p>My Soul</p>
+",,0
+1739906636,509789,3078,2,15,3,0,0,0,,,16,0,"<p>My Soul</p>
+",,0
+1739906636,509790,364,2,16,1,0,0,0,,,8,1,"<p>My Soul</p>
+",,0
+1739906636,509791,629,2,17,2,0,0,0,,,25,1,"<p>My Soul</p>
+","Lyrics changed to ""thirty-three years later.""",0
+1739906636,509792,478,2,18,5,0,0,0,,,5,1,"<p>My Soul</p>
+",,0
+1739906636,509793,690,e,19,6,0,0,0,,,8,1,"<p>My Soul</p>
 ",,0

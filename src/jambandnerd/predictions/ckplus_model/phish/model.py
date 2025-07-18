@@ -17,6 +17,16 @@ def aggregate_setlist_features(df, method="mean"):
     Returns:
         pd.DataFrame: CK+ score and related features per song
     """
+    # Ensure 'show_index_overall' exists
+    if "show_index_overall" not in df.columns:
+        show_order = (
+            df[["showid", "showdate"]]
+            .drop_duplicates()
+            .sort_values("showdate")
+            .reset_index(drop=True)
+        )
+        show_order["show_index_overall"] = show_order.index + 1
+        df = df.merge(show_order[["showid", "show_index_overall"]], on="showid", how="left")
     max_show_num = df["show_index_overall"].max()
     df = df.sort_values(by=["song", "show_index_overall"], ascending=[True, True])
     df["gap"] = df.groupby("song")["show_index_overall"].diff()
@@ -45,7 +55,6 @@ def aggregate_setlist_features(df, method="mean"):
     )
     song_stats["current_gap"] = max_show_num - song_stats["ltp_show_num"]
     song_stats["gap_variance"] = song_stats["std_gap"] ** 2
-    song_stats = song_stats[song_stats["current_gap"] < 75]
     song_stats = song_stats[
         (song_stats["times_played"] > 5) & (song_stats["current_gap"] > 0)
     ].reset_index()
@@ -60,7 +69,7 @@ def aggregate_setlist_features(df, method="mean"):
             "avg_gap",
             "gap_ratio",
             "gap_z_score",
-            "ck+_score",
+            "ckplus_score",
         ]
     elif method == "median":
         song_stats["gap_ratio"] = song_stats["current_gap"] / song_stats["med_gap"]
@@ -72,16 +81,16 @@ def aggregate_setlist_features(df, method="mean"):
             "med_gap",
             "gap_ratio",
             "gap_z_score",
-            "ck+_score",
+            "ckplus_score",
         ]
     else:
         raise ValueError("method must be 'mean' or 'median'")
 
-    song_stats["gap_z_score"] = song_stats["gap_ratio"] / song_stats["std_gap"]
-    song_stats["ck+_score"] = song_stats["gap_z_score"] * song_stats["gap_ratio"]
+    song_stats["gap_z_score"] = song_stats["gap_ratio"] / (song_stats["std_gap"] + 1e-6)
+    song_stats["ckplus_score"] = song_stats["gap_z_score"] * song_stats["gap_ratio"]
     song_stats = (
         song_stats[final_columns]
-        .sort_values(by="ck+_score", ascending=False)
+        .sort_values(by="ckplus_score", ascending=False)
         .reset_index(drop=True)
     )
     return song_stats.head(50)

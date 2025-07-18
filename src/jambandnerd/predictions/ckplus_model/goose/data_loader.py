@@ -7,7 +7,7 @@ and mark CKPlus as the source root in your IDE.
 
 import pandas as pd
 
-from utils.logger import get_logger, restrict_to_repo_root
+from .utils.logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -35,10 +35,10 @@ def load_setlist_and_showdata(setlist_path, showdata_path, songdata_path):
     logger.info(
         "Loaded (%d) rows from %s, %d shows from %s, %d songs from %s.",
         len(df),
-        restrict_to_repo_root(setlist_path),
+        setlist_path,
         len(show_df),
-        restrict_to_repo_root(showdata_path),
+        showdata_path,
         len(song_df),
-        restrict_to_repo_root(songdata_path),
+        songdata_path,
     )
     return df

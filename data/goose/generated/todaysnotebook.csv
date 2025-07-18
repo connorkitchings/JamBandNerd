@@ -1,144 +1,129 @@
 song,times_played_last_year,last_time_played_date,current_show_gap,average_gap,median_gap
-Arcadia,18,2025-06-12,2,4.647,4.0
-Tumble,17,2025-06-20,8,4.562,5.0
-Hot Tea,17,2025-06-19,1,4.938,4.5
-Flodown,15,2025-06-20,6,5.357,4.0
-Drive,15,2025-06-20,8,5.0,4.5
-Pancakes,15,2025-06-20,3,5.429,5.0
-Arrow,14,2025-06-10,13,4.923,4.0
-Creatures,14,2025-06-17,6,5.846,6.0
-Red Bird,14,2025-06-20,8,5.615,5.0
-So Ready,14,2025-06-20,5,5.769,4.0
-All I Need,14,2025-06-17,10,5.0,5.0
-Turned Clouds,14,2025-06-12,2,6.0,6.0
-SALT,13,2025-06-15,5,5.917,6.0
-Madhuvan,13,2025-06-19,9,5.75,6.0
-Mr. Action,13,2025-06-19,5,6.167,4.5
-"One In, One Out",12,2025-06-10,6,5.909,5.0
-Seekers on the Ridge pt I,12,2025-06-20,8,6.364,4.0
-California Magic,12,2025-06-01,1,7.273,7.0
-A Western Sun,12,2025-06-17,10,6.455,5.0
-Seekers on the Ridge pt II,12,2025-06-20,8,6.364,4.0
-Into the Myst,12,2025-06-19,9,6.0,6.0
-Slow Ready,12,2025-06-04,14,4.818,4.0
-Feel It Now,11,2025-05-30,3,7.5,5.0
-Same Old Shenanigans,11,2025-06-15,16,6.6,6.0
-Dr. Darkness,11,2025-06-20,5,6.9,4.5
-Turbulence & The Night Rays,11,2025-06-06,18,6.4,7.0
-Butter Rum,10,2025-05-10,3,8.444,6.0
-Interlude II,9,2025-06-10,13,7.75,8.5
-Wysteria Lane,9,2025-06-04,5,9.625,10.0
-This Old Sea,9,2025-06-15,6,9.125,5.5
-Bob Don,8,2025-06-03,15,8.857,6.0
-My Mind Has Been Consumed By Media,8,2025-06-17,10,8.571,6.0
-The Whales,8,2025-06-04,14,9.571,7.0
-Earthling or Alien?,7,2025-06-12,11,10.833,11.0
-Factory Fiction,7,2025-06-15,22,7.333,7.0
-Indian River,6,2025-06-06,22,9.6,10.0
-How It Ends,6,2025-06-20,3,3.8,3.0
-Elizabeth,6,2025-02-10,25,10.8,11.0
-Green River,6,2025-06-17,5,13.6,17.0
-Turn On Your Love Light,6,2025-06-03,15,12.0,13.0
-726,6,2025-05-10,3,15.4,18.0
-I Would Die 4 U,6,2025-05-25,23,11.4,8.0
-Fish In The Sea,6,2025-06-20,8,11.2,9.0
-Atlas,5,2025-06-10,13,16.0,17.5
-Elmeg The Wise,5,2025-05-30,18,15.5,13.5
-Doc Brown,5,2025-05-31,17,16.25,16.5
-Jeff Engborg,5,2025-06-11,12,16.25,14.0
-Mas Que Nada,5,2025-06-19,9,14.25,7.0
-Lead the Way,5,2025-06-10,13,13.5,6.5
-White Lights,5,2025-02-13,28,13.5,10.0
-The Way It Is,5,2025-06-04,14,12.0,10.0
-Travelers,5,2025-05-30,18,15.5,13.5
-State Of The Art (A.E.I.O.U.),5,2025-06-06,22,15.0,14.5
-Shama Lama Ding Dong,5,2025-02-11,29,7.75,7.5
-Pumped Up Kicks,5,2025-06-01,16,12.25,11.5
-Time to Flee,5,2025-06-04,14,14.5,12.5
-Your Ocean,5,2025-06-03,15,16.75,16.5
-Hollywood Nights,4,2025-06-15,17,13.333,9.0
-I'm Writing A Novel,4,2025-05-28,5,23.333,23.0
-Torero,4,2025-06-19,5,11.333,12.0
-You Spin Me Round (Like A Record),4,2025-06-17,10,14.333,7.0
-AUATC,4,2025-06-11,12,23.333,24.0
-(dawn),4,2025-02-15,26,13.667,14.0
-Butterflies,4,2025-06-10,13,18.0,8.0
-Don’t Leave Me This Way,4,2025-05-30,18,8.333,9.0
-Running Up That Hill,4,2025-06-15,21,10.667,4.0
-Spirit Of The Dark Horse,4,2025-06-11,12,20.0,21.0
-Loose Ends,3,2024-11-12,46,18.0,18.0
-Caution,3,2025-06-11,12,25.0,25.0
-True Love Waits,3,2025-06-10,13,29.0,29.0
-The Old Man's Boat,3,2025-06-03,15,30.5,30.5
-Whip It,3,2025-06-03,15,18.5,18.5
-fast:slow,3,2025-06-15,21,8.5,8.5
-Psycho Killer,3,2025-06-06,22,15.5,15.5
-No California,3,2025-05-30,18,23.5,23.5
-Electric Avenue,3,2025-06-01,16,26.5,26.5
-In Your Eyes,3,2025-06-12,11,35.0,35.0
-The Labyrinth,2,2025-06-19,9,32.0,32.0
-Tomorrow Never Knows,2,2025-06-04,14,54.0,54.0
-Jam,2,2025-03-11,4,39.0,39.0
-Honeybee,2,2025-06-19,9,3.0,3.0
-Dim Lights,2,2025-05-10,37,10.0,10.0
-Can't Get You Out Of My Head,2,2024-10-26,36,36.0,36.0
-Moby,2,2025-02-13,28,7.0,7.0
-Me & My Uncle,2,2025-05-10,37,36.0,36.0
-Sirius,2,2024-12-14,43,1.0,1.0
-Wild Night,2,2025-02-11,29,22.0,22.0
-No Rain,2,2025-06-20,8,73.0,73.0
-Rock The Casbah,2,2024-10-30,54,18.0,18.0
-Inside Out,2,2025-02-13,28,44.0,44.0
-Doobie Song,2,2025-06-19,9,51.0,51.0
-Maniac,2,2024-11-07,50,3.0,3.0
-Milestone 2 (Skux Life),2,2024-09-20,70,9.0,9.0
-(satellite),1,2024-09-13,57,,
-Achy Breaky Heart,1,2024-11-10,47,,
-Brokedown Palace,1,2024-10-25,35,,
-Atlantic City,1,2024-11-10,47,,
-Amongster,1,2025-06-20,8,,
-Arise,1,2024-09-27,65,,
-Cantaloupe Island,1,2024-10-01,40,,
-Cold Rain And Snow,1,2024-10-25,35,,
-Danger Zone,1,2024-11-07,50,,
-Everybody Wants To Rule The World,1,2024-10-31,53,,
-Draggin' the Line,1,2024-09-24,67,,
-"Don’t Think Twice, It’s Alright",1,2025-05-10,37,,
-It Burns Within,1,2024-06-26,82,,
-I Only Have Eyes For You,1,2024-12-31,41,,
-Franklin's Tower,1,2024-12-14,43,,
-Flood in Franklin Park,1,2025-02-06,32,,
-Get Down Tonight,1,2024-12-14,43,,
-Help on the Way,1,2024-12-14,43,,
-Moby Dick,1,2025-05-31,17,,
-Mad World,1,2024-09-20,70,,
-Love Is A Battlefield,1,2025-02-14,27,,
-Kashmir,1,2024-12-13,44,,
-Lily's Tiger,1,2024-09-15,73,,
-Look Out Cleveland,1,2024-09-22,68,,
-Low Rider,1,2024-12-30,42,,
-Jed Stone,1,2025-06-07,21,,
-In Bloom,1,2025-05-08,39,,
-I2I,1,2024-12-31,41,,
-Moonrise,1,2024-11-10,47,,
-Nights In White Satin,1,2025-06-11,12,,
-Please Forgive Me,1,2024-09-11,59,,
-Not Alone,1,2024-11-07,50,,
-One More Day,1,2024-09-20,70,,
-Praise You,1,2024-06-30,79,,
-Slipknot!,1,2024-12-14,43,,
-Slip Slidin’ Away,1,2024-12-14,43,,
-Ship Of Fools,1,2024-10-01,40,,
-Ride Like The Wind,1,2025-05-08,39,,
-Rosa Lee McFall,1,2024-09-06,77,,
-Peggy-O,1,2024-11-12,46,,
-Switchin',1,2024-09-03,61,,
-Take On Me,1,2024-10-26,36,,
-The W.S. Walcott Medicine Show,1,2024-09-24,67,,
-Suzie Q,1,2025-06-06,22,,
-The King,1,2024-12-13,44,,
-Stranger Things,1,2024-10-31,53,,
-War Pigs,1,2024-10-01,40,,
-Trevor Reads Poetry,1,2025-05-31,17,,
-Trick To Happy,1,2025-02-10,25,,
-Wipeout,1,2024-10-31,53,,
+Hot Love & The Lazy Poet,21,2025-06-23,0,4.0,4.0
+Atlas Dogs,16,2025-06-23,0,5.267,5.0
+Hot Tea,16,2025-06-19,1,5.2,5.0
+Echo of a Rose,16,2025-06-22,3,4.8,4.0
+Drive,15,2025-06-20,10,5.071,4.5
+Arrow,14,2025-06-10,15,5.0,4.0
+Pancakes,14,2025-06-20,3,5.923,5.0
+Lead Up,13,2025-06-23,0,6.583,5.5
+So Ready,13,2025-06-20,5,6.167,5.0
+Turned Clouds,13,2025-06-12,2,6.5,6.0
+Seekers on the Ridge pt II,12,2025-06-20,10,6.455,4.0
+"One In, One Out",12,2025-06-10,6,6.182,5.0
+Seekers on the Ridge pt I,12,2025-06-20,10,6.455,4.0
+Borne,11,2025-06-21,6,7.4,6.0
+Dr. Darkness,11,2025-06-20,5,7.2,5.0
+Turbulence & The Night Rays,10,2025-06-06,20,6.444,7.0
+Butter Rum,9,2025-05-10,3,9.0,5.5
+Interlude II,9,2025-06-10,15,7.875,9.0
+Jive I,9,2025-06-22,15,7.375,8.5
+Sinnerman,8,2025-06-21,9,10.0,7.0
+Bob Don,8,2025-06-03,17,9.0,6.0
+This Old Sea,8,2025-06-15,6,10.286,6.0
+Wysteria Lane,8,2025-06-04,5,9.857,11.0
+The Whales,7,2025-06-04,16,10.167,7.0
+Rosewood Heart,7,2025-06-22,14,10.667,7.5
+Earthling or Alien?,7,2025-06-12,13,11.0,11.5
+Jive Lee,7,2025-06-22,17,9.5,8.5
+Jive II,7,2025-06-22,17,9.0,8.5
+Green River,6,2025-06-17,5,14.2,17.0
+Don't Do It,6,2025-06-22,6,15.0,16.0
+How It Ends,6,2025-06-20,3,4.4,4.0
+Indian River,6,2025-06-06,25,9.6,10.0
+Turn On Your Love Light,6,2025-06-03,17,12.2,13.0
+The Way It Is,5,2025-06-04,16,12.25,10.5
+Time to Flee,5,2025-06-04,16,14.75,13.0
+Mas Que Nada,5,2025-06-19,11,14.5,7.0
+Jeff Engborg,5,2025-06-11,14,16.5,14.5
+Lead the Way,5,2025-06-10,15,13.75,6.5
+Elizabeth,5,2025-02-10,28,13.0,11.5
+I Would Die 4 U,5,2025-05-25,26,10.0,8.0
+Atlas,5,2025-06-10,15,16.25,18.0
+726,5,2025-05-10,3,15.0,16.5
+Your Ocean,4,2025-06-03,17,19.333,23.0
+Torero,4,2025-06-19,5,12.333,13.0
+Travelers,4,2025-05-30,20,15.667,11.0
+Spirit Of The Dark Horse,4,2025-06-11,14,20.333,21.0
+State Of The Art (A.E.I.O.U.),4,2025-06-06,25,11.667,13.0
+White Lights,4,2025-02-13,31,15.0,11.0
+I'm Writing A Novel,4,2025-05-28,5,24.333,23.0
+Hollywood Nights,4,2025-06-15,19,13.667,9.0
+Elmeg The Wise,4,2025-05-30,20,15.667,11.0
+Eminence Front,4,2025-06-21,9,19.667,19.0
+Butterflies,4,2025-06-10,15,18.333,8.0
+Bloodbuzz Ohio,4,2025-06-22,21,19.333,14.0
+Doc Brown,4,2025-05-31,19,14.667,11.0
+(dawn),4,2025-02-15,29,13.667,14.0
+No California,3,2025-05-30,20,24.0,24.0
+The Old Man's Boat,3,2025-06-03,17,31.0,31.0
+AUATC,3,2025-06-11,14,29.0,29.0
+Caution,3,2025-06-11,14,25.5,25.5
+Electric Avenue,3,2025-06-01,18,27.0,27.0
+Psycho Killer,3,2025-06-06,25,15.5,15.5
+True Love Waits,3,2025-06-10,15,29.5,29.5
+Honeybee,2,2025-06-19,11,3.0,3.0
+The Labyrinth,2,2025-06-19,11,33.0,33.0
+Wild Night,2,2025-02-11,32,22.0,22.0
+Tomorrow Never Knows,2,2025-06-04,16,55.0,55.0
+Weird Fishes / Arpeggi,2,2025-06-22,21,48.0,48.0
+The Killing Moon,2,2025-06-22,21,56.0,56.0
+Doobie Song,2,2025-06-19,11,52.0,52.0
+Inside Out,2,2025-02-13,31,44.0,44.0
+Can't Get You Out Of My Head,2,2024-10-26,39,36.0,36.0
+In Your Eyes,2,2025-06-12,13,64.0,64.0
+Jam,2,2025-03-11,4,42.0,42.0
+Maniac,2,2024-11-07,53,3.0,3.0
+Rock The Casbah,2,2024-10-30,57,18.0,18.0
+Me & My Uncle,2,2025-05-10,40,36.0,36.0
+Moby,2,2025-02-13,31,7.0,7.0
+Sirius,2,2024-12-14,46,1.0,1.0
+Loose Ends,2,2024-11-12,49,15.0,15.0
+Dim Lights,2,2025-05-10,40,10.0,10.0
+Achy Breaky Heart,1,2024-11-10,50,,
+(satellite),1,2024-09-13,60,,
+Atlantic City,1,2024-11-10,50,,
+Brokedown Palace,1,2024-10-25,38,,
+Franklin's Tower,1,2024-12-14,46,,
+Help on the Way,1,2024-12-14,46,,
+I Only Have Eyes For You,1,2024-12-31,44,,
+Flood in Franklin Park,1,2025-02-06,35,,
+Everybody Wants To Rule The World,1,2024-10-31,56,,
+Arise,1,2024-09-27,68,,
+Cantaloupe Island,1,2024-10-01,43,,
+Danger Zone,1,2024-11-07,53,,
+Cold Rain And Snow,1,2024-10-25,38,,
+Draggin' the Line,1,2024-09-24,70,,
+"Don’t Think Twice, It’s Alright",1,2025-05-10,40,,
+Kashmir,1,2024-12-13,47,,
+I2I,1,2024-12-31,44,,
+In Bloom,1,2025-05-08,42,,
+Jack-A-Roe,1,2025-06-21,9,,
+Get Down Tonight,1,2024-12-14,46,,
+Slip Slidin’ Away,1,2024-12-14,46,,
+Peggy-O,1,2024-11-12,49,,
+Lily's Tiger,1,2024-09-15,76,,
+Low Rider,1,2024-12-30,45,,
+Mad World,1,2024-09-20,73,,
+Look Out Cleveland,1,2024-09-22,71,,
+Milestone 2 (Skux Life),1,2024-09-20,73,,
+Moby Dick,1,2025-05-31,19,,
+Moonrise,1,2024-11-10,50,,
+Nights In White Satin,1,2025-06-11,14,,
+No Rain,1,2025-06-20,10,,
+Love Is A Battlefield,1,2025-02-14,30,,
+Ship Of Fools,1,2024-10-01,43,,
+Rosa Lee McFall,1,2024-09-06,80,,
+Ride Like The Wind,1,2025-05-08,42,,
+One More Day,1,2024-09-20,73,,
+Not Alone,1,2024-11-07,53,,
+Slipknot!,1,2024-12-14,46,,
+Stranger Things,1,2024-10-31,56,,
+The King,1,2024-12-13,47,,
+The W.S. Walcott Medicine Show,1,2024-09-24,70,,
+Switchin',1,2024-09-03,64,,
+Take On Me,1,2024-10-26,39,,
+Trick To Happy,1,2025-02-10,28,,
+Trevor Reads Poetry,1,2025-05-31,19,,
+War Pigs,1,2024-10-01,43,,
+Wipeout,1,2024-10-31,56,,

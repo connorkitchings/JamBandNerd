@@ -1,0 +1,12 @@
+# Configuration for prediction pipeline scripts
+
+# Paths to each band's prediction scripts
+predict_scripts:
+  Phish_CK+: src/jambandnerd/predictions/ckplus_model/phish/predict_today.py
+  Phish_Notebook: src/jambandnerd/predictions/notebook_model/phish/predict_today.py
+  Goose_CK+: src/jambandnerd/predictions/ckplus_model/goose/predict_today.py
+  Goose_Notebook: src/jambandnerd/predictions/notebook_model/goose/predict_today.py
+  WSP_CK+: src/jambandnerd/predictions/ckplus_model/wsp/predict_today.py
+  WSP_Notebook: src/jambandnerd/predictions/notebook_model/wsp/predict_today.py
+  # UM_CK+: src/jambandnerd/predictions/ckplus_model/um/predict_today.py
+  # UM_Notebook: src/jambandnerd/predictions/notebook_model/um/predict_today.py

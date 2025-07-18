@@ -3,14 +3,8 @@ Data loader for Phish CK+ prediction pipeline.
 Loads setlist, show, and song data and merges them for analysis.
 """
 
-import os
-import sys
-
 import pandas as pd
-
-from utils.logger import get_logger
-
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from logger import get_logger
 
 logger = get_logger(__name__)
 

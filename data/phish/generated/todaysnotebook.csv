@@ -1,175 +1,190 @@
 song,times_played_last_year,last_time_played_date,current_show_gap,average_gap,median_gap
-Chalk Dust Torture,12,2025-04-25,7,4.091,4.0
-Harry Hood,12,2025-06-20,3,4.364,4.0
-Everything's Right,11,2025-06-20,3,4.9,4.5
-Evolve,11,2025-04-25,7,4.3,4.5
-Wolfman's Brother,11,2025-06-20,3,4.9,5.0
-46 Days,11,2025-06-20,3,4.7,4.5
-Sand,11,2025-04-27,5,4.7,5.0
-Theme From the Bottom,11,2025-06-20,3,4.7,4.5
-Kill Devil Falls,10,2025-04-27,5,5.111,6.0
-Sigma Oasis,10,2025-04-20,10,4.333,4.0
-Character Zero,10,2025-04-23,8,4.778,5.0
-The Moma Dance,10,2025-06-20,3,5.444,5.0
-Bathtub Gin,10,2025-04-19,11,4.222,4.0
-Back on the Train,10,2025-06-20,3,5.444,5.0
-Light,9,2025-04-25,7,5.625,7.0
-Fuego,9,2025-04-27,5,5.5,6.0
-Run Like an Antelope,9,2025-04-26,6,5.25,4.5
-No Men In No Man's Land,9,2025-04-22,9,5.25,5.0
-Piper,9,2025-06-20,3,5.25,5.0
-Twist,9,2025-06-20,3,6.0,6.0
-Slave to the Traffic Light,9,2025-06-20,3,6.125,5.5
-Maze,8,2025-04-22,9,5.714,5.0
-Ruby Waves,8,2025-04-22,9,6.0,6.0
-Golden Age,8,2025-04-18,12,5.286,5.0
-First Tube,8,2025-04-23,8,6.143,5.0
-Backwards Down the Number Line,8,2025-04-19,11,5.571,6.0
-Tube,8,2025-04-18,12,5.571,6.0
-Say It To Me S.A.N.T.O.S.,8,2025-04-27,5,6.0,5.0
-Life Saving Gun,7,2025-06-20,3,7.167,7.0
-More,7,2025-04-27,5,6.5,5.5
-Crosseyed and Painless,7,2025-04-23,8,7.333,7.5
-Bouncing Around the Room,7,2025-06-20,3,8.0,6.0
-A Life Beyond The Dream,7,2025-04-25,7,6.167,4.0
-Weekapaug Groove,6,2025-04-22,9,8.2,7.0
-Split Open and Melt,6,2025-04-22,9,7.8,7.0
-Sample in a Jar,6,2025-06-20,3,7.8,7.0
-Monsters,6,2025-04-19,11,7.2,9.0
-Hey Stranger,6,2025-04-27,5,8.6,9.0
-Most Events Aren't Planned,6,2025-04-27,5,7.8,7.0
-Mike's Song,6,2025-04-22,9,8.2,7.0
-Cavern,5,2025-04-27,5,9.5,9.5
-Simple,5,2025-04-23,8,10.25,9.5
-Steam,5,2024-10-25,19,7.5,7.5
-Rift,5,2025-04-25,7,10.5,9.0
-Mountains in the Mist,5,2024-12-28,16,8.75,8.5
-Cities,5,2025-04-20,10,8.25,7.5
-What's the Use?,5,2025-04-22,9,7.25,7.0
-Taste,5,2025-04-26,6,9.25,9.0
-Lonely Trip,5,2025-04-23,8,11.0,9.0
-Plasma,4,2025-04-20,10,11.667,12.0
-I Am Hydrogen,4,2025-04-22,9,13.667,13.0
-Gotta Jibboo,4,2024-10-27,17,11.0,10.0
-Martian Monster,4,2025-04-26,6,14.333,17.0
-My Soul,4,2025-04-22,4,12.667,8.0
-Scents and Subtle Sounds,4,2025-04-20,10,13.333,8.0
-Timber (Jerry the Mule),4,2025-04-27,5,14.667,9.0
-The Squirming Coil,4,2025-04-26,6,13.333,7.0
-Waste,4,2025-04-22,9,12.0,6.0
-Divided Sky,4,2025-04-26,6,15.0,10.0
-Farmhouse,4,2025-04-19,11,11.0,7.0
-Beneath a Sea of Stars Part 1,4,2025-04-26,6,14.0,16.0
-Roggae,4,2025-04-22,9,14.333,16.0
-Ether Edge,4,2025-04-26,6,11.333,6.0
-Birds of a Feather,4,2025-06-20,3,13.0,8.0
-Limb By Limb,3,2024-10-27,17,13.0,13.0
-Funky Bitch,3,2025-01-30,25,13.5,13.5
-Ocelot,3,2025-01-28,4,18.0,18.0
-Suzy Greenberg,3,2025-06-20,3,22.5,22.5
-Saw It Again,3,2025-01-31,24,14.0,14.0
-Boogie On Reggae Woman,3,2025-04-20,10,20.0,20.0
-555,3,2025-04-26,6,17.5,17.5
-Buried Alive,3,2025-04-22,9,19.5,19.5
-NICU,3,2024-08-15,40,6.0,6.0
-Mull,3,2025-04-18,12,16.0,16.0
-Undermind,3,2024-08-31,28,8.5,8.5
-Wading in the Velvet Sea,3,2025-04-23,8,12.0,12.0
-Set Your Soul Free,3,2025-01-29,26,7.5,7.5
-Driver,2,2024-12-28,16,18.0,18.0
-The Old Home Place,2,2025-06-20,3,31.0,31.0
-The Well,2,2025-04-23,8,35.0,35.0
-Mercy,2,2025-02-01,23,22.0,22.0
-Twenty Years Later,2,2025-01-30,25,16.0,16.0
-Strange Design,2,2025-06-20,3,26.0,26.0
-Joy,2,2025-04-27,5,41.0,41.0
-Lifeboy,2,2025-04-27,5,37.0,37.0
-If I Could,2,2025-04-18,12,27.0,27.0
-Izabella,2,2024-08-18,37,12.0,12.0
-Party Time,2,2024-08-18,36,13.0,13.0
-The Lizards,2,2025-04-27,5,37.0,37.0
-Shade,2,2025-01-30,25,13.0,13.0
-Sleeping Monkey,2,2025-04-19,11,8.0,8.0
-It's Ice,2,2024-08-07,34,13.0,13.0
-Heavy Things,2,2024-10-27,17,21.0,21.0
-Jam,2,2025-01-28,4,16.0,16.0
-Grind,2,2024-12-31,13,26.0,26.0
-Punch You in the Eye,2,2025-04-23,8,30.0,30.0
-My Sweet One,2,2025-01-29,17,9.0,9.0
-Axilla,2,2024-08-18,31,18.0,18.0
-Dirt,2,2024-10-25,19,22.0,22.0
-Cars Trucks Buses,2,2025-01-31,24,16.0,16.0
-Loving Cup,2,2024-08-31,28,6.0,6.0
-Peaches en Regalia,2,2024-08-16,35,16.0,16.0
-Human Nature,2,2024-08-11,31,16.0,16.0
-I Never Needed You Like This Before,2,2024-08-11,31,9.0,9.0
-A Day in the Life,1,2024-08-02,38,,
-A Song I Heard the Ocean Sing,1,2024-07-28,41,,
-Access Me,1,2024-10-27,17,,
-Auld Lang Syne,1,2024-12-31,13,,
-Beauty of My Dreams,1,2024-08-06,35,,
-Big Black Furry Creature from Mars,1,2024-08-09,33,,
-Fuck Your Face,1,2024-12-28,16,,
-Frankenstein,1,2024-08-07,34,,
-Foam,1,2024-07-27,42,,
-Fikus,1,2024-08-11,31,,
-Fee,1,2024-08-30,29,,
-Esther,1,2024-07-27,42,,
-Dog Log,1,2024-09-01,27,,
-Dinner and a Movie,1,2024-08-10,32,,
-Contact,1,2024-07-26,43,,
-Death Don't Hurt Very Long,1,2024-08-07,34,,
-Brian and Robert,1,2024-07-26,43,,
-Box of Rain,1,2024-10-25,19,,
-Destiny Unbound,1,2024-08-04,36,,
-Midnight Rider,1,2024-08-14,20,,
-Nellie Kane,1,2024-08-06,35,,
-Nothing,1,2024-10-26,18,,
-I Didn't Know,1,2024-08-03,37,,
-Ginseng Sullivan,1,2024-08-07,34,,
-Guelah Papyrus,1,2024-08-30,29,,
-Guy Forget,1,2024-08-03,37,,
-Good Times Bad Times,1,2024-07-26,43,,
-Miss You,1,2024-07-31,39,,
-Moonage Daydream,1,2024-07-27,42,,
-Mr. Completely,1,2024-07-31,39,,
-McGrupp and the Watchful Hosemasters,1,2024-08-04,36,,
-Horn,1,2024-07-31,39,,
-Guyute,1,2024-07-23,45,,
-Icculus,1,2024-12-31,13,,
-Lengthwise,1,2024-12-30,14,,
-Leaves,1,2024-07-24,44,,
-Lawn Boy,1,2024-07-31,39,,
-Knuckle Bone Broth Avenue,1,2024-08-04,36,,
-Rock and Roll,1,2024-08-03,37,,
-Poor Heart,1,2024-12-28,16,,
-The Dogs,1,2024-08-04,36,,
-The Connection,1,2024-07-21,46,,
-Silent in the Morning,1,2024-07-26,43,,
-Soul Planet,1,2024-08-04,36,,
-Strawberry Letter 23,1,2024-08-06,35,,
-Sugar Shack,1,2024-08-29,30,,
-Seven Below,1,2024-12-30,14,,
-Scent of a Mule,1,2024-08-02,38,,
-Round Room,1,2024-12-28,16,,
-Sabotage,1,2024-09-01,27,,
-Shine a Light,1,2024-08-09,33,,
-Sightless Escape,1,2025-01-31,24,,
-Soul Shakedown Party,1,2025-02-01,23,,
-Stairway to Heaven,1,2024-08-14,20,,
-Turtle in the Clouds,1,2024-07-31,39,,
-Train Song,1,2024-08-06,35,,
-Thread,1,2024-07-21,46,,
-The Final Hurrah,1,2024-08-04,36,,
-The Landlady,1,2025-04-27,5,,
-The Horse,1,2024-07-26,43,,
-The Mango Song,1,2024-12-28,16,,
-The Oh Kee Pa Ceremony,1,2024-08-02,38,,
-Waves,1,2024-08-10,32,,
-Vultures,1,2024-07-30,40,,
-When the Circus Comes,1,2024-07-20,47,,
-Weigh,1,2024-08-10,32,,
-Wingsuit,1,2024-08-04,36,,
-Winterqueen,1,2024-12-30,14,,
-Woodlands Jam,1,2024-08-16,51,,
-Your Pet Cat,1,2024-08-16,51,,
+Harry Hood,14,2025-07-12,4,4.308,4.0
+Chalk Dust Torture,13,2025-07-11,0,5.083,4.5
+Bathtub Gin,12,2025-07-12,4,4.909,4.0
+Character Zero,12,2025-07-04,8,4.727,5.0
+46 Days,12,2025-07-05,7,4.727,5.0
+Free,12,2025-07-11,0,5.455,5.0
+Down with Disease,12,2025-07-11,5,4.909,5.0
+The Moma Dance,12,2025-07-12,4,5.182,4.0
+Fuego,11,2025-07-05,7,5.1,5.5
+Kill Devil Falls,11,2025-07-03,9,5.1,6.0
+Twist,11,2025-07-11,0,6.0,6.0
+Back on the Train,11,2025-07-04,8,5.3,5.0
+Also Sprach Zarathustra,11,2025-07-03,9,5.0,4.5
+Oblivion,10,2025-07-04,8,5.667,6.0
+Light,10,2025-07-03,9,5.778,7.0
+No Men In No Man's Land,10,2025-06-27,10,5.556,5.0
+Piper,10,2025-07-09,6,5.333,5.0
+First Tube,10,2025-07-11,5,6.111,5.0
+What's Going Through Your Mind,10,2025-07-04,8,5.889,5.0
+Sigma Oasis,10,2025-07-05,7,5.667,5.0
+Say It To Me S.A.N.T.O.S.,10,2025-07-12,0,6.222,5.0
+Tube,9,2025-07-03,9,6.375,5.0
+Reba,9,2025-07-11,0,7.5,7.0
+Ruby Waves,9,2025-06-28,0,7.5,6.0
+Pillow Jets,9,2025-07-03,9,6.375,5.0
+Backwards Down the Number Line,9,2025-07-09,6,6.625,6.0
+Monsters,8,2025-07-12,0,8.0,7.0
+Bouncing Around the Room,8,2025-07-03,9,7.286,5.0
+Crosseyed and Painless,8,2025-07-05,7,7.714,7.0
+Hey Stranger,8,2025-07-11,0,8.143,9.0
+Mike's Song,8,2025-07-12,4,7.857,7.0
+More,8,2025-07-05,7,6.571,6.0
+Life Saving Gun,8,2025-07-09,6,7.0,7.0
+Weekapaug Groove,8,2025-07-12,4,7.857,7.0
+Bug,7,2025-07-09,6,7.333,7.0
+Axilla (Part II),7,2025-07-09,6,7.667,7.5
+AC/DC Bag,7,2025-07-09,6,8.667,7.5
+Taste,7,2025-07-11,5,7.833,7.5
+Most Events Aren't Planned,7,2025-07-04,8,7.5,6.5
+Rift,7,2025-07-11,5,8.833,9.0
+Walls of the Cave,6,2025-07-11,5,9.8,11.0
+Llama,6,2025-07-11,5,9.4,8.0
+Sample in a Jar,6,2025-07-09,6,9.0,8.0
+Plasma,6,2025-07-12,0,10.8,12.0
+Lonely Trip,6,2025-07-09,6,11.0,10.0
+Cities,6,2025-06-27,10,8.4,11.0
+Divided Sky,6,2025-07-12,4,11.2,8.0
+What's the Use?,6,2025-07-03,9,7.6,9.0
+Martian Monster,5,2025-07-09,6,13.0,13.0
+Mercury,5,2025-07-12,4,12.0,9.0
+Golgi Apparatus,5,2025-06-22,12,9.75,11.0
+Birds of a Feather,5,2025-07-05,7,11.0,7.5
+Cavern,5,2025-04-27,16,9.0,9.0
+Halley's Comet,5,2025-06-21,13,9.5,8.5
+My Soul,5,2025-06-28,0,12.75,11.5
+I Am Hydrogen,5,2025-07-12,4,13.75,14.0
+Mountains in the Mist,5,2024-12-28,27,8.25,8.5
+The Howling,5,2025-06-24,11,10.0,9.5
+Steam,5,2024-10-25,30,7.0,7.0
+The Wedge,5,2025-06-22,12,9.5,8.0
+Timber (Jerry the Mule),5,2025-07-04,8,12.5,9.0
+The Squirming Coil,5,2025-06-27,10,11.25,7.0
+Waste,5,2025-06-28,0,13.5,13.0
+Mull,4,2025-07-09,6,15.667,17.0
+NICU,4,2025-07-12,4,19.0,8.0
+Gotta Jibboo,4,2024-10-27,28,10.333,10.0
+Farmhouse,4,2025-04-19,22,10.333,5.0
+Buried Alive,4,2025-07-05,7,16.667,17.0
+Beneath a Sea of Stars Part 1,4,2025-04-26,17,13.333,16.0
+I Always Wanted It This Way,4,2025-06-24,11,12.0,12.0
+Limb By Limb,4,2025-06-28,0,17.333,12.0
+Suzy Greenberg,4,2025-07-11,5,17.333,9.0
+Scents and Subtle Sounds,4,2025-04-20,21,12.667,8.0
+The Well,4,2025-07-11,5,15.667,9.0
+Undermind,4,2025-07-09,6,16.0,11.0
+Dirt,3,2025-06-27,10,20.0,20.0
+Funky Bitch,3,2025-01-30,34,13.5,13.5
+Loving Cup,3,2025-07-09,6,18.5,18.5
+Ocelot,3,2025-01-28,15,17.0,17.0
+Ya Mar,3,2025-06-24,11,23.5,23.5
+The Lizards,3,2025-07-05,7,22.0,22.0
+Joy,3,2025-07-12,4,25.5,25.5
+Halfway to the Moon,3,2025-06-21,13,17.0,17.0
+Wading in the Velvet Sea,3,2025-04-23,19,11.0,11.0
+Saw It Again,3,2025-01-31,33,14.0,14.0
+Rock and Roll,2,2025-06-28,0,46.0,46.0
+The Mango Song,2,2025-07-09,6,21.0,21.0
+Driver,2,2024-12-28,27,16.0,16.0
+Grind,2,2024-12-31,24,24.0,24.0
+Axilla,2,2024-08-18,40,18.0,18.0
+A Day in the Life,2,2025-07-05,7,40.0,40.0
+Bold As Love,2,2025-06-21,13,13.0,13.0
+Beauty of My Dreams,2,2025-07-04,8,36.0,36.0
+Cars Trucks Buses,2,2025-01-31,33,16.0,16.0
+Billy Breathes,2,2025-06-21,13,32.0,32.0
+The Old Home Place,2,2025-06-20,14,29.0,29.0
+Vultures,2,2025-07-09,6,43.0,43.0
+When the Circus Comes,2,2025-07-11,5,51.0,51.0
+The Final Hurrah,2,2025-07-11,5,40.0,40.0
+Jam,2,2025-01-28,15,16.0,16.0
+Izabella,2,2024-08-18,46,12.0,12.0
+Heavy Things,2,2024-10-27,28,19.0,19.0
+My Sweet One,2,2025-01-29,28,7.0,7.0
+Strawberry Letter 23,2,2025-07-09,6,38.0,38.0
+Soul Planet,2,2025-07-12,4,41.0,41.0
+Sleeping Monkey,2,2025-04-19,22,8.0,8.0
+Stealing Time From the Faulty Plan,2,2025-06-24,11,34.0,34.0
+Sightless Escape,2,2025-07-11,5,28.0,28.0
+Strange Design,2,2025-06-20,14,24.0,24.0
+If I Could,2,2025-04-18,23,25.0,25.0
+I Never Needed You Like This Before,2,2024-08-11,40,9.0,9.0
+Human Nature,2,2024-08-11,40,16.0,16.0
+Lifeboy,2,2025-04-27,16,35.0,35.0
+Moonage Daydream,2,2025-06-28,0,51.0,51.0
+Meat,2,2025-06-21,13,36.0,36.0
+Party Time,2,2024-08-18,45,13.0,13.0
+Peaches en Regalia,2,2024-08-16,44,16.0,16.0
+Guyute,2,2025-07-04,8,46.0,46.0
+Destiny Unbound,2,2025-07-12,4,41.0,41.0
+Nellie Kane,2,2025-07-03,9,35.0,35.0
+Auld Lang Syne,1,2024-12-31,24,,
+Brian and Robert,1,2024-07-26,52,,
+Box of Rain,1,2024-10-25,30,,
+Carolina,1,2025-07-12,4,,
+Buffalo Bill,1,2025-07-05,7,,
+Guy Forget,1,2024-08-03,46,,
+Good Times Bad Times,1,2024-07-26,52,,
+Fuck Your Face,1,2024-12-28,27,,
+Esther,1,2024-07-27,51,,
+Fee,1,2024-08-30,38,,
+Fast Enough for You,1,2025-06-22,12,,
+Fikus,1,2024-08-11,40,,
+Frankenstein,1,2024-08-07,43,,
+Devotion To a Dream,1,2025-07-11,5,,
+Death Don't Hurt Very Long,1,2024-08-07,43,,
+Daniel Saw the Stone,1,2025-06-27,10,,
+Crowd Control,1,2025-06-27,10,,
+Dog Log,1,2024-09-01,36,,
+Dinner and a Movie,1,2024-08-10,41,,
+Dogs Stole Things,1,2025-06-24,11,,
+Egg in a Hole,1,2025-06-22,12,,
+Contact,1,2024-07-26,52,,
+Access Me,1,2024-10-27,28,,
+A Song I Heard the Ocean Sing,1,2024-07-28,50,,
+Big Black Furry Creature from Mars,1,2024-08-09,42,,
+Icculus,1,2024-12-31,24,,
+Horn,1,2024-07-31,48,,
+Mr. Completely,1,2024-07-31,48,,
+My Mind's Got a Mind of its Own,1,2025-07-11,5,,
+Miss You,1,2024-07-31,48,,
+I Am the Walrus,1,2025-07-12,4,,
+Lengthwise,1,2024-12-30,25,,
+Knuckle Bone Broth Avenue,1,2024-08-04,45,,
+Jesus Just Left Chicago,1,2025-07-12,4,,
+Leaves,1,2024-07-24,53,,
+Lawn Boy,1,2024-07-31,48,,
+McGrupp and the Watchful Hosemasters,1,2024-08-04,45,,
+Poor Heart,1,2024-12-28,27,,
+Petrichor,1,2025-07-09,6,,
+Nothing,1,2024-10-26,29,,
+Paul and Silas,1,2025-06-24,11,,
+No Quarter,1,2025-07-04,8,,
+Midnight Rider,1,2024-08-14,31,,
+Stairway to Heaven,1,2024-08-14,31,,
+Sneakin' Sally Through the Alley,1,2025-07-03,9,,
+Sabotage,1,2024-09-01,36,,
+Rocky Top,1,2025-07-03,9,,
+Roses Are Free,1,2025-07-03,9,,
+Round Room,1,2024-12-28,27,,
+Seven Below,1,2024-12-30,25,,
+Scent of a Mule,1,2024-08-02,47,,
+Shine a Light,1,2024-08-09,42,,
+Silent in the Morning,1,2024-07-26,52,,
+The Horse,1,2024-07-26,52,,
+The Connection,1,2024-07-21,55,,
+Sugar Shack,1,2024-08-29,39,,
+Spanish Moon,1,2025-07-11,5,,
+Soul Shakedown Party,1,2025-02-01,32,,
+Train Song,1,2024-08-06,44,,
+The Landlady,1,2025-04-27,16,,
+The Oh Kee Pa Ceremony,1,2024-08-02,47,,
+Weigh,1,2024-08-10,41,,
+Waves,1,2024-08-10,41,,
+Water in the Sky,1,2025-06-24,11,,
+Waiting All Night,1,2025-07-09,6,,
+Wingsuit,1,2024-08-04,45,,
+Winterqueen,1,2024-12-30,25,,
+Woodlands Jam,1,2024-08-16,60,,
+Your Pet Cat,1,2024-08-16,60,,

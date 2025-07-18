@@ -2,6 +2,7 @@
 CLI runner for the Phish data collection pipeline. Handles sys.path for IDE/runtime compatibility.
 """
 
+import logging
 import os
 import sys
 
@@ -19,12 +20,17 @@ def run_phish_pipeline():
     Calls the main() function from run_pipeline.py.
     """
     import os
-    setlist_path = os.path.join(os.path.dirname(__file__), '..', 'data', 'phish', 'collected', 'setlistdata.csv')
+
+    setlist_path = os.path.join(
+        os.path.dirname(__file__), "..", "data", "phish", "collected", "setlistdata.csv"
+    )
     if not os.path.exists(setlist_path):
         os.makedirs(os.path.dirname(setlist_path), exist_ok=True)
-        with open(setlist_path, 'w') as f:
-            f.write('show_id,date,venue,city,state\n')  # Replace with actual headers as needed
-        logging.warning(f"{setlist_path} not found. Created an empty file with headers.")
+        with open(setlist_path, "w") as f:
+            f.write(
+                "show_id,date,venue,city,state\n"
+            )  # Replace with actual headers as needed
+        logging.warning("%s not found. Created an empty file with headers.", setlist_path)
     logging.info("Starting Phish pipeline...")
     try:
         success = phish_main()

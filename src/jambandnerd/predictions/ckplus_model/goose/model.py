@@ -5,7 +5,7 @@ NOTE: For import resolution, run scripts from the CKPlus root directory
 and mark CKPlus as the source root in your IDE.
 """
 
-from utils.logger import get_logger
+from .utils.logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -64,7 +64,7 @@ def aggregate_setlist_features(df, method="mean"):
             "avg_gap",
             "gap_ratio",
             "gap_z_score",
-            "ck+_score",
+            "ckplus_score",
         ]
     elif method == "median":
         song_stats["gap_ratio"] = song_stats["current_gap"] / song_stats["med_gap"]
@@ -76,14 +76,14 @@ def aggregate_setlist_features(df, method="mean"):
             "med_gap",
             "gap_ratio",
             "gap_z_score",
-            "ck+_score",
+            "ckplus_score",
         ]
     else:
         raise ValueError("method must be 'mean' or 'median'")
 
     song_stats["gap_z_score"] = song_stats["gap_ratio"] / song_stats["std_gap"]
-    song_stats["ck+_score"] = song_stats["gap_z_score"] * song_stats["gap_ratio"]
-    song_stats = song_stats.sort_values(by="ck+_score", ascending=False).reset_index(
+    song_stats["ckplus_score"] = song_stats["gap_z_score"] * song_stats["gap_ratio"]
+    song_stats = song_stats.sort_values(by="ckplus_score", ascending=False).reset_index(
         drop=True
     )
     song_stats = song_stats[final_columns]
