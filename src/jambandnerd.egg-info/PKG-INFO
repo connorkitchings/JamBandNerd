@@ -1,3 +1,19 @@
+Metadata-Version: 2.4
+Name: jambandnerd
+Version: 0.1.0
+Summary: Modular data science platform for jam band setlists, pipelines, and analytics.
+Author: Connor Kitchings
+License: MIT
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+Requires-Dist: pandas
+Requires-Dist: requests
+Requires-Dist: python-dotenv
+Requires-Dist: lxml==4.9.3
+Requires-Dist: pytest
+Requires-Dist: ruff
+Requires-Dist: black
+
 # JamBandNerd
 
 ## Project Overview (updated 06/25/2025)
@@ -9,7 +25,6 @@ setlists. It supports robust, parallelized data pipelines and predictive analyti
 - **Phish**
 - **Umphrey's McGee (UM)**
 - **Goose**
-
 
 ### Key Features
 
@@ -41,9 +56,7 @@ JamBandNerd/
 ├── requirements.txt
 ├── README.md              # This file
 └── ...
-
 ```
-
 
 ---
 
@@ -58,16 +71,13 @@ Each band has a dedicated, fully documented pipeline:
 
 See each band’s README for details and usage. Outputs are saved to `data/<band>/collected/`.
 
-
 ### Orchestration
 
 - Run all pipelines in parallel:
 
   ```bash
   python3 scripts/run_all_pipelines.py
-  
-```
-
+  ```
 
 - Logs are unified under `logs/` with `[MM-DD-YYYY HH:MM:SS] LEVEL: message` format.
 
@@ -84,53 +94,16 @@ Each model has its own README and can be run for all bands or individually.
 
 ## Development & Contribution
 
+- Python 3.9+
+- Install dependencies (recommended):
 
-### Environment Setup (Python 3.12 + UV)
-
-- **Install Python 3.12.x** (recommended for full compatibility; see lxml note below)
-- **Clone the repository:**
   ```bash
-  git clone https://github.com/connorkitchings/JamBandNerd.git
-  cd JamBandNerd
-  
-```
+  uv pip install -r requirements.txt
+  ```
 
-- **Create a virtual environment with Python 3.12:**
-  ```bash
-  uv venv --python=3.12
-  source .venv/bin/activate
-  
-```
-
-- **(If needed) Install pip:**
-  ```bash
-  curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
-  .venv/bin/python get-pip.py
-  rm get-pip.py
-  
-```
-
-- **Install UV in the venv (if not present):**
-  ```bash
-  .venv/bin/python -m pip install uv
-  
-```
-
-- **Install all dependencies from pyproject.toml:**
-  ```bash
-  .venv/bin/uv pip install .
-  
-```
-
-- **If using the Phish pipeline, set up `.env` with your `PHISH_API_KEY` in the project root.**
-
-#### ⚠️ lxml and Python Version Compatibility
-- `lxml` (required for some pipelines) is pinned to 4.9.3, which is **not compatible with Python 3.13+** at this time. Use Python 3.12.x for a smooth setup.
-
-#### Troubleshooting
-- If you see errors about missing pip, run the pip install step above.
-- If you see build errors for lxml, double-check you are using Python 3.12, not 3.13+.
-- For other issues, see the project_context.md or open an issue.
+  [uv](https://github.com/astral-sh/uv) is a fast, modern Python package manager. If you don't have
+  it, install with `pip install uv`.
+- See [CONTRIBUTING.md] (if available) for guidelines.
 
 ---
 

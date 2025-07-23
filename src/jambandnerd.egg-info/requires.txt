@@ -1,0 +1,7 @@
+pandas
+requests
+python-dotenv
+lxml==4.9.3
+pytest
+ruff
+black

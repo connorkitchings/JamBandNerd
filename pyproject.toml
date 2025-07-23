@@ -1,0 +1,26 @@
+[project]
+name = "jambandnerd"
+version = "0.1.0"
+description = "Modular data science platform for jam band setlists, pipelines, and analytics."
+authors = [
+  { name = "Connor Kitchings" }
+]
+requires-python = ">=3.9"
+readme = "README.md"
+license = { text = "MIT" }
+
+dependencies = [
+  "pandas",
+  "requests",
+  "python-dotenv",
+  # lxml 4.9.3 is last known stable for Python <=3.12; Python 3.13+ may not be supported yet
+  "lxml==4.9.3",
+  "pytest",
+  "ruff",
+  "black"
+]
+
+[tool.uv]
+# UV-specific configuration (if needed)
+
+

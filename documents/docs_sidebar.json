@@ -1,0 +1,38 @@
+[
+  {
+    "title": "README",
+    "path": "../README.md"
+  },
+  {
+    "title": "Playbook",
+    "path": "playbook.md"
+  },
+  {
+    "title": "Planning",
+    "children": [
+      { "title": "PRD", "path": "planning/prd.md" },
+      { "title": "Scope Appendix", "path": "planning/scope_appendix.md" },
+      { "title": "Implementation Schedule", "path": "planning/implementation_schedule.md" },
+      { "title": "Project Context", "path": "planning/project_context.md" }
+    ]
+  },
+  {
+    "title": "Execution",
+    "children": [
+      { "title": "Dev Log", "path": "execution/dev_log_template.md" },
+      { "title": "Knowledge Base", "path": "execution/knowledge_base.md" },
+      { "title": "Quality Gates", "path": "execution/quality_gates.md" },
+      { "title": "Session Logs", "path": "execution/session_logs/" }
+    ]
+  },
+  {
+    "title": "Guides",
+    "children": [
+      { "title": "Getting Started", "path": "guides/getting_started.md" }
+    ]
+  },
+  {
+    "title": "Current Context",
+    "path": "_current_context.md"
+  }
+]

@@ -14,3 +14,8 @@ logs/
 
 # macOS System Files
 .DS_Store
+
+# Builds
+build/
+dist/
+.eggs/
