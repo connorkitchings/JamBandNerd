@@ -41,7 +41,7 @@ jobs:
         
     - name: Upload collection logs
       if: always()
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: collection-logs
         path: logs/
@@ -78,7 +78,7 @@ jobs:
         
     - name: Upload prediction logs
       if: always()
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: prediction-logs
         path: logs/
