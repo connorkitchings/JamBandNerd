@@ -5,3 +5,7 @@ lxml==4.9.3
 pytest
 ruff
 black
+supabase
+beautifulsoup4
+psycopg2-binary
+typer[all]

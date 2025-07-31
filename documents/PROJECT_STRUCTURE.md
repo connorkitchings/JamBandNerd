@@ -27,12 +27,6 @@ JamBandNerd/
 │   └── run_all_predict_todays.log
 ├── README.md
 ├── requirements.txt
-├── data/
-│   ├── README.md
-│   ├── goose/
-│   ├── phish/
-│   ├── um/
-│   └── wsp/
 ├── scripts/
 │   ├── run_all_pipelines.py
 │   ├── run_all_predict_todays.py
@@ -66,12 +60,15 @@ JamBandNerd/
 │   ├── Images/
 │   └── streamlit-app/
 
-> __Note:__ This structure follows data science best practices, with modular separation for data collection, processing, modeling, prediction, publishing, and documentation. Adjust subfolders as
-needed for your specific project components.
-
+> __Note:__ This structure follows data science best practices, with modular separation for data
+ collection, processing, modeling, prediction, publishing, and documentation.
+> __Note on Data Storage:__ The local `data/` directory is deprecated. All data pipelines are being
+ migrated to use Supabase as the central data store. The Phish pipeline has been fully migrated,
+ and other bands will follow. The `data/` directory may still contain legacy files but is no longer
+ the source of truth.
 > __Note:__ The `venv` directory, `__pycache__` directories, and `.DS_Store` files are automatically
-generated and can be safely ignored. The `.devcontainer/`, `.vscode/`, `config/`: Environment and
-editor configuration (devcontainer.json, settings.json, etc.)
-
+ generated and can be safely ignored. The `.devcontainer/`, `.vscode/`, `config/`: Environment and
+ editor configuration (devcontainer.json, settings.json, etc.)
 > __Note:__ Python 3.12.x is recommended for full compatibility (especially for lxml). All
-dependencies are managed through `pyproject.toml` and installed with UV. See the README for setup steps.
+ dependencies are managed through `pyproject.toml` and installed with UV. See the README for
+setup steps.

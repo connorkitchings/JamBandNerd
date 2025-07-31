@@ -34,10 +34,10 @@ def get_api_key() -> str:
 def make_api_request(endpoint: str, api_key: str) -> dict:
     """Make a resilient API request to the Phish API with retry logic."""
     url = f"https://api.phish.net/v5/{endpoint}.json?apikey={api_key}"
-    retries = 3
+    retries = 5
     for attempt in range(retries):
         try:
-            response = requests.get(url, timeout=60)
+            response = requests.get(url, timeout=120)
             response.raise_for_status()
             return response.json()
         except (ChunkedEncodingError, RequestException) as e:

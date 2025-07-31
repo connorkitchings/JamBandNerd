@@ -1,4 +1,4 @@
-# JamBandNerd Project Context
+# # JamBandNerd Project Context
 
 ---
 
@@ -23,11 +23,12 @@ with robust orchestration and analytics.
 
 ## 2. Architecture
 
-**High-Level Summary:**
+### High-Level Summary
+
 JamBandNerd is organized around modular data collection pipelines (one per band), unified logging,
 and standardized analytics/prediction modules.
 
-**System Diagram:**
+### System Diagram
 
 ```text
 +---------------------------+      +-------------------+      +---------------------+
@@ -36,7 +37,7 @@ and standardized analytics/prediction modules.
 +--------------------------+      +-------------------+      +---------------------+
 ```
 
-**Folder Structure:**
+### Folder Structure
 
 ```text
 JamBandNerd/
@@ -152,3 +153,71 @@ python3 scripts/run_all_pipelines.py
 ---
 
 _Update this document whenever the tech stack, architecture, or standards change._
+
+## 6. Session Kickoff Prompt
+
+This is a template prompt to start a new AI session. Copy, paste, and fill in the bracketed
+information to bring the AI up to speed quickly.
+
+Hello. We are continuing our work on the 'JamBandNerd' project. Your role is my AI co-pilot, and we
+will be following the Vibe Coding System.
+
+To get up to speed, please perform the following steps:
+
+1. **Review the Project Foundation:**
+    - `documents/planning/project_context.md`: To understand the architecture and tech stack.
+    - `documents/planning/prd.md`: To understand the project goals and features.
+    - `pyproject.toml`: To understand the project dependencies and configuration.
+
+2. **Review the Current Sprint Status:**
+    - `documents/planning/implementation_schedule.md`: To see the current sprint goal and all open tasks.
+
+3. **Review the Last Session's Handoff:**
+    - `documents/execution/dev_logs/[YYYY-MM-DD].md`: Please review the most recent dev log entry to
+      understand exactly where we left off. Pay close attention to the 'Session Handoff' section.
+    - If you cannot find a dev log for today, check all dev logs for today's date with session
+      numbers ('_01', '_02', '_03', etc.) to find the latest handoff.
+
+4. **Prepare for Today's Task:**
+    - **Our focus today is:** Review `documents/planning/implementation_schedule.md` to see the
+      current sprint goal and all open tasks.
+
+Once you have completed this review, please confirm you are ready, and we will begin.
+
+## 7. Session Wrap-up Prompt
+
+This is a template prompt to end a development session cleanly. Copy, paste, and fill in the
+bracketed information.
+
+We are now ending our development session for today. To ensure we maintain our project context and
+prepare for a smooth handoff, please perform the following wrap-up tasks:
+
+1. **Summarize Session Accomplishments:**
+    - **Task Completed:** `[IMPL-task:ID] - [Brief description of the task]`
+    - **Key Outcomes:** `[List the 1-3 main achievements of the session, e.g., 'Successfully
+     connected to the phish.net API v5: The primary data source for all Phish-related information,
+     including shows, setlists, songs, and venues.']`
+
+2. **Identify Blockers and Learnings:**
+    - **Blockers Encountered:** `[Describe any issues that are preventing progress, e.g., 'The API
+     is rate-limiting our requests.']`
+    - **New Learnings/Patterns:** `[Mention any new solutions or patterns discovered that should be
+     added to the knowledge_base.md, e.g., 'Found a more efficient way to parse JSON responses.']`
+
+3. **Define Next Steps:**
+    - **Immediate Next Task:** `[What is the very next thing to do? e.g., 'Refactor the API client
+     to handle rate-limiting.']`
+
+4. **Generate the Dev Log:**
+    - Based on the information above, please generate a complete dev log entry for today, `[YYYY-MM-DD]`.
+    - Use the template from `documents/execution/dev_log_template.md`.
+    - **Important:** Check if a dev log already exists for today's date in the
+    `/documents/execution/dev_logs/` directory. If it does, create the new log with sequential numbering:
+      - First log of the day: `[YYYY-MM-DD].md`
+      - Second log of the day: `[YYYY-MM-DD]_02.md`
+      - Third log of the day: `[YYYY-MM-DD]_03.md`
+      - And so on...
+    - Create this log as a new file inside the `/documents/execution/dev_logs/` directory with the
+      appropriate filename based on existing logs for that date.
+
+After you have generated the dev log, I will review it, make any final edits, and commit it to our repository.

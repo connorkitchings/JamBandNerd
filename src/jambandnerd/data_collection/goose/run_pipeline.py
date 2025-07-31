@@ -9,19 +9,13 @@ import os
 import time
 import traceback
 
-from .export_data import save_goose_data, save_query_data
-from .loaders import (
-    get_next_show_info,
-    load_setlist_data,
-    load_show_data,
-    load_song_data,
-)
+from .loaders import load_goose_data
 from .utils import get_logger
 
 
 def main() -> None:
     """
-    Orchestrate the Goose data collection pipeline: load, process, and save all data.
+    Orchestrate the Goose data collection pipeline: load data from API into memory for prediction models to use.
     """
     # Ensure logs/Goose/ is always relative to the project root, not src/
     project_root = os.path.abspath(
@@ -49,25 +43,14 @@ def main() -> None:
         logger.info("No previous update found.")
     start_time = time.time()
     try:
-        logger.info("Loading Song Data")
-        song_data = load_song_data()
-        logger.info("Loading Show, Venue, and Tour Data")
-        show_data, venue_data, _ = load_show_data()
-        logger.info("Loading Setlist and Transition Data")
-        setlist_data, transition_data = load_setlist_data()
-        next_show_info = get_next_show_info(show_data, logger=logger)
-        save_goose_data(
-            song_data,
-            show_data,
-            venue_data,
-            setlist_data,
-            transition_data,
-            next_show_info,
-            data_dir,
-        )
-        save_query_data(data_dir)
+        # Load all data from API (in-memory only)
+        song_data, show_data, venue_data, setlist_data, transition_data, next_show_info = load_goose_data()
+        
+        # Data is now loaded in-memory and ready for prediction models
+        # No raw data export - only predictions should be saved to Supabase
         elapsed = time.time() - start_time
-        logger.info("Goose pipeline completed in %.2f seconds.", elapsed)
+        logger.info("Goose data collection completed in %.2f seconds.", elapsed)
+        logger.info("Data loaded in-memory and ready for prediction models.")
     # Intentionally broad Exception catch for pipeline robustness; logs all errors for debuggin
     except Exception as e:
         logger.error("Goose pipeline failed: %s\n%s", e, traceback.format_exc())

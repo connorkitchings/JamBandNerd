@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  jambandnerd-pipeline:
+    build:
+      context: ..
+      dockerfile: automation/Dockerfile
+    environment:
+      - PHISH_API_KEY=${PHISH_API_KEY}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
+    volumes:
+      - ../logs:/app/logs
+      - ../.env:/app/.env:ro
+    command: python automation/daily_pipeline.py
+    restart: "no"
+    
+  # Optional: Scheduler service for running pipelines on a schedule
+  jambandnerd-scheduler:
+    build:
+      context: ..
+      dockerfile: automation/Dockerfile
+    environment:
+      - PHISH_API_KEY=${PHISH_API_KEY}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
+      - SCHEDULE_CRON=0 20 * * *  # 3 PM ET (20:00 UTC during DST)
+    volumes:
+      - ../logs:/app/logs
+      - ../.env:/app/.env:ro
+    command: python automation/scheduler.py
+    restart: unless-stopped

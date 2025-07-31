@@ -73,4 +73,12 @@ def scrape_wsp_songs(
     song_codes["times_played"] = (
         pd.to_numeric(song_codes["times_played"], errors="coerce").fillna(0).astype(int)
     )
+
+    # Clean and format date columns
+    for col in ["first_played", "last_played"]:
+        # Replace non-date strings like 'First' with NaT
+        song_codes[col] = song_codes[col].replace("First", None)
+        # Convert to datetime, coercing errors to NaT (Not a Time)
+        song_codes[col] = pd.to_datetime(song_codes[col], errors="coerce")
+
     return song_codes

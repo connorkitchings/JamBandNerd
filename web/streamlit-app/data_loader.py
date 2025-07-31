@@ -1,31 +1,67 @@
 """Data loading and processing utilities for Jam Band Nerd app."""
 
+import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
 
 import pandas as pd
 import streamlit as st
+
+# Add the src directory to the Python path to import jambandnerd modules
+src_path = Path(__file__).parent.parent.parent / "src"
+sys.path.insert(0, str(src_path))
+
 from constants import NOTEBOOK_LABELS
+from jambandnerd.db.db_utils import get_table_as_dataframe
 
 
-def load_prediction_csv(csv_path: Path) -> pd.DataFrame:
-    """Load a prediction CSV as a DataFrame.
+def load_predictions_from_supabase(band: str, model_type: str) -> pd.DataFrame:
+    """Load predictions for a given band and model from Supabase.
 
     Args:
-        csv_path: Path to CSV file
+        band (str): The band's canonical name (e.g., 'Phish').
+        model_type (str): The model type ('CK+' or 'Notebook').
+
     Returns:
-        pd.DataFrame: Loaded DataFrame
+        pd.DataFrame: A DataFrame containing the predictions, properly sorted.
     """
+    model_suffix = "ckplus" if model_type == "CK+" else "notebook"
+    table_name = f"predictions_{model_suffix}"
+
     try:
-        df = pd.read_csv(csv_path)
+        # Load data using the proper database utilities
+        df = get_table_as_dataframe(table_name)
+
+        if df.empty:
+            st.warning(f"No data found in table '{table_name}' for band '{band}'")
+            return pd.DataFrame()
+
+        # Filter for the specific band
+        df = df[df['band'].str.lower() == band.lower()].copy()
+
+        if df.empty:
+            st.warning(f"No data found for band '{band}' in table '{table_name}'")
+            return pd.DataFrame()
+
+        # Apply proper sorting based on model type
+        if model_type == 'CK+':
+            # Sort CK+ by ckplus_score descending
+            df = df.sort_values('ckplus_score', ascending=False)
+        elif model_type == 'Notebook':
+            # Sort Notebook by times_played_last_year descending, then current_gap descending
+            df = df.sort_values(['times_played_last_year', 'current_gap'], ascending=[False, False])
+
+        # Limit to top 50 results
+        df = df.head(50)
+
         return df
+
     except Exception as e:
-        st.error(f"Failed to load {csv_path.name}: {e}")
+        st.error(f"Error loading data from table '{table_name}': {str(e)}")
         return pd.DataFrame()
 
 
 def format_dataframe(
-    df: pd.DataFrame, expected_cols: List[str], display_cols: List[str]
+    df: pd.DataFrame, expected_cols: list[str], display_cols: list[str]
 ) -> pd.DataFrame:
     """
     Format a dataframe by selecting expected columns and renaming them.
@@ -52,9 +88,10 @@ def format_dataframe(
     return result
 
 
-def get_column_config(file_label: str, band: str) -> Tuple[str, List[str], List[str]]:
+def get_column_config(file_label: str, band: str) -> tuple[str, list[str], list[str]]:
     """
     Get the appropriate column configuration based on prediction method and band.
+    Column names are mapped to match the actual Supabase schema.
 
     Args:
         file_label: String indicating prediction method ("CK+" or "Notebook")
@@ -66,14 +103,14 @@ def get_column_config(file_label: str, band: str) -> Tuple[str, List[str], List[
     if file_label == "CK+":
         display_label = "CK+"
         expected_columns = [
-            "song",
-            "times_played",
-            "ltp_date",
+            "song_name",
+            "times_played_total",
+            "last_played_date",
             "current_gap",
             "avg_gap",
             "gap_ratio",
             "gap_z_score",
-            "ck+_score",
+            "ckplus_score",
         ]
         display_columns = [
             "Song",
@@ -82,69 +119,37 @@ def get_column_config(file_label: str, band: str) -> Tuple[str, List[str], List[
             "Current Gap",
             "Avg Gap",
             "Gap Ratio",
-            "Gap Zscore",
+            "Gap Z-Score",
             "CK+ Score",
         ]
     elif file_label == "Notebook":
         display_label = NOTEBOOK_LABELS.get(band, "Notebook")
-        if band == "WSP":
-            expected_columns = [
-                "song",
-                "times_played_last_2years",
-                "last_time_played_date",
-                "current_show_gap",
-                "average_gap",
-                "median_gap",
-            ]
-            display_columns = [
-                "Song",
-                "Times Played Last 2 Years",
-                "LTP Date",
-                "Current Gap",
-                "Average Gap",
-                "Median Gap",
-            ]
-        elif band == "UM":
-            expected_columns = [
-                "song",
-                "times_played_last_year",
-                "last_time_played",
-                "average_gap_days",
-                "median_gap_days",
-            ]
-            display_columns = [
-                "Song",
-                "Times Played Last Year",
-                "LTP Date",
-                "Average Gap",
-                "Median Gap",
-            ]
-        else:
-            expected_columns = [
-                "song",
-                "times_played_last_year",
-                "last_time_played_date",
-                "current_show_gap",
-                "average_gap",
-                "median_gap",
-            ]
-            display_columns = [
-                "Song",
-                "Times Played Last Year",
-                "LTP Date",
-                "Current Gap",
-                "Average Gap",
-                "Median Gap",
-            ]
+        # Use unified schema for all bands - matches the actual Supabase table structure
+        expected_columns = [
+            "song_name",
+            "times_played_last_year",
+            "last_played_date",
+            "current_gap",
+            "avg_gap",
+            "median_gap",
+        ]
+        display_columns = [
+            "Song",
+            "Times Played Last Year",
+            "LTP Date",
+            "Current Gap",
+            "Average Gap",
+            "Median Gap",
+        ]
     else:
         display_label = file_label
-        # Default columns if needed
+        # Default columns if needed - use unified schema
         expected_columns = [
-            "song",
+            "song_name",
             "times_played_last_year",
-            "last_time_played_date",
-            "current_show_gap",
-            "average_gap",
+            "last_played_date",
+            "current_gap",
+            "avg_gap",
             "median_gap",
         ]
         display_columns = [

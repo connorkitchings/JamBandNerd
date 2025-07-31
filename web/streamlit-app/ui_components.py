@@ -1,7 +1,5 @@
 """UI components for Jam Band Nerd app."""
 
-from typing import Optional
-
 import streamlit as st
 
 
@@ -32,34 +30,7 @@ def display_method_explanation(file_label: str) -> None:
     st.sidebar.markdown(method_explanations.get(file_label, ""), unsafe_allow_html=True)
 
 
-def display_disclaimer(
-    pred_date_str: str, pred_time_str: str, data_date_str: str, data_time_str: str
-) -> None:
-    """
-    Display a disclaimer with prediction and data collection timestamps.
-
-    Args:
-        pred_date_str: Date when prediction was made
-        pred_time_str: Time when prediction was made
-        data_date_str: Date when data was collected
-        data_time_str: Time when data was collected
-    """
-    disclaimer = f"<div style='font-size:0.9em; color:#888; margin-top:12px; text-align:center;'>Predictions made on {pred_date_str} at {pred_time_str} with data collected on {data_date_str} at {data_time_str}. </div>"
+def display_disclaimer() -> None:
+    """Display a disclaimer for the user."""
+    disclaimer = "<div style='font-size:0.9em; color:#888; margin-top:12px; text-align:center;'>Predictions are based on the latest data available in the JamBandNerd database.</div>"
     st.markdown(disclaimer, unsafe_allow_html=True)
-
-
-def display_next_show(next_show_str: Optional[str]) -> None:
-    """
-    Display next show information if available.
-
-    Args:
-        next_show_str: Formatted next show string or None
-    """
-    if next_show_str:
-        # Capitalize only the first letter, do not add another colon
-        if next_show_str.lower().startswith("next show:"):
-            next_show_str = "Next Show" + next_show_str[8:]
-        st.markdown(
-            f"<h4 style='text-align: center; color: #fff;'>{next_show_str}</h4>",
-            unsafe_allow_html=True,
-        )

@@ -194,3 +194,39 @@ def load_nextshow_data(show_id: int) -> json:
     return make_api_request(f"shows/{show_id}", "v2")["data"][
         ["showdate", "venue_name", "city", "state", "country", ""]
     ]
+
+
+def load_goose_data() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, dict]:
+    """
+    Main orchestration function to load all Goose data from API.
+    
+    This function coordinates the loading of all data types needed for prediction models:
+    - Song data (with debut dates, play counts, etc.)
+    - Show data (dates, venues, etc.)
+    - Venue data (locations, names, etc.)
+    - Setlist data (songs played in each show)
+    - Transition data (how songs connect)
+    - Next show info (upcoming show details)
+    
+    Returns:
+        tuple: (song_data, show_data, venue_data, setlist_data, transition_data, next_show_info)
+    """
+    logger.info("Loading Goose data from API...")
+    
+    # Load all data types
+    logger.info("Loading song data...")
+    song_data = load_song_data()
+    
+    logger.info("Loading show, venue, and tour data...")
+    show_data, venue_data, _ = load_show_data()  # We don't need tour_data for predictions
+    
+    logger.info("Loading setlist and transition data...")
+    setlist_data, transition_data = load_setlist_data()
+    
+    logger.info("Getting next show info...")
+    next_show_info = get_next_show_info(show_data, logger=logger)
+    
+    logger.info("✅ Successfully loaded all Goose data from API")
+    logger.info(f"Loaded: {len(song_data)} songs, {len(show_data)} shows, {len(venue_data)} venues, {len(setlist_data)} setlist entries")
+    
+    return song_data, show_data, venue_data, setlist_data, transition_data, next_show_info

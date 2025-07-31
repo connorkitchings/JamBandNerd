@@ -10,9 +10,7 @@ import time
 from datetime import datetime
 
 from .call_api import get_api_key
-from .export_data import save_phish_data, save_query_data
 from .loaders import (
-    get_next_show_info,
     load_setlist_data,
     load_show_data,
     load_song_data,
@@ -23,7 +21,7 @@ from .utils import get_logger
 def main() -> bool:
     """
     Main entry point for the Phish data collection pipeline.
-    Loads data, logs progress, and saves results to disk.
+    Loads data from API into memory for prediction models to use.
     Returns True if successful, False if any error occurs.
     """
     # Ensure logs/Phish/ is always relative to the project root, not src/
@@ -74,17 +72,8 @@ def main() -> bool:
             len(setlist_data),
             len(transition_data),
         )
-        next_show_info = get_next_show_info(show_data, api_key)
-        save_phish_data(
-            song_data,
-            show_data,
-            venue_data,
-            setlist_data,
-            transition_data,
-            next_show_info,
-            data_dir,
-        )
-        save_query_data(data_dir)
+        # Data is now loaded in-memory and ready for prediction models
+        # No need to save raw data to Supabase - only predictions should be saved
         elapsed = time.time() - start_time
         logger.info("Phish pipeline completed in %.2f seconds.", elapsed)
         logger.info("Phish pipeline completed successfully.")

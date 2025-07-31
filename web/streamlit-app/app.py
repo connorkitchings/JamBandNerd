@@ -8,23 +8,14 @@ Features:
 Author: GPT-4
 """
 
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
-
-import pandas as pd
 import streamlit as st
-from band_utils import get_prediction_file_map, list_band_folders
-
-# Import constants and utility modules
-from constants import BAND_DISPLAY_NAMES, BANDS_DIR
-from data_loader import format_dataframe, get_column_config, load_prediction_csv
-from next_show_utils import get_next_show_info
-from timestamp_utils import get_data_collection_timestamp, get_prediction_timestamp
-from ui_components import (
-    display_disclaimer,
-    display_method_explanation,
-    display_next_show,
+from constants import BAND_DISPLAY_NAMES
+from data_loader import (
+    format_dataframe,
+    get_column_config,
+    load_predictions_from_supabase,
 )
+from ui_components import display_disclaimer, display_method_explanation
 
 
 def main() -> None:
@@ -32,47 +23,59 @@ def main() -> None:
     # Configure the app
     st.set_page_config(page_title="Jam Band Nerd", page_icon="🎶", layout="wide")
 
+    # Custom CSS for better color scheme
+    st.markdown("""
+    <style>
+    .main {
+        background-color: #0e1117;
+    }
+    .stSelectbox > div > div {
+        background-color: #262730;
+        color: #fafafa;
+    }
+    .stDataFrame {
+        background-color: #262730;
+    }
+    h1 {
+        color: #fafafa;
+        text-align: center;
+        padding: 1rem 0;
+    }
+    h3 {
+        color: #fafafa;
+        text-align: center;
+    }
+    .stMarkdown {
+        color: #fafafa;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
     st.markdown(
         "<h1 style='text-align: center;'>Jam Band Nerd</h1>", unsafe_allow_html=True
     )
 
-    # --- MAIN APP ---
-    if not BANDS_DIR.exists():
-        st.error(
-            f"Data directory '{BANDS_DIR.resolve()}' not found. Please ensure your data is uploaded and the path is correct."
-        )
-        return
+    # --- BAND AND MODEL SELECTION ---
     # Only allow Goose, Phish, and WSP (Widespread Panic) for selection
-    allowed_bands = ["Goose", "Phish", "WSP"]
-    # Build a mapping of display name to canonical band key
-    band_display_map = {BAND_DISPLAY_NAMES.get(b, b): b for b in allowed_bands}
-    band_display_names = list(band_display_map.keys())
+    allowed_bands = ["Phish", "Goose", "WSP"]
+    band_display_map = {BAND_DISPLAY_NAMES.get(b, b.replace("'s", "")): b for b in allowed_bands}
+    band_display_names = sorted(band_display_map.keys())  # Sort alphabetically
     selected_display = st.sidebar.selectbox("Select Band", band_display_names)
     band = band_display_map[selected_display]
 
-    band_dir = BANDS_DIR / band.lower() / "generated"
-    prediction_file_map = get_prediction_file_map(band_dir)
-
-    if not prediction_file_map:
-        st.warning(f"No prediction data found for {band}.")
-        return
-
-    # Show 'CK+', and 'Notebook' if present
-    dropdown_options = sorted(
-        [lbl for lbl in ["CK+", "Notebook"] if lbl in prediction_file_map], reverse=True
-    )
-    file_label = st.sidebar.selectbox("Select Prediction Method", dropdown_options)
+    # Show 'CK+', and 'Notebook' prediction models
+    model_options = ["CK+", "Notebook"]
+    file_label = st.sidebar.selectbox("Select Prediction Method", model_options)
 
     # Display method explanation
     display_method_explanation(file_label)
 
     # --- Prediction Data Loading ---
     try:
-        csv_path = prediction_file_map[file_label]
-        df = load_prediction_csv(csv_path)
-        df = df.head(50)  # Only publish up to 50 rows
+        df = load_predictions_from_supabase(band, file_label)
+        # Data is already limited to 50 rows and properly sorted in the data loader
     except Exception as e:
-        st.error(f"Error loading prediction data: {str(e)}")
+        st.error(f"Error loading prediction data from Supabase: {str(e)}")
         df = None
 
     if df is not None and not df.empty:
@@ -88,17 +91,11 @@ def main() -> None:
             unsafe_allow_html=True,
         )
 
-        # Get and display next show information
-        next_show_str = get_next_show_info(band, BANDS_DIR)
-        display_next_show(next_show_str)
-
         # Display the dataframe
         st.dataframe(df, use_container_width=True, height=1000)
 
-        # Get timestamps and display disclaimer
-        data_date_str, data_time_str = get_data_collection_timestamp(band, band_dir)
-        pred_date_str, pred_time_str = get_prediction_timestamp(band_dir, file_label)
-        display_disclaimer(pred_date_str, pred_time_str, data_date_str, data_time_str)
+        # Display disclaimer
+        display_disclaimer()
     else:
         st.info("No data to display.")
 

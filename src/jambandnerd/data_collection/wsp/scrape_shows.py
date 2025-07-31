@@ -19,23 +19,23 @@ logger = get_logger(__name__, add_console_handler=True)
 def scrape_wsp_shows(
     base_url: str = "http://www.everydaycompanion.com/",
     start_year: int = 1985,
-    skip_years: list = None,
+    years: list = None,
 ) -> "pd.DataFrame":
     """
-    Scrape and return show data for all years (except those in skip_years) from everydaycompanion.com.
+    Scrape and return show data for all years (except those in years) from everydaycompanion.com.
 
     Args:
         base_url (str): Base URL for Everyday Companion. Defaults to BASE_URL from config.
         start_year (int): First year to scrape. Defaults to 1985.
-        skip_years (list): Years to skip. Defaults to SKIP_YEARS from config.
+        years (list): Years to skip. Defaults to SKIP_YEARS from config.
     Returns:
         pd.DataFrame: DataFrame of show dates and venues.
     """
-    if skip_years is None:
-        skip_years = [2004]
+    if years is None:
+        years = [2004]
     today = date.today()
     this_year = today.year
-    tour_list = [x for x in range(start_year, this_year + 1) if x not in skip_years]
+    tour_list = [x for x in range(start_year, this_year + 1) if x not in years]
     tour_df_list = []
     for yr in tour_list:
         yr_str = str(yr)[-2:]

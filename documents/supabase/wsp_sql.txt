@@ -1,0 +1,59 @@
+-- Schema for wsp_songs
+CREATE TABLE IF NOT EXISTS public.wsp_songs (
+    code TEXT PRIMARY KEY,
+    song TEXT,
+    first_played TEXT,
+    last_played TEXT,
+    times_played INTEGER,
+    aka TEXT
+);
+
+-- RLS Policies
+ALTER TABLE public.wsp_songs ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Enable full access for public wsp_songs" ON public.wsp_songs FOR ALL TO public USING (true) WITH CHECK (true);
+
+----------------------------------------
+-- Schema for wsp_shows
+CREATE TABLE IF NOT EXISTS public.wsp_shows (
+    link TEXT PRIMARY KEY,
+    date TEXT,
+    year TEXT,
+    month TEXT,
+    day TEXT,
+    weekday TEXT,
+    date_ec TEXT,
+    venue TEXT,
+    city TEXT,
+    state TEXT,
+    show_index_overall INTEGER,
+    show_index_withinyear INTEGER,
+    run_index INTEGER,
+    venue_full TEXT
+);
+
+-- RLS Policies
+ALTER TABLE public.wsp_shows ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Enable full access for public wsp_shows" ON public.wsp_shows FOR ALL TO public USING (true) WITH CHECK (true);
+
+----------------------------------------
+-- Schema for wsp_setlists
+CREATE TABLE IF NOT EXISTS public.wsp_setlists (
+    id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    link TEXT,
+    song_name TEXT,
+    set_name TEXT,
+    song_index_set INTEGER,
+    song_index_show INTEGER,
+    is_into BOOLEAN,
+    song_note_detail TEXT,
+    CONSTRAINT wsp_setlists_unique_show_song UNIQUE (link, song_index_show)
+);
+
+-- RLS Policies
+ALTER TABLE public.wsp_setlists ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Enable full access for public wsp_setlists" ON public.wsp_setlists FOR ALL TO public USING (true) WITH CHECK (true);
+
+----------------------------------------

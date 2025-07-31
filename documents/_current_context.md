@@ -3,9 +3,11 @@
 _This file should be updated at the end of each session or sprint to summarize the current state,
 key decisions, and next steps._
 
-- **Active Sprint:** Sprint 7 – Data Pipeline Logging Improvements
-- **Current Focus:** Refactor Goose pipeline logging and update prediction model orchestration.
-- **Recent Decisions:** Standardized logger format across all band pipelines ([PRD-decision:2025-07-15]).
-- **Known Issues:** WSP pipeline completion message missing from logs/data_collection.log ([LOG:2025-07-19]).
-- **Next Steps:** Patch run_all.py to ensure WSP completion is logged; add new test cases for
-  unified logging.
+- **Active Sprint:** Supabase Data Migration
+- **Current Focus:** Complete the migration of all data pipelines from local files to Supabase.
+- **Recent Decisions:** Migrated the Phish pipeline to Supabase as a pilot. This new architecture
+  will be the template for all other bands.
+- **Known Issues:** The high-level orchestration script (`scripts/run_all_predict_todays.py`) uses
+  `subprocess` and fails for non-migrated pipelines. It needs to be refactored to use a more robust
+  method like `importlib`.
+- **Next Steps:** Migrate the Goose, UM, and WSP data and prediction pipelines to Supabase.

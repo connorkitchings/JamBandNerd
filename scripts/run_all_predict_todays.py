@@ -40,15 +40,22 @@ PREDICT_SCRIPTS = load_config()
 
 
 def run_script(label, script_path):
-    """Runs a prediction script and captures its output."""
+    """Runs a prediction script as a module using 'uv run' and captures its output."""
     logging.info("Starting %s (%s)...", label, script_path)
+
+    # Convert file path to module path (e.g., src/jambandnerd/x/y.py -> jambandnerd.x.y)
+    module_path = str(script_path).removeprefix("src/").removesuffix(".py").replace("/", ".")
+
+    command = ["uv", "run", "--", "python3", "-m", module_path]
+    logging.info("Executing command: %s", " ".join(command))
+
     try:
         result = subprocess.run(
-            [sys.executable, str(script_path)],
+            command,
             check=True,
             capture_output=True,
             text=True,
-            timeout=300,  # 5-minute timeout for each script
+            timeout=300,  # 5-minute timeout
         )
         return label, True, result.stdout, ""
     except subprocess.CalledProcessError as e:
