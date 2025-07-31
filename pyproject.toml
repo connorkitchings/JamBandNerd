@@ -25,7 +25,8 @@ dependencies = [
   "supabase",
   "beautifulsoup4",
   "psycopg2-binary",
-  "typer[all]"
+  "typer[all]",
+  "tqdm"
 ]
 
 [tool.setuptools.packages.find]

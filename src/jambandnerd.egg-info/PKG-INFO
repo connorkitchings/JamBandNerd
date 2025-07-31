@@ -17,6 +17,7 @@ Requires-Dist: supabase
 Requires-Dist: beautifulsoup4
 Requires-Dist: psycopg2-binary
 Requires-Dist: typer[all]
+Requires-Dist: tqdm
 
 # JamBandNerd
 

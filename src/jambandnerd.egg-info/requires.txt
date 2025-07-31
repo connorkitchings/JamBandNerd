@@ -9,3 +9,4 @@ supabase
 beautifulsoup4
 psycopg2-binary
 typer[all]
+tqdm
