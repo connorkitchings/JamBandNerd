@@ -22,6 +22,7 @@
         "pathing",
         "PGRST",
         "postgrest",
+        "repr",
         "selectbox",
         "setlistdata",
         "setlistid",
