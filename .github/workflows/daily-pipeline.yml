@@ -8,10 +8,7 @@ on:
   workflow_dispatch:  # Allow manual triggering
 
 env:
-  PYTHON_VERSION: '3.10'
-  SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-  SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
-  PHISH_API_KEY: ${{ secrets.PHISH_API_KEY }}
+  PYTHON_VERSION: '3.12'
 
 jobs:
   run-data-collection:
