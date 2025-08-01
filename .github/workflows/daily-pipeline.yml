@@ -33,20 +33,21 @@ jobs:
         pip install -e .
 
     - name: Debug environment variables
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        PHISH_API_KEY: ${{ secrets.PHISH_API_KEY }}
       run: |
-        echo "=== Checking secrets availability ==="
-        echo "SUPABASE_URL secret exists: ${{ secrets.SUPABASE_URL != '' }}"
-        echo "SUPABASE_KEY secret exists: ${{ secrets.SUPABASE_KEY != '' }}"
-        echo ""
         echo "=== Environment variables in shell ==="
         env | grep SUPABASE || echo "No SUPABASE variables found"
+
         echo ""
         echo "=== Python environment check ==="
         python3 -c "
         import os
         print('SUPABASE_URL in Python:', repr(os.getenv('SUPABASE_URL')))
         print('SUPABASE_KEY in Python:', repr(os.getenv('SUPABASE_KEY')))
-        print('All env vars with SUPABASE:', {k: v for k, v in os.environ.items() if 'SUPABASE' in k})
+        print('PHISH_API_KEY in Python:', repr(os.getenv('PHISH_API_KEY')))
         "
 
     - name: Run WSP Data Collection
