@@ -34,9 +34,27 @@ jobs:
         python -m pip install --upgrade pip
         pip install -e .
         
+    - name: Debug Secrets
+      run: |
+        if [ -z "$SUPABASE_URL" ]; then
+          echo "SUPABASE_URL is not set"
+        else
+          echo "SUPABASE_URL is set"
+        fi
+        if [ -z "$SUPABASE_KEY" ]; then
+          echo "SUPABASE_KEY is not set"
+        else
+          echo "SUPABASE_KEY is set"
+        fi
+        if [ -z "$PHISH_API_KEY" ]; then
+          echo "PHISH_API_KEY is not set"
+        else
+          echo "PHISH_API_KEY is set"
+        fi
+
     - name: Run WSP Data Collection
       run: |
-        python -m jambandnerd.data_collection.wsp.run_pipeline_supabase
+        python3 -m jambandnerd.data_collection.wsp.run_pipeline_supabase
         
     - name: Upload collection logs
       if: always()
@@ -70,9 +88,27 @@ jobs:
         python -m pip install --upgrade pip
         pip install -e .
         
+    - name: Debug Secrets
+      run: |
+        if [ -z "$SUPABASE_URL" ]; then
+          echo "SUPABASE_URL is not set"
+        else
+          echo "SUPABASE_URL is set"
+        fi
+        if [ -z "$SUPABASE_KEY" ]; then
+          echo "SUPABASE_KEY is not set"
+        else
+          echo "SUPABASE_KEY is set"
+        fi
+        if [ -z "$PHISH_API_KEY" ]; then
+          echo "PHISH_API_KEY is not set"
+        else
+          echo "PHISH_API_KEY is set"
+        fi
+
     - name: Run All Prediction Pipelines
       run: |
-        python -m jambandnerd.predictions.run_all_predictions
+        python3 -m jambandnerd.predictions.run_all_predictions
         
     - name: Upload prediction logs
       if: always()
