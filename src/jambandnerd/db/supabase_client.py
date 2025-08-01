@@ -22,15 +22,22 @@ def create_supabase_client() -> Client:
     Raises:
         RuntimeError: If Supabase URL or key is not found in the environment.
     """
-    load_dotenv()
-
+    # Prioritize existing environment variables (for CI/CD), fallback to .env for local dev
     supabase_url = os.getenv("SUPABASE_URL")
     supabase_key = os.getenv("SUPABASE_KEY")
 
-    if supabase_url:
-        logger.info("Attempting to create Supabase client for URL: %s...", supabase_url[:20])
+    if not supabase_url or not supabase_key:
+        logger.info("Supabase credentials not found in environment, checking .env file...")
+        load_dotenv()
+        supabase_url = os.getenv("SUPABASE_URL")
+        supabase_key = os.getenv("SUPABASE_KEY")
 
     if not supabase_url or not supabase_key:
-        raise RuntimeError("Supabase URL or key not found in .env file.")
+        raise RuntimeError(
+            "Supabase credentials not found. Ensure SUPABASE_URL and SUPABASE_KEY are set "
+            "in your environment or a .env file."
+        )
+
+    logger.info("Attempting to create Supabase client for URL: %s...", supabase_url[:20])
 
     return create_client(supabase_url, supabase_key)

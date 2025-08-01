@@ -20,14 +20,23 @@ logger = get_logger(__name__, log_file=log_file, add_console_handler=True)
 
 
 def get_api_key() -> str:
-    """Load the PHISH_API_KEY from the .env file in the project root."""
-    # python-dotenv automatically finds the .env file by searching up the directory tree.
-    # This is more robust than a hardcoded relative path.
+    """
+    Load the PHISH_API_KEY from environment variables or the .env file.
+
+    Checks for the PHISH_API_KEY in the environment variables first (for CI/CD),
+    and falls back to loading from a .env file for local development.
+    """
+    api_key = os.getenv("PHISH_API_KEY")
+    if api_key:
+        return api_key
+
+    # If not found in env, try loading from .env file for local dev
     load_dotenv()
     api_key = os.getenv("PHISH_API_KEY")
     if not api_key:
-        logger.error("PHISH_API_KEY not found in .env file.")
-        raise RuntimeError("PHISH_API_KEY not found in .env file.")
+        error_message = "PHISH_API_KEY not found in environment variables or .env file."
+        logger.error(error_message)
+        raise RuntimeError(error_message)
     return api_key
 
 

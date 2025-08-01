@@ -10,7 +10,7 @@ import pandas as pd
 import requests
 from bs4 import BeautifulSoup
 
-from .call_api import make_api_request
+from .call_api import get_api_key, make_api_request
 from .utils import get_logger
 
 # Ensure logs/Goose/ is always relative to the project root, not src/
@@ -61,12 +61,12 @@ def load_song_data(api_key: str) -> "pd.DataFrame":
         "Debut": "debut_date",
     }
     result_data = merged_data[list(final_columns.keys())].rename(columns=final_columns)
-    
+
     # Convert debut_date from YYYY-MM-DD to MM/DD/YYYY format for consistency
     result_data['debut_date'] = pd.to_datetime(result_data['debut_date'], errors='coerce').dt.strftime('%m/%d/%Y')
     # Explicitly set debut_date as string type to prevent Supabase from inferring it as date type
     result_data['debut_date'] = result_data['debut_date'].astype(str)
-    
+
     return result_data
 
 
@@ -166,35 +166,29 @@ def load_setlist_data(api_key: str) -> tuple["pd.DataFrame", "pd.DataFrame"]:
 def load_phish_data() -> dict:
     """
     Load all Phish data from API for prediction models.
-    
+
     Returns:
         dict: Dictionary containing all loaded DataFrames
     """
-    import os
-    from dotenv import load_dotenv
-    
     # Load API key from environment
-    load_dotenv()
-    api_key = os.getenv("PHISH_API_KEY")
-    if not api_key:
-        raise ValueError("PHISH_API_KEY not found in environment variables")
-    
+    api_key = get_api_key()
+
     logger.info("Loading Phish data from API...")
-    
+
     # Load all data
     logger.info("Loading song data...")
     song_data = load_song_data(api_key)
-    
+
     logger.info("Loading show and venue data...")
     show_data, venue_data = load_show_data(api_key)
-    
+
     logger.info("Loading setlist and transition data...")
     setlist_data, transition_data = load_setlist_data(api_key)
-    
+
     logger.info("✅ Successfully loaded all Phish data from API")
-    logger.info("Loaded: %d songs, %d shows, %d venues, %d setlist entries", 
+    logger.info("Loaded: %d songs, %d shows, %d venues, %d setlist entries",
                 len(song_data), len(show_data), len(venue_data), len(setlist_data))
-    
+
     return {
         'song_data': song_data,
         'show_data': show_data,

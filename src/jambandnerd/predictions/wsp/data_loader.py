@@ -1,37 +1,10 @@
-import os
-
 import pandas as pd
-from dotenv import load_dotenv
-from supabase import Client, create_client
-from supabase.lib.client_options import ClientOptions
+from supabase import Client
 
 from jambandnerd.data_collection.wsp.utils import get_logger
-
-# Load environment variables
-load_dotenv()
+from jambandnerd.db.supabase_client import create_supabase_client
 
 logger = get_logger(__name__, add_console_handler=True)
-
-
-def get_supabase_client() -> Client:
-    """Initializes and returns a Supabase client with a configured timeout."""
-    logger.info("Initializing Supabase client...")
-    supabase_url = os.environ.get("SUPABASE_URL")
-    supabase_key = os.environ.get("SUPABASE_KEY")
-    if not supabase_url or not supabase_key:
-        raise ValueError("Supabase URL and Key must be set in environment variables.")
-
-    try:
-        # Configure client options with a 30-second timeout for PostgREST queries
-        options = ClientOptions(postgrest_client_timeout=30.0)
-        client: Client = create_client(supabase_url, supabase_key, options)
-        logger.info(
-            "Supabase client initialized successfully with a 30-second timeout."
-        )
-        return client
-    except Exception as e:
-        logger.error("Failed to create Supabase client: %s", e)
-        return None
 
 
 def fetch_all_records(supabase: Client, table_name: str) -> pd.DataFrame:
@@ -104,7 +77,7 @@ def load_wsp_data() -> dict[str, pd.DataFrame]:
     Returns:
         A dictionary containing DataFrames for songs, shows, and setlists.
     """
-    supabase = get_supabase_client()
+    supabase = create_supabase_client()
     logger.info("Loading WSP data from Supabase with pagination...")
 
     try:

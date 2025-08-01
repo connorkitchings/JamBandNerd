@@ -1,25 +1,13 @@
 """
 Band-agnostic prediction export logic for saving predictions to Supabase.
 """
-from pathlib import Path
-
 import numpy as np
 import pandas as pd
-from dotenv import load_dotenv
 
 from jambandnerd.db.supabase_client import create_supabase_client
 from jambandnerd.logging_utils import get_logger
 
 logger = get_logger(__name__)
-
-# Load environment variables
-project_dir = Path(__file__).resolve().parents[3]
-dotenv_path = project_dir / ".env"
-if dotenv_path.exists():
-    load_dotenv(dotenv_path=dotenv_path)
-    logger.info("Loaded .env file from: %s", dotenv_path)
-else:
-    logger.warning(".env file not found at %s", dotenv_path)
 
 
 def save_predictions_to_supabase(
