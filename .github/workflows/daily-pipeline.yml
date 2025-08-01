@@ -9,16 +9,14 @@ on:
 
 env:
   PYTHON_VERSION: '3.10'
+  SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+  SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+  PHISH_API_KEY: ${{ secrets.PHISH_API_KEY }}
 
 jobs:
   run-data-collection:
     name: Data Collection Pipeline
     runs-on: ubuntu-latest
-
-    env:
-      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-      SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
-      PHISH_API_KEY: ${{ secrets.PHISH_API_KEY }}
     
     steps:
     - name: Checkout repository
@@ -34,24 +32,6 @@ jobs:
         python -m pip install --upgrade pip
         pip install -e .
         
-    - name: Debug Secrets
-      run: |
-        if [ -z "$SUPABASE_URL" ]; then
-          echo "SUPABASE_URL is not set"
-        else
-          echo "SUPABASE_URL is set"
-        fi
-        if [ -z "$SUPABASE_KEY" ]; then
-          echo "SUPABASE_KEY is not set"
-        else
-          echo "SUPABASE_KEY is set"
-        fi
-        if [ -z "$PHISH_API_KEY" ]; then
-          echo "PHISH_API_KEY is not set"
-        else
-          echo "PHISH_API_KEY is set"
-        fi
-
     - name: Run WSP Data Collection
       run: |
         python3 -m jambandnerd.data_collection.wsp.run_pipeline_supabase
@@ -68,11 +48,6 @@ jobs:
     name: Prediction Pipeline
     runs-on: ubuntu-latest
     needs: run-data-collection  # Wait for data collection to complete
-
-    env:
-      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-      SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
-      PHISH_API_KEY: ${{ secrets.PHISH_API_KEY }}
     
     steps:
     - name: Checkout repository
@@ -88,24 +63,6 @@ jobs:
         python -m pip install --upgrade pip
         pip install -e .
         
-    - name: Debug Secrets
-      run: |
-        if [ -z "$SUPABASE_URL" ]; then
-          echo "SUPABASE_URL is not set"
-        else
-          echo "SUPABASE_URL is set"
-        fi
-        if [ -z "$SUPABASE_KEY" ]; then
-          echo "SUPABASE_KEY is not set"
-        else
-          echo "SUPABASE_KEY is set"
-        fi
-        if [ -z "$PHISH_API_KEY" ]; then
-          echo "PHISH_API_KEY is not set"
-        else
-          echo "PHISH_API_KEY is set"
-        fi
-
     - name: Run All Prediction Pipelines
       run: |
         python3 -m jambandnerd.predictions.run_all_predictions
