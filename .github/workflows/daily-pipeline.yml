@@ -17,25 +17,46 @@ jobs:
   run-data-collection:
     name: Data Collection Pipeline
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
-      
+
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
         python-version: ${{ env.PYTHON_VERSION }}
-        
+
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -e .
-        
+
+    - name: Debug environment variables
+      run: |
+        echo "=== Checking secrets availability ==="
+        echo "SUPABASE_URL secret exists: ${{ secrets.SUPABASE_URL != '' }}"
+        echo "SUPABASE_KEY secret exists: ${{ secrets.SUPABASE_KEY != '' }}"
+        echo ""
+        echo "=== Environment variables in shell ==="
+        env | grep SUPABASE || echo "No SUPABASE variables found"
+        echo ""
+        echo "=== Python environment check ==="
+        python3 -c "
+        import os
+        print('SUPABASE_URL in Python:', repr(os.getenv('SUPABASE_URL')))
+        print('SUPABASE_KEY in Python:', repr(os.getenv('SUPABASE_KEY')))
+        print('All env vars with SUPABASE:', {k: v for k, v in os.environ.items() if 'SUPABASE' in k})
+        "
+
     - name: Run WSP Data Collection
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        PHISH_API_KEY: ${{ secrets.PHISH_API_KEY }}
       run: |
         python3 -m jambandnerd.data_collection.wsp.run_pipeline_supabase
-        
+
     - name: Upload collection logs
       if: always()
       uses: actions/upload-artifact@v4
@@ -48,25 +69,29 @@ jobs:
     name: Prediction Pipeline
     runs-on: ubuntu-latest
     needs: run-data-collection  # Wait for data collection to complete
-    
+
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
-      
+
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
         python-version: ${{ env.PYTHON_VERSION }}
-        
+
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -e .
-        
+
     - name: Run All Prediction Pipelines
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        PHISH_API_KEY: ${{ secrets.PHISH_API_KEY }}
       run: |
         python3 -m jambandnerd.predictions.run_all_predictions
-        
+
     - name: Upload prediction logs
       if: always()
       uses: actions/upload-artifact@v4
@@ -80,7 +105,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [run-data-collection, run-predictions]
     if: always()
-    
+
     steps:
     - name: Report Status
       run: |
