@@ -11,6 +11,14 @@ logger = get_logger(__name__, add_console_handler=True)
 BAND_NAME = "wsp"
 MODEL_NAME = "notebook"
 
+# WSP-specific configuration
+WSP_CONFIG = {
+    "gap_threshold": 100,  # WSP plays less frequently, higher gap threshold
+    "top_predictions": 100,
+    "recent_shows_filter": 5,  # WSP has fewer shows, can filter more recent shows
+    "time_filter_days": 365,
+}
+
 
 def main():
     """Run the full WSP Notebook prediction pipeline."""
@@ -71,7 +79,8 @@ def main():
         venue_data=pd.DataFrame(),  # WSP doesn't have separate venue data
         setlist_data=setlists_for_model,
         transition_data=pd.DataFrame(),  # WSP doesn't have transition data
-        recent_shows_filter=100,  # Or get from a config
+        gap_threshold=WSP_CONFIG["gap_threshold"],
+        time_filter_days=WSP_CONFIG["time_filter_days"]
     )
 
     if predictions is None or predictions.empty:

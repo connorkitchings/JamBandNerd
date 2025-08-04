@@ -12,7 +12,9 @@ from jambandnerd.logging_utils import get_logger
 logger = get_logger(__name__)
 
 
-def aggregate_setlist_features(df, target_showdate, time_filter_days: int = 365):
+def aggregate_setlist_features(
+    df, target_showdate, time_filter_days: int = 365, gap_threshold: int = 2
+):
     """
     Aggregates setlist data by song name following the notebook model approach:
     1. Load all setlist data
@@ -41,6 +43,35 @@ def aggregate_setlist_features(df, target_showdate, time_filter_days: int = 365)
                 raise ValueError(
                     f"'{target_showdate}' does not match '%Y-%m-%d' or '%m-%d-%Y'"
                 ) from e
+
+    # Standardize 'showdate' to datetime, coercing errors to NaT
+    df['showdate'] = pd.to_datetime(df['showdate'], errors='coerce')
+
+    # Calculate next show number using same logic as CK+ model
+    # Ensure 'show_index_overall' exists for consistent gap calculation
+    if "show_index_overall" not in df.columns:
+        show_order = (
+            df[["showid", "showdate"]]
+            .drop_duplicates()
+            .sort_values("showdate")
+            .reset_index(drop=True)
+        )
+        show_order["show_index_overall"] = show_order.index + 1
+        df = df.merge(
+            show_order[["showid", "show_index_overall"]], on="showid", how="left"
+        )
+
+    # Calculate the next show number (same logic as CK+ model)
+    today = pd.Timestamp.now().normalize()
+    past_shows = df[df['showdate'] <= today]
+
+    if past_shows.empty:
+        logger.warning("No shows found up to today's date. Using all shows.")
+        next_show_num = df["show_index_overall"].max() + 1
+    else:
+        next_show_num = past_shows["show_index_overall"].max() + 1
+
+    logger.info("Using next show number: %d (next show after today)", next_show_num)
 
     # Step 2: Remove any setlists from more than 1 year ago and from the target date.
     time_filter_ago = target_showdate - timedelta(days=time_filter_days)
@@ -119,9 +150,14 @@ def aggregate_setlist_features(df, target_showdate, time_filter_days: int = 365)
             average_gap = round(sum(gaps) / len(gaps), 3) if gaps else None
             median_gap = round(pd.Series(gaps).median(), 2) if gaps else None
 
-            # Calculate current gap (shows since last play)
-            shows_since_last = len([d for d in all_show_dates if d > last_played])
-            current_show_gap = shows_since_last
+            # Calculate current gap using next show number (same logic as CK+ model)
+            # Find the show number of the last time this song was played
+            last_show_entries = df_last_year[df_last_year['song'] == song]
+            if not last_show_entries.empty:
+                last_show_num = last_show_entries['show_index_overall'].max()
+                current_show_gap = next_show_num - last_show_num
+            else:
+                current_show_gap = None
         else:
             average_gap = None
             median_gap = None
@@ -149,10 +185,11 @@ def aggregate_setlist_features(df, target_showdate, time_filter_days: int = 365)
         initial_count = len(agg_df)
         # Also filter out songs with no gap data, as they are not predictable with this metric.
         agg_df = agg_df.dropna(subset=["current_gap"])
-        agg_df = agg_df[agg_df["current_gap"] > 2].copy()
+        agg_df = agg_df[agg_df["current_gap"] > gap_threshold].copy()
         logger.info(
-            "Filtered out %d songs (played in last 3 shows or no gap data). %d predictions remain.",
+            "Filtered out %d songs (gap < %d or no gap data). %d predictions remain.",
             initial_count - len(agg_df),
+            gap_threshold,
             len(agg_df),
         )
 
@@ -180,8 +217,8 @@ def run_notebook_model(
     venue_data: pd.DataFrame,
     setlist_data: pd.DataFrame,
     transition_data: pd.DataFrame,
-    recent_shows_filter: int = 3,
-    time_filter_days: int = 365
+    gap_threshold: int,
+    time_filter_days: int = 365,
 ) -> pd.DataFrame:
     """
     Run the complete Notebook model pipeline.
@@ -197,9 +234,7 @@ def run_notebook_model(
     Returns:
         pd.DataFrame: Notebook model predictions
     """
-    logger.info(
-        "Running Notebook model with recent_shows_filter=%d", recent_shows_filter
-    )
+    logger.info("Running Notebook model with gap_threshold=%d", gap_threshold)
 
     # Prepare setlist data for Notebook model
     # The model expects columns: song, showid, showdate
@@ -222,7 +257,10 @@ def run_notebook_model(
 
     # Run the Notebook aggregation
     predictions = aggregate_setlist_features(
-        model_input, target_date, time_filter_days=time_filter_days
+        model_input,
+        target_date,
+        time_filter_days=time_filter_days,
+        gap_threshold=gap_threshold,
     )
 
     if not predictions.empty:

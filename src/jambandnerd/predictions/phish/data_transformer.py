@@ -85,7 +85,8 @@ def get_band_config() -> dict[str, Any]:
         "band_name": "phish",
         "supabase_table_ckplus": "predictions_ckplus",
         "supabase_table_notebook": "predictions_notebook",
-        "gap_threshold": 75,  # Filter out predictions with current_gap > 75
+        "gap_threshold_ckplus": 75,  # Phish has moderate show frequency, standard threshold
+        "gap_threshold_notebook": 20,  # Lower threshold for 1-year time filter
         "top_predictions": 100,  # Save top 100 predictions
         "recent_shows_filter": 3,  # Exclude songs played in last 3 shows
     }

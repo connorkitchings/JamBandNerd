@@ -105,12 +105,15 @@ def get_setlist_from_link(link):
                 logger.error("All %d retry attempts failed for %s.", retries, link)
                 return pd.DataFrame(columns=EXPECTED_COLUMNS)
         except Exception as e:
-            logger.exception("An unexpected error occurred while processing %s: %s", link, e)
+            logger.exception(
+                "An unexpected error occurred while processing %s: %s", link, e
+            )
             return pd.DataFrame(columns=EXPECTED_COLUMNS)
     try:
         if setlist_raw.empty or 0 not in setlist_raw.columns:
             logger.warning(
-                "Setlist table at %s is empty or missing expected columns. Skipping.", link
+                "Setlist table at %s is empty or missing expected columns. Skipping.",
+                link,
             )
             return pd.DataFrame(columns=EXPECTED_COLUMNS)
         setlist_raw["Raw"] = setlist_raw[0].astype(str).str.replace("ï", "i")
@@ -143,7 +146,9 @@ def get_setlist_from_link(link):
         songs2["is_into"] = songs2["Raw"].apply(lambda x: 1 if ">" in x else 0)
         songs2["Raw"] = songs2["Raw"].str.replace(">", "", regex=False)
         songs2["Raw"] = songs2["Raw"].str.lstrip()
-        songs2["Raw"] = songs2["Raw"].replace("|".join(songs2["set_name"]), "", regex=True)
+        songs2["Raw"] = songs2["Raw"].replace(
+            "|".join(songs2["set_name"]), "", regex=True
+        )
         songs3 = songs2[~songs2["Raw"].str.contains("|".join(COMMA_SONGS))].copy()
         songs3["Raw"] = songs3["Raw"].map(COMMA_SONGS_COMPLETER).fillna(songs3["Raw"])
         songs3["song_name"] = songs3["Raw"].str.capitalize().str.strip()
@@ -180,9 +185,7 @@ def get_setlist_from_link(link):
             .apply("; ".join)
             .reset_index()
         )
-        songs_with_notes = pd.merge(
-            songs4, notes_agg, on="song_notes_key", how="left"
-        )
+        songs_with_notes = pd.merge(songs4, notes_agg, on="song_notes_key", how="left")
         final_df = songs_with_notes.copy()
     else:
         # If there are no notes, create the column with empty strings
@@ -237,7 +240,27 @@ def load_setlist_data(
             supabase = create_supabase_client()
             logger.info("Checking for existing setlists in Supabase...")
 
-            # First, get the total count
+            # Import the date filter utility
+            from .cache_utils import get_supabase_date_filter
+            
+            # Use smarter pagination - get recent show links first, then filter setlists
+            date_filter = get_supabase_date_filter(years_back=3)
+            logger.info("Filtering shows by date: %s (last 3 years)", date_filter)
+            
+            # Get recent show links to limit our setlist query scope
+            recent_show_links = set()
+            if 'date' in shows.columns:
+                shows['date_parsed'] = pd.to_datetime(shows['date'], errors='coerce')
+                cutoff_date = pd.to_datetime(date_filter)
+                recent_shows_df = shows[shows['date_parsed'] >= cutoff_date]
+                recent_show_links = set(recent_shows_df['link'].tolist())
+                logger.info("Found %d recent shows (last 3 years) to check for setlists", len(recent_show_links))
+            else:
+                # Fallback: use all shows if no date column
+                recent_show_links = set(shows['link'].tolist())
+                logger.info("No date column in shows, checking all %d shows", len(recent_show_links))
+            
+            # Get count of all existing setlists (no date filter on setlists table since it doesn't have date column)
             response = (
                 supabase.table("wsp_setlists")
                 .select("*", count="exact")
@@ -245,9 +268,9 @@ def load_setlist_data(
                 .execute()
             )
             total_count = response.count
-            logger.info("Total rows in wsp_setlists: %d", total_count)
-
-            # Use a conservative page size that Supabase definitely supports
+            logger.info("Total setlist rows in wsp_setlists: %d", total_count)
+            
+            # Use efficient pagination for recent data only
             page_size = 1000
             offset = 0
             all_rows = []
@@ -270,11 +293,9 @@ def load_setlist_data(
                         break
 
                     all_rows.extend(data)
-                    offset += len(
-                        data
-                    )  # Increment by actual rows received, not page_size
+                    offset += len(data)
                     logger.info(
-                        "Fetched %d rows so far (offset now %d)...",
+                        "Fetched %d existing setlist links so far (offset now %d)...",
                         len(all_rows),
                         offset,
                     )
@@ -288,11 +309,11 @@ def load_setlist_data(
 
                 except Exception as e:
                     logger.error("Error fetching batch at offset %d: %s", offset, e)
-                    # You might want to retry or break here depending on your needs
                     break
 
             logger.info(
-                "Successfully fetched %d total rows from Supabase", len(all_rows)
+                "Successfully fetched %d existing setlist links from Supabase",
+                len(all_rows),
             )
 
             if len(all_rows) != total_count:
@@ -313,8 +334,9 @@ def load_setlist_data(
                     "Found %d unique existing links in Supabase.", len(existing_links)
                 )
 
-            all_show_links = set(shows["link"].tolist())
-            logger.info("Total show links available: %d", len(all_show_links))
+            # Filter to only recent show links (last 3 years) to minimize scraping
+            all_show_links = recent_show_links
+            logger.info("Recent show links to check: %d", len(all_show_links))
 
             new_links = list(all_show_links - existing_links)
 

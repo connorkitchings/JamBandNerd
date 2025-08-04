@@ -48,9 +48,10 @@ jobs:
         print('PHISH_API_KEY in Python:', repr(os.getenv('PHISH_API_KEY')))
         "
 
-    - name: Run WSP Data Collection
+    - name: Run All Band Data Collection in Parallel
       run: |
-        python3 -m jambandnerd.data_collection.wsp.run_pipeline_supabase
+        echo "Running data collection for all bands in parallel..."
+        python3 scripts/run_all_pipelines.py
 
     - name: Upload collection logs
       if: always()

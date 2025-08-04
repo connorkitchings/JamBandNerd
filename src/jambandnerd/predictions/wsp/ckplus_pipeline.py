@@ -11,6 +11,13 @@ logger = get_logger(__name__, add_console_handler=True)
 BAND_NAME = "wsp"
 MODEL_NAME = "ckplus"
 
+# WSP-specific configuration
+WSP_CONFIG = {
+    "gap_threshold": 100,  # WSP plays less frequently, higher gap threshold
+    "top_predictions": 100,
+    "recent_shows_filter": 3,
+}
+
 def main():
     """Run the full WSP CK+ prediction pipeline."""
     logger.info("Starting WSP CK+ prediction pipeline...")
@@ -55,7 +62,9 @@ def main():
         show_data=shows_for_model,
         venue_data=pd.DataFrame(),  # WSP doesn't have separate venue data
         setlist_data=setlists_for_model,
-        transition_data=pd.DataFrame()  # WSP doesn't have transition data
+        transition_data=pd.DataFrame(),  # WSP doesn't have transition data
+        gap_threshold=WSP_CONFIG["gap_threshold"],
+        top_n=WSP_CONFIG["top_predictions"]
     )
     if predictions.empty:
         logger.error("CK+ model did not return any predictions. Halting pipeline.")

@@ -48,7 +48,7 @@ def run_phish_ckplus_predictions() -> bool:
             venue_data=venue_data,
             setlist_data=setlist_data,
             transition_data=transition_data,
-            gap_threshold=config["gap_threshold"],
+            gap_threshold=config["gap_threshold_ckplus"],
             top_n=config["top_predictions"],
         )
 

@@ -48,7 +48,7 @@ def run_goose_notebook_predictions() -> bool:
             venue_data=venue_data,
             setlist_data=setlist_data,
             transition_data=transition_data,
-            recent_shows_filter=config["recent_shows_filter"],
+            gap_threshold=config["gap_threshold_notebook"],
         )
 
         if predictions_df is None or predictions_df.empty:

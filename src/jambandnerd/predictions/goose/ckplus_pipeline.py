@@ -48,7 +48,7 @@ def run_goose_ckplus_predictions() -> bool:
             venue_data=venue_data,
             setlist_data=setlist_data,
             transition_data=transition_data,
-            gap_threshold=config["gap_threshold"],
+            gap_threshold=config["gap_threshold_ckplus"],
             top_n=config["top_predictions"],
         )
 
@@ -59,7 +59,7 @@ def run_goose_ckplus_predictions() -> bool:
         # Step 4: Export predictions to Supabase
         logger.info("Exporting %d predictions to Supabase...", len(predictions_df))
         success = save_predictions_to_supabase(
-            predictions_df, "predictions_ckplus"
+            predictions_df, config["supabase_table_ckplus"]
         )
 
         if success:

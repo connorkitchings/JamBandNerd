@@ -5,9 +5,12 @@ This module handles transforming raw Goose data from the data_collection API
 into the format required by the band-agnostic prediction models.
 """
 
-import pandas as pd
 from typing import Any
+
+import pandas as pd
+
 from jambandnerd.data_collection.goose import loaders
+
 
 def prepare_data_for_ckplus_model() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """
@@ -58,7 +61,8 @@ def get_band_config() -> dict[str, Any]:
         "band_name": "goose",
         "supabase_table_ckplus": "predictions_ckplus",
         "supabase_table_notebook": "predictions_notebook",
-        "gap_threshold": 75,  # Filter out predictions with current_gap > 75
+        "gap_threshold_ckplus": 50,  # Higher threshold for all-time data
+        "gap_threshold_notebook": 15,  # Lower threshold for 1-year time filter
         "top_predictions": 100,  # Save top 100 predictions
         "recent_shows_filter": 3,  # Exclude songs played in last 3 shows
     }
