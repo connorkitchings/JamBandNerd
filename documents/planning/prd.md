@@ -1,153 +1,323 @@
-Product Requirements Document (PRD)
-Instructions: This document is the single source of truth for what we are building and why.
-It should be updated as the project evolves, especially the DECISION LOG.
+# JamBandNerd Product Requirements Document
 
-PROJECT
-JamBandNerd
+## Executive Summary
 
-GOAL
-A modular data science platform for collecting, processing, and predicting jam band setlists.
-JamBandNerd enables robust, parallelized data pipelines and predictive analytics for major jam
-bands, supporting research and fan engagement.
+JamBandNerd v2 transforms setlist prediction from a local analytics tool into a cloud-native
+platform that provides real-time predictions for jam band performances. The platform serves both
+casual fans seeking show insights and data enthusiasts exploring predictive modeling accuracy.
 
-For architecture, tech stack, and setup details, see project_context.md.
+### Vision Statement
 
-> 📚 For a high-level entry point and links to all documentation, see [README.md](../../README.md).
+Create the most accurate and accessible jam band setlist prediction platform, enabling fans to
+enhance their concert experience through data-driven insights.
 
-USERS & USER STORIES
-Primary Persona
-Name: Jamie Fan
+---
 
-Role: Jam band enthusiast & data explorer
+## Product Goals
 
-Pain Points: Wants to analyze setlists, discover trends, and predict future shows but lacks easy
-access to clean, up-to-date data.
+### Primary Goals
 
-Goals: Explore band histories, run predictions, and share insights with the community.
+1. **Automate Data Pipeline**: Eliminate manual data collection and processing
+2. **Provide Real-Time Predictions**: Deliver next-song predictions accessible via web interface
+3. **Demonstrate Model Accuracy**: Track and display prediction performance over time
+4. **Scale to Multiple Bands**: Support Phish, Goose, and Widespread Panic initially
 
-Core User Stories
+### Secondary Goals
 
-- As a jam band fan, I want to view historical setlists and song statistics so that I can better
-  understand band trends.
-- As a data scientist, I want to access standardized, clean data for all bands so that I can build
-  and test predictive models.
-- As a developer, I want to run all pipelines easily and see unified logs so that I can maintain
-  and extend the platform.
+1. **Enable Model Comparison**: Allow users to compare different prediction approaches
+2. **Build Community Engagement**: Create shareable predictions and accuracy tracking
+3. **Establish Data Foundation**: Build robust infrastructure for future prediction types
 
-FEATURES & SCOPE
-Must-Have (MVP)
+---
 
-- Automated data collection pipelines for Phish, Goose, Umphrey's McGee (UM), and
-  Widespread Panic (WSP)
-- Unified, timestamped logging for all pipelines
-- Standardized data outputs for analytics and ML
-- Prediction models for setlist generation (CK+, Notebook)
-- Orchestration scripts for parallel pipeline execution
+## Target Users
 
-See [Scope Appendix](./scope_appendix.md) for Post-MVP features and Out of Scope items.
+### Primary Users
 
-RISKS & ASSUMPTIONS
-Key Assumptions
+### Jam Band Enthusiasts
 
-- Band APIs or source websites may change or rate-limit access (Mitigation: monitor and implement fallbacks)
-- Data quality varies by band/source (Mitigation: validation scripts, manual review)
-- Prediction accuracy depends on data completeness and model tuning
+- Attend shows regularly and want enhanced experience
+- Interested in setlist patterns and song probabilities
+- Comfortable with basic data interpretation
+- Use mobile devices during shows
 
-Technical Risks
-Risk
+### Data Science Hobbyists
 
-Probability
+- Interested in prediction model performance
+- Want to understand methodology and accuracy
+- May contribute to model improvement
+- Desktop/laptop primary usage
 
-Impact
+### Secondary Users
 
-Mitigation
+### Casual Fans
 
-Third-party API failure
+- Occasional show attendance
+- Basic curiosity about upcoming songs
+- Simple interface preferred
+- Mixed device usage
 
-Medium
+---
 
-High
+## Core Features
 
-Implement fallback; see [IMPL-task:ID]
+### MVP Features (Phase 1)
 
-Database performance
+#### Data Collection & Processing
 
-Low
+- **Automated Daily Collection**: Collect show data from phish.net, elgoose.net, and everydaycompanion.com
+- **Data Standardization**: Transform raw data into consistent format for modeling
+- **Error Handling**: Continue operations with existing data when sources fail
+- **Email Notifications**: Alert administrator of collection failures
 
-Medium
+#### Prediction Engine
 
-Optimize queries during development
+- **Notebook Model Implementation**: Deploy rotation-based prediction model as MVP
+- **Next Song Predictions**: Generate probability rankings for next likely songs
+- **Multi-Band Support**: Run predictions for Phish, Goose, and WSP independently. The system is
+  designed to be extensible, allowing for the addition of new bands by creating new data collector modules.
+- **Accuracy Tracking**: Store and calculate prediction accuracy at show level
 
-SYSTEM & SECURITY
-System Diagram
+#### Web Interface
 
-```text
-+--------------------------+      +-------------------+      +---------------------+
-| Data Collection Pipelines | ---> | Data Storage/Logs | ---> | Analytics/Models    |
-| (Phish, Goose, UM, WSP)  |      | (CSV, JSON, Logs) |      | (CK+, Notebook)     |
-+--------------------------+      +-------------------+      +---------------------+
-```
+- **Band Selection**: Toggle between supported bands
+- **Prediction Display**: Show next song probabilities with confidence scores
+- **Historical Accuracy**: Display model performance trends over time
+- **Responsive Design**: Support desktop and mobile viewing
 
-Security & Privacy
-PII Handling: No personal user data collected; all data is public setlist and show info
+#### Infrastructure
 
-Enforcement: All features handling data must adhere to the [QG:SecurityReview] checklist in quality_gates.md.
+- **Cloud Database**: Store raw data and predictions in Supabase
+- **Automated Pipeline**: GitHub Actions for daily execution
+- **Modular Architecture**: Independent component updates without full system changes
 
-LOGS & HISTORY
-Decision Log
-Date
+### Phase 2 Features
 
-Decision
+#### Enhanced Predictions
 
-Rationale
+- **CK+ Model Integration**: Add gap-based statistical model option
+- **Model Comparison**: Side-by-side model performance analysis
+- **Full Setlist Predictions**: Predict entire show structure beyond next song
+- **Encore Predictions**: Specialized models for encore song selection
 
-Reversible?
+#### Advanced Interface
 
-2025-07-01
+- **Interactive Setlist Builder**: Allow users to test prediction scenarios
+- **Real-Time Show Tracking**: Update predictions as shows progress
+- **Historical Show Exploration**: Browse past shows with prediction overlays
+- **User Prediction Challenges**: Community prediction competitions
 
-Standardized all pipeline outputs to CSV in `data/<band>/collected/`
+#### Analytics & Insights
 
-Ensures compatibility with analytics tools and ML workflows
+- **Venue-Specific Patterns**: Location-based prediction adjustments
+- **Tour Analysis**: Prediction accuracy trends across tour segments
+- **Song Relationship Mapping**: Visualize song transition probabilities
+- **Custom Model Parameters**: User-adjustable model settings
 
-Yes
+---
 
-2025-07-15
+## Functional Requirements
 
-Use React for frontend
+### Data Requirements
 
-Team familiarity, large ecosystem
+#### Data Collection
 
-Yes
+- **FR-DC-01**: System SHALL collect Phish show data from phish.net API daily
+- **FR-DC-02**: System SHALL collect Goose show data from elgoose.net API daily
+- **FR-DC-03**: System SHALL scrape WSP show data from everydaycompanion.com daily
+- **FR-DC-04**: System SHALL store raw data in band-specific Supabase tables
+- **FR-DC-05**: System SHALL handle API failures gracefully without stopping pipeline
+- **FR-DC-06**: System SHALL send email notifications for persistent collection failures
 
-2025-07-16
+#### Data Processing
 
-Use PostgreSQL for DB
+- **FR-DP-01**: System SHALL transform raw data into standardized format for modeling
+- **FR-DP-02**: System SHALL validate data integrity before model processing
+- **FR-DP-03**: System SHALL support incremental updates for individual bands
+- **FR-DP-04**: System SHALL maintain data lineage for debugging and auditing
 
-ACID compliance and JSONB support needed
+### Prediction Requirements
 
-Difficult
+#### Model Execution
 
-Version History
-Version
+- **FR-PE-01**: System SHALL generate next song predictions using Notebook model
+- **FR-PE-02**: System SHALL calculate prediction probabilities for top 10 likely songs
+- **FR-PE-03**: System SHALL store predictions with timestamps in Supabase
+- **FR-PE-04**: System SHALL run predictions for all bands independently
+- **FR-PE-05**: System SHALL support multiple prediction models simultaneously
 
-Date
+#### Accuracy Tracking
 
-Summary of Changes
+- **FR-AT-01**: System SHALL calculate prediction accuracy at show level
+- **FR-AT-02**: System SHALL track multiple accuracy metrics (top-1, top-3, top-5)
+- **FR-AT-03**: System SHALL store accuracy history for trend analysis
+- **FR-AT-04**: System SHALL update accuracy scores when new show data is available
 
-Author
+### Interface Requirements
 
-v0.1
+#### Web Application
 
-2025-07-01
+- **FR-WA-01**: Interface SHALL display current predictions for selected band
+- **FR-WA-02**: Interface SHALL allow switching between available bands
+- **FR-WA-03**: Interface SHALL show prediction confidence scores
+- **FR-WA-04**: Interface SHALL display historical accuracy trends
+- **FR-WA-05**: Interface SHALL be responsive for desktop and mobile devices
+- **FR-WA-06**: Interface SHALL load within 3 seconds for prediction views
 
-Initial draft for JamBandNerd
+#### User Experience
 
-@connorkitchings
+- **FR-UX-01**: Interface SHALL require no user authentication for basic features
+- **FR-UX-02**: Interface SHALL provide clear visual indicators for prediction confidence
+- **FR-UX-03**: Interface SHALL include explanatory text for model interpretation
+- **FR-UX-04**: Interface SHALL handle network failures gracefully with cached data
 
-v1.0
+### System Requirements
 
-2025-07-21
+#### Performance
 
-Finalized requirements for MVP launch
+- **FR-SY-01**: Data collection SHALL complete within 1 hour for all bands
+- **FR-SY-02**: Prediction generation SHALL complete within 30 minutes per band
+- **FR-SY-03**: Web interface SHALL support 100 concurrent users
+- **FR-SY-04**: System SHALL maintain 99% uptime for prediction availability
 
-@connorkitchings
+#### Scalability
+
+- **FR-SC-01**: System SHALL be designed to allow the addition of new bands by creating a new data
+  collector module without requiring changes to the core prediction or orchestration pipelines.
+- **FR-SC-02**: System SHALL support addition of new models without data pipeline changes
+- **FR-SC-03**: Database SHALL handle 10,000 shows per band with sub-second query response
+
+---
+
+## Non-Functional Requirements
+
+### Reliability
+
+- Pipeline SHALL recover automatically from transient failures
+- System SHALL maintain data consistency across all components
+- Predictions SHALL be reproducible given identical input data
+
+### Maintainability
+
+- Components SHALL be independently deployable and testable
+- Code SHALL follow established Python conventions and documentation standards
+- System SHALL provide comprehensive logging for debugging and monitoring
+
+### Security
+
+- API keys and database credentials SHALL be stored securely
+- System SHALL validate all external data inputs
+- Database access SHALL use principle of least privilege
+
+### Usability
+
+- Interface SHALL be intuitive for users unfamiliar with data science concepts
+- Error messages SHALL be user-friendly and actionable
+- Help documentation SHALL be accessible within the interface
+
+---
+
+## Success Metrics
+
+### Engagement Metrics
+
+- **Daily Active Users**: 50+ users within first month
+- **Session Duration**: Average 5+ minutes per session
+- **Return Users**: 30% weekly return rate
+
+### Accuracy Metrics
+
+- **Next Song Accuracy**: >15% top-1 accuracy (baseline: random ~3%)
+- **Model Improvement**: Measurable accuracy improvement over 3-month periods
+- **Multi-Model Comparison**: Clear performance differentiation between models
+
+### Technical Metrics
+
+- **Pipeline Reliability**: 95% successful daily execution rate
+- **Data Freshness**: Predictions updated within 24 hours of new show data
+- **Response Time**: 95% of page loads under 2 seconds
+
+### Business Metrics
+
+- **Feature Adoption**: All MVP features used by 70% of active users
+- **Band Coverage**: Predictions available for all 3 supported bands
+- **Model Expansion**: Ready for Phase 2 model addition within 6 months
+
+---
+
+## Risk Assessment
+
+### High Risk
+
+- **API Changes**: Data sources may change APIs or access policies
+  - *Mitigation*: Build resilient scrapers, maintain fallback data sources
+- **Model Accuracy**: Predictions may not exceed random chance meaningfully
+  - *Mitigation*: Start with proven Notebook model, validate against historical data
+
+### Medium Risk
+
+- **User Adoption**: Limited audience may not justify development effort
+  - *Mitigation*: Focus on core jam band communities, gather early feedback
+- **Infrastructure Costs**: Supabase and hosting costs may scale unexpectedly
+  - *Mitigation*: Monitor usage patterns, implement data retention policies
+
+### Low Risk
+
+- **Technical Complexity**: Implementation may exceed timeline estimates
+  - *Mitigation*: Modular development approach, MVP feature prioritization
+
+---
+
+## Dependencies
+
+### External Dependencies
+
+- **Supabase**: Database and backend services
+- **phish.net API**: Phish show data access
+- **GitHub Actions**: Automation infrastructure
+- **Streamlit**: Web interface framework
+
+### Internal Dependencies
+
+- **Existing Codebase**: Leverage current data collection and model implementations
+- **Data Sources Documentation**: Complete API/scraping specifications
+- **Model Validation**: Historical accuracy validation for confidence in predictions
+
+---
+
+## Timeline & Milestones
+
+### Phase 1 (MVP) - 8 weeks
+
+- **Week 1-2**: Database setup and data collection migration
+- **Week 3-4**: Prediction pipeline development and testing
+- **Week 5-6**: Web interface development
+- **Week 7-8**: Integration testing and automation setup
+
+### Phase 2 - 12 weeks
+
+- **Week 9-12**: CK+ model integration and comparison features
+- **Week 13-16**: Advanced interface features and real-time capabilities
+- **Week 17-20**: Community features and prediction challenges
+
+---
+
+## Appendices
+
+### Appendix A: API Rate Limits
+
+- phish.net: 1000 requests/day
+- elgoose.net: No published limits
+- everydaycompanion.com: Respectful scraping practices
+
+### Appendix B: Data Volume Estimates
+
+- Phish: ~2,000 historical shows, ~100 shows/year
+- Goose: ~500 historical shows, ~150 shows/year
+- WSP: ~3,000 historical shows, ~80 shows/year
+
+### Appendix C: Model Performance Baselines
+
+- Random Prediction: ~3% next-song accuracy
+- Current Notebook Model: ~12-18% accuracy (estimated)
+- Target Improvement: 20%+ accuracy consistently

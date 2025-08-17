@@ -1,0 +1,62 @@
+# JamBandNerd - Project Rules
+
+You are assisting with JamBandNerd, a modular data platform for collecting, standardizing, and predicting jam band setlists across multiple bands (WSP, Phish, UM, Goose).
+
+## Project Context
+
+**Data Pipelines**: Band sources → Collection (API/scrape) → Standardization → Canonical outputs → Predictions → Evaluation
+**Supported Bands**: Widespread Panic (WSP), Phish, Umphrey's McGee (UM), Goose
+**Prediction Targets**: Next-song prediction and setlist structure (e.g., openers/closers, encores)
+**Update Frequency**: Run collectors routinely; run predictions on show days before showtime; evaluate post-show
+**Success Metrics**: Top-k next-song hit rate (Top-1/Top-3/Top-10), Mean Reciprocal Rank (MRR), and per-band lift over naive rotation baselines; stable green pipeline runs
+**Data Storage**: Standardized CSV/Parquet in `data/<band>/collected/` and model artifacts in `src/jambandnerd/predictions/`
+
+## Sources and Orchestration
+
+- Phish: phish.net API (requires `PHISH_API_KEY` in project root `.env`)
+- Goose: elgoose.net API (no key required)
+- UM: allthings.umphreys.com scraping
+- WSP: everydaycompanion.com scraping
+
+
+## Environment & Tooling
+
+- Python 3.12 with UV; see `README.md` for setup
+- Keep band credentials in `.env` (e.g., `PHISH_API_KEY`)
+
+## Data Handling Standards
+
+- Consistent schemas across bands: show, set, song, and performance metadata
+- Robust rate limiting, retries with backoff, request caching to avoid bans
+- Idempotent collectors; avoid duplicates via stable keys (band, date, city, show_id)
+- Normalize names (song/venue/city) with mapping tables; track covers vs originals
+- Timestamps in UTC; store source time zones as metadata
+
+## API/Scrape Integration Guidelines
+
+- Respect robots and rate limits; exponential backoff on 429/5xx
+- Cache raw responses locally; persist normalized outputs to `data/<band>/collected/`
+- Validate completeness for each show (sets, songs, segues, encores)
+- 
+## Feature Engineering Focus (Setlists)
+
+- Rotation/recency: gap since last played, per-tour/per-leg recency
+- Position-specific priors: openers, closers, encores, second set anchors
+- Tour/venue effects: region, festival vs. regular show, venue history
+- Song relationships: common segues (`->`), multi-part suites, bust-outs
+- Band-specific constraints: repeats across consecutive shows, rarity handling
+- Seasonality: day-of-week, tour start/end tendencies
+
+## Validation Checks
+
+- One canonical row per played song per show with stable ordering
+- Detect and reconcile duplicates, typos, and alias names
+- Validate total counts by set/encore; ensure ordering consistency
+- Assert no future data leakage in training/evaluation splits
+
+## Code Organization Suggestions
+
+- Collectors under `src/jambandnerd/data_collection/<band>/`
+- Prediction models under `src/jambandnerd/models/` (e.g., `ckplus_model/`, `notebook_model/`)
+- Predictors under `src/jambandnerd/preditions`
+- Shared utilities: `src/jambandnerd/db/`, `src/jambandnerd/data_collection/*/utils.py`
