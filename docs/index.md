@@ -2,7 +2,9 @@
 
 ## Project Overview
 
-JamBandNerd v2 is a cloud-based data science platform for collecting, transforming, and predicting jam band setlists. The system provides real-time setlist predictions through automated data pipelines and an interactive web interface.
+JamBandNerd v2 is a cloud-based data science platform for collecting, transforming, and predicting
+jam band setlists. The system provides real-time setlist predictions through automated data
+pipelines and an interactive web interface.
 
 ### Supported Bands
 
@@ -25,20 +27,20 @@ JamBandNerd v2 is a cloud-based data science platform for collecting, transformi
 ## Architecture Overview
 
 ```text
-Data Sources → Raw Data (Supabase) → Transform → Standardized Data (Supabase) → Models → Predictions (Supabase) → Web Interface
-     ↓              ↓                    ↓                   ↓                      ↓           ↓                    ↓
-  phish.net     phish_shows_raw     Standardize      phish_shows             Notebook   predictions_notebook   Streamlit
-  elgoose.net   goose_setlists_raw    Format         goose_setlists            Model      accuracy_notebook        App
-  scraping      wsp_songs_raw          ↓                   ↓                      ↓           ↓                    ↓
-                                    Common              Common                   CK+                          Band/Model
-                                    Schema              Schema                  Model                         Selection
+Data Sources → Raw Data (Supabase) → Transform → Models → Predictions (Supabase) → Web Interface
+     ↓              ↓                    ↓         ↓           ↓                    ↓
+  phish.net     phish_shows         Standardize  Notebook   phish_predictions   Streamlit
+  elgoose.net   goose_setlists        Format     Model      goose_predictions     App
+  scraping      wsp_songs              ↓          ↓           wsp_predictions      ↓
+                                    Common         CK+                          Band/Model
+                                    Schema        Model                         Selection
 ```
 
 ### Data Flow
 
-1. **Collection**: APIs/scraping → Raw Supabase tables (`{band}_*_raw`)
-2. **Transform**: Raw data → Standardized Supabase tables (`{band}_*`)
-3. **Predict**: Standardized data → Model predictions → Unified prediction tables (`predictions_*`)
+1. **Collection**: APIs/scraping → Raw Supabase tables (`{band}_shows`, `{band}_songs`, etc.)
+2. **Transform**: Raw data → Standardized format (in-memory processing)
+3. **Predict**: Standardized data → Model predictions → Prediction tables
 4. **Display**: Supabase predictions → Streamlit web interface
 5. **Automate**: GitHub Actions runs full pipeline daily
 
@@ -76,13 +78,15 @@ Data Sources → Raw Data (Supabase) → Transform → Standardized Data (Supaba
 
 3. **Environment variables:**
 
-   Ensure `.env` exists (it is gitignored). MCP/AI handles database setup automatically; no local setup script is required.
+   Ensure `.env` exists (it is gitignored). MCP/AI handles database setup automatically; no
+   local setup script is required.
 
 ### Usage
 
 #### Run Pipelines (Goose-first during Phase 2)
 
-Scripts are introduced as the Goose pipeline is implemented. For now, align work with `documents/planning/implementation_guide.md` and `implementation_schedule.md`. Once available:
+Scripts are introduced as the Goose pipeline is implemented. For now, align work with
+`documents/planning/implementation_guide.md` and `implementation_schedule.md`. Once available:
 
 ```bash
 # Run Goose-only pipeline (collect → transform → predict)
@@ -136,7 +140,10 @@ JamBandNerd/
 
 ## Development
 
-The project is built with a modular architecture to allow for independent development, testing, and extension. Each major component (data collection, transformation, modeling) is designed to be self-contained. This structure makes it straightforward to add new bands or prediction models by following the existing patterns.
+The project is built with a modular architecture to allow for independent development, testing, and
+extension. Each major component (data collection, transformation, modeling) is designed to be
+self-contained. This structure makes it straightforward to add new bands or prediction models by
+following the existing patterns.
 
 ### Modular Architecture
 
@@ -166,7 +173,8 @@ Each component is independently runnable:
 
 ## Web Interface Features
 
-An interactive web interface for exploring predictions is planned but has not been started. Planned features include:
+An interactive web interface for exploring predictions is planned but has not been started.
+Planned features include:
 
 - **Band Selection**: Switch between Phish, Goose, and WSP.
 - **Model Comparison**: Toggle between Notebook and CK+ models.

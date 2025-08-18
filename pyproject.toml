@@ -9,7 +9,7 @@ description = "Modular data science platform for jam band setlists, pipelines, a
 authors = [
   { name = "Connor Kitchings" }
 ]
-requires-python = ">=3.9"
+requires-python = ">=3.12"
 readme = "README.md"
 license = { text = "MIT" }
 
@@ -25,7 +25,7 @@ dependencies = [
   "supabase",
   "beautifulsoup4",
   "psycopg2-binary",
-  "typer[all]",
+  "typer",
   "tqdm"
 ]
 

@@ -26,8 +26,10 @@
         "NAIEVE",
         "pathing",
         "PGRST",
+        "plpgsql",
         "postgrest",
         "repr",
+        "schedulable",
         "selectbox",
         "setlistdata",
         "setlistid",
@@ -62,6 +64,7 @@
         "umphreys",
         "venueid",
         "venuename",
+        "webscrape",
         "withinyear",
         "WURM"
     ]

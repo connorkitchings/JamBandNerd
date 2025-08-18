@@ -1,0 +1,43 @@
+site_name: JamBandNerd
+site_description: Documentation for the JamBandNerd project
+repo_url: https://github.com/connorkitchings/JamBandNerd
+repo_name: connorkitchings/JamBandNerd
+
+# Use the new docs directory
+docs_dir: docs
+use_directory_urls: true
+
+theme:
+  name: mkdocs
+
+markdown_extensions:
+  - admonition
+  - toc:
+      permalink: true
+  - tables
+  - codehilite
+
+nav:
+  - Home: index.md
+  - Onboarding: onboarding.md
+  - Project:
+      - Product Requirements: project/prd.md
+      - Implementation Schedule: project/schedule.md
+      - Architecture Decisions: project/adr.md
+  - Guides:
+      - Implementation Guide: guides/implementation.md
+      - AI Session Guides: guides/ai_sessions.md
+      - Supabase API Guide: guides/supabase_api_guide.md
+  - Specifications:
+      - Technical Overview: specifications/technical_overview.md
+      - CLI: specifications/cli.md
+      - Database: specifications/database.md
+      - Goose Pipeline: specifications/goose_pipeline.md
+      - Predictions Schema: specifications/predictions_schema.md
+  - Schemas:
+      - Phish API: schemas/phish_api.md
+      - Goose API: schemas/goose_api.md
+      - WSP Webscrape: schemas/wsp_webscrape.md
+  - Dev Logs:
+      - 2025-08-17 Session 1: logs/2025-08-17/01.md
+      - 2025-08-17 Session 2: logs/2025-08-17/02.md

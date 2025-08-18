@@ -9,9 +9,7 @@ __pycache__/
 env/
 venv/
 .secrets
-
-# Logs
-logs/
+.venv/
 
 # macOS System Files
 .DS_Store
