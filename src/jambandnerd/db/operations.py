@@ -4,7 +4,9 @@ import pandas as pd
 from supabase import Client
 from .connection import get_supabase_client
 
-def fetch_existing_ids(table_name: str, id_column: str, since: Optional[str] = None) -> Set[Any]:
+def fetch_existing_ids(
+    table_name: str, id_column: str, since: Optional[str] = None, date_column: str = "created_at"
+) -> Set[Any]:
     """
     Fetches existing IDs from a table to prevent duplicate entries.
 
@@ -12,6 +14,7 @@ def fetch_existing_ids(table_name: str, id_column: str, since: Optional[str] = N
         table_name: The name of the table to query.
         id_column: The name of the column containing the IDs.
         since: An optional date string to filter records.
+        date_column: The name of the date column to filter on (defaults to 'created_at').
 
     Returns:
         A set of existing IDs.
@@ -19,8 +22,7 @@ def fetch_existing_ids(table_name: str, id_column: str, since: Optional[str] = N
     client = get_supabase_client()
     query = client.table(table_name).select(id_column)
     if since:
-        # Assuming a 'created_at' column for filtering
-        query = query.gte('created_at', since)
+        query = query.gte(date_column, since)
     
     response = query.execute()
     

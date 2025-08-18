@@ -20,3 +20,8 @@ class BandCollector(ABC):
     def collect_songs(self) -> List[Dict[str, Any]]:
         """Collect the entire song catalog for the band."""
         pass
+
+    @abstractmethod
+    def collect_venues(self) -> List[Dict[str, Any]]:
+        """Collect the entire venue catalog for the band."""
+        pass

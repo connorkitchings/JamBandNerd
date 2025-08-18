@@ -33,18 +33,9 @@ Notes:
   existence checks.
 - Store API response hash (optional) for future change detection.
 
-## Standardized Tables
+## Standardized Data (In-Memory)
 
-- `goose_songs`
-  - Columns (core): `song_id`, `song_name`, `is_original`, `original_artist`, `created_at`,
-  `updated_at`
-- `goose_shows`
-  - Columns (core): `show_id`, `show_date`, `permalink`, `venue_id`, `venue_name`, `city`,
-    `state`, `country`, `tour_id`, `created_at`, `updated_at`
-- `goose_setlists`
-  - Columns (core): `unique_id`, `show_id`, `show_date`, `set_name`, `set_index`, `song_index`,
-    `song_id`, `song_name`, `transition`, `is_jam`, `is_reprise`, `track_time`, `tour_id`,
-    `venue_id`, `venue_name`, `city`, `state`, `country`
+The transformation step from raw data to a standardized format occurs in-memory. The resulting DataFrames are used directly by the prediction models and are not persisted back to the database.
 
 Transformation rules:
 
@@ -58,13 +49,13 @@ Transformation rules:
 
 - Initial backfill (no dates):
   - `jbn collect goose` → fetch all and load into raw tables.
-  - `jbn transform goose` → populate standardized tables from raw.
+  - `jbn transform goose` → (In-memory step, no command needed)
   - `jbn predict goose --model notebook` → compute predictions for all eligible shows.
 
 - Daily run (incremental):
-  - `jbn run goose --stages collect,transform,predict --model notebook --incremental`
+  - `jbn run goose --stages collect,predict --model notebook --incremental`
   - Collect: filter by `updated_at`/latest known showdate if available; otherwise deduplicate using keys.
-  - Transform: reprocess only impacted shows (by default can reprocess all; optimizations later).
+  - Transform: performed in-memory by the predict step.
   - Predict: run for new/changed shows; can recompute recent window if needed.
 
 ## Idempotency & Integrity
@@ -87,9 +78,9 @@ Transformation rules:
   - Output: `goose_songs_raw`, `goose_shows_raw`, `goose_setlists_raw`
 - Transform
   - Input: `goose_*_raw` tables
-  - Output: `goose_songs`, `goose_shows`, `goose_setlists`
+  - Output: In-memory pandas DataFrames for the predict step.
 - Predict
-  - Input: standardized tables
+  - Input: In-memory pandas DataFrames from the transform step.
   - Output: `predictions_notebook`, `accuracy_notebook`
 
 ## Open Questions

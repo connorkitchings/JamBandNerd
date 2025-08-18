@@ -25,22 +25,23 @@ JamBandNerd v2 is a cloud-based data science platform for collecting, transformi
 ## Architecture Overview
 
 ```text
-Data Sources → Raw Data (Supabase) → Transform → Standardized Data (Supabase) → Models → Predictions (Supabase) → Web Interface
-     ↓              ↓                    ↓                   ↓                      ↓           ↓                    ↓
-  phish.net     phish_shows_raw     Standardize      phish_shows             Notebook   predictions_notebook   Streamlit
-  elgoose.net   goose_setlists_raw    Format         goose_setlists            Model      accuracy_notebook        App
-  scraping      wsp_songs_raw          ↓                   ↓                      ↓           ↓                    ↓
-                                    Common              Common                   CK+                          Band/Model
-                                    Schema              Schema                  Model                         Selection
+Data Sources → Raw Data (Supabase) → In-Memory Transform → Models → Predictions (Supabase) → Web Interface
+     ↓              ↓                       ↓                ↓           ↓                    ↓
+  phish.net     phish_shows_raw        Standardize         Notebook   predictions_notebook   Streamlit
+  elgoose.net   goose_setlists_raw       Format              Model      accuracy_notebook        App
+  scraping      wsp_songs_raw             ↓                  CK+                          Band/Model
+                                         Common             Model                         Selection
+                                         Schema
 ```
 
 ### Data Flow
 
 1. **Collection**: APIs/scraping → Raw Supabase tables (`{band}_*_raw`)
-2. **Transform**: Raw data → Standardized Supabase tables (`{band}_*`)
-3. **Predict**: Standardized data → Model predictions → Unified prediction tables (`predictions_*`)
-4. **Display**: Supabase predictions → Streamlit web interface
-5. **Automate**: GitHub Actions runs full pipeline daily
+2. **Transform (In-Memory)**: Raw data is loaded into memory, standardized, and used to generate model features. No intermediate standardized tables are created.
+3. **Predict**: Features → predictions stored in band/model-specific tables
+4. **Accuracy**: Backtests summarized to accuracy tables
+5. **Display**: (planned) Supabase predictions → Streamlit web interface
+6. **Automate**: (planned) GitHub Actions daily run
 
 ---
 
@@ -80,29 +81,21 @@ Data Sources → Raw Data (Supabase) → Transform → Standardized Data (Supaba
 
 ### Usage
 
-#### Run Pipelines (Goose-first during Phase 2)
-
-Scripts are introduced as the Goose pipeline is implemented. For now, align work with `documents/planning/implementation_guide.md` and `implementation_schedule.md`. Once available:
+#### Goose pipeline (current)
 
 ```bash
-# Run Goose-only pipeline (collect → transform → predict)
-python scripts/run_pipeline.py --band goose --collect --predict
+# 1) Collect Goose raw data into Supabase
+uv run python scripts/run_goose_collection.py
 
-# Run all pipelines (when other bands are added later)
-python scripts/run_all_pipelines.py
-```
+# 2) Generate top-50 predictions for the next/selected show and save to Supabase
+uv run python scripts/generate_goose_predictions.py            # defaults to today/next
+uv run python scripts/generate_goose_predictions.py --date YYYY-MM-DD
 
-#### Run Individual Components
+# 3) Backtest historical accuracy over a window
+uv run python scripts/backtest_goose_notebook.py --start 2025-06-01 --end 2025-08-16
 
-```bash
-# Data collection only
-python scripts/run_pipeline.py --collect --band phish
-
-# Transform and predict only
-python scripts/run_pipeline.py --predict --band goose --model notebook
-
-# Web interface (planned for later phase)
-# streamlit run src/jambandnerd/web/app.py
+# 4) Save summary accuracy metrics (last 50 completed shows)
+uv run python scripts/save_notebook_accuracy.py
 ```
 
 ---
@@ -111,25 +104,25 @@ python scripts/run_pipeline.py --predict --band goose --model notebook
 
 ```text
 JamBandNerd/
-├── documents/
-│   ├── planning/
-│   │   ├── PRD.md
-│   │   ├── implementation_guide.md
-│   │   ├── implementation_schedule.md
-│   │   └── project_context.md
-│   ├── data/                   # API/scraping specifications
-│   └── execution/
-│       └── dev_logs/
+├── docs/
+│   ├── models/                 # model docs (e.g., notebook.md)
+│   ├── project/                # PRD, schedule, ADR
+│   ├── guides/                 # ai_sessions, implementation, supabase_api_guide
+│   ├── schemas/                # API schemas
+│   └── logs/                   # session logs
 ├── src/jambandnerd/
 │   ├── data_collection/
 │   │   └── goose/
 │   ├── transformations/
 │   ├── models/
 │   ├── db/
-│   ├── predictions/
-│   └── web/                    # planned
-├── scripts/                    # planned
-└── tests/                      # planned
+│   └── predictions/
+├── scripts/
+│   ├── run_goose_collection.py
+│   ├── generate_goose_predictions.py
+│   ├── backtest_goose_notebook.py
+│   └── save_notebook_accuracy.py
+└── tests/
 ```
 
 ---

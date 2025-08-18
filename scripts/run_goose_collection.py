@@ -118,6 +118,32 @@ def _normalize_shows(raw: Iterable[Dict[str, Any]]) -> pd.DataFrame:
     return pd.DataFrame(normalized)
 
 
+def _normalize_venues(raw: Iterable[Dict[str, Any]]) -> pd.DataFrame:
+    """Normalize venues to `goose_venues_raw` schema using venues endpoint payload.
+
+    Schema fields observed: venue_id, venuename, city, state, country, zip, capacity, slug
+    """
+    normalized: List[Dict[str, Any]] = []
+    for item in raw:
+        venue_id = item.get("venue_id")
+        name = item.get("venuename")
+        if venue_id is None or not name:
+            continue
+        record = {
+            "venue_id": str(venue_id),
+            "venue_name": name,
+            "city": item.get("city"),
+            "state": item.get("state"),
+            "country": item.get("country"),
+            "zip": item.get("zip"),
+            "capacity": int(item.get("capacity") or 0),
+            "slug": item.get("slug"),
+            "source_hash": _compute_source_hash(item),
+        }
+        normalized.append(record)
+    return pd.DataFrame(normalized)
+
+
 def _normalize_setlists(raw: Iterable[Dict[str, Any]]) -> pd.DataFrame:
     """Normalize setlists to `goose_setlists_raw` schema.
 
@@ -200,6 +226,25 @@ def run_goose_collection() -> None:
     else:
         print("No shows normalized; skipping shows upsert.")
 
+    # Collect and insert venues
+    print("Collecting venues...")
+    venues_raw = collector.collect_venues()
+    venues_df = _normalize_venues(venues_raw)
+    print(f"Prepared {len(venues_df)} venues for upsert.")
+    if not venues_df.empty:
+        try:
+            upsert_dataframe(
+                table_name="goose_venues_raw",
+                df=venues_df,
+                conflict_columns=["venue_id"],
+            )
+            print("Inserted/updated venues in goose_venues_raw.")
+        except Exception as exc:
+            # Allow pipeline to continue even if venues table is not ready yet
+            print(f"Warning: could not upsert venues ({exc}). Skipping venues step.")
+    else:
+        print("No venues normalized; skipping venues upsert.")
+
     # Collect and insert setlists
     print("Collecting setlists...")
     setlists_raw = collector.collect_setlists()
@@ -215,7 +260,37 @@ def run_goose_collection() -> None:
     else:
         print("No setlists normalized; skipping setlists upsert.")
 
+    # Log collection run
+    try:
+        client = get_supabase_client()
+        client.table("collection_runs").insert({"band": "goose"}).execute()
+        print("Logged collection run.")
+    except Exception as exc:
+        print(f"Warning: could not log collection run ({exc}).")
+
     print("Goose data collection finished.")
+
+
+def run_goose_venues_collection() -> None:
+    """Collect venues via the venues endpoint and upsert into goose_venues_raw."""
+    print("Starting Goose venues collection...")
+    collector = GooseCollector()
+    get_supabase_client()
+    venues_raw = collector.collect_venues()
+    venues_df = _normalize_venues(venues_raw)
+    print(f"Prepared {len(venues_df)} venues for upsert.")
+    if not venues_df.empty:
+        try:
+            upsert_dataframe(
+                table_name="goose_venues_raw",
+                df=venues_df,
+                conflict_columns=["venue_id"],
+            )
+            print("Inserted/updated venues in goose_venues_raw.")
+        except Exception as exc:
+            print(f"Warning: could not upsert venues ({exc}). Skipping venues step.")
+    else:
+        print("No venues normalized; skipping venues upsert.")
 
 
 if __name__ == "__main__":

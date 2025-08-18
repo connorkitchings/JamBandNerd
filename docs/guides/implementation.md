@@ -375,7 +375,7 @@ JamBandNerd/
 
 ### Task 2.5: Data Transformation Pipeline
 
-**Objective**: Create standardization pipeline for model input
+**Objective**: Create in-memory standardization pipeline for model input
 
 **AI Session Input**:
 

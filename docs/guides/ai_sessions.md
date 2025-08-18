@@ -19,14 +19,14 @@ To get up to speed, please perform the following steps:
    - `pyproject.toml`
 
 2. Review the Current Sprint Status:
-   - `documents/planning/implementation_schedule.md`
+   - `docs/project/schedule.md`
 
 3. Review the Last Session's Handoff:
    - `docs/logs/[YYYY-MM-DD]/[XX].md` (use the most recent log for today)
 
 4. Prepare for Today's Task:
    - **Our focus today is:** [Describe the main goal for the session, referencing
-   `implementation_schedule.md`]
+   `docs/project/schedule.md`]
 
 Once you have completed this review, please confirm you are ready, and we will begin.
 ```

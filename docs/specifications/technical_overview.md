@@ -17,8 +17,7 @@ orchestration and analytics. The design is extensible to add new bands and model
 ### High-Level Flow
 
 ```mermaid
-Data Sources → Raw Data (Supabase) → Transform → Standardized Data (Supabase) → Models → Predictions
-(Supabase) → Web Interface
+Data Sources → Raw Data (Supabase) → In-Memory Transform → Models → Predictions (Supabase) → Web Interface
 ```
 
 ### Component Architecture
@@ -34,8 +33,8 @@ Data Sources → Raw Data (Supabase) → Transform → Standardized Data (Supaba
 #### Transformation Layer
 
 - **Purpose**: Convert raw data to a standardized format for modeling
-- **Processing**: Reads from raw tables and writes to new standardized tables.
-- **Output**: Standardized data tables in Supabase (`{band}_*`)
+- **Processing**: Reads from raw tables and transforms data in-memory before feeding to models.
+- **Output**: In-memory DataFrames or objects; no intermediate tables are written.
 - **Validation**: Data quality checks and cleansing
 
 #### Model Layer

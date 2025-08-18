@@ -26,23 +26,23 @@ pipelines and an interactive web interface.
 
 ## Architecture Overview
 
-```text
-Data Sources → Raw Data (Supabase) → Transform → Models → Predictions (Supabase) → Web Interface
-     ↓              ↓                    ↓         ↓           ↓                    ↓
-  phish.net     phish_shows         Standardize  Notebook   phish_predictions   Streamlit
-  elgoose.net   goose_setlists        Format     Model      goose_predictions     App
-  scraping      wsp_songs              ↓          ↓           wsp_predictions      ↓
-                                    Common         CK+                          Band/Model
-                                    Schema        Model                         Selection
-```
+The system is designed with a modular pipeline that processes data in stages:
 
-### Data Flow
+1.  **Data Sources**: External APIs and web scraping sites.
+2.  **Raw Data**: Data is collected and stored in its raw format in Supabase.
+3.  **In-Memory Transform**: Raw data is pulled into memory, cleaned, and standardized into features for the models.
+4.  **Models**: Prediction algorithms (e.g., Notebook, CK+) consume the transformed data.
+5.  **Predictions**: The model outputs are stored in Supabase.
+6.  **Web Interface**: A Streamlit app reads the predictions to display them to the user.
 
-1. **Collection**: APIs/scraping → Raw Supabase tables (`{band}_shows`, `{band}_songs`, etc.)
-2. **Transform**: Raw data → Standardized format (in-memory processing)
-3. **Predict**: Standardized data → Model predictions → Prediction tables
-4. **Display**: Supabase predictions → Streamlit web interface
-5. **Automate**: GitHub Actions runs full pipeline daily
+### Data Flow (current)
+
+1. **Collection**: APIs/scraping → Raw Supabase tables (`{band}_*_raw`)
+2. **Transform**: In-memory transformation for model features
+3. **Predict**: Features → predictions stored in Supabase
+4. **Accuracy**: Historical backtesting and summary metrics
+5. **Display**: (planned) Streamlit UI
+6. **Automate**: (planned) GitHub Actions daily run
 
 ---
 

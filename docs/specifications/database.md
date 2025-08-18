@@ -68,7 +68,6 @@ Coercion rules:
 ## Table Naming (summary)
 
 - Raw: `{band}_songs_raw`, `{band}_shows_raw`, `{band}_setlists_raw`
-- Standardized: `{band}_songs`, `{band}_shows`, `{band}_setlists`
 - Predictions: `predictions_{model_slug}`
 - Accuracy: `accuracy_{model_slug}`
 

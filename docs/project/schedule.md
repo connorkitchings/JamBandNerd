@@ -21,14 +21,15 @@ Planned Tasks (Documentation-first)
 - [x] Define model outputs and accuracy metrics schema
 - [x] Define orchestration flow for daily run (docs only; automation later)
 
-Progress Update (2025-08-17)
+Progress Update (2025-08-18)
 
-- [x] Implement Goose raw data collection and load to Supabase (`goose_songs_raw`, `goose_shows_raw`, `goose_setlists_raw`).
-- [x] Update `docs/schemas/goose_api.md` to match actual API response wrapper and types.
-- [x] Resolve uniqueness and schema issues (introduce `api_song_id`, drop `song_length_seconds`).
-- [ ] FIRST NEXT SESSION: Review elgoose API query parameters to ensure we only collect band=Goose data (exclude non-Goose entries like Vasudo).
-- [ ] Add nightly automation (GitHub Actions) to run Goose collection.
-- [ ] Begin transformation layer for standardized Goose tables.
+- [x] Implement Goose raw data collection; enforce Goose-only shows; add venues via API (`goose_venues_raw`).
+- [x] Update `docs/schemas/goose_api.md` with venues endpoint.
+- [x] Implement notebook model transformation (reference show date, last-year window, last-3 exclusion, current_gap).
+- [x] Generate and persist top-50 predictions to `goose_notebook_predictions` (unique on band+reference_date+model_version).
+- [x] Add metadata logging: `collection_runs`, `predicted_at` timestamps.
+- [x] Historical backtesting script and summary table `notebook_accuracy` (last 50 shows).
+- [ ] Add nightly automation (GitHub Actions) to run collection, predictions, and accuracy summary.
 
 Risk Management
 Risk

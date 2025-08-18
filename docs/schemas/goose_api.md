@@ -99,3 +99,21 @@ The schemas below describe the structure of individual records within the `data`
 | `isjam`           | int64     | A flag (0 or 1) indicating if the song contained a jam. |
 | `css_class`       | object    | A CSS class associated with the entry, if any.   |
 | `isrecommended`   | float64   | A flag indicating if the show is recommended.    |
+
+## 4. Venues (`/api/v2/venues.json`)
+
+| Column Name | Data Type | Description |
+| ----------- | --------- | ----------- |
+| `venue_id`  | int64     | Unique numerical identifier for the venue. |
+| `venuename` | object    | The name of the venue. |
+| `city`      | object    | The city of the venue. |
+| `state`     | object    | The state or region of the venue. |
+| `country`   | object    | The country of the venue. |
+| `zip`       | object    | Postal/ZIP code of the venue. |
+| `capacity`  | int64     | Stated capacity of the venue (0 if unknown). |
+| `slug`      | object    | URL-friendly identifier for the venue. |
+
+Notes:
+
+- Endpoint returns wrapper `{ error, error_message, data }` identical to other endpoints.
+- Observed count ~550 venues. Keys consistent across v1 and v2 in testing.

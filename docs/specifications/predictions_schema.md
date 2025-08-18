@@ -9,7 +9,7 @@ This document defines the storage schemas for predictions and accuracy tracking.
 
 Examples: `predictions_notebook`, `accuracy_notebook`.
 
-## Predictions Table
+## Predictions Table (current implementation -> band/model-specific)
 
 Granularity: one row per predicted song candidate for a given show and context, with rank and probability.
 
@@ -35,7 +35,7 @@ Indexes/Constraints:
 - Primary key: `id`
 - Indexes: `(band, model_slug, show_id)`, `(run_id)`
 
-## Accuracy Table
+## Accuracy Table (per-show) — planned
 
 Granularity: accuracy metrics per show.
 
