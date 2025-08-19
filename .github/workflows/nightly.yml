@@ -1,44 +1,11 @@
-name: Nightly Goose Pipeline
+name: Nightly Goose Pipeline (disabled - merged into daily_goose_pipeline)
 
 on:
-  schedule:
-    - cron: '0 6 * * *'
   workflow_dispatch:
 
-concurrency:
-  group: nightly-goose
-  cancel-in-progress: false
-
-permissions:
-  contents: read
-
 jobs:
-  run:
+  noop:
     runs-on: ubuntu-latest
-    env:
-      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-      SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install .
-
-      - name: Run Goose data collection
-        run: python scripts/run_goose_collection.py
-
-      - name: Generate Goose predictions
-        run: python scripts/generate_goose_predictions.py
-
-      - name: Update notebook accuracy summary
-        run: python scripts/save_notebook_accuracy.py
-
+      - run: echo "This workflow is disabled. Use daily_goose_pipeline.yml"
 

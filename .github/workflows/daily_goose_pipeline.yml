@@ -2,7 +2,7 @@ name: Daily Goose Pipeline
 
 on:
   schedule:
-    - cron: '0 8 * * *' # Runs at 8:00 AM UTC daily
+    - cron: '0 19 * * *' # Runs daily at 19:00 UTC (3:00 PM ET during DST)
   workflow_dispatch: # Allows manual triggering
 
 jobs:
