@@ -21,27 +21,32 @@ jobs:
         run: |
           curl -LsSf https://astral.sh/uv/install.sh | sh
           echo "$HOME/.local/bin" >> $GITHUB_PATH
-      
+
       - name: Install project dependencies with uv
         run: |
           uv venv
-          source .venv/bin/activate
           uv pip install .
 
       - name: Run Goose Data Collection
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
-        run: python scripts/run_goose_collection.py
+        run: |
+          source .venv/bin/activate
+          python scripts/run_goose_collection.py
 
       - name: Generate Goose Predictions
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
-        run: python scripts/generate_goose_predictions.py
+        run: |
+          source .venv/bin/activate
+          python scripts/generate_goose_predictions.py
 
       - name: Save Notebook Accuracy
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
-        run: python scripts/save_notebook_accuracy.py
+        run: |
+          source .venv/bin/activate
+          python scripts/save_notebook_accuracy.py
