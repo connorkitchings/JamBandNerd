@@ -59,6 +59,35 @@ def fetch_predictions(_db_client: Client) -> tuple[pd.DataFrame, str | None, dic
         return pd.DataFrame(), None, {}
 
 
+def fetch_show_details_by_date(_db_client: Client, reference_date: str | None) -> dict | None:
+    """Fetch venue details for the given reference show date from goose_shows_raw.
+
+    Returns a dict containing keys: show_date, venue_name, venue_city, venue_state if found, else None.
+    """
+    if not reference_date:
+        return None
+    try:
+        resp = (
+            _db_client.table("goose_shows_raw")
+            .select("show_date,venue_name,venue_city,venue_state,show_id")
+            .eq("show_date", reference_date)
+            .order("show_id", desc=False)
+            .limit(1)
+            .execute()
+        )
+        if not resp.data:
+            return None
+        row = resp.data[0]
+        return {
+            "show_date": row.get("show_date"),
+            "venue_name": row.get("venue_name"),
+            "venue_city": row.get("venue_city"),
+            "venue_state": row.get("venue_state"),
+        }
+    except Exception:
+        return None
+
+
 st.set_page_config(page_title="JamBandNerd Predictions", layout="wide")
 st.title("JamBandNerd - Goose Predictions")
 
@@ -71,35 +100,45 @@ try:
     predictions_df, reference_date, meta = fetch_predictions(supabase_client)
 
     if not predictions_df.empty:
-        st.subheader(f"Top Predictions for Show on {reference_date}")
-        if meta:
-            st.caption(
-                " | ".join(
-                    part for part in [
-                        f"Model: {meta.get('model_version')}" if meta.get("model_version") else None,
-                        f"Top K: {meta.get('top_k')}" if meta.get("top_k") else None,
-                        f"Predicted at: {meta.get('predicted_at')}" if meta.get("predicted_at") else None,
-                    ]
-                    if part
-                )
+        show_details = fetch_show_details_by_date(supabase_client, reference_date)
+        if show_details:
+            header = (
+                f"Next Show: {show_details.get('show_date')} at "
+                f"{show_details.get('venue_name')} in "
+                f"{show_details.get('venue_city')}, {show_details.get('venue_state')}"
             )
+        else:
+            header = f"Next Show: {reference_date}"
+        st.subheader(header)
 
         display_df = predictions_df.copy()
+        # Keep and order the desired columns
+        desired_order = ["rank", "song_name", "plays_past_year", "LTP", "current_gap"]
+        display_df = display_df[[c for c in desired_order if c in display_df.columns]]
+        # Rename headers to match requested labels
         display_df.rename(
             columns={
-                "rank": "Rank",
+                "rank": "rank",
                 "song_name": "Song",
-                "plays_past_year": "Plays (Last Year)",
+                "plays_past_year": "Plays in Last Year",
+                "LTP": "LTP Date (Last Played)",
                 "current_gap": "Current Gap",
-                "LTP": "Last Played",
             },
             inplace=True,
         )
 
         st.dataframe(display_df, use_container_width=True, hide_index=True)
-        st.info(
-            "This table shows the top songs most likely to be played at the next Goose show, based on the Notebook model."
-        )
+
+        # Caption at the bottom with loaded_at and predicted_at without seconds
+        loaded_at = pd.Timestamp.utcnow().floor("min")
+        predicted_at_raw = meta.get("predicted_at") if meta else None
+        try:
+            predicted_at = pd.to_datetime(predicted_at_raw).floor("min") if predicted_at_raw else None
+        except Exception:
+            predicted_at = None
+        loaded_at_str = loaded_at.strftime("%Y-%m-%d %H:%M")
+        predicted_at_str = predicted_at.strftime("%Y-%m-%d %H:%M") if predicted_at is not None else "unknown"
+        st.caption(f"data loaded at {loaded_at_str} and predictions made at {predicted_at_str}")
     else:
         st.warning("No predictions found. Please run the prediction scripts first.")
 
