@@ -23,6 +23,7 @@ dependencies = [
   "ruff",
   "black",
   "supabase",
+  "streamlit",
   "beautifulsoup4",
   "psycopg2-binary",
   "typer",
