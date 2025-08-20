@@ -20,8 +20,10 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, project_root)
 
 from src.jambandnerd.data_collection.goose.collector import GooseCollector  # noqa: E402
-from src.jambandnerd.db.operations import upsert_dataframe  # noqa: E402
+from src.jambandnerd.db.operations import upsert_dataframe, get_table_schema  # noqa: E402
 from src.jambandnerd.db.connection import get_supabase_client  # noqa: E402
+from src.jambandnerd.db.validation import validate_dataframe_against_table, coerce_df_types # noqa: E402
+import argparse
 
 
 def _compute_source_hash(record: Dict[str, Any]) -> str:
@@ -190,7 +192,7 @@ def _normalize_setlists(raw: Iterable[Dict[str, Any]]) -> pd.DataFrame:
     return pd.DataFrame(normalized)
 
 
-def run_goose_collection() -> None:
+def run_goose_collection(skip_validation: bool = False) -> None:
     """Collect all Goose data and store it in Supabase raw tables."""
     print("Starting Goose data collection...")
     collector = GooseCollector()
@@ -202,12 +204,28 @@ def run_goose_collection() -> None:
     songs_df = _normalize_songs(songs_raw)
     print(f"Prepared {len(songs_df)} songs for upsert.")
     if not songs_df.empty:
-        upsert_dataframe(
-            table_name="goose_songs_raw",
-            df=songs_df,
-            conflict_columns=["api_song_id"],
-        )
-        print("Inserted/updated songs in goose_songs_raw.")
+        table_name = "goose_songs_raw"
+        schema = get_table_schema(table_name)
+        if schema and not skip_validation:
+            songs_df = coerce_df_types(songs_df, schema)
+            report = validate_dataframe_against_table(songs_df, table_name, schema)
+            if not report.is_valid:
+                print(f"Validation failed for {table_name}: {report}")
+            else:
+                upsert_dataframe(
+                    table_name=table_name,
+                    df=songs_df,
+                    conflict_columns=["api_song_id"],
+                )
+                print(f"Inserted/updated songs in {table_name}.")
+        else:
+            # Either skipping validation or no schema available; proceed with upsert
+            upsert_dataframe(
+                table_name=table_name,
+                df=songs_df,
+                conflict_columns=["api_song_id"],
+            )
+            print(f"Inserted/updated songs in {table_name} (no validation).")
     else:
         print("No songs normalized; skipping songs upsert.")
 
@@ -217,12 +235,27 @@ def run_goose_collection() -> None:
     shows_df = _normalize_shows(shows_raw)
     print(f"Prepared {len(shows_df)} shows for upsert.")
     if not shows_df.empty:
-        upsert_dataframe(
-            table_name="goose_shows_raw",
-            df=shows_df,
-            conflict_columns=["show_id"],
-        )
-        print("Inserted/updated shows in goose_shows_raw.")
+        table_name = "goose_shows_raw"
+        schema = get_table_schema(table_name)
+        if schema and not skip_validation:
+            shows_df = coerce_df_types(shows_df, schema)
+            report = validate_dataframe_against_table(shows_df, table_name, schema)
+            if not report.is_valid:
+                print(f"Validation failed for {table_name}: {report}")
+            else:
+                upsert_dataframe(
+                    table_name=table_name,
+                    df=shows_df,
+                    conflict_columns=["show_id"],
+                )
+                print(f"Inserted/updated shows in {table_name}.")
+        else:
+            upsert_dataframe(
+                table_name=table_name,
+                df=shows_df,
+                conflict_columns=["show_id"],
+            )
+            print(f"Inserted/updated shows in {table_name} (no validation).")
     else:
         print("No shows normalized; skipping shows upsert.")
 
@@ -232,16 +265,33 @@ def run_goose_collection() -> None:
     venues_df = _normalize_venues(venues_raw)
     print(f"Prepared {len(venues_df)} venues for upsert.")
     if not venues_df.empty:
-        try:
-            upsert_dataframe(
-                table_name="goose_venues_raw",
-                df=venues_df,
-                conflict_columns=["venue_id"],
-            )
-            print("Inserted/updated venues in goose_venues_raw.")
-        except Exception as exc:
-            # Allow pipeline to continue even if venues table is not ready yet
-            print(f"Warning: could not upsert venues ({exc}). Skipping venues step.")
+        table_name = "goose_venues_raw"
+        schema = get_table_schema(table_name)
+        if schema and not skip_validation:
+            venues_df = coerce_df_types(venues_df, schema)
+            report = validate_dataframe_against_table(venues_df, table_name, schema)
+            if not report.is_valid:
+                print(f"Validation failed for {table_name}: {report}")
+            else:
+                try:
+                    upsert_dataframe(
+                        table_name=table_name,
+                        df=venues_df,
+                        conflict_columns=["venue_id"],
+                    )
+                    print(f"Inserted/updated venues in {table_name}.")
+                except Exception as exc:
+                    print(f"Warning: could not upsert venues ({exc}). Skipping venues step.")
+        else:
+            try:
+                upsert_dataframe(
+                    table_name=table_name,
+                    df=venues_df,
+                    conflict_columns=["venue_id"],
+                )
+                print(f"Inserted/updated venues in {table_name} (no validation).")
+            except Exception as exc:
+                print(f"Warning: could not upsert venues ({exc}). Skipping venues step.")
     else:
         print("No venues normalized; skipping venues upsert.")
 
@@ -251,12 +301,27 @@ def run_goose_collection() -> None:
     setlists_df = _normalize_setlists(setlists_raw)
     print(f"Prepared {len(setlists_df)} setlist entries for upsert.")
     if not setlists_df.empty:
-        upsert_dataframe(
-            table_name="goose_setlists_raw",
-            df=setlists_df,
-            conflict_columns=["show_id", "set_number", "song_position"],
-        )
-        print("Inserted/updated setlists in goose_setlists_raw.")
+        table_name = "goose_setlists_raw"
+        schema = get_table_schema(table_name)
+        if schema and not skip_validation:
+            setlists_df = coerce_df_types(setlists_df, schema)
+            report = validate_dataframe_against_table(setlists_df, table_name, schema)
+            if not report.is_valid:
+                print(f"Validation failed for {table_name}: {report}")
+            else:
+                upsert_dataframe(
+                    table_name=table_name,
+                    df=setlists_df,
+                    conflict_columns=["show_id", "set_number", "song_position"],
+                )
+                print(f"Inserted/updated setlists in {table_name}.")
+        else:
+            upsert_dataframe(
+                table_name=table_name,
+                df=setlists_df,
+                conflict_columns=["show_id", "set_number", "song_position"],
+            )
+            print(f"Inserted/updated setlists in {table_name} (no validation).")
     else:
         print("No setlists normalized; skipping setlists upsert.")
 
@@ -294,4 +359,7 @@ def run_goose_venues_collection() -> None:
 
 
 if __name__ == "__main__":
-    run_goose_collection()
+    parser = argparse.ArgumentParser(description="Run Goose data collection with optional schema validation")
+    parser.add_argument("--skip-validation", action="store_true", help="Bypass schema validation before upserts")
+    args = parser.parse_args()
+    run_goose_collection(skip_validation=args.skip_validation)

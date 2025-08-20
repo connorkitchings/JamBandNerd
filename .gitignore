@@ -21,3 +21,6 @@ dist/
 
 # devcontainer
 .devcontainer/
+
+# Python build artifacts
+*.egg-info

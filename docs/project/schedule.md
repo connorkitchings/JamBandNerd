@@ -48,18 +48,18 @@ robust data validation, and add the new `ckplus` model for Goose.
 
 **Planned Tasks**:
 
-- [ ] **Refactor to Unified Tables**:
+- [x] **Refactor to Unified Tables**:
   - [ ] Modify `scripts/generate_goose_predictions.py` to write to a unified `predictions_notebook`
         table, adding a `band` column.
   - [ ] Update `scripts/save_notebook_accuracy.py` to write to a unified `notebook_accuracy` table.
   - [ ] Adjust `src/jambandnerd/web/app.py` to read from the unified table and filter by band.
   - [ ] Update `ADR-003` to reflect the decision to use unified tables.
-- [ ] **Implement Database Validation**:
+- [x] **Implement Database Validation**:
   - [ ] Implement schema validation logic in `src/jambandnerd/db/validation.py`.
   - [ ] Add a utility to `src/jambandnerd/db/operations.py` to fetch table schemas from Supabase.
   - [ ] Integrate validation checks into the data collection and prediction scripts before writing
         to the database.
-- [ ] **Implement CK+ Model**:
+- [x] **Implement CK+ Model**:
   - [ ] Create the core `ckplus` model logic in `src/jambandnerd/models/ckplus/`.
   - [ ] Develop the necessary data transformations for the `ckplus` model's gap-based features.
   - [ ] Create new scripts (`generate_goose_ckplus_predictions.py`, etc.) to run the model and
@@ -69,9 +69,9 @@ robust data validation, and add the new `ckplus` model for Goose.
 
 | Risk | Probability | Impact | Mitigation Strategy | Owner |
 | :--- | :--- | :--- | :--- | :--- |
-| Third-party API changes | Medium | High | Implement fallback,<br>monitor changelog | @dev |
-| Data model/schema drift | Low | Medium | Add schema validation pre-export;<br>keep schema docs up to date | @dev |
-| Model Implementation Complexity | Medium | High | Start with a simple version of the CK+ model and iterate | @dev |
+| Third-party API changes | Medium | High | Implement fallback, monitor changelog | @dev |
+| Data model/schema drift | Low | Medium | Schema validation; keep docs current | @dev |
+| Model Complexity | Medium | High | Start with simple CK+ model and iterate | @dev |
 
 ### Sprint Retrospective
 

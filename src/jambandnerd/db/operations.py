@@ -62,3 +62,27 @@ def upsert_dataframe(table_name: str, df: pd.DataFrame, conflict_columns: List[s
     for i in range(0, len(records), chunk_size):
         chunk = records[i:i + chunk_size]
         client.table(table_name).upsert(chunk, on_conflict=','.join(conflict_columns)).execute()
+
+def get_table_schema(table_name: str) -> List[Dict[str, Any]]:
+    """
+    Fetch the schema for a given table from Supabase via RPC, if available.
+
+    This expects a Postgres function (RPC) named `get_table_schema(p_table_name text)`
+    that returns rows with at least: column_name, data_type, is_nullable.
+
+    If the RPC is not present or fails, returns an empty list so callers can
+    fall back to local expected schemas.
+
+    Args:
+        table_name: The name of the table whose schema to retrieve.
+
+    Returns:
+        A list of dictionaries describing columns, or an empty list on failure.
+    """
+    client = get_supabase_client()
+    try:
+        response = client.rpc("get_table_schema", {"p_table_name": table_name}).execute()
+        return response.data or []
+    except Exception:
+        # RPC not available or other error; let validation layer use local expectations
+        return []

@@ -1,4 +1,4 @@
-"""Generate baseline Goose next-song predictions using the notebook predictor."""
+"""Generate Goose next-song predictions using the CK+ gap-based predictor."""
 from __future__ import annotations
 
 from typing import Any, Dict, List
@@ -13,8 +13,7 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, project_root)
 
 from src.jambandnerd.db.connection import get_supabase_client  # noqa: E402
-from src.jambandnerd.models.notebook.model import NotebookPredictor  # noqa: E402
-from src.jambandnerd.transformations.gaps import aggregate_past_year_for_notebook  # noqa: E402
+from src.jambandnerd.models.ckplus.model import CKPlusPredictor  # noqa: E402
 from src.jambandnerd.db.operations import get_table_schema  # noqa: E402
 from src.jambandnerd.db.validation import coerce_df_types, validate_dataframe_against_table  # noqa: E402
 
@@ -32,20 +31,21 @@ def _resolve_reference_show_date() -> str:
     df = pd.DataFrame(shows_rows)
     df["_dt"] = pd.to_datetime(df["show_date"]).dt.date
     today = date.today()
-    upcoming = df[df["_dt"] >= today].sort_values(["_dt", "show_id"])  # pick earliest show date >= today
+    upcoming = df[df["_dt"] >= today].sort_values(["_dt", "show_id"])  # earliest show date >= today
     if not upcoming.empty:
         d = upcoming.iloc[0]["_dt"]
     else:
-        # No future shows; fall back to latest known show date
         d = df["_dt"].max()
     return d.isoformat()
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Generate Goose notebook predictions")
+    parser = argparse.ArgumentParser(description="Generate Goose CK+ predictions")
     parser.add_argument("--date", dest="date", help="Reference show date YYYY-MM-DD", required=False)
     parser.add_argument("--skip-validation", action="store_true", help="Bypass schema validation for inputs and outputs")
+    parser.add_argument("--top-k", dest="top_k", type=int, default=50)
     args = parser.parse_args()
+
     print("Loading Goose raw tables from Supabase...")
     shows_rows = _fetch_table("goose_shows_raw")
     setlists_rows = _fetch_table("goose_setlists_raw")
@@ -53,7 +53,6 @@ def main() -> None:
     setlists_df = pd.DataFrame(setlists_rows)
     print(f"Loaded shows={len(shows_df)}, setlists={len(setlists_df)}")
 
-    # Optional validation/coercion against raw schemas
     if not args.skip_validation:
         for table_name, df_ref in (("goose_shows_raw", shows_df), ("goose_setlists_raw", setlists_df)):
             schema = get_table_schema(table_name)
@@ -69,64 +68,61 @@ def main() -> None:
                     print(f"Warning: {table_name} input validation failed: {report}")
 
     reference_date_str = args.date or _resolve_reference_show_date()
-    predictor = NotebookPredictor()
+    predictor = CKPlusPredictor()
     predictions = predictor.predict(
         shows_df=shows_df,
         setlists_df=setlists_df,
-        top_k=50,
+        top_k=args.top_k,
         reference_show_date=pd.to_datetime(reference_date_str).date(),
     )
-    print("Top predictions:")
-    for rank, p in enumerate(predictions, start=1):
-        # Format LTP as mm/dd/yyyy
-        ltp = None
-        if p.last_played_date:
-            try:
-                parts = p.last_played_date.split("-")
-                ltp = f"{parts[1]}/{parts[2]}/{parts[0]}"
-            except Exception:
-                ltp = p.last_played_date
-        print(f"{rank:2d}. {p.song_name}  (plays={p.plays_past_year}, current_gap={p.current_gap}, LTP={ltp})")
 
-    # Persist to Supabase notebook predictions table
-    agg = aggregate_past_year_for_notebook(
-        shows_df=shows_df, setlists_df=setlists_df, reference_show_date=pd.to_datetime(reference_date_str).date()
-    )
+    print("Top predictions (CK+):")
+    for rank, p in enumerate(predictions, start=1):
+        print(
+            f"{rank:2d}. {p.song_name} (plays={p.times_played}, gap={p.current_gap}, avg_gap={p.avg_gap:.1f}, "
+            f"ratio={p.gap_ratio:.2f}, z={p.gap_z_score:.2f}, score={p.ckplus_score:.3f}, LTP={p.LTP})"
+        )
+
+    # Persist to Supabase CK+ predictions table (unified by model)
     payload = [
         {
             "rank": i + 1,
             "song_name": p.song_name,
-            "plays_past_year": p.plays_past_year,
+            "times_played": p.times_played,
             "current_gap": p.current_gap,
-            "LTP": (f"{p.last_played_date.split('-')[1]}/{p.last_played_date.split('-')[2]}/{p.last_played_date.split('-')[0]}" if p.last_played_date else None),
+            "avg_gap": p.avg_gap,
+            "gap_ratio": p.gap_ratio,
+            "gap_z_score": p.gap_z_score,
+            "ckplus_score": p.ckplus_score,
+            "LTP": p.LTP,
         }
         for i, p in enumerate(predictions)
     ]
+
     client = get_supabase_client()
     record = {
         "band": "goose",
-        "reference_date": agg.latest_show_date.isoformat(),
+        "reference_date": pd.to_datetime(reference_date_str).date().isoformat(),
         "predictions": payload,
         "top_k": len(payload),
-        "model_version": "notebook_v1",
-        "collected_at": None,  # optionally populated by a separate query if desired
+        "model_version": "ckplus_v1",
         "predicted_at": pd.Timestamp.utcnow().isoformat(),
     }
-    # Validate output shape if predictions_notebook schema is available
     if not args.skip_validation:
-        out_schema = get_table_schema("predictions_notebook")
+        out_schema = get_table_schema("predictions_ckplus")
         if out_schema:
             tmp_df = pd.DataFrame([record])
             tmp_df = coerce_df_types(tmp_df, out_schema)
-            out_report = validate_dataframe_against_table(tmp_df, "predictions_notebook", out_schema)
+            out_report = validate_dataframe_against_table(tmp_df, "predictions_ckplus", out_schema)
             if not out_report.is_valid:
-                print(f"Warning: predictions_notebook output validation failed: {out_report}")
-    # Upsert by unique (band, reference_date, model_version)
-    client.table("predictions_notebook").upsert(record, on_conflict="band,reference_date,model_version").execute()
-    print("Saved predictions to predictions_notebook.")
+                print(f"Warning: predictions_ckplus output validation failed: {out_report}")
+
+    client.table("predictions_ckplus").upsert(record, on_conflict="band,reference_date,model_version").execute()
+    print("Saved predictions to predictions_ckplus.")
 
 
 if __name__ == "__main__":
     main()
+
 
 

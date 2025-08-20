@@ -67,5 +67,11 @@
         "webscrape",
         "withinyear",
         "WURM"
-    ]
+    ],
+
+    // Ruff settings
+    "editor.defaultFormatter": "charliermarsh.ruff",
+    "ruff.enable": true,
+    "ruff.lintOnSave": true,
+    "ruff.organizeImports": true
 }

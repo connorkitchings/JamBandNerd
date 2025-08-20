@@ -50,6 +50,7 @@ next session.]
   - [List any documents that were created or modified.]
 
 After generating the log, please confirm the file path and a list of the documents you updated.
- 
- Additionally, as part of closing the session, review and update any affected documentation in `README.md` and the `docs/` folder to reflect changes made during the session.
+
+ Additionally, as part of closing the session, review and update any affected documentation in
+ `README.md` and the `docs/` folder to reflect changes made during the session.
 ```

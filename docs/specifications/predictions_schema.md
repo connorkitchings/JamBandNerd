@@ -7,14 +7,13 @@ This document defines the storage schemas for predictions and accuracy tracking.
 - Predictions: `predictions_{model_slug}`
 - Accuracy: `accuracy_{model_slug}`
 
-Examples: `predictions_notebook`, `accuracy_notebook`.
+Examples: `predictions_notebook`, `predictions_ckplus`, `notebook_accuracy`, `accuracy_ckplus`.
 
 Note:
 
-- Current implementation persists one row per prediction run in `predictions_notebook` with a nested
-  JSON `predictions` array keyed by rank. Accuracy summaries are stored in `notebook_accuracy` with
-  aggregate window metrics. The more granular per-song prediction schema below remains a future
-  enhancement for richer analytics.
+- Current implementation persists one row per prediction run in `predictions_{model}` with a nested
+  JSON `predictions` array keyed by rank. Accuracy summaries are stored in `{model}_accuracy` with
+  aggregate window metrics. The more granular per-song prediction schema below remains a future enhancement.
 
 ## Predictions Table (current implementation -> band/model-specific)
 

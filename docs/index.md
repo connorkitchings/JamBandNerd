@@ -55,8 +55,11 @@ To simplify queries across bands and models, predictions and accuracy are stored
   - Constraint: unique on (`band`, `reference_date`, `model_version`)
 - `notebook_accuracy`: Aggregate accuracy summary over a rolling window (e.g., last 50 completed shows)
   - Key fields: `band`, `model_version`, `window_start`, `window_end`, `num_shows`, k10/k25/k50 metrics
+- `predictions_ckplus`: Same structure as predictions_notebook, for CK+ model
+- `accuracy_ckplus`: Aggregate accuracy summary for CK+
 
 Notes:
+
 - Legacy `goose_notebook_predictions` has been migrated/deprecated; use `predictions_notebook` going forward.
 - The Streamlit app and scripts already read/write the unified tables.
 

@@ -2,7 +2,9 @@
 
 ### Overview
 
-This document describes the baseline “notebook” model used to produce next‑show song predictions for Goose and how we measure historical accuracy. The model is intentionally simple and fast to compute directly from raw Supabase tables.
+This document describes the baseline “notebook” model used to produce next‑show song predictions for
+Goose and how we measure historical accuracy. The model is intentionally simple and fast to
+compute directly from raw Supabase tables.
 
 ### Reference Show Date
 
@@ -32,7 +34,8 @@ Given a reference show date:
 
 - Rank primarily by `plays_past_year` (descending), tie‑break by `current_gap` (descending), then
   song name (ascending).
-- Output the top‑50 as the prediction list with fields: `song_name`, `plays_past_year`, `current_gap`, `LTP` (last time played, mm/dd/yyyy).
+- Output the top‑50 as the prediction list with fields: `song_name`, `plays_past_year`,
+  `current_gap`, `LTP` (last time played, mm/dd/yyyy).
 
 ### Historical Accuracy Measurement
 
@@ -70,10 +73,11 @@ We assess accuracy by iterating through historical show dates and treating each 
 
 ### Storage
 
-- Predictions: `goose_notebook_predictions` (upserted by `(band, reference_date, model_version)`).
+- Predictions: `predictions_notebook` (upserted by `(band, reference_date, model_version)`).
 - Accuracy summaries: `notebook_accuracy` (band, model_version, window_start/window_end, metrics at K=10/25/50).
 
 ### Next Steps
 
-- Add configurable weighting that blends `plays_past_year` with contextual features (venue, tour, gap bands).
+- Add configurable weighting that blends `plays_past_year` with contextual features (venue, tour,
+  gap bands).
 - Extend accuracy reporting with per‑era breakdowns and confidence intervals.

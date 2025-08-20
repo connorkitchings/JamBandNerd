@@ -2,11 +2,14 @@ pandas
 requests
 python-dotenv
 lxml==4.9.3
-pytest
-ruff
-black
 supabase
+streamlit
 beautifulsoup4
 psycopg2-binary
 typer
 tqdm
+
+[dev]
+ruff
+black
+pytest

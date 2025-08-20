@@ -40,21 +40,20 @@ curl 'https://<project-ref>.supabase.co/rest/v1/my_table?select=*' \
 For more complex operations or to run raw SQL, the recommended approach is to create a function in
 the database and call it as a Remote Procedure Call (RPC).
 
-#### Step 1: Define the SQL Function
+#### Step 1: Define the SQL Function (Example: Table Schema RPC)
 
 In the Supabase dashboard's SQL Editor, define a function.
 
 ```sql
--- Example: A function to create a table
-CREATE OR REPLACE FUNCTION create_my_table()
-RETURNS void AS $$
-BEGIN
-  CREATE TABLE my_table (
-    id BIGINT PRIMARY KEY,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-  );
-END;
-$$ LANGUAGE plpgsql;
+create or replace function public.get_table_schema(p_table_name text)
+returns table (column_name text, data_type text, is_nullable text)
+language sql as $$
+  select column_name, data_type, is_nullable
+  from information_schema.columns
+  where table_schema = 'public' and table_name = p_table_name
+  order by ordinal_position;
+$$;
+grant execute on function public.get_table_schema(text) to anon, authenticated, service_role;
 ```
 
 #### Step 2: Call the Function via the API

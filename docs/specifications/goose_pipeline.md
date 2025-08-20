@@ -35,7 +35,9 @@ Notes:
 
 ## Standardized Data (In-Memory)
 
-The transformation step from raw data to a standardized format occurs in-memory. The resulting DataFrames are used directly by the prediction models and are not persisted back to the database.
+The transformation from raw data to a standardized format occurs in-memory.
+The resulting DataFrames are used directly by the prediction models and are
+not persisted to the database.
 
 Transformation rules:
 
@@ -81,7 +83,7 @@ Transformation rules:
   - Output: In-memory pandas DataFrames for the predict step.
 - Predict
   - Input: In-memory pandas DataFrames from the transform step.
-  - Output: `predictions_notebook`, `notebook_accuracy`
+  - Output: `predictions_notebook`, `notebook_accuracy`, `predictions_ckplus`, `accuracy_ckplus`
 
 ## Open Questions
 
