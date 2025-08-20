@@ -81,7 +81,7 @@ Transformation rules:
   - Output: In-memory pandas DataFrames for the predict step.
 - Predict
   - Input: In-memory pandas DataFrames from the transform step.
-  - Output: `predictions_notebook`, `accuracy_notebook`
+  - Output: `predictions_notebook`, `notebook_accuracy`
 
 ## Open Questions
 

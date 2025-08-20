@@ -162,7 +162,9 @@ CREATE TABLE predictions_notebook (
 **Accuracy Tracking**: `accuracy_{model_slug}`
 
 ```sql
-CREATE TABLE accuracy_notebook (
+-- Current implementation stores aggregate window accuracy in `notebook_accuracy`.
+-- The per-show schema below remains a future enhancement.
+CREATE TABLE notebook_accuracy (
     id SERIAL PRIMARY KEY,
     band VARCHAR(50) NOT NULL,
     show_id VARCHAR(50) NOT NULL,

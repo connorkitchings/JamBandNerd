@@ -9,6 +9,13 @@ This document defines the storage schemas for predictions and accuracy tracking.
 
 Examples: `predictions_notebook`, `accuracy_notebook`.
 
+Note:
+
+- Current implementation persists one row per prediction run in `predictions_notebook` with a nested
+  JSON `predictions` array keyed by rank. Accuracy summaries are stored in `notebook_accuracy` with
+  aggregate window metrics. The more granular per-song prediction schema below remains a future
+  enhancement for richer analytics.
+
 ## Predictions Table (current implementation -> band/model-specific)
 
 Granularity: one row per predicted song candidate for a given show and context, with rank and probability.

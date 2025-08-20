@@ -2,7 +2,9 @@
 
 ## Project Overview
 
-JamBandNerd v2 is a cloud-based data science platform for collecting, transforming, and predicting jam band setlists. The system provides real-time setlist predictions through automated data pipelines and an interactive web interface.
+JamBandNerd v2 is a cloud-based data science platform for collecting, transforming, and predicting
+jam band setlists. The system provides real-time setlist predictions through automated data
+pipelines and an interactive web interface.
 
 ### Supported Bands
 
@@ -28,7 +30,7 @@ JamBandNerd v2 is a cloud-based data science platform for collecting, transformi
 Data Sources → Raw Data (Supabase) → In-Memory Transform → Models → Predictions (Supabase) → Web Interface
      ↓              ↓                       ↓                ↓           ↓                    ↓
   phish.net     phish_shows_raw        Standardize         Notebook   predictions_notebook   Streamlit
-  elgoose.net   goose_setlists_raw       Format              Model      accuracy_notebook        App
+  elgoose.net   goose_setlists_raw       Format              Model      notebook_accuracy        App
   scraping      wsp_songs_raw             ↓                  CK+                          Band/Model
                                          Common             Model                         Selection
                                          Schema
@@ -37,11 +39,12 @@ Data Sources → Raw Data (Supabase) → In-Memory Transform → Models → Pred
 ### Data Flow
 
 1. **Collection**: APIs/scraping → Raw Supabase tables (`{band}_*_raw`)
-2. **Transform (In-Memory)**: Raw data is loaded into memory, standardized, and used to generate model features. No intermediate standardized tables are created.
-3. **Predict**: Features → predictions stored in band/model-specific tables
-4. **Accuracy**: Backtests summarized to accuracy tables
-5. **Display**: (planned) Supabase predictions → Streamlit web interface
-6. **Automate**: (planned) GitHub Actions daily run
+2. **Transform (In-Memory)**: Raw data is loaded into memory, standardized, and used to generate
+   model features. No intermediate standardized tables are created.
+3. **Predict**: Features → predictions stored in unified tables (e.g., `predictions_notebook`)
+4. **Accuracy**: Backtests summarized to unified tables (e.g., `notebook_accuracy`)
+5. **Display**: Streamlit web interface
+6. **Automate**: GitHub Actions daily run
 
 ---
 
@@ -77,7 +80,8 @@ Data Sources → Raw Data (Supabase) → In-Memory Transform → Models → Pred
 
 3. **Environment variables:**
 
-   Ensure `.env` exists (it is gitignored). MCP/AI handles database setup automatically; no local setup script is required.
+   Ensure `.env` exists (it is gitignored). MCP/AI handles database setup automatically; no local
+   setup script is required.
 
 ### Usage
 
@@ -129,7 +133,10 @@ JamBandNerd/
 
 ## Development
 
-The project is built with a modular architecture to allow for independent development, testing, and extension. Each major component (data collection, transformation, modeling) is designed to be self-contained. This structure makes it straightforward to add new bands or prediction models by following the existing patterns.
+The project is built with a modular architecture to allow for independent development, testing,
+and extension. Each major component (data collection, transformation, modeling) is designed to be
+self-contained. This structure makes it straightforward to add new bands or prediction models by
+following the existing patterns.
 
 ### Modular Architecture
 
@@ -159,7 +166,8 @@ Each component is independently runnable:
 
 ## Web Interface Features
 
-An interactive web interface for exploring predictions is planned but has not been started. Planned features include:
+An interactive web interface for exploring predictions is planned but has not been started. Planned
+features include:
 
 - **Band Selection**: Switch between Phish, Goose, and WSP.
 - **Model Comparison**: Toggle between Notebook and CK+ models.
