@@ -46,6 +46,9 @@ Data Sources → Raw Data (Supabase) → In-Memory Transform → Models → Pred
 5. **Display**: Streamlit web interface
 6. **Automate**: GitHub Actions daily run
 
+For storage details on unified predictions and accuracy tables, see
+[Unified tables](docs/index.md#unified-tables).
+
 ---
 
 ## Quick Start
