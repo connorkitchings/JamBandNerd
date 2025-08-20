@@ -37,19 +37,22 @@ This document records key architectural decisions made during the development of
 
 ---
 
-### ADR-003: Use Unified Database Tables for Predictions
+### ADR-003: Use Unified Database Tables for Predictions and Accuracy
 
 - **Date**: 2025-07-31
 - **Status**: Adopted
-- **Context**: As more bands were added, the initial approach of creating separate prediction
-  tables per band (e.g., `phish_predictions_ckplus`, `goose_predictions_ckplus`) became cumbersome
-  for cross-band analysis and UI development.
-- **Decision**: Consolidate predictions into two unified tables: `predictions_ckplus` and
-  `predictions_notebook`. A `band` column will be used to distinguish the data for each band.
+- **Context**: As more bands and models were added, the initial approach of creating separate
+  prediction and accuracy tables per band and model (e.g., `goose_predictions_notebook`,
+  `phish_accuracy_ckplus`) became cumbersome for cross-band analysis and UI development.
+- **Decision**: Consolidate predictions and accuracy metrics into unified tables, identified by a
+  model slug (e.g., `notebook`, `ckplus`). A `band` column will be used to distinguish the data for
+  each band.
+  - Prediction tables: `predictions_{model_slug}` (e.g., `predictions_notebook`)
+  - Accuracy tables: `{model_slug}_accuracy` (e.g., `notebook_accuracy`)
 - **Consequences**:
-  - Simplifies queries for the web interface, as it only needs to query two tables.
-  - All prediction pipeline export scripts were updated to target these unified tables.
-  - Requires careful filtering by the `band` column for any band-specific analysis.
+  - Simplifies queries for the web interface, as it only needs to query a set of unified tables.
+  - All prediction and accuracy pipeline scripts were updated to target these unified tables.
+  - Requires careful filtering by the `band` and `model_slug` columns for any specific analysis.
 
 ---
 
