@@ -12,13 +12,8 @@ sys.path.insert(0, project_root)
 
 from src.jambandnerd.db.connection import get_supabase_client  # noqa: E402
 from src.jambandnerd.models.notebook.model import NotebookPredictor  # noqa: E402
-from src.jambandnerd.models.accuracy import compute_per_show_metrics, aggregate_metrics  # noqa: E402
-
-
-def _fetch_table(table: str, select: str = "*") -> List[Dict[str, Any]]:
-    client = get_supabase_client()
-    res = client.table(table).select(select).execute()
-    return res.data or []
+from src.jambandnerd.models.accuracy import compute_per_show_metrics, aggregate_metrics
+from scripts.common import fetch_table
 
 
 def main() -> None:
@@ -73,6 +68,7 @@ def main() -> None:
         "window_start": str(ref_dates[0]) if ref_dates else None,
         "window_end": str(ref_dates[-1]) if ref_dates else None,
         "num_shows": len(ref_dates),
+        "evaluated_at": pd.Timestamp.utcnow().isoformat(),
         "k10_hit_rate": agg10.hit_rate,
         "k10_avg_matches": agg10.avg_matches,
         "k10_precision": agg10.precision,
@@ -89,8 +85,11 @@ def main() -> None:
         "k50_recall": agg50.recall,
         "k50_f1": agg50.f1,
     }
-    client.table("notebook_accuracy").insert(record).execute()
-    print("Saved notebook accuracy summary.")
+    client.table("notebook_accuracy").upsert(
+        record,
+        on_conflict="band,model_version,window_start,window_end",
+    ).execute()
+    print("Upserted notebook accuracy summary.")
 
 
 if __name__ == "__main__":

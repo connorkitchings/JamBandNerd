@@ -1,57 +1,62 @@
-"""Compute and save CK+ accuracy for the last 50 completed Goose shows."""
+"""Compute and save aggregate accuracy for the CK+ model over the last N completed shows."""
 from __future__ import annotations
 
+import argparse
 from typing import Any, Dict, List
-import os
-import sys
 
 import pandas as pd
+import os
+import sys
 
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, project_root)
 
-from src.jambandnerd.db.connection import get_supabase_client  # noqa: E402
-from src.jambandnerd.models.ckplus.model import CKPlusPredictor  # noqa: E402
-from src.jambandnerd.models.accuracy import compute_per_show_metrics, aggregate_metrics  # noqa: E402
-
-
-def _fetch_table(table: str, select: str = "*") -> List[Dict[str, Any]]:
-    client = get_supabase_client()
-    res = client.table(table).select(select).execute()
-    return res.data or []
+from src.jambandnerd.db.connection import get_supabase_client
+from src.jambandnerd.models.ckplus.model import CKPlusPredictor
+from src.jambandnerd.models.accuracy import compute_per_show_metrics, aggregate_metrics
+from scripts.common import fetch_table
 
 
 def main() -> None:
-    client = get_supabase_client()
+    parser = argparse.ArgumentParser(description="Save aggregate CK+ model accuracy")
+    parser.add_argument("--shows", type=int, default=50, help="Number of recent shows to average over")
+    args = parser.parse_args()
+
     shows_df = pd.DataFrame(_fetch_table("goose_shows_raw"))
     sets_df = pd.DataFrame(_fetch_table("goose_setlists_raw"))
 
     if shows_df.empty or sets_df.empty:
-        print("No data to compute accuracy")
+        print("No data to process")
         return
 
     shows_df["_dt"] = pd.to_datetime(shows_df["show_date"]).dt.date
-
-    # Determine last 50 completed show dates (those that exist in setlists)
     sets_df["show_id"] = sets_df["show_id"].astype(str)
-    completed_ids = sets_df["show_id"].dropna().astype(str).unique().tolist()
-    completed = shows_df[shows_df["show_id"].astype(str).isin(completed_ids)].copy()
-    completed = completed.sort_values(["_dt", "show_id"])
-    last50 = completed.tail(50)
-    ref_dates = last50["_dt"].tolist()
 
-    predictor = CKPlusPredictor()
-    per_k: Dict[int, List[Dict[str, float]]] = {10: [], 25: [], 50: []}
+    # Get the last N completed show dates
+    completed_show_ids = sets_df["show_id"].unique()
+    completed_shows = shows_df[shows_df["show_id"].isin(completed_show_ids)]
+    last_n_dates = sorted(completed_shows["_dt"].unique(), reverse=True)[:args.shows]
 
-    # Precompute actual unique songs per show date
+    if not last_n_dates:
+        print("No completed show dates found to evaluate.")
+        return
+
+    window_start = min(last_n_dates)
+    window_end = max(last_n_dates)
+    print(f"Evaluating last {len(last_n_dates)} completed shows from {window_start} to {window_end}")
+
+    predictor = CKPlusPredictor(alpha=0.7, min_plays_threshold=3, retired_gap_threshold=200)
+    per_k_metrics: Dict[int, List[Dict[str, float]]] = {10: [], 25: [], 50: []}
+
     showdate_by_id = {str(r["show_id"]): r["show_date"] for _, r in shows_df[["show_id", "show_date"]].iterrows()}
     sets_df["show_date_str"] = sets_df["show_id"].map(showdate_by_id)
     sets_df["_dt"] = pd.to_datetime(sets_df["show_date_str"]).dt.date
 
-    for ref_date in ref_dates:
+    for ref_date in last_n_dates:
         actual = sets_df.loc[sets_df["_dt"] == ref_date, "song_name"].dropna().unique().tolist()
         if not actual:
             continue
+
         preds = predictor.predict(
             shows_df=shows_df,
             setlists_df=sets_df,
@@ -59,42 +64,32 @@ def main() -> None:
             reference_show_date=ref_date,
         )
         pred_songs = [p.song_name for p in preds]
-        for k in per_k.keys():
-            per_k[k].append(compute_per_show_metrics(pred_songs, actual, k))
 
-    # Aggregate
-    agg10 = aggregate_metrics(per_k[10], 10)
-    agg25 = aggregate_metrics(per_k[25], 25)
-    agg50 = aggregate_metrics(per_k[50], 50)
+        for k in per_k_metrics.keys():
+            per_k_metrics[k].append(compute_per_show_metrics(pred_songs, actual, k))
 
+    # Aggregate and build record
     record = {
         "band": "goose",
         "model_version": "ckplus_v1",
-        "window_start": str(ref_dates[0]) if ref_dates else None,
-        "window_end": str(ref_dates[-1]) if ref_dates else None,
-        "num_shows": len(ref_dates),
-        "k10_hit_rate": agg10.hit_rate,
-        "k10_avg_matches": agg10.avg_matches,
-        "k10_precision": agg10.precision,
-        "k10_recall": agg10.recall,
-        "k10_f1": agg10.f1,
-        "k25_hit_rate": agg25.hit_rate,
-        "k25_avg_matches": agg25.avg_matches,
-        "k25_precision": agg25.precision,
-        "k25_recall": agg25.recall,
-        "k25_f1": agg25.f1,
-        "k50_hit_rate": agg50.hit_rate,
-        "k50_avg_matches": agg50.avg_matches,
-        "k50_precision": agg50.precision,
-        "k50_recall": agg50.recall,
-        "k50_f1": agg50.f1,
+        "window_start": window_start.isoformat(),
+        "window_end": window_end.isoformat(),
+        "num_shows": len(last_n_dates),
+        "evaluated_at": pd.Timestamp.utcnow().isoformat(),
     }
-    client.table("accuracy_ckplus").insert(record).execute()
-    print("Saved CK+ accuracy summary.")
+    for k in [10, 25, 50]:
+        agg = aggregate_metrics(per_k_metrics[k], k)
+        record[f"k{k}_hit_rate"] = agg.hit_rate
+        record[f"k{k}_avg_matches"] = agg.avg_matches
+        record[f"k{k}_precision"] = agg.precision
+        record[f"k{k}_recall"] = agg.recall
+        record[f"k{k}_f1"] = agg.f1
+
+    table_name = "accuracy_ckplus"
+    client = get_supabase_client()
+    client.table(table_name).upsert(record, on_conflict="band,model_version,window_start,window_end").execute()
+    print(f"Saved accuracy summary to {table_name}.")
 
 
 if __name__ == "__main__":
     main()
-
-
-
