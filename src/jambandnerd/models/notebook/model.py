@@ -6,6 +6,7 @@ from typing import List, Dict, Any, Optional
 
 import pandas as pd
 
+from src.jambandnerd.models.base import PredictionModel
 from src.jambandnerd.transformations.gaps import aggregate_past_year_for_notebook
 
 
@@ -17,7 +18,7 @@ class RankedPrediction:
     last_played_date: str | None
 
 
-class NotebookPredictor:
+class NotebookPredictor(PredictionModel):
     """Baseline notebook predictor using past-year features.
 
     Ranks songs primarily by plays in the past year, excluding songs
@@ -53,5 +54,15 @@ class NotebookPredictor:
                 )
             )
         return result
+
+    def train(self, data, *args, **kwargs) -> None:
+        """Placeholder for train method."""
+        print("NotebookModel does not require explicit training.")
+        pass
+
+    def calculate_accuracy(self, predictions, actual_songs, *args, **kwargs) -> Dict[str, Any]:
+        """Placeholder for calculate_accuracy method."""
+        print("Accuracy calculation not implemented for this model.")
+        return {}
 
 

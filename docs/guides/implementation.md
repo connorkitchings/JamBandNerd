@@ -76,11 +76,11 @@ JamBandNerd/
 │   ├── web/
 │   │   ├── __init__.py
 │   │   └── app.py
-│   └── utils/
+│   └── utils/                  # Shared utilities
 │       ├── __init__.py
-│       ├── logging.py
 │       └── config.py
 ├── scripts/
+│   ├── common.py               # Shared script utilities
 │   ├── run_pipeline.py
 │   └── run_all_pipelines.py
 ├── .env

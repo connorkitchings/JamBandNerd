@@ -94,15 +94,18 @@ For storage details on unified predictions and accuracy tables, see
 # 1) Collect Goose raw data into Supabase
 uv run python scripts/run_goose_collection.py
 
-# 2) Generate top-50 predictions for the next/selected show and save to Supabase
-uv run python scripts/generate_goose_predictions.py            # defaults to today/next
+# 2) Generate top-50 predictions and save to Supabase
+# Defaults to the next upcoming show date in the database
+uv run python scripts/generate_goose_predictions.py
+
+# Or, specify a historical date for the prediction
 uv run python scripts/generate_goose_predictions.py --date YYYY-MM-DD
 
 # 3) Backtest historical accuracy over a window
 uv run python scripts/backtest_goose_notebook.py --start 2025-06-01 --end 2025-08-16
 
 # 4) Save summary accuracy metrics (last 50 completed shows)
-uv run python scripts/save_notebook_accuracy.py
+uv run python scripts/save_notebook_accuracy.py --shows 50
 ```
 
 ---
@@ -123,12 +126,17 @@ JamBandNerd/
 │   ├── transformations/
 │   ├── models/
 │   ├── db/
-│   └── predictions/
+│   ├── predictions/
+│   └── utils/                  # Shared utilities
 ├── scripts/
+│   ├── common.py               # Shared script utilities
 │   ├── run_goose_collection.py
 │   ├── generate_goose_predictions.py
+│   ├── generate_goose_ckplus_predictions.py
 │   ├── backtest_goose_notebook.py
-│   └── save_notebook_accuracy.py
+│   ├── backtest_goose_ckplus.py
+│   ├── save_notebook_accuracy.py
+│   └── save_ckplus_accuracy.py
 └── tests/
 ```
 
@@ -184,9 +192,13 @@ features include:
 
 ## Automation
 
-### Daily Pipeline (planned)
+### Daily Pipeline
 
-Automation via GitHub Actions will be added after the Goose pipeline is verified.
+A daily pipeline is configured using GitHub Actions (`.github/workflows/daily-pipeline.yml`).
+This workflow runs at 19:00 UTC and performs the following steps for the Goose pipeline:
+- Collects the latest data.
+- Generates predictions for both the Notebook and CK+ models.
+- Saves the latest accuracy summaries for both models.
 
 ### Error Handling
 

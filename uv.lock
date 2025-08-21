@@ -310,36 +310,41 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "beautifulsoup4" },
-    { name = "black" },
     { name = "lxml" },
     { name = "pandas" },
     { name = "psycopg2-binary" },
-    { name = "pytest" },
     { name = "python-dotenv" },
     { name = "requests" },
-    { name = "ruff" },
     { name = "streamlit" },
     { name = "supabase" },
     { name = "tqdm" },
     { name = "typer" },
 ]
 
+[package.optional-dependencies]
+dev = [
+    { name = "black" },
+    { name = "pytest" },
+    { name = "ruff" },
+]
+
 [package.metadata]
 requires-dist = [
     { name = "beautifulsoup4" },
-    { name = "black" },
+    { name = "black", marker = "extra == 'dev'" },
     { name = "lxml", specifier = "==4.9.3" },
     { name = "pandas" },
     { name = "psycopg2-binary" },
-    { name = "pytest" },
+    { name = "pytest", marker = "extra == 'dev'" },
     { name = "python-dotenv" },
     { name = "requests" },
-    { name = "ruff" },
+    { name = "ruff", marker = "extra == 'dev'" },
     { name = "streamlit" },
     { name = "supabase" },
     { name = "tqdm" },
     { name = "typer" },
 ]
+provides-extras = ["dev"]
 
 [[package]]
 name = "jinja2"

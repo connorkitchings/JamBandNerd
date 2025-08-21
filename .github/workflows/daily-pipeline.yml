@@ -1,12 +1,12 @@
-name: Daily JamBandNerd Pipeline
+name: Daily Goose Pipeline
 
 on:
   schedule:
-    - cron: "0 9 * * *"  # 09:00 UTC daily
+    - cron: '0 19 * * *' # Runs daily at 19:00 UTC (3:00 PM ET during DST)
   workflow_dispatch:
 
 jobs:
-  run-pipeline:
+  run-goose-pipeline:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -17,30 +17,28 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: Set up Python and install dependencies
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          uv venv
+          source .venv/bin/activate
+          uv pip install .
+        shell: bash
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@v3
-
-      - name: Install project
-        run: uv pip install --system .
-
-      - name: Run Goose data collection
-        run: python scripts/run_goose_collection.py --skip-validation
-
-      - name: Generate Notebook predictions (Goose)
-        run: python scripts/generate_goose_predictions.py
-
-      - name: Save Notebook accuracy (Goose)
-        run: python scripts/save_notebook_accuracy.py
-
-      - name: Generate CK+ predictions (Goose)
-        run: python scripts/generate_goose_ckplus_predictions.py
-
-      - name: Save CK+ accuracy (Goose)
-        run: python scripts/save_ckplus_accuracy.py --shows 50
-
-
+      - name: Run daily pipeline
+        run: |
+          source .venv/bin/activate
+          echo "Running Goose data collection..."
+          python scripts/run_goose_collection.py --skip-validation
+          echo "Generating Notebook predictions..."
+          python scripts/generate_goose_predictions.py
+          echo "Saving Notebook accuracy..."
+          python scripts/save_notebook_accuracy.py --shows 50
+          echo "Generating CK+ predictions..."
+          python scripts/generate_goose_ckplus_predictions.py
+          echo "Saving CK+ accuracy..."
+          python scripts/save_ckplus_accuracy.py --shows 50
+        shell: bash

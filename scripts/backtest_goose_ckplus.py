@@ -1,4 +1,4 @@
-"""Backtest Goose notebook model over historical shows.
+"""Backtest Goose CK+ model over historical shows.
 
 For each show date in a specified window, use that date as the reference_show_date, generate
 top-50 predictions, compare against the show's actual setlist (unique songs), compute
@@ -21,13 +21,13 @@ sys.path.insert(0, project_root)
 
 from src.jambandnerd.db.connection import get_supabase_client
 from src.jambandnerd.db.operations import upsert_dataframe
-from src.jambandnerd.models.notebook.model import NotebookPredictor
+from src.jambandnerd.models.ckplus.model import CKPlusPredictor
 from src.jambandnerd.models.accuracy import compute_per_show_metrics, aggregate_metrics
 from scripts.common import fetch_table
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Backtest Goose notebook model and save per-show accuracy")
+    parser = argparse.ArgumentParser(description="Backtest Goose CK+ model and save per-show accuracy")
     parser.add_argument("--start", help="Start show date YYYY-MM-DD (inclusive)", required=False)
     parser.add_argument("--end", help="End show date YYYY-MM-DD (inclusive)", required=False)
     args = parser.parse_args()
@@ -56,7 +56,7 @@ def main() -> None:
     ref_dates = sorted(d for d in set(shows_df["_dt"]) if start_d <= d <= end_d)
     print(f"Backtesting on {len(ref_dates)} show dates from {start_d} to {end_d}")
 
-    predictor = NotebookPredictor()
+    predictor = CKPlusPredictor(alpha=0.7, min_plays_threshold=3, retired_gap_threshold=200)
     per_show_results: List[Dict[str, Any]] = []
 
     # Correctly map show_date from shows_df to sets_df
@@ -85,7 +85,7 @@ def main() -> None:
 
         show_metrics = {
             "band": "goose",
-            "model_version": "notebook_v1",
+            "model_version": "ckplus_v1",
             "show_id": int(show_id),
             "show_date": ref_date.isoformat(),
             "actual_song_count": len(actual_songs),

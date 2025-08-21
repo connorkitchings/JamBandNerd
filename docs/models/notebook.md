@@ -1,4 +1,4 @@
-## Notebook Model (Goose) — Logic and Historical Accuracy
+# Notebook Model (Goose) — Logic and Historical Accuracy
 
 ### Overview
 
@@ -60,16 +60,17 @@ We assess accuracy by iterating through historical show dates and treating each 
 
 ### CLI Usage
 
-- Generate next‑show predictions (defaults to today or next upcoming show):
+- Generate predictions for the next upcoming show:
   - `uv run python scripts/generate_goose_predictions.py`
-  - With explicit reference date: `uv run python scripts/generate_goose_predictions.py --date YYYY-MM-DD`
+
+- Generate predictions for a specific historical show date:
+  - `uv run python scripts/generate_goose_predictions.py --date YYYY-MM-DD`
 
 - Backtest over a window of show dates:
   - `uv run python scripts/backtest_goose_notebook.py --start YYYY-MM-DD --end YYYY-MM-DD`
-  - Outputs aggregate metrics for K=10/25/50.
 
 - Save accuracy summary for the last 50 completed shows:
-  - `uv run python scripts/save_notebook_accuracy.py`
+  - `uv run python scripts/save_notebook_accuracy.py --shows 50`
 
 ### Storage
 

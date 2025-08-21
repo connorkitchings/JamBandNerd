@@ -19,11 +19,11 @@ transform → predict. No automation yet; CLI is designed to be schedulable late
   - Notable fields: `id`, `name`, `slug`, `isoriginal`, `original_artist`, `created_at`, `updated_at`
 - `goose_shows_raw`
   - Primary key: `show_id`
-  - Notable fields: `show_id`, `showdate`, `permalink`, `venue_id`, `venuename`, `city`,
+  - Notable fields: `show_id`, `show_date`, `permalink`, `venue_id`, `venuename`, `city`,
     `state`, `country`, `tour_id`, `updated_at`, `created_at`
 - `goose_setlists_raw`
   - Primary key: `uniqueid`
-  - Notable fields: `uniqueid`, `show_id`, `showdate`, `song_id`, `songname`, `settype`,
+  - Notable fields: `uniqueid`, `show_id`, `song_id`, `songname`, `settype`,
     `setnumber`, `position`, `transition_id`, `transition`, `footnote`, `isjam`, `isreprise`,
     `isjamchart`, `tracktime`, `tour_id`, `venuename`, `city`, `state`, `country`, `shownotes`
 

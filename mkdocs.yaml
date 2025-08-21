@@ -35,6 +35,7 @@ nav:
       - Goose Pipeline: specifications/goose_pipeline.md
       - Predictions Schema: specifications/predictions_schema.md
   - Schemas:
+      - Unified Tables: schemas/unified_tables.md
       - Phish API: schemas/phish_api.md
       - Goose API: schemas/goose_api.md
       - WSP Webscrape: schemas/wsp_webscrape.md

@@ -1,6 +1,7 @@
-"""Compute and save notebook accuracy for the last 50 completed Goose shows."""
+"""Compute and save aggregate accuracy for the Notebook model over the last N completed shows."""
 from __future__ import annotations
 
+import argparse
 from typing import Any, Dict, List
 import os
 import sys
@@ -10,13 +11,17 @@ import pandas as pd
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, project_root)
 
-from src.jambandnerd.db.connection import get_supabase_client  # noqa: E402
-from src.jambandnerd.models.notebook.model import NotebookPredictor  # noqa: E402
+from src.jambandnerd.db.connection import get_supabase_client
+from src.jambandnerd.models.notebook.model import NotebookPredictor
 from src.jambandnerd.models.accuracy import compute_per_show_metrics, aggregate_metrics
 from scripts.common import fetch_table
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description="Save aggregate Notebook model accuracy")
+    parser.add_argument("--shows", type=int, default=50, help="Number of recent shows to average over")
+    args = parser.parse_args()
+
     client = get_supabase_client()
     shows_df = pd.DataFrame(fetch_table("goose_shows_raw"))
     sets_df = pd.DataFrame(fetch_table("goose_setlists_raw"))
@@ -27,13 +32,21 @@ def main() -> None:
 
     shows_df["_dt"] = pd.to_datetime(shows_df["show_date"]).dt.date
 
-    # Determine last 50 completed show dates (those that exist in setlists)
+    # Determine last N completed show dates
     sets_df["show_id"] = sets_df["show_id"].astype(str)
     completed_ids = sets_df["show_id"].dropna().astype(str).unique().tolist()
     completed = shows_df[shows_df["show_id"].astype(str).isin(completed_ids)].copy()
     completed = completed.sort_values(["_dt", "show_id"])
-    last50 = completed.tail(50)
-    ref_dates = last50["_dt"].tolist()
+    last_n_shows = completed.tail(args.shows)
+    ref_dates = last_n_shows["_dt"].tolist()
+
+    if not ref_dates:
+        print("No completed show dates found to evaluate.")
+        return
+
+    window_start = min(ref_dates)
+    window_end = max(ref_dates)
+    print(f"Evaluating last {len(ref_dates)} completed shows from {window_start} to {window_end}")
 
     predictor = NotebookPredictor()
     per_k: Dict[int, List[Dict[str, float]]] = {10: [], 25: [], 50: []}
@@ -58,10 +71,6 @@ def main() -> None:
             per_k[k].append(compute_per_show_metrics(pred_songs, actual, k))
 
     # Aggregate
-    agg10 = aggregate_metrics(per_k[10], 10)
-    agg25 = aggregate_metrics(per_k[25], 25)
-    agg50 = aggregate_metrics(per_k[50], 50)
-
     record = {
         "band": "goose",
         "model_version": "notebook_v1",
@@ -69,22 +78,15 @@ def main() -> None:
         "window_end": str(ref_dates[-1]) if ref_dates else None,
         "num_shows": len(ref_dates),
         "evaluated_at": pd.Timestamp.utcnow().isoformat(),
-        "k10_hit_rate": agg10.hit_rate,
-        "k10_avg_matches": agg10.avg_matches,
-        "k10_precision": agg10.precision,
-        "k10_recall": agg10.recall,
-        "k10_f1": agg10.f1,
-        "k25_hit_rate": agg25.hit_rate,
-        "k25_avg_matches": agg25.avg_matches,
-        "k25_precision": agg25.precision,
-        "k25_recall": agg25.recall,
-        "k25_f1": agg25.f1,
-        "k50_hit_rate": agg50.hit_rate,
-        "k50_avg_matches": agg50.avg_matches,
-        "k50_precision": agg50.precision,
-        "k50_recall": agg50.recall,
-        "k50_f1": agg50.f1,
     }
+    for k in [10, 25, 50]:
+        agg = aggregate_metrics(per_k[k], k)
+        record[f"k{k}_hit_rate"] = agg.hit_rate
+        record[f"k{k}_avg_matches"] = agg.avg_matches
+        record[f"k{k}_precision"] = agg.precision
+        record[f"k{k}_recall"] = agg.recall
+        record[f"k{k}_f1"] = agg.f1
+
     client.table("notebook_accuracy").upsert(
         record,
         on_conflict="band,model_version,window_start,window_end",
@@ -94,5 +96,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
-

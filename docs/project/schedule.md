@@ -1,4 +1,4 @@
-Implementation Schedule
+# Implementation Schedule
 
 Instructions: This document is the tactical plan for the project. Use it to plan sprints,
 track tasks, and manage risks. It answers the questions "Who, when, and on what?"
@@ -31,7 +31,7 @@ Progress Update (2025-08-18)
       (unique on band+reference_date+model_version).
 - [x] Add metadata logging: `collection_runs`, `predicted_at` timestamps.
 - [x] Historical backtesting script and summary table `notebook_accuracy` (last 50 shows).
-- [ ] Add nightly automation (GitHub Actions) to run collection, predictions, and accuracy summary.
+- [x] Add nightly automation (GitHub Actions) to run collection, predictions, and accuracy summary.
 
 Action Items for Next Sprint
 
@@ -49,20 +49,20 @@ robust data validation, and add the new `ckplus` model for Goose.
 **Planned Tasks**:
 
 - [x] **Refactor to Unified Tables**:
-  - [ ] Modify `scripts/generate_goose_predictions.py` to write to a unified `predictions_notebook`
+  - [x] Modify `scripts/generate_goose_predictions.py` to write to a unified `predictions_notebook`
         table, adding a `band` column.
-  - [ ] Update `scripts/save_notebook_accuracy.py` to write to a unified `notebook_accuracy` table.
-  - [ ] Adjust `src/jambandnerd/web/app.py` to read from the unified table and filter by band.
-  - [ ] Update `ADR-003` to reflect the decision to use unified tables.
+  - [x] Update `scripts/save_notebook_accuracy.py` to write to a unified `notebook_accuracy` table.
+  - [x] Adjust `src/jambandnerd/web/app.py` to read from the unified table and filter by band.
+  - [x] Update `ADR-003` to reflect the decision to use unified tables.
 - [x] **Implement Database Validation**:
-  - [ ] Implement schema validation logic in `src/jambandnerd/db/validation.py`.
-  - [ ] Add a utility to `src/jambandnerd/db/operations.py` to fetch table schemas from Supabase.
-  - [ ] Integrate validation checks into the data collection and prediction scripts before writing
+  - [x] Implement schema validation logic in `src/jambandnerd/db/validation.py`.
+  - [x] Add a utility to `src/jambandnerd/db/operations.py` to fetch table schemas from Supabase.
+  - [x] Integrate validation checks into the data collection and prediction scripts before writing
         to the database.
 - [x] **Implement CK+ Model**:
-  - [ ] Create the core `ckplus` model logic in `src/jambandnerd/models/ckplus/`.
-  - [ ] Develop the necessary data transformations for the `ckplus` model's gap-based features.
-  - [ ] Create new scripts (`generate_goose_ckplus_predictions.py`, etc.) to run the model and
+  - [x] Create the core `ckplus` model logic in `src/jambandnerd/models/ckplus/`.
+  - [x] Develop the necessary data transformations for the `ckplus` model's gap-based features.
+  - [x] Create new scripts (`generate_goose_ckplus_predictions.py`, etc.) to run the model and
         store its predictions and accuracy in the unified tables (`predictions_ckplus`, `accuracy_ckplus`).
 
 ### Risk Management

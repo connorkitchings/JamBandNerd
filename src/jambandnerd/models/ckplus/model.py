@@ -6,6 +6,7 @@ from typing import List
 
 import pandas as pd
 
+from ..base import PredictionModel
 from .features import compute_gap_features
 
 
@@ -21,7 +22,7 @@ class CKPlusPrediction:
     LTP: str | None
 
 
-class CKPlusPredictor:
+class CKPlusPredictor(PredictionModel):
     """Gap-based CK+ predictor per docs/models/ckplus.md."""
 
     def __init__(self, alpha: float = 0.7, min_plays_threshold: int = 3, retired_gap_threshold: int = 200):
@@ -91,6 +92,16 @@ class CKPlusPredictor:
                 )
             )
         return results
+
+    def train(self, data, *args, **kwargs) -> None:
+        """Placeholder for train method."""
+        print("CKPlusPredictor does not require explicit training.")
+        pass
+
+    def calculate_accuracy(self, predictions, actual_songs, *args, **kwargs) -> Dict[str, Any]:
+        """Placeholder for calculate_accuracy method."""
+        print("Accuracy calculation not implemented for this model.")
+        return {}
 
 
 

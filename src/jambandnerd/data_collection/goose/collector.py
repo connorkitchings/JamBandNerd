@@ -1,7 +1,7 @@
 """Data collector for Goose from elgoose.net API."""
 import requests
 import logging
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from datetime import date
 
 from ..base import BandCollector
@@ -14,56 +14,45 @@ class GooseCollector(BandCollector):
     BASE_URL = "https://elgoose.net/api"
     ARTIST_NAME = "Goose"
 
-    def collect_shows(self, start_date: date = None, end_date: date = None) -> List[Dict[str, Any]]:
-        """Collects show data from the elgoose.net API."""
-        logger.info("Collecting Goose shows...")
-        response = requests.get(f"{self.BASE_URL}/v2/shows.json")
-        response.raise_for_status()
-        data = response.json()
-        if data.get('error'):
-            raise RuntimeError(f"API Error: {data.get('error_message', 'Unknown error')}")
-        records = data.get('data', [])
-        # Filter to Goose-only (exclude side projects like Vasudo)
+    def _fetch_from_endpoint(self, endpoint: str) -> List[Dict[str, Any]]:
+        """Private helper to fetch data from a given API endpoint."""
+        url = f"{self.BASE_URL}/{endpoint}"
+        logger.info(f"Fetching data from {url}...")
+        try:
+            response = requests.get(url, timeout=30)
+            response.raise_for_status()
+            data = response.json()
+            if data.get('error'):
+                raise RuntimeError(f"API Error at {endpoint}: {data.get('error_message', 'Unknown error')}")
+            return data.get('data', [])
+        except requests.RequestException as e:
+            logger.error(f"HTTP request failed for {url}: {e}")
+            raise
+
+    def collect_shows(self, start_date: Optional[date] = None, end_date: Optional[date] = None) -> List[Dict[str, Any]]:
+        """Collects show data, filtering to Goose-only artists."""
+        records = self._fetch_from_endpoint("v2/shows.json")
         artist_lower = self.ARTIST_NAME.lower()
         filtered = [r for r in records if str(r.get('artist', '')).strip().lower() == artist_lower]
         logger.info(f"Collected {len(filtered)} Goose shows.")
         return filtered
 
-    def collect_setlists(self, show_ids: List[str] = None) -> List[Dict[str, Any]]:
-        """Collects setlist data from the elgoose.net API."""
-        logger.info("Collecting Goose setlists...")
-        response = requests.get(f"{self.BASE_URL}/v1/setlists.json")
-        response.raise_for_status()
-        data = response.json()
-        if data.get('error'):
-            raise RuntimeError(f"API Error: {data.get('error_message', 'Unknown error')}")
-        records = data.get('data', [])
-        # Filter to Goose-only setlist rows
+    def collect_setlists(self, show_ids: Optional[List[str]] = None) -> List[Dict[str, Any]]:
+        """Collects setlist data, filtering to Goose-only artists."""
+        records = self._fetch_from_endpoint("v1/setlists.json")
         artist_lower = self.ARTIST_NAME.lower()
         filtered = [r for r in records if str(r.get('artist', '')).strip().lower() == artist_lower]
         logger.info(f"Collected {len(filtered)} Goose setlist records.")
         return filtered
 
     def collect_songs(self) -> List[Dict[str, Any]]:
-        """Collects song data from the elgoose.net API."""
-        logger.info("Collecting Goose songs...")
-        response = requests.get(f"{self.BASE_URL}/v2/songs.json")
-        response.raise_for_status()
-        data = response.json()
-        if data.get('error'):
-            raise RuntimeError(f"API Error: {data.get('error_message', 'Unknown error')}")
-        records = data.get('data', [])
+        """Collects all song data."""
+        records = self._fetch_from_endpoint("v2/songs.json")
         logger.info(f"Collected {len(records)} Goose songs.")
         return records
 
     def collect_venues(self) -> List[Dict[str, Any]]:
-        """Collects venues data from the elgoose.net API."""
-        logger.info("Collecting Goose venues...")
-        response = requests.get(f"{self.BASE_URL}/v2/venues.json")
-        response.raise_for_status()
-        data = response.json()
-        if data.get('error'):
-            raise RuntimeError(f"API Error: {data.get('error_message', 'Unknown error')}")
-        records = data.get('data', [])
+        """Collects all venue data."""
+        records = self._fetch_from_endpoint("v2/venues.json")
         logger.info(f"Collected {len(records)} Goose venues.")
         return records

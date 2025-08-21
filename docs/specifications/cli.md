@@ -48,8 +48,8 @@ jbn transform goose
 jbn predict goose --model notebook
 ```
 
-- Purpose: Generate predictions using the specified model over all applicable data.
-- Dates: Not required; use all relevant data.
+- Purpose: Generate predictions using the specified model.
+- Dates: If no date is provided, defaults to the next upcoming show. Otherwise, uses the specified historical date.
 - Naming: Writes to `predictions_{model_slug}` and updates `accuracy_{model_slug}`.
 
 ### Run (pipeline orchestration)

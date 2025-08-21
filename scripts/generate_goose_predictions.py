@@ -1,10 +1,11 @@
 """Generate baseline Goose next-song predictions using the notebook predictor."""
 from __future__ import annotations
 
-from typing import Any, Dict, List
 import argparse
 import os
 import sys
+from datetime import date, datetime
+import json
 
 import pandas as pd
 
@@ -12,121 +13,75 @@ import pandas as pd
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, project_root)
 
-from src.jambandnerd.db.connection import get_supabase_client  # noqa: E402
-from src.jambandnerd.models.notebook.model import NotebookPredictor  # noqa: E402
-from src.jambandnerd.transformations.gaps import aggregate_past_year_for_notebook  # noqa: E402
-from src.jambandnerd.db.operations import get_table_schema  # noqa: E402
-from src.jambandnerd.db.validation import coerce_df_types, validate_dataframe_against_table  # noqa: E402
+from src.jambandnerd.db.connection import get_supabase_client
+from src.jambandnerd.models.notebook.model import NotebookPredictor
+from src.jambandnerd.db.operations import upsert_dataframe
+from scripts.common import resolve_reference_date
 
 
-def _fetch_table(table: str, select: str = "*") -> List[Dict[str, Any]]:
+def fetch_raw_data() -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Fetch all raw shows and setlists data from Supabase."""
     client = get_supabase_client()
-    res = client.table(table).select(select).execute()
-    return res.data or []
+    shows_resp = client.table("goose_shows_raw").select("*").execute()
+    setlists_resp = client.table("goose_setlists_raw").select("*").execute()
+    return pd.DataFrame(shows_resp.data), pd.DataFrame(setlists_resp.data)
 
 
-def _resolve_reference_show_date() -> str:
-    from datetime import date
-    client = get_supabase_client()
-    shows_rows = client.table("goose_shows_raw").select("show_date,show_id").execute().data
-    df = pd.DataFrame(shows_rows)
-    df["_dt"] = pd.to_datetime(df["show_date"]).dt.date
-    today = date.today()
-    upcoming = df[df["_dt"] >= today].sort_values(["_dt", "show_id"])  # pick earliest show date >= today
-    if not upcoming.empty:
-        d = upcoming.iloc[0]["_dt"]
-    else:
-        # No future shows; fall back to latest known show date
-        d = df["_dt"].max()
-    return d.isoformat()
+def main(date_str: str | None) -> None:
+    """Generate and save notebook predictions for a given date."""
+    shows_df, setlists_df = fetch_raw_data()
+    if shows_df.empty or setlists_df.empty:
+        print("Error: Could not fetch raw data from Supabase. Aborting.")
+        return
 
+    reference_date = resolve_reference_date(date_str, shows_df)
+    
+    print(f"Generating Notebook predictions for reference date: {reference_date.isoformat()}")
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description="Generate Goose notebook predictions")
-    parser.add_argument("--date", dest="date", help="Reference show date YYYY-MM-DD", required=False)
-    parser.add_argument("--skip-validation", action="store_true", help="Bypass schema validation for inputs and outputs")
-    args = parser.parse_args()
-    print("Loading Goose raw tables from Supabase...")
-    shows_rows = _fetch_table("goose_shows_raw")
-    setlists_rows = _fetch_table("goose_setlists_raw")
-    shows_df = pd.DataFrame(shows_rows)
-    setlists_df = pd.DataFrame(setlists_rows)
-    print(f"Loaded shows={len(shows_df)}, setlists={len(setlists_df)}")
-
-    # Optional validation/coercion against raw schemas
-    if not args.skip_validation:
-        for table_name, df_ref in (("goose_shows_raw", shows_df), ("goose_setlists_raw", setlists_df)):
-            schema = get_table_schema(table_name)
-            if schema and not df_ref.empty:
-                tmp = coerce_df_types(df_ref, schema)
-                report = validate_dataframe_against_table(tmp, table_name, schema)
-                if report.is_valid:
-                    if table_name == "goose_shows_raw":
-                        shows_df = tmp
-                    else:
-                        setlists_df = tmp
-                else:
-                    print(f"Warning: {table_name} input validation failed: {report}")
-
-    reference_date_str = args.date or _resolve_reference_show_date()
     predictor = NotebookPredictor()
     predictions = predictor.predict(
         shows_df=shows_df,
         setlists_df=setlists_df,
         top_k=50,
-        reference_show_date=pd.to_datetime(reference_date_str).date(),
+        reference_show_date=reference_date,
     )
-    print("Top predictions:")
-    for rank, p in enumerate(predictions, start=1):
-        # Format LTP as mm/dd/yyyy
-        ltp = None
-        if p.last_played_date:
-            try:
-                parts = p.last_played_date.split("-")
-                ltp = f"{parts[1]}/{parts[2]}/{parts[0]}"
-            except Exception:
-                ltp = p.last_played_date
-        print(f"{rank:2d}. {p.song_name}  (plays={p.plays_past_year}, current_gap={p.current_gap}, LTP={ltp})")
 
-    # Persist to Supabase notebook predictions table
-    agg = aggregate_past_year_for_notebook(
-        shows_df=shows_df, setlists_df=setlists_df, reference_show_date=pd.to_datetime(reference_date_str).date()
-    )
-    payload = [
-        {
+    if not predictions:
+        print("No predictions were generated. This could be due to lack of data for the reference date.")
+        return
+
+    # Format for Supabase
+    predictions_list = []
+    for i, p in enumerate(predictions):
+        predictions_list.append({
             "rank": i + 1,
             "song_name": p.song_name,
             "plays_past_year": p.plays_past_year,
             "current_gap": p.current_gap,
-            "LTP": (f"{p.last_played_date.split('-')[1]}/{p.last_played_date.split('-')[2]}/{p.last_played_date.split('-')[0]}" if p.last_played_date else None),
-        }
-        for i, p in enumerate(predictions)
-    ]
-    client = get_supabase_client()
-    record = {
-        "band": "goose",
-        "reference_date": agg.latest_show_date.isoformat(),
-        "predictions": payload,
-        "top_k": len(payload),
-        "model_version": "notebook_v1",
-        "collected_at": None,  # optionally populated by a separate query if desired
-        "predicted_at": pd.Timestamp.utcnow().isoformat(),
-    }
-    # Validate output shape if predictions_notebook schema is available
-    if not args.skip_validation:
-        out_schema = get_table_schema("predictions_notebook")
-        if out_schema:
-            tmp_df = pd.DataFrame([record])
-            tmp_df = coerce_df_types(tmp_df, out_schema)
-            out_report = validate_dataframe_against_table(tmp_df, "predictions_notebook", out_schema)
-            if not out_report.is_valid:
-                print(f"Warning: predictions_notebook output validation failed: {out_report}")
-    # Upsert by unique (band, reference_date, model_version)
-    client.table("predictions_notebook").upsert(record, on_conflict="band,reference_date,model_version").execute()
-    print("Saved predictions to predictions_notebook.")
+            "last_played_date": p.last_played_date,
+        })
 
+    output_row = {
+        "band": "goose",
+        "reference_date": reference_date.isoformat(),
+        "model_version": "notebook_v1",
+        "top_k": len(predictions_list),
+        "predictions": json.dumps(predictions_list),
+        "predicted_at": datetime.utcnow().isoformat(),
+    }
+
+    output_df = pd.DataFrame([output_row])
+    
+    print(f"Generated {len(predictions_list)} predictions. Saving to Supabase...")
+    upsert_dataframe(
+        table_name="predictions_notebook",
+        df=output_df,
+        conflict_columns=["band", "reference_date", "model_version"],
+    )
+    print("Successfully saved predictions.")
 
 if __name__ == "__main__":
-    main()
-
-
+    parser = argparse.ArgumentParser(description="Generate Goose Notebook predictions.")
+    parser.add_argument("--date", help="Reference date in YYYY-MM-DD format. Defaults to today.")
+    args = parser.parse_args()
+    main(args.date)

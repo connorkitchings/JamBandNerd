@@ -136,52 +136,9 @@ CREATE TABLE phish_songs (
 );
 ```
 
-#### Prediction Tables (Unified by Model)
+#### Prediction and Accuracy Tables (Unified by Model)
 
-**Next Song Predictions**: `predictions_{model_slug}`
-
-```sql
-CREATE TABLE predictions_notebook (
-    id SERIAL PRIMARY KEY,
-    band VARCHAR(50) NOT NULL,
-    show_id VARCHAR(50),
-    set_number INTEGER,
-    song_position INTEGER,
-    predicted_song VARCHAR(255),
-    confidence_score DECIMAL(5,4), -- 0.0000 to 1.0000
-    model_slug VARCHAR(50) NOT NULL,
-    model_version VARCHAR(20) NOT NULL,
-    prediction_rank INTEGER, -- 1 = most likely, 2 = second most likely, etc.
-    run_id UUID NOT NULL,
-    created_at TIMESTAMP DEFAULT NOW(),
-    INDEX (band, model_slug, show_id),
-    INDEX (run_id)
-);
-```
-
-**Accuracy Tracking**: `accuracy_{model_slug}`
-
-```sql
--- Current implementation stores aggregate window accuracy in `notebook_accuracy`.
--- The per-show schema below remains a future enhancement.
-CREATE TABLE notebook_accuracy (
-    id SERIAL PRIMARY KEY,
-    band VARCHAR(50) NOT NULL,
-    show_id VARCHAR(50) NOT NULL,
-    model_slug VARCHAR(50) NOT NULL,
-    model_version VARCHAR(20) NOT NULL,
-    total_predictions INTEGER NOT NULL,
-    top_10_correct INTEGER DEFAULT 0,
-    top_25_correct INTEGER DEFAULT 0,
-    top_50_correct INTEGER DEFAULT 0,
-    accuracy_top_10 DECIMAL(5,4), -- calculated field
-    accuracy_top_25 DECIMAL(5,4),
-    accuracy_top_50 DECIMAL(5,4),
-    run_id UUID NOT NULL,
-    calculated_at TIMESTAMP DEFAULT NOW(),
-    UNIQUE (band, show_id, model_slug, model_version, run_id)
-);
-```
+Prediction and accuracy tables are unified by model slug (e.g., `predictions_notebook`, `accuracy_ckplus`). For the canonical `CREATE TABLE` statements for these tables, please see the [Unified Table Schemas](../schemas/unified_tables.md) document, which is the single source of truth.
 
 ### Data Cleanup Policies
 
