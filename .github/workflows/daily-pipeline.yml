@@ -1,0 +1,46 @@
+name: Daily JamBandNerd Pipeline
+
+on:
+  schedule:
+    - cron: "0 9 * * *"  # 09:00 UTC daily
+  workflow_dispatch:
+
+jobs:
+  run-pipeline:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: Install project
+        run: uv pip install .
+
+      - name: Run Goose data collection
+        run: python scripts/run_goose_collection.py --skip-validation
+
+      - name: Generate Notebook predictions (Goose)
+        run: python scripts/generate_goose_predictions.py
+
+      - name: Save Notebook accuracy (Goose)
+        run: python scripts/save_notebook_accuracy.py
+
+      - name: Generate CK+ predictions (Goose)
+        run: python scripts/generate_goose_ckplus_predictions.py
+
+      - name: Save CK+ accuracy (Goose)
+        run: python scripts/save_ckplus_accuracy.py --shows 50
+
+
