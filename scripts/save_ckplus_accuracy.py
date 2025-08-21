@@ -22,8 +22,8 @@ def main() -> None:
     parser.add_argument("--shows", type=int, default=50, help="Number of recent shows to average over")
     args = parser.parse_args()
 
-    shows_df = pd.DataFrame(_fetch_table("goose_shows_raw"))
-    sets_df = pd.DataFrame(_fetch_table("goose_setlists_raw"))
+    shows_df = pd.DataFrame(fetch_table("goose_shows_raw"))
+    sets_df = pd.DataFrame(fetch_table("goose_setlists_raw"))
 
     if shows_df.empty or sets_df.empty:
         print("No data to process")
