@@ -4,7 +4,7 @@ from __future__ import annotations
 import argparse
 import os
 import sys
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 import json
 
 import pandas as pd
@@ -67,7 +67,7 @@ def main(date_str: str | None) -> None:
         "model_version": "notebook_v1",
         "top_k": len(predictions_list),
         "predictions": json.dumps(predictions_list),
-        "predicted_at": datetime.utcnow().isoformat(),
+        "predicted_at": datetime.now(timezone.utc).isoformat(),
     }
 
     output_df = pd.DataFrame([output_row])

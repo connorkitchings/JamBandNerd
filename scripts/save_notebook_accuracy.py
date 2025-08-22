@@ -6,7 +6,7 @@ from typing import Any, Dict, List
 import os
 import sys
 
-import pandas as pd
+from datetime import timezone
 
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, project_root)
@@ -77,7 +77,7 @@ def main() -> None:
         "window_start": str(ref_dates[0]) if ref_dates else None,
         "window_end": str(ref_dates[-1]) if ref_dates else None,
         "num_shows": len(ref_dates),
-        "evaluated_at": pd.Timestamp.utcnow().isoformat(),
+        "evaluated_at": pd.Timestamp.now(tz=timezone.utc).isoformat(),
     }
     for k in [10, 25, 50]:
         agg = aggregate_metrics(per_k[k], k)

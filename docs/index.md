@@ -198,7 +198,7 @@ Planned features include:
 - **Band Selection**: Switch between Phish, Goose, and WSP.
 - **Model Comparison**: Toggle between Notebook and CK+ models.
 - **Prediction Display**: Show next song probabilities and confidence scores.
-- **Historical Accuracy**: Visualize model performance over time.
+- **Historical Accuracy**: Visualize model performance over time, with adjustable K (10/25/50).
 - **Full Setlist Predictions**: Generate predictions for an entire show.
 - **Interactive Setlist Builder**: Allow users to create and test prediction scenarios.
 - **Real-time Show Tracking**: Update predictions as a show progresses.

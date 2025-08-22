@@ -18,7 +18,6 @@ You are assisting with JamBandNerd, a modular data platform for collecting, stan
 - UM: allthings.umphreys.com scraping
 - WSP: everydaycompanion.com scraping
 
-
 ## Environment & Tooling
 
 - Python 3.12 with UV; see `README.md` for setup
@@ -37,7 +36,7 @@ You are assisting with JamBandNerd, a modular data platform for collecting, stan
 - Respect robots and rate limits; exponential backoff on 429/5xx
 - Cache raw responses locally; persist normalized outputs to `data/<band>/collected/`
 - Validate completeness for each show (sets, songs, segues, encores)
-- 
+  
 ## Feature Engineering Focus (Setlists)
 
 - Rotation/recency: gap since last played, per-tour/per-leg recency
