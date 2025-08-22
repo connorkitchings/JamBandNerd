@@ -73,15 +73,35 @@ robust data validation, and add the new `ckplus` model for Goose.
 | Data model/schema drift | Low | Medium | Schema validation; keep docs current | @dev |
 | Model Complexity | Medium | High | Start with simple CK+ model and iterate | @dev |
 
+### Sprint 4: Multi-Band Expansion
+
+**Sprint Goal**: Expand the data pipeline to include a second band (Phish), ensuring the modular architecture supports multi-band data collection seamlessly.
+
+**Dates**: 2025-08-22 to 2025-08-29
+
+**Planned Tasks**:
+
+- [x] **Implement Phish Data Collector**:
+  - [x] Create `phish_songs_raw`, `phish_shows_raw`, `phish_setlists_raw`, and `phish_venues_raw` tables in Supabase.
+  - [x] Implement `PhishCollector` class in `src/jambandnerd/data_collection/phish/` to fetch data from the Phish.net API.
+  - [x] Create and execute `scripts/run_phish_collection.py` to perform a full backfill of Phish data.
+
 ### Sprint Retrospective
 
 *To be filled out at the end of the sprint.*
 
 **What Went Well**
-TBD
+
+- The unified table refactor was successful and simplified the data model.
+- The CK+ model was implemented and automated quickly by following the existing patterns from the Notebook model.
+- Database validation logic was integrated smoothly into the existing scripts.
 
 **What Didn't Go Well**
 TBD
+
+**Decisions**
+
+- The K selector (10/25/50) is available in the UI. Default remains K=50; users can adjust K for the historical accuracy chart.
 
 **Action Items for Next Sprint**
 TBD

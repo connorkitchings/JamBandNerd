@@ -129,6 +129,10 @@ selected_model_label = st.sidebar.selectbox("Select a Model", list(model_options
 selected_model = model_options[selected_model_label]
 display_method_explanation(selected_model_label)
 
+# Accuracy K selector (for Historical Accuracy section)
+k_options = [10, 25, 50]
+selected_k = st.sidebar.select_slider("Accuracy K", options=k_options, value=50)
+
 # --- Main App --- #
 try:
     supabase_client = get_supabase_client()
@@ -226,16 +230,27 @@ try:
         num_shows = len(per_show_accuracy_df)
         st.markdown(f"<p style='text-align: center; color: gray;'>Aggregate metrics based on the last {num_shows} completed shows.</p>", unsafe_allow_html=True)
         
-        # Calculate aggregate metrics from the per-show data (K=50)
-        avg_matches = per_show_accuracy_df['k50_matches'].mean()
-        avg_recall = per_show_accuracy_df['k50_recall'].mean()
+        # Calculate aggregate metrics from the per-show data for selected K
+        recall_col = f"k{selected_k}_recall"
+        matches_col = f"k{selected_k}_matches"
+
+        if recall_col not in per_show_accuracy_df.columns or matches_col not in per_show_accuracy_df.columns:
+            st.info(
+                f"Accuracy columns for K={selected_k} not found. Available columns: "
+                f"{', '.join(sorted([c for c in per_show_accuracy_df.columns if c.startswith('k')]))}"
+            )
+            recall_col = next((c for c in ["k50_recall", "k25_recall", "k10_recall"] if c in per_show_accuracy_df.columns), None)
+            matches_col = next((c for c in ["k50_matches", "k25_matches", "k10_matches"] if c in per_show_accuracy_df.columns), None)
+        
+        avg_matches = per_show_accuracy_df[matches_col].mean() if matches_col else 0.0
+        avg_recall = per_show_accuracy_df[recall_col].mean() if recall_col else 0.0
 
         # Center the two metrics by adding side spacers
         cols = st.columns([1, 2, 2, 1])
         with cols[1]:
-            st.metric("Recall @ K=50", f"{avg_recall:.1%}")
+            st.metric(f"Recall @ K={selected_k}", f"{avg_recall:.1%}")
         with cols[2]:
-            st.metric("Avg. Matches @ K=50", f"{avg_matches:.2f}")
+            st.metric(f"Avg. Matches @ K={selected_k}", f"{avg_matches:.2f}")
     
         # Build Altair line chart for Top-50 Recall with show index on X and matches in tooltip
         # Most recent show should be #1, older shows increase to the right
@@ -266,22 +281,22 @@ try:
         except Exception:
             df_sorted["_venue"] = None
 
-        chart_df = df_sorted[["show_num", "show_date", "k50_recall", "k50_matches", "_venue"]].copy()
+        chart_df = df_sorted[["show_num", "show_date", recall_col, matches_col, "_venue"]].copy()
         chart_df["show_date"] = pd.to_datetime(chart_df["show_date"])  # ensure temporal type
-        chart_df.rename(columns={"k50_recall": "Recall", "k50_matches": "Matches"}, inplace=True)
+        chart_df.rename(columns={recall_col: "Recall", matches_col: "Matches"}, inplace=True)
 
         line = (
             alt.Chart(chart_df)
             .mark_line(point=True)
             .encode(
                 x=alt.X("show_num:Q", title="Show #"),
-                y=alt.Y("Recall:Q", title="Recall (Top-50)", scale=alt.Scale(domain=[0, 1])),
+                y=alt.Y("Recall:Q", title=f"Recall (Top-{selected_k})", scale=alt.Scale(domain=[0, 1])),
                 tooltip=[
                     alt.Tooltip("show_num:Q", title="Show #"),
                     alt.Tooltip("show_date:T", title="Show Date"),
                     alt.Tooltip("_venue:N", title="Venue"),
                     alt.Tooltip("Recall:Q", title="Recall", format=".1%"),
-                    alt.Tooltip("Matches:Q", title="Matches in Top-50"),
+                    alt.Tooltip("Matches:Q", title=f"Matches in Top-{selected_k}"),
                 ],
             )
         )
