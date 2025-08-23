@@ -35,16 +35,23 @@ def resolve_reference_date(
             sys.exit(1)
 
     if is_today:
-        shows_df["_show_date_dt"] = pd.to_datetime(shows_df["show_date"]).dt.date
-        future_shows = shows_df[shows_df["_show_date_dt"] >= today].copy()
+        shows_df["_show_date_dt"] = pd.to_datetime(shows_df["show_date"]).dt.normalize()
+        today_ts = pd.Timestamp(today).normalize()
+        future_shows = shows_df[shows_df["_show_date_dt"] >= today_ts].copy()
         
-        if future_shows.empty:
-            print("Error: No future shows found in the database to use as a reference.")
+        if not future_shows.empty:
+            next_show_date = future_shows["_show_date_dt"].min()
+            print(f"No specific date provided; defaulting to next upcoming show: {next_show_date.date().isoformat()}")
+            return next_show_date.date()
+        
+        # Fallback: use most recent past show when no future shows are available
+        past_shows = shows_df[shows_df["_show_date_dt"] <= today_ts].copy()
+        if past_shows.empty:
+            print("Error: No shows found in the database to use as a reference.")
             sys.exit(1)
-        
-        next_show_date = future_shows["_show_date_dt"].min()
-        print(f"No specific date provided; defaulting to next upcoming show: {next_show_date.isoformat()}")
-        return next_show_date
+        last_show_date = past_shows["_show_date_dt"].max()
+        print(f"No future shows found; defaulting to most recent past show: {last_show_date.date().isoformat()}")
+        return last_show_date.date()
     else:
         # If a specific historical date is given, use it
         print(f"Using specified historical date: {target_date.isoformat()}")

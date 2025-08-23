@@ -8,9 +8,9 @@ pipelines and an interactive web interface.
 
 ### Supported Bands
 
-- **Phish** (phish.net API)
 - **Goose** (elgoose.net API)
-- **Widespread Panic** (everydaycompanion.com scraping)
+- **Phish** (phish.net API)
+- **Widespread Panic** (everydaycompanion.com scraping - *planned*)
 
 ### Key Features
 
@@ -106,6 +106,13 @@ uv run python scripts/backtest_goose_notebook.py --start 2025-06-01 --end 2025-0
 
 # 4) Save summary accuracy metrics (last 50 completed shows)
 uv run python scripts/save_notebook_accuracy.py --shows 50
+```
+
+#### Phish Pipeline
+
+```bash
+# Collect Phish raw data into Supabase
+uv run python scripts/run_phish_collection.py
 ```
 
 ---

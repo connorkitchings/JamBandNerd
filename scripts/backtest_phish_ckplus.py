@@ -1,0 +1,122 @@
+"""Backtest Phish CK+ model over historical shows and save per-show accuracy."""
+from __future__ import annotations
+
+import argparse
+from datetime import date, timedelta
+from typing import Any, Dict, List
+import os
+import sys
+
+import pandas as pd
+
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, project_root)
+
+from src.jambandnerd.db.operations import upsert_dataframe
+from src.jambandnerd.models.ckplus.model import CKPlusPredictor
+from src.jambandnerd.models.accuracy import compute_per_show_metrics, aggregate_metrics
+from scripts.common import fetch_table
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Backtest Phish CK+ model and save per-show accuracy")
+    parser.add_argument("--start", help="Start show date YYYY-MM-DD (inclusive)")
+    parser.add_argument("--end", help="End show date YYYY-MM-DD (inclusive)")
+    args = parser.parse_args()
+
+    shows_df = pd.DataFrame(fetch_table("phish_shows_raw"))
+    sets_df = pd.DataFrame(fetch_table("phish_setlists_raw"))
+
+    if shows_df.empty or sets_df.empty:
+        print("No data to backtest")
+        return
+
+    if "show_id" not in shows_df.columns and "api_show_id" in shows_df.columns:
+        shows_df["show_id"] = shows_df["api_show_id"]
+    if "show_id" not in sets_df.columns and "api_show_id" in sets_df.columns:
+        sets_df["show_id"] = sets_df["api_show_id"]
+    shows_df["_dt"] = pd.to_datetime(shows_df["show_date"]).dt.date
+    shows_df["show_id"] = shows_df["show_id"].astype(str)
+
+    # Build list of reference show dates in window
+    if args.start:
+        start_d = pd.to_datetime(args.start).date()
+    else:
+        start_d = (date.today() - timedelta(days=365 * 5))
+    if args.end:
+        end_d = pd.to_datetime(args.end).date()
+    else:
+        end_d = date.today()
+
+    ref_dates = sorted(d for d in set(shows_df["_dt"]) if start_d <= d <= end_d)
+    print(f"Backtesting Phish (CK+) on {len(ref_dates)} show dates from {start_d} to {end_d}")
+
+    predictor = CKPlusPredictor(retired_gap_threshold=500)
+    per_show_results: List[Dict[str, Any]] = []
+
+    # Map show_date to sets_df
+    show_info_map = shows_df.set_index("show_id")["show_date"].to_dict()
+    sets_df["show_id"] = sets_df["show_id"].astype(str)
+    sets_df["show_date"] = sets_df["show_id"].map(show_info_map)
+    sets_df["_dt"] = pd.to_datetime(sets_df["show_date"]).dt.date
+    show_id_map = shows_df.set_index("_dt")["show_id"].to_dict()
+
+    for ref_date in ref_dates:
+        actual_songs = sets_df.loc[sets_df["_dt"] == ref_date, "song_name"].dropna().unique().tolist()
+        if not actual_songs:
+            continue
+
+        show_id = show_id_map.get(ref_date)
+        if not show_id:
+            continue
+
+        preds = predictor.predict(
+            shows_df=shows_df,
+            setlists_df=sets_df,
+            top_k=50,
+            reference_show_date=ref_date,
+        )
+        pred_songs = [p.song_name for p in preds]
+
+        show_metrics = {
+            "band": "phish",
+            "model_version": "ckplus_v1",
+            "show_id": int(show_id),
+            "show_date": ref_date.isoformat(),
+            "actual_song_count": len(actual_songs),
+            "evaluated_at": pd.Timestamp.utcnow().isoformat(),
+        }
+
+        for k in [10, 25, 50]:
+            metrics = compute_per_show_metrics(pred_songs, actual_songs, k)
+            show_metrics[f"k{k}_hit"] = int(metrics["hit"])
+            show_metrics[f"k{k}_matches"] = int(metrics["matches"])
+            show_metrics[f"k{k}_precision"] = metrics["precision"]
+            show_metrics[f"k{k}_recall"] = metrics["recall"]
+            show_metrics[f"k{k}_f1"] = metrics["f1"]
+
+        per_show_results.append(show_metrics)
+
+    if per_show_results:
+        results_df = pd.DataFrame(per_show_results)
+        print(f"Saving {len(results_df)} per-show accuracy records to the database...")
+        upsert_dataframe(
+            table_name="accuracy_per_show",
+            df=results_df,
+            conflict_columns=["band", "model_version", "show_id"],
+        )
+        print("Save complete.")
+
+    print("\n--- Aggregate Metrics for Window (CK+) ---")
+    for k in [10, 25, 50]:
+        agg_metrics_k = aggregate_metrics([
+            {"hit": r[f"k{k}_hit"], "matches": r[f"k{k}_matches"], "precision": r[f"k{k}_precision"], "recall": r[f"k{k}_recall"], "f1": r[f"k{k}_f1"]}
+            for r in per_show_results
+        ], k)
+        print(f"K={k}: hit_rate={agg_metrics_k.hit_rate:.3f} avg_matches={agg_metrics_k.avg_matches:.3f} precision={agg_metrics_k.precision:.3f} recall={agg_metrics_k.recall:.3f} f1={agg_metrics_k.f1:.3f}")
+
+
+if __name__ == "__main__":
+    main()
+
+

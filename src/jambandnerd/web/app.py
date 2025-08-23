@@ -3,9 +3,11 @@ import streamlit as st
 import pandas as pd
 from supabase import Client
 import altair as alt
+import json
 
 from jambandnerd.db.connection import get_supabase_client
 
+EXCLUDED_SHOW_DATES = {"2025-08-13"}
 
 def display_method_explanation(file_label: str) -> None:
     """Render a short explanation for the selected prediction method under the picker."""
@@ -36,21 +38,29 @@ def fetch_predictions(_db_client: Client, band: str = "goose", model: str = "not
     """Fetch the latest predictions for a given band from the unified table."""
     try:
         table_name = f"predictions_{model}"
-        latest_response = (
+        query = (
             _db_client.table(table_name)
             .select("*")
             .eq("band", band)
-            .order("reference_date", desc=True)
-            .limit(1)
-            .execute()
         )
+        for d in EXCLUDED_SHOW_DATES:
+            query = query.neq("reference_date", d)
+        latest_response = query.order("reference_date", desc=True).limit(1).execute()
         if not latest_response.data:
             return pd.DataFrame(), None, {}
 
         row = latest_response.data[0]
         reference_date = row.get("reference_date")
         predictions_json = row.get("predictions")
-        df = pd.DataFrame(predictions_json) if predictions_json else pd.DataFrame()
+        # Handle JSON stored as a string vs. native list/dict
+        if isinstance(predictions_json, str):
+            try:
+                predictions_parsed = json.loads(predictions_json)
+            except Exception:
+                predictions_parsed = []
+        else:
+            predictions_parsed = predictions_json or []
+        df = pd.DataFrame(predictions_parsed) if isinstance(predictions_parsed, list) else pd.DataFrame()
         if "last_played_date" in df.columns and "LTP" not in df.columns:
             df.rename(columns={"last_played_date": "LTP"}, inplace=True)
         return df, reference_date, {
@@ -83,13 +93,14 @@ def fetch_per_show_accuracy(_db_client: Client, band: str, model: str, limit: in
         return pd.DataFrame()
 
 
-def fetch_show_details_by_date(_db_client: Client, reference_date: str | None) -> dict | None:
-    """Fetch venue details for the given reference show date from goose_shows_raw."""
+def fetch_show_details_by_date(_db_client: Client, reference_date: str | None, band: str = "goose") -> dict | None:
+    """Fetch venue details for the given reference show date from the band's shows table."""
     if not reference_date:
         return None
     try:
+        table_name = "goose_shows_raw" if band == "goose" else "phish_shows_raw"
         resp = (
-            _db_client.table("goose_shows_raw")
+            _db_client.table(table_name)
             .select("show_date,venue_name,venue_city,venue_state,show_id")
             .eq("show_date", reference_date)
             .order("show_id", desc=False)
@@ -122,16 +133,14 @@ def fetch_last_collection_time(_db_client: Client, band: str) -> str | None:
 st.set_page_config(page_title="JamBandNerd", layout="wide")
 
 # --- Sidebar --- #
-band_options = ["Goose"]
+band_options = ["Goose", "Phish"]
 selected_band = st.sidebar.selectbox("Select a Band", band_options)
 model_options = {"Notebook": "notebook", "CK+": "ckplus"}
 selected_model_label = st.sidebar.selectbox("Select a Model", list(model_options.keys()))
 selected_model = model_options[selected_model_label]
 display_method_explanation(selected_model_label)
 
-# Accuracy K selector (for Historical Accuracy section)
-k_options = [10, 25, 50]
-selected_k = st.sidebar.select_slider("Accuracy K", options=k_options, value=50)
+# Historical accuracy will display Top 10/25/50 simultaneously
 
 # --- Main App --- #
 try:
@@ -147,7 +156,7 @@ try:
     )
 
     if not predictions_df.empty:
-        show_details = fetch_show_details_by_date(supabase_client, ref_date)
+        show_details = fetch_show_details_by_date(supabase_client, ref_date, band=selected_band_slug)
         date_str = pd.to_datetime(ref_date).strftime("%m/%d/%Y") if ref_date else ""
         header = f"Next Show: {date_str}"
         if show_details:
@@ -225,34 +234,39 @@ try:
     st.markdown(f"<h3 style='text-align: center;'>Historical Accuracy - {selected_model_label}</h3>", unsafe_allow_html=True)
 
     per_show_accuracy_df = fetch_per_show_accuracy(supabase_client, selected_band_slug, selected_model)
+    # Exclude non-concert shows by date
+    if not per_show_accuracy_df.empty and "show_date" in per_show_accuracy_df.columns:
+        per_show_accuracy_df = per_show_accuracy_df[~per_show_accuracy_df["show_date"].astype(str).isin(EXCLUDED_SHOW_DATES)].copy()
 
     if not per_show_accuracy_df.empty:
         num_shows = len(per_show_accuracy_df)
         st.markdown(f"<p style='text-align: center; color: gray;'>Aggregate metrics based on the last {num_shows} completed shows.</p>", unsafe_allow_html=True)
         
-        # Calculate aggregate metrics from the per-show data for selected K
-        recall_col = f"k{selected_k}_recall"
-        matches_col = f"k{selected_k}_matches"
+        # Calculate aggregate metrics for Top 10/25/50
+        ks = [10, 25, 50]
+        recall_cols = {k: f"k{k}_recall" for k in ks}
+        matches_cols = {k: f"k{k}_matches" for k in ks}
+        avg_recall_by_k = {}
+        avg_matches_by_k = {}
+        for k in ks:
+            rcol = recall_cols[k]
+            mcol = matches_cols[k]
+            avg_recall_by_k[k] = per_show_accuracy_df[rcol].mean() if rcol in per_show_accuracy_df.columns else None
+            avg_matches_by_k[k] = per_show_accuracy_df[mcol].mean() if mcol in per_show_accuracy_df.columns else None
 
-        if recall_col not in per_show_accuracy_df.columns or matches_col not in per_show_accuracy_df.columns:
-            st.info(
-                f"Accuracy columns for K={selected_k} not found. Available columns: "
-                f"{', '.join(sorted([c for c in per_show_accuracy_df.columns if c.startswith('k')]))}"
-            )
-            recall_col = next((c for c in ["k50_recall", "k25_recall", "k10_recall"] if c in per_show_accuracy_df.columns), None)
-            matches_col = next((c for c in ["k50_matches", "k25_matches", "k10_matches"] if c in per_show_accuracy_df.columns), None)
-        
-        avg_matches = per_show_accuracy_df[matches_col].mean() if matches_col else 0.0
-        avg_recall = per_show_accuracy_df[recall_col].mean() if recall_col else 0.0
+        # Show metrics for Top 10/25/50 above the chart
+        # Center the three metrics by adding side spacers
+        cols_recall = st.columns([1, 2, 2, 2, 1])
+        for idx, k in enumerate(ks):
+            val = avg_recall_by_k[k]
+            cols_recall[idx + 1].metric(f"Recall @ Top {k}", f"{val:.1%}" if val is not None else "N/A")
 
-        # Center the two metrics by adding side spacers
-        cols = st.columns([1, 2, 2, 1])
-        with cols[1]:
-            st.metric(f"Recall @ K={selected_k}", f"{avg_recall:.1%}")
-        with cols[2]:
-            st.metric(f"Avg. Matches @ K={selected_k}", f"{avg_matches:.2f}")
-    
-        # Build Altair line chart for Top-50 Recall with show index on X and matches in tooltip
+        cols_matches = st.columns([1, 2, 2, 2, 1])
+        for idx, k in enumerate(ks):
+            val = avg_matches_by_k[k]
+            cols_matches[idx + 1].metric(f"Avg. Matches @ Top {k}", f"{val:.1f}" if val is not None else "N/A")
+
+        # Build Altair multi-line chart for Recall with show index on X
         # Most recent show should be #1, older shows increase to the right
         df_sorted = per_show_accuracy_df.sort_values("show_date", ascending=False).reset_index(drop=True).copy()
         df_sorted["show_num"] = range(1, len(df_sorted) + 1)
@@ -261,8 +275,9 @@ try:
         try:
             show_ids = df_sorted["show_id"].dropna().astype(str).unique().tolist()
             if show_ids:
+                table_name = "goose_shows_raw" if selected_band_slug == "goose" else "phish_shows_raw"
                 shows_resp = (
-                    supabase_client.table("goose_shows_raw")
+                    supabase_client.table(table_name)
                     .select("show_id,venue_name,venue_city,venue_state")
                     .in_("show_id", show_ids)
                     .execute()
@@ -281,22 +296,34 @@ try:
         except Exception:
             df_sorted["_venue"] = None
 
-        chart_df = df_sorted[["show_num", "show_date", recall_col, matches_col, "_venue"]].copy()
-        chart_df["show_date"] = pd.to_datetime(chart_df["show_date"])  # ensure temporal type
-        chart_df.rename(columns={recall_col: "Recall", matches_col: "Matches"}, inplace=True)
+        # Assemble long-form data with a Top label for legend and tooltips
+        series_frames = []
+        for k in ks:
+            rcol = recall_cols[k]
+            mcol = matches_cols[k]
+            if rcol in df_sorted.columns and mcol in df_sorted.columns:
+                s = df_sorted[["show_num", "show_date", rcol, mcol, "_venue"]].copy()
+                s["show_date"] = pd.to_datetime(s["show_date"])  # ensure temporal type
+                s.rename(columns={rcol: "Recall", mcol: "Matches"}, inplace=True)
+                s["Top"] = f"Top {k}"
+                series_frames.append(s)
+
+        chart_df = pd.concat(series_frames, ignore_index=True) if series_frames else pd.DataFrame(columns=["show_num", "show_date", "Recall", "Matches", "_venue", "Top"])  # type: ignore
 
         line = (
             alt.Chart(chart_df)
             .mark_line(point=True)
             .encode(
-                x=alt.X("show_num:Q", title="Show #"),
-                y=alt.Y("Recall:Q", title=f"Recall (Top-{selected_k})", scale=alt.Scale(domain=[0, 1])),
+                x=alt.X("show_num:Q", title="Show #", scale=alt.Scale(reverse=True)),
+                y=alt.Y("Recall:Q", title="Recall", scale=alt.Scale(domain=[0, 1])),
+                color=alt.Color("Top:N", title="Series"),
                 tooltip=[
+                    alt.Tooltip("Top:N", title="Series"),
                     alt.Tooltip("show_num:Q", title="Show #"),
                     alt.Tooltip("show_date:T", title="Show Date"),
                     alt.Tooltip("_venue:N", title="Venue"),
                     alt.Tooltip("Recall:Q", title="Recall", format=".1%"),
-                    alt.Tooltip("Matches:Q", title=f"Matches in Top-{selected_k}"),
+                    alt.Tooltip("Matches:Q", title="Matches"),
                 ],
             )
         )
@@ -304,7 +331,7 @@ try:
         st.markdown(
             """
 <div style='font-size:0.9em; color: gray; text-align:center; margin-top:8px;'>
-<b>Recall</b>: Of the songs actually played, the fraction that appear in the top-K predictions.
+<b>Recall</b>: Of the songs actually played, the fraction that appear in the Top-N predictions.
 </div>
             """,
             unsafe_allow_html=True,

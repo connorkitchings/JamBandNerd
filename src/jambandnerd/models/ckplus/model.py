@@ -63,7 +63,7 @@ class CKPlusPredictor(PredictionModel):
 
         # Filters
         f = features.copy()
-        f = f[f["times_played"] > 2]  # ckplus.md minimal history
+        f = f[f["times_played"] > 0]  # Loosen filter for bands with deep catalogs
         f = f[f["current_gap"] > 1]   # exclude recently played
         f = f[f["current_gap"] <= self.retired_gap_threshold]
 

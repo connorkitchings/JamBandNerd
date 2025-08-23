@@ -5,7 +5,7 @@ import argparse
 from typing import Any, Dict, List
 import os
 import sys
-
+import pandas as pd
 from datetime import timezone
 
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -18,17 +18,29 @@ from scripts.common import fetch_table
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Save aggregate Notebook model accuracy")
-    parser.add_argument("--shows", type=int, default=50, help="Number of recent shows to average over")
+    parser = argparse.ArgumentParser(description="Save aggregate Notebook model accuracy for a specific band.")
+    parser.add_argument("--band", type=str, required=True, help="The band to process (e.g., 'goose', 'phish').")
+    parser.add_argument("--shows", type=int, default=50, help="Number of recent shows to average over.")
     args = parser.parse_args()
 
+    band = args.band.lower()
     client = get_supabase_client()
-    shows_df = pd.DataFrame(fetch_table("goose_shows_raw"))
-    sets_df = pd.DataFrame(fetch_table("goose_setlists_raw"))
+    shows_df = pd.DataFrame(fetch_table(f"{band}_shows_raw"))
+    sets_df = pd.DataFrame(fetch_table(f"{band}_setlists_raw"))
 
     if shows_df.empty or sets_df.empty:
-        print("No data to compute accuracy")
+        print(f"No data to compute accuracy for {band}.")
         return
+
+    # Normalize column names for Phish data
+    if "api_show_id" in shows_df.columns and "show_id" not in shows_df.columns:
+        shows_df["show_id"] = shows_df["api_show_id"]
+    if "api_show_id" in sets_df.columns and "show_id" not in sets_df.columns:
+        sets_df["show_id"] = sets_df["api_show_id"]
+    if "showdate" in shows_df.columns and "show_date" not in shows_df.columns:
+        shows_df["show_date"] = shows_df["showdate"]
+    if "song" in sets_df.columns and "song_name" not in sets_df.columns:
+        sets_df["song_name"] = sets_df["song"]
 
     shows_df["_dt"] = pd.to_datetime(shows_df["show_date"]).dt.date
 
@@ -41,12 +53,12 @@ def main() -> None:
     ref_dates = last_n_shows["_dt"].tolist()
 
     if not ref_dates:
-        print("No completed show dates found to evaluate.")
+        print(f"No completed show dates found to evaluate for {band}.")
         return
 
     window_start = min(ref_dates)
     window_end = max(ref_dates)
-    print(f"Evaluating last {len(ref_dates)} completed shows from {window_start} to {window_end}")
+    print(f"Evaluating last {len(ref_dates)} completed shows for {band} from {window_start} to {window_end}")
 
     predictor = NotebookPredictor()
     per_k: Dict[int, List[Dict[str, float]]] = {10: [], 25: [], 50: []}
@@ -54,9 +66,11 @@ def main() -> None:
     # Precompute actual unique songs per show date
     showdate_by_id = {str(r["show_id"]): r["show_date"] for _, r in shows_df[["show_id", "show_date"]].iterrows()}
     sets_df["show_date_str"] = sets_df["show_id"].map(showdate_by_id)
-    sets_df["_dt"] = pd.to_datetime(sets_df["show_date_str"]).dt.date
+    sets_df["_dt"] = pd.to_datetime(sets_df["show_date_str"], errors='coerce').dt.date
 
     for ref_date in ref_dates:
+        if pd.isna(ref_date):
+            continue
         actual = sets_df.loc[sets_df["_dt"] == ref_date, "song_name"].dropna().unique().tolist()
         if not actual:
             continue
@@ -72,7 +86,7 @@ def main() -> None:
 
     # Aggregate
     record = {
-        "band": "goose",
+        "band": band,
         "model_version": "notebook_v1",
         "window_start": str(ref_dates[0]) if ref_dates else None,
         "window_end": str(ref_dates[-1]) if ref_dates else None,
@@ -91,7 +105,7 @@ def main() -> None:
         record,
         on_conflict="band,model_version,window_start,window_end",
     ).execute()
-    print("Upserted notebook accuracy summary.")
+    print(f"Upserted notebook accuracy summary for {band}.")
 
 
 if __name__ == "__main__":

@@ -1,9 +1,9 @@
-"""Goose transformations for show indices, gaps, and past-year aggregation.
+"""Band-agnostic transformations for show indices, gaps, and past-year aggregation.
 
 This module provides utilities to:
-- Compute a sequential show index based on chronological order
-- Compute per-song current gaps using show indices
-- Aggregate past-year song statistics required by the notebook model
+- Compute a sequential show index based on chronological order.
+- Compute per-song current gaps using show indices.
+- Aggregate past-year song statistics required by the notebook model.
 """
 
 from __future__ import annotations
@@ -23,11 +23,15 @@ class PastYearAggregation:
     excluded_recent_songs: List[str]
     latest_show_index: int
     latest_show_date: date
+    window_start_date: Optional[date] = None
+    window_end_date: Optional[date] = None
+    plays_in_window: int = 0
+    unique_songs_in_window: int = 0
 
 
 def _parse_iso_date(value: Optional[str]) -> Optional[date]:
     """Parse an ISO-like date string to a date object."""
-    if not value:
+    if not value or pd.isna(value):
         return None
     try:
         return datetime.strptime(str(value), "%Y-%m-%d").date()
@@ -35,59 +39,65 @@ def _parse_iso_date(value: Optional[str]) -> Optional[date]:
         return None
 
 
-def compute_show_index(shows_df: pd.DataFrame) -> Dict[str, int]:
-    """Compute a stable sequential index for shows, ordered chronologically."""
-    if shows_df.empty:
-        return {}
-    working = shows_df.copy()
-    working["show_id"] = working["show_id"].astype(str)
-    working["_show_date_dt"] = working["show_date"].apply(_parse_iso_date)
-    working = working.dropna(subset=["_show_date_dt"])
-    working = working.sort_values(by=["_show_date_dt", "show_id"]).reset_index(drop=True)
-    return {row["show_id"]: idx + 1 for idx, row in working.iterrows()}
+def _get_all_plays(shows_df: pd.DataFrame, setlists_df: pd.DataFrame) -> pd.DataFrame:
+    """Merge shows and setlists and compute a stable chronological show index."""
+    if shows_df.empty or setlists_df.empty:
+        return pd.DataFrame()
+
+    # 1. Prepare shows data and compute index
+    shows = shows_df.copy()
+    shows["show_id"] = shows["show_id"].astype(str)
+    shows["_show_date_dt"] = shows["show_date"].apply(_parse_iso_date)
+    shows = shows.dropna(subset=["_show_date_dt"])
+    shows = shows.sort_values(by=["_show_date_dt", "show_id"]).reset_index(drop=True)
+    shows["show_index"] = shows.index + 1
+    show_idx_map = shows.set_index("show_id")["show_index"].to_dict()
+
+    # 2. Prepare setlists and merge
+    plays = setlists_df[["show_id", "song_name"]].copy()
+    plays["show_id"] = plays["show_id"].astype(str)
+    plays["show_index"] = plays["show_id"].map(show_idx_map)
+
+    # 3. Merge with show dates
+    show_dates = shows[["show_id", "_show_date_dt"]]
+    plays = plays.merge(show_dates, on="show_id", how="left")
+
+    return plays.dropna(subset=["_show_date_dt", "show_index", "song_name"])
 
 
 def _resolve_reference_show(
-    shows_df: pd.DataFrame, show_idx_map: Dict[str, int], reference_show_date: date
+    shows_df: pd.DataFrame, reference_show_date: date
 ) -> Tuple[int, date]:
     """Finds the reference show index for a given date, raising ValueError if not found."""
     shows_on_date = shows_df[shows_df["show_date"].apply(_parse_iso_date) == reference_show_date]
     if shows_on_date.empty:
         raise ValueError(f"Reference date {reference_show_date} does not exist in shows data.")
+
+    # Re-compute index locally to find the correct reference index
+    temp_shows = shows_df.copy()
+    temp_shows["_show_date_dt"] = temp_shows["show_date"].apply(_parse_iso_date)
+    temp_shows = temp_shows.dropna(subset=["_show_date_dt"])
+    temp_shows = temp_shows.sort_values(by=["_show_date_dt", "show_id"]).reset_index(drop=True)
+    temp_shows["show_index"] = temp_shows.index + 1
+
     latest_show_on_date = shows_on_date.sort_values(by="show_id").iloc[-1]
-    reference_index = show_idx_map[str(latest_show_on_date["show_id"])]
-    return reference_index, reference_show_date
+    ref_in_temp = temp_shows[temp_shows["show_id"] == latest_show_on_date["show_id"]]
+    if ref_in_temp.empty:
+        raise ValueError("Could not resolve reference index.")
+
+    return int(ref_in_temp["show_index"].iloc[0]), reference_show_date
 
 
 def _find_last_completed_show(
-    shows_df: pd.DataFrame, setlists_df: pd.DataFrame, show_idx_map: Dict[str, int], ref_date: date
+    plays_df: pd.DataFrame, ref_date: date
 ) -> Optional[Tuple[int, date]]:
     """Finds the last show with a setlist strictly before the reference date."""
-    completed_show_ids = set(setlists_df["show_id"].dropna().astype(str))
-    completed_shows = shows_df[
-        (shows_df["show_id"].astype(str).isin(completed_show_ids))
-        & (shows_df["show_date"].apply(_parse_iso_date) < ref_date)
-    ].copy()
+    completed_shows = plays_df[plays_df["_show_date_dt"] < ref_date].copy()
     if completed_shows.empty:
         return None
-    completed_shows["_show_date_dt"] = completed_shows["show_date"].apply(_parse_iso_date)
-    last_row = completed_shows.sort_values(by=["_show_date_dt", "show_id"]).iloc[-1]
-    last_idx = show_idx_map[str(last_row["show_id"])]
-    return last_idx, last_row["_show_date_dt"]
 
-
-def _get_plays_with_indices(
-    setlists_df: pd.DataFrame, shows_df: pd.DataFrame, show_idx_map: Dict[str, int]
-) -> pd.DataFrame:
-    """Merges setlists with show dates and indices, returning a clean DataFrame."""
-    plays = setlists_df[["show_id", "song_name"]].copy()
-    plays["show_id"] = plays["show_id"].astype(str)
-    shows_slim = shows_df[["show_id", "show_date"]].copy()
-    shows_slim["show_id"] = shows_slim["show_id"].astype(str)
-    shows_slim["_show_date_dt"] = shows_slim["show_date"].apply(_parse_iso_date)
-    shows_slim["show_index"] = shows_slim["show_id"].map(show_idx_map)
-    plays = plays.merge(shows_slim, on="show_id", how="left")
-    return plays.dropna(subset=["_show_date_dt", "show_index", "song_name"])
+    last_row = completed_shows.sort_values(by=["_show_date_dt", "show_index"]).iloc[-1]
+    return int(last_row["show_index"]), last_row["_show_date_dt"]
 
 
 def _aggregate_features_in_window(
@@ -99,7 +109,7 @@ def _aggregate_features_in_window(
     ]
     agg = plays_window.groupby("song_name", as_index=False).agg(
         plays_past_year=("song_name", "count"),
-        last_played_date=("_show_date_dt", "max"),
+        last_played_date= ("_show_date_dt", "max"),
         last_played_show_index=("show_index", "max"),
     )
     agg["current_gap"] = agg["last_played_show_index"].apply(
@@ -131,27 +141,39 @@ def aggregate_past_year_for_notebook(
     Returns:
         A PastYearAggregation object containing the feature DataFrame and metadata.
     """
-    if shows_df.empty or setlists_df.empty:
+    # Normalize column names for Phish data
+    if "api_show_id" in shows_df.columns and "show_id" not in shows_df.columns:
+        shows_df["show_id"] = shows_df["api_show_id"]
+    if "api_show_id" in setlists_df.columns and "show_id" not in setlists_df.columns:
+        setlists_df["show_id"] = setlists_df["api_show_id"]
+    if "showdate" in shows_df.columns and "show_date" not in shows_df.columns:
+        shows_df["show_date"] = shows_df["showdate"]
+    if "song" in setlists_df.columns and "song_name" not in setlists_df.columns:
+        setlists_df["song_name"] = setlists_df["song"]
+
+    plays_df = _get_all_plays(shows_df, setlists_df)
+    if plays_df.empty:
         return PastYearAggregation(pd.DataFrame(), [], 0, date.today())
 
-    show_idx_map = compute_show_index(shows_df)
-    if not show_idx_map:
-        return PastYearAggregation(pd.DataFrame(), [], 0, date.today())
+    reference_index, ref_date = _resolve_reference_show(shows_df, reference_show_date)
 
-    reference_index, ref_date = _resolve_reference_show(
-        shows_df, show_idx_map, reference_show_date
-    )
-
-    last_completed = _find_last_completed_show(shows_df, setlists_df, show_idx_map, ref_date)
+    last_completed = _find_last_completed_show(plays_df, ref_date)
     if not last_completed:
         return PastYearAggregation(pd.DataFrame(), [], reference_index, ref_date)
     last_idx, last_date = last_completed
 
-    plays = _get_plays_with_indices(setlists_df, shows_df, show_idx_map)
     window_start = last_date - timedelta(days=365)
-    agg_features = _aggregate_features_in_window(plays, window_start, last_date, reference_index)
+    
+    # Capture window stats for diagnostics
+    plays_in_window_df = plays_df[
+        (plays_df["_show_date_dt"] >= window_start) & (plays_df["_show_date_dt"] <= last_date)
+    ]
+    plays_count = len(plays_in_window_df)
+    unique_songs_count = plays_in_window_df["song_name"].nunique()
 
-    recent_songs = _get_recently_played_songs(plays, last_idx)
+    agg_features = _aggregate_features_in_window(plays_df, window_start, last_date, reference_index)
+
+    recent_songs = _get_recently_played_songs(plays_df, last_idx)
     filtered_features = agg_features[~agg_features["song_name"].isin(recent_songs)].copy()
 
     # Final sorting and formatting
@@ -166,5 +188,9 @@ def aggregate_past_year_for_notebook(
         features=filtered_features,
         excluded_recent_songs=recent_songs,
         latest_show_index=reference_index,
-        latest_show_date=ref_date,
+        latest_show_date=last_date, # Use the actual last completed date for diagnostics
+        window_start_date=window_start,
+        window_end_date=last_date,
+        plays_in_window=plays_count,
+        unique_songs_in_window=unique_songs_count,
     )

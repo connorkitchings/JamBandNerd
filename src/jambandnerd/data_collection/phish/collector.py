@@ -57,11 +57,13 @@ class PhishCollector(BandCollector):
         logger.info(f"Collected {len(records)} Phish shows.")
         return records
 
-    def collect_venues(self, shows_data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """Extracts unique venues from show data."""
+    def collect_venues(self) -> List[Dict[str, Any]]:
+        """Collects all show data and extracts unique venues from it."""
+        shows_data = self.collect_shows()
         if not shows_data:
+            logger.warning("Cannot collect venues without show data.")
             return []
-        
+
         venues = {}
         for show in shows_data:
             venue_id = show.get("venueid")
@@ -73,13 +75,29 @@ class PhishCollector(BandCollector):
                     "venue_state": show.get("state"),
                     "venue_country": show.get("country"),
                 }
-        
+
         venue_list = list(venues.values())
-        logger.info(f"Extracted {len(venue_list)} unique venues.")
+        logger.info(f"Extracted {len(venue_list)} unique Phish venues.")
         return venue_list
 
-    def collect_setlists(self, show_ids: Optional[List[str]] = None) -> List[Dict[str, Any]]:
-        """Collects all setlist data."""
-        records = self._fetch_from_endpoint("setlists/artistid/1")
-        logger.info(f"Collected {len(records)} Phish setlist records.")
-        return records
+    def collect_setlists(self, show_ids: List[str]) -> List[Dict[str, Any]]:
+        """Collects setlist data for a specific list of show IDs."""
+        if not show_ids:
+            return []
+
+        all_setlists = []
+        logger.info(f"Collecting setlists for {len(show_ids)} shows...")
+        for show_id in show_ids:
+            # The phish.net API uses a different endpoint to get a setlist by showid
+            endpoint = f"setlists/showid/{show_id}"
+            try:
+                # This endpoint returns a list with one element which is a dict containing the setlist
+                setlist_data = self._fetch_from_endpoint(endpoint)
+                if setlist_data:
+                    all_setlists.extend(setlist_data)
+                time.sleep(0.5)  # Respectful delay between API calls
+            except Exception as e:
+                logger.error(f"Failed to fetch setlist for show_id {show_id}: {e}")
+        
+        logger.info(f"Collected {len(all_setlists)} total setlist records.")
+        return all_setlists

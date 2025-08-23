@@ -8,9 +8,9 @@ pipelines and an interactive web interface.
 
 ### Supported Bands
 
-- **Phish** (phish.net API)
 - **Goose** (elgoose.net API)
-- **Widespread Panic** (everydaycompanion.com scraping)
+- **Phish** (phish.net API)
+- **Widespread Panic** (everydaycompanion.com scraping - *planned*)
 
 ### Key Features
 
