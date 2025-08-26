@@ -23,7 +23,7 @@ on:
 jobs:
   # Alternative: Optimized single-script pipeline (experimental)
   optimized-pipeline:
-    if: ${{ github.event.inputs.use_optimized_pipeline == 'true' }}
+    if: github.event.inputs.use_optimized_pipeline == true
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
@@ -56,14 +56,10 @@ jobs:
   # Standard multi-step pipeline (default)
   # Step 1: Data Collection (parallel for both bands)
   collect-data:
-    if: ${{ github.event.inputs.use_optimized_pipeline != 'true' }}
+    if: github.event.inputs.use_optimized_pipeline == false
     strategy:
       matrix:
-        band: 
-          - ${{ (github.event_name == 'schedule' || github.event.inputs.band == 'all' || github.event.inputs.band == 'goose') && 'goose' || '' }}
-          - ${{ (github.event_name == 'schedule' || github.event.inputs.band == 'all' || github.event.inputs.band == 'phish') && 'phish' || '' }}
-        exclude:
-          - band: ''
+        band: [goose, phish]
       fail-fast: false  # Let one band succeed even if the other fails
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -90,6 +86,7 @@ jobs:
           uv pip install .
 
       - name: Run ${{ matrix.band }} data collection
+        if: github.event_name == 'schedule' || github.event.inputs.band == 'all' || github.event.inputs.band == matrix.band
         run: |
           source .venv/bin/activate
           echo "::group::Collecting ${{ matrix.band }} data"
@@ -108,16 +105,18 @@ jobs:
   # Step 2: Generate Predictions (parallel for all band/model combinations)
   generate-predictions:
     needs: collect-data
-    if: ${{ always() && !cancelled() }} # Run even if some collections failed
+    if: always() && !cancelled() && github.event.inputs.use_optimized_pipeline == false
     strategy:
       matrix:
         include:
-          - ${{ (github.event_name == 'schedule' || github.event.inputs.band == 'all' || github.event.inputs.band == 'goose') && fromJSON('{"band": "goose", "model": "notebook"}') || fromJSON('{}') }}
-          - ${{ (github.event_name == 'schedule' || github.event.inputs.band == 'all' || github.event.inputs.band == 'goose') && fromJSON('{"band": "goose", "model": "ckplus"}') || fromJSON('{}') }}
-          - ${{ (github.event_name == 'schedule' || github.event.inputs.band == 'all' || github.event.inputs.band == 'phish') && fromJSON('{"band": "phish", "model": "notebook"}') || fromJSON('{}') }}
-          - ${{ (github.event_name == 'schedule' || github.event.inputs.band == 'all' || github.event.inputs.band == 'phish') && fromJSON('{"band": "phish", "model": "ckplus"}') || fromJSON('{}') }}
-        exclude:
-          - {}
+          - band: goose
+            model: notebook
+          - band: goose
+            model: ckplus
+          - band: phish
+            model: notebook
+          - band: phish
+            model: ckplus
       fail-fast: false
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -144,6 +143,7 @@ jobs:
           uv pip install .
 
       - name: Generate ${{ matrix.model }} predictions for ${{ matrix.band }}
+        if: github.event_name == 'schedule' || github.event.inputs.band == 'all' || github.event.inputs.band == matrix.band
         run: |
           source .venv/bin/activate
           echo "::group::Generating ${{ matrix.model }} predictions for ${{ matrix.band }}"
@@ -162,16 +162,18 @@ jobs:
   # Step 3: Calculate Accuracy Metrics (parallel for all band/model combinations)
   calculate-accuracy:
     needs: generate-predictions
-    if: ${{ always() && !cancelled() }}
+    if: always() && !cancelled() && github.event.inputs.use_optimized_pipeline == false
     strategy:
       matrix:
         include:
-          - ${{ (github.event_name == 'schedule' || github.event.inputs.band == 'all' || github.event.inputs.band == 'goose') && fromJSON('{"band": "goose", "model": "notebook"}') || fromJSON('{}') }}
-          - ${{ (github.event_name == 'schedule' || github.event.inputs.band == 'all' || github.event.inputs.band == 'goose') && fromJSON('{"band": "goose", "model": "ckplus"}') || fromJSON('{}') }}
-          - ${{ (github.event_name == 'schedule' || github.event.inputs.band == 'all' || github.event.inputs.band == 'phish') && fromJSON('{"band": "phish", "model": "notebook"}') || fromJSON('{}') }}
-          - ${{ (github.event_name == 'schedule' || github.event.inputs.band == 'all' || github.event.inputs.band == 'phish') && fromJSON('{"band": "phish", "model": "ckplus"}') || fromJSON('{}') }}
-        exclude:
-          - {}
+          - band: goose
+            model: notebook
+          - band: goose
+            model: ckplus
+          - band: phish
+            model: notebook
+          - band: phish
+            model: ckplus
       fail-fast: false
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -198,6 +200,7 @@ jobs:
           uv pip install .
 
       - name: Calculate ${{ matrix.model }} accuracy for ${{ matrix.band }}
+        if: github.event_name == 'schedule' || github.event.inputs.band == 'all' || github.event.inputs.band == matrix.band
         run: |
           source .venv/bin/activate
           echo "::group::Calculating ${{ matrix.model }} accuracy for ${{ matrix.band }}"
@@ -215,7 +218,7 @@ jobs:
 
   # Final summary job
   pipeline-summary:
-    needs: [collect-data, generate-predictions, calculate-accuracy]
+    needs: [optimized-pipeline, collect-data, generate-predictions, calculate-accuracy]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -223,16 +226,26 @@ jobs:
         run: |
           echo "## Daily Pipeline Summary - $(date)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Job Results:" >> $GITHUB_STEP_SUMMARY
-          echo "- **Data Collection**: ${{ needs.collect-data.result }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Generate Predictions**: ${{ needs.generate-predictions.result }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Calculate Accuracy**: ${{ needs.calculate-accuracy.result }}" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          
-          if [ "${{ needs.collect-data.result }}" != "success" ] || [ "${{ needs.generate-predictions.result }}" != "success" ] || [ "${{ needs.calculate-accuracy.result }}" != "success" ]; then
-            echo "⚠️ **Some jobs failed or were cancelled. Check individual job logs for details.**" >> $GITHUB_STEP_SUMMARY
+          if [[ "${{ needs.optimized-pipeline.result }}" == "success" || "${{ needs.optimized-pipeline.result }}" == "failure" ]]; then
+            echo "### Optimized Pipeline Result:" >> $GITHUB_STEP_SUMMARY
+            echo "- **Optimized Pipeline**: ${{ needs.optimized-pipeline.result }}" >> $GITHUB_STEP_SUMMARY
+            if [ "${{ needs.optimized-pipeline.result }}" != "success" ]; then
+              echo "⚠️ **The optimized pipeline failed. Check job logs for details.**" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "✅ **Optimized pipeline completed successfully!**" >> $GITHUB_STEP_SUMMARY
+            fi
           else
-            echo "✅ **All pipeline steps completed successfully!**" >> $GITHUB_STEP_SUMMARY
+            echo "### Standard Pipeline Results:" >> $GITHUB_STEP_SUMMARY
+            echo "- **Data Collection**: ${{ needs.collect-data.result }}" >> $GITHUB_STEP_SUMMARY
+            echo "- **Generate Predictions**: ${{ needs.generate-predictions.result }}" >> $GITHUB_STEP_SUMMARY
+            echo "- **Calculate Accuracy**: ${{ needs.calculate-accuracy.result }}" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            
+            if [ "${{ needs.collect-data.result }}" != "success" ] || [ "${{ needs.generate-predictions.result }}" != "success" ] || [ "${{ needs.calculate-accuracy.result }}" != "success" ]; then
+              echo "⚠️ **Some jobs failed, were skipped, or were cancelled. Check individual job logs for details.**" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "✅ **All standard pipeline steps completed successfully!**" >> $GITHUB_STEP_SUMMARY
+            fi
           fi
           
           echo "" >> $GITHUB_STEP_SUMMARY
