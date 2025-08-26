@@ -63,27 +63,19 @@ A cloud-based data science platform for collecting, transforming, and predicting
 
 ## Usage
 
-### Goose Pipeline (Primary)
+### Optimized Pipeline (Recommended)
+
+The primary way to run the data pipeline is with the `run_optimized_pipeline.py` script. This script handles data collection, transformations, predictions, and accuracy calculations for the specified band(s).
 
 ```bash
-# Collect raw data
-uv run python scripts/run_goose_collection.py
+# Run the complete pipeline for all supported bands
+uv run python scripts/run_optimized_pipeline.py --band all
 
-# Generate predictions
-uv run python scripts/generate_goose_predictions.py
+# Run the pipeline for a single band (e.g., Goose)
+uv run python scripts/run_optimized_pipeline.py --band goose
 
-# Backtest accuracy
-uv run python scripts/backtest_goose_notebook.py --start 2025-06-01 --end 2025-08-16
-```
-
-### Phish Pipeline
-
-```bash
-# Collect data
-uv run python scripts/run_phish_collection.py
-
-# Generate predictions
-uv run python scripts/generate_phish_predictions.py
+# Skip accuracy calculations for a faster run
+uv run python scripts/run_optimized_pipeline.py --band all --skip-accuracy
 ```
 
 ### Development
@@ -107,7 +99,7 @@ For comprehensive documentation including architecture, API specifications, and 
 - 📋 **[Product Requirements](docs/project/prd.md)** - Features, goals, and specifications  
 - 🚀 **[Implementation Guide](docs/guides/implementation.md)** - Development workflow
 - 📊 **[Database Schemas](docs/schemas/)** - API and database specifications
-- 📖 **[Model Documentation](docs/models/)** - Prediction algorithm details
+- 📖 **[Model Documentation](docs/models/index.md)** - Prediction algorithm details
 
 Generate and serve documentation locally:
 ```bash
