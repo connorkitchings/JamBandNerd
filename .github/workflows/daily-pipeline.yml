@@ -52,15 +52,18 @@ jobs:
         run: |
           source .venv/bin/activate
           python scripts/run_optimized_pipeline.py --band ${{ github.event.inputs.band || 'all' }}
-        timeout-minutes: 50
 
   # Standard multi-step pipeline (default)
   # Step 1: Data Collection (parallel for both bands)
   collect-data:
-    if: ${{ github.event.inputs.use_optimized_pipeline != 'true' && (github.event.inputs.band == 'all' || github.event.inputs.band == matrix.band) }}
+    if: ${{ github.event.inputs.use_optimized_pipeline != 'true' }}
     strategy:
       matrix:
-        band: [goose, phish]
+        band: 
+          - ${{ (github.event_name == 'schedule' || github.event.inputs.band == 'all' || github.event.inputs.band == 'goose') && 'goose' || '' }}
+          - ${{ (github.event_name == 'schedule' || github.event.inputs.band == 'all' || github.event.inputs.band == 'phish') && 'phish' || '' }}
+        exclude:
+          - band: ''
       fail-fast: false  # Let one band succeed even if the other fails
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -101,7 +104,6 @@ jobs:
           
           echo "${{ matrix.band }} collection completed successfully"
           echo "::endgroup::"
-        timeout-minutes: 30
 
   # Step 2: Generate Predictions (parallel for all band/model combinations)
   generate-predictions:
@@ -109,8 +111,13 @@ jobs:
     if: ${{ always() && !cancelled() }} # Run even if some collections failed
     strategy:
       matrix:
-        band: [goose, phish]
-        model: [notebook, ckplus]
+        include:
+          - ${{ (github.event_name == 'schedule' || github.event.inputs.band == 'all' || github.event.inputs.band == 'goose') && fromJSON('{"band": "goose", "model": "notebook"}') || fromJSON('{}') }}
+          - ${{ (github.event_name == 'schedule' || github.event.inputs.band == 'all' || github.event.inputs.band == 'goose') && fromJSON('{"band": "goose", "model": "ckplus"}') || fromJSON('{}') }}
+          - ${{ (github.event_name == 'schedule' || github.event.inputs.band == 'all' || github.event.inputs.band == 'phish') && fromJSON('{"band": "phish", "model": "notebook"}') || fromJSON('{}') }}
+          - ${{ (github.event_name == 'schedule' || github.event.inputs.band == 'all' || github.event.inputs.band == 'phish') && fromJSON('{"band": "phish", "model": "ckplus"}') || fromJSON('{}') }}
+        exclude:
+          - {}
       fail-fast: false
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -119,12 +126,6 @@ jobs:
       SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
       PHISH_API_KEY: ${{ secrets.PHISH_API_KEY }}
     steps:
-      - name: Skip if band not requested
-        if: ${{ github.event.inputs.band != 'all' && github.event.inputs.band != matrix.band }}
-        run: |
-          echo "Skipping ${{ matrix.band }} as only ${{ github.event.inputs.band }} was requested"
-          exit 0
-
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -157,7 +158,6 @@ jobs:
           
           echo "${{ matrix.model }} predictions for ${{ matrix.band }} completed"
           echo "::endgroup::"
-        timeout-minutes: 15
 
   # Step 3: Calculate Accuracy Metrics (parallel for all band/model combinations)
   calculate-accuracy:
@@ -165,8 +165,13 @@ jobs:
     if: ${{ always() && !cancelled() }}
     strategy:
       matrix:
-        band: [goose, phish]
-        model: [notebook, ckplus]
+        include:
+          - ${{ (github.event_name == 'schedule' || github.event.inputs.band == 'all' || github.event.inputs.band == 'goose') && fromJSON('{"band": "goose", "model": "notebook"}') || fromJSON('{}') }}
+          - ${{ (github.event_name == 'schedule' || github.event.inputs.band == 'all' || github.event.inputs.band == 'goose') && fromJSON('{"band": "goose", "model": "ckplus"}') || fromJSON('{}') }}
+          - ${{ (github.event_name == 'schedule' || github.event.inputs.band == 'all' || github.event.inputs.band == 'phish') && fromJSON('{"band": "phish", "model": "notebook"}') || fromJSON('{}') }}
+          - ${{ (github.event_name == 'schedule' || github.event.inputs.band == 'all' || github.event.inputs.band == 'phish') && fromJSON('{"band": "phish", "model": "ckplus"}') || fromJSON('{}') }}
+        exclude:
+          - {}
       fail-fast: false
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -175,12 +180,6 @@ jobs:
       SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
       PHISH_API_KEY: ${{ secrets.PHISH_API_KEY }}
     steps:
-      - name: Skip if band not requested
-        if: ${{ github.event.inputs.band != 'all' && github.event.inputs.band != matrix.band }}
-        run: |
-          echo "Skipping accuracy calculation for ${{ matrix.band }}"
-          exit 0
-
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -213,7 +212,6 @@ jobs:
           
           echo "${{ matrix.model }} accuracy calculation for ${{ matrix.band }} completed"
           echo "::endgroup::"
-        timeout-minutes: 25
 
   # Final summary job
   pipeline-summary:
