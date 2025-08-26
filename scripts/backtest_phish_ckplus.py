@@ -20,9 +20,16 @@ from scripts.common import fetch_table
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Backtest Phish CK+ model and save per-show accuracy")
+    parser = argparse.ArgumentParser(
+        description="Backtest Phish CK+ model and save per-show accuracy"
+    )
     parser.add_argument("--start", help="Start show date YYYY-MM-DD (inclusive)")
     parser.add_argument("--end", help="End show date YYYY-MM-DD (inclusive)")
+    parser.add_argument(
+        "--shows",
+        type=int,
+        help="Limit to the last N completed shows (overrides start/end if provided)",
+    )
     args = parser.parse_args()
 
     shows_df = pd.DataFrame(fetch_table("phish_shows_raw"))
@@ -45,17 +52,31 @@ def main() -> None:
     shows_df["_dt"] = pd.to_datetime(shows_df["show_date"]).dt.date
     shows_df["show_id"] = shows_df["show_id"].astype(str)
 
-    if args.start:
-        start_d = pd.to_datetime(args.start).date()
-    else:
-        start_d = (date.today() - timedelta(days=365 * 5))
-    if args.end:
-        end_d = pd.to_datetime(args.end).date()
-    else:
-        end_d = date.today()
+    # Determine target shows
+    # Use only completed shows (i.e., appear in setlists table)
+    completed_show_ids = (
+        sets_df["show_id"].dropna().astype(str).unique().tolist()
+    )
+    completed_shows = (
+        shows_df[shows_df["show_id"].astype(str).isin(completed_show_ids)]
+        .copy()
+        .sort_values(["_dt", "show_id"])  # chronological
+    )
 
-    ref_dates = sorted(d for d in set(shows_df["_dt"]) if start_d <= d <= end_d)
-    print(f"Backtesting Phish (CK+) on {len(ref_dates)} show dates from {start_d} to {end_d}")
+    if args.shows and args.shows > 0:
+        target_shows = completed_shows.tail(args.shows)
+        window_start = target_shows["_dt"].min()
+        window_end = target_shows["_dt"].max()
+        print(
+            f"Backtesting Phish (CK+) on last {len(target_shows)} completed shows from {window_start} to {window_end}"
+        )
+    else:
+        start_d = pd.to_datetime(args.start).date() if args.start else (date.today() - timedelta(days=365 * 5))
+        end_d = pd.to_datetime(args.end).date() if args.end else date.today()
+        target_shows = completed_shows[(completed_shows["_dt"] >= start_d) & (completed_shows["_dt"] <= end_d)]
+        print(
+            f"Backtesting Phish (CK+) on {len(target_shows)} completed shows from {start_d} to {end_d}"
+        )
 
     predictor = CKPlusPredictor(retired_gap_threshold=500)
     per_show_results: List[Dict[str, Any]] = []
@@ -64,15 +85,16 @@ def main() -> None:
     sets_df["show_id"] = sets_df["show_id"].astype(str)
     sets_df["show_date"] = sets_df["show_id"].map(show_info_map)
     sets_df["_dt"] = pd.to_datetime(sets_df["show_date"], errors='coerce').dt.date
-    show_id_map = shows_df.set_index("_dt")["show_id"].to_dict()
 
-    for ref_date in ref_dates:
-        actual_songs = sets_df.loc[sets_df["_dt"] == ref_date, "song_name"].dropna().unique().tolist()
+    for _, show_row in target_shows.iterrows():
+        ref_date = show_row["_dt"]
+        show_id = str(show_row["show_id"])  # already string
+
+        # Actual setlist strictly for this show_id (avoid mixing multi-show dates)
+        actual_songs = (
+            sets_df.loc[sets_df["show_id"] == show_id, "song_name"].dropna().unique().tolist()
+        )
         if not actual_songs:
-            continue
-
-        show_id = show_id_map.get(ref_date)
-        if not show_id:
             continue
 
         try:

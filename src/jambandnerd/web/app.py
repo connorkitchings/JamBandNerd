@@ -117,9 +117,15 @@ def fetch_show_details_by_date(
         return None
     try:
         table_name = BAND_CONFIG[band]["shows_table"]
+        # Select band-specific venue fields to ensure full details are available
+        if band == "phish":
+            select_fields = "show_date,show_id,venue,city,state"
+        else:
+            select_fields = "show_date,show_id,venue_name,venue_city,venue_state"
+
         resp = (
             _db_client.table(table_name)
-            .select("show_date,venue_name,venue_city,venue_state,show_id")
+            .select(select_fields)
             .eq("show_date", reference_date)
             .order("show_id", desc=False)
             .limit(1)

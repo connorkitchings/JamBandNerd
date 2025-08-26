@@ -51,7 +51,9 @@ def main() -> None:
     completed_shows = shows_df[shows_df["show_id"].astype(str).isin(completed_show_ids)].copy()
     completed_shows = completed_shows.sort_values(["_dt", "show_id"])  # chronological
     last_n_shows = completed_shows.tail(args.shows)
+    # Keep both dates and show_ids to avoid ambiguity on same-date multi-shows
     ref_dates = last_n_shows["_dt"].tolist()
+    ref_show_ids = last_n_shows["show_id"].astype(str).tolist()
 
     if not ref_dates:
         print(f"No completed show dates found to evaluate for {band}.")
@@ -68,10 +70,13 @@ def main() -> None:
     sets_df["show_date_str"] = sets_df["show_id"].map(showdate_by_id)
     sets_df["_dt"] = pd.to_datetime(sets_df["show_date_str"], errors='coerce').dt.date
 
-    for ref_date in ref_dates:
+    for ref_date, show_id in zip(ref_dates, ref_show_ids):
         if pd.isna(ref_date):
             continue
-        actual = sets_df.loc[sets_df["_dt"] == ref_date, "song_name"].dropna().unique().tolist()
+        # Evaluate accuracy against the specific show_id to avoid cross-show contamination
+        actual = (
+            sets_df.loc[sets_df["show_id"] == str(show_id), "song_name"].dropna().unique().tolist()
+        )
         if not actual:
             continue
 
