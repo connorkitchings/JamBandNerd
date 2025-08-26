@@ -1,31 +1,59 @@
 site_name: JamBandNerd
-site_description: Documentation for the JamBandNerd project
+site_description: Cloud-based jam band setlist prediction platform
 repo_url: https://github.com/connorkitchings/JamBandNerd
 repo_name: connorkitchings/JamBandNerd
+edit_uri: edit/main/docs/
 
-# Use the new docs directory
 docs_dir: docs
 use_directory_urls: true
 
 theme:
-  name: mkdocs
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - content.code.copy
+    - search.highlight
 
 markdown_extensions:
   - admonition
   - toc:
       permalink: true
   - tables
-  - codehilite
+  - codehilite:
+      use_pygments: true
+  - pymdownx.highlight
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - attr_list
+  - md_in_html
+
+plugins:
+  - search
 
 nav:
   - Home: index.md
-  - Onboarding: onboarding.md
   - Project:
       - Product Requirements: project/prd.md
       - Implementation Schedule: project/schedule.md
       - Architecture Decisions: project/adr.md
   - Guides:
       - Implementation Guide: guides/implementation.md
+      - Pipeline Optimization: guides/pipeline_optimization.md
       - AI Session Guides: guides/ai_sessions.md
       - Supabase API Guide: guides/supabase_api_guide.md
   - Specifications:
@@ -34,6 +62,10 @@ nav:
       - Database: specifications/database.md
       - Goose Pipeline: specifications/goose_pipeline.md
       - Predictions Schema: specifications/predictions_schema.md
+  - Models:
+      - Overview: models/index.md
+      - Notebook Model: models/notebook.md
+      - CK+ Model: models/ckplus.md
   - Schemas:
       - Unified Tables: schemas/unified_tables.md
       - Phish API: schemas/phish_api.md
@@ -42,3 +74,4 @@ nav:
   - Dev Logs:
       - 2025-08-17 Session 1: logs/2025-08-17/01.md
       - 2025-08-17 Session 2: logs/2025-08-17/02.md
+      - 2025-08-25 Pipeline Optimization: logs/2025-08-25/02.md

@@ -1,26 +1,64 @@
-# JamBandNerd
+# JamBandNerd Documentation
+
+Welcome to the comprehensive documentation for JamBandNerd - a cloud-based data science platform for collecting, transforming, and predicting jam band setlists.
+
+## Quick Links
+
+- 🚀 **[Get Started](../README.md)** - Installation and basic usage
+- 🏗️ **[Architecture Overview](specifications/technical_overview.md)** - System design and components
+- 📋 **[Product Requirements](project/prd.md)** - Complete feature specifications
+- 🛠️ **[Implementation Guide](guides/implementation.md)** - Development workflow
+
+## Documentation Structure
+
+### 📁 [Project](project/)
+Planning and requirements documentation:
+- **[Product Requirements Document (PRD)](project/prd.md)** - Complete feature specifications and success metrics
+- **[Implementation Schedule](project/schedule.md)** - Development timeline and milestones
+- **[Architecture Decision Records (ADR)](project/adr.md)** - Key design decisions and rationale
+
+### 📁 [Specifications](specifications/)
+Technical implementation details:
+- **[Technical Overview](specifications/technical_overview.md)** - System architecture and component design
+- **[CLI Specifications](specifications/cli.md)** - Command-line interface documentation
+- **[Database Design](specifications/database.md)** - Schema and storage specifications
+- **[Goose Pipeline](specifications/goose_pipeline.md)** - Goose-specific implementation details
+- **[Predictions Schema](specifications/predictions_schema.md)** - Prediction data structures
+
+### 📁 [Schemas](schemas/)
+Data schemas and API specifications:
+- **[Unified Tables](schemas/unified_tables.md)** - Cross-band prediction and accuracy tables
+- **[Phish API](schemas/phish_api.md)** - Phish.net API integration details
+- **[Goose API](schemas/goose_api.md)** - elgoose.net API specification
+- **[WSP Webscrape](schemas/wsp_webscrape.md)** - Widespread Panic scraping schema
+
+### 📁 [Guides](guides/)
+Implementation and operational guides:
+- **[Implementation Guide](guides/implementation.md)** - Step-by-step development workflow
+- **[AI Session Guides](guides/ai_sessions.md)** - AI-assisted development practices
+- **[Supabase API Guide](guides/supabase_api_guide.md)** - Database operations and best practices
+
+### 📁 [Models](models/)
+Prediction model documentation:
+- **[Notebook Model](models/notebook.md)** - Rotation-based prediction algorithm
+- **[CK+ Model](models/ckplus.md)** - Gap-based statistical model
+
+### 📁 [Logs](logs/)
+Development session logs organized by date:
+- Daily development logs with implementation details
+- AI session transcripts and decision records
+- Progress tracking and issue resolution
 
 ## Project Overview
 
-JamBandNerd v2 is a cloud-based data science platform for collecting, transforming, and predicting
-jam band setlists. The system provides real-time setlist predictions through automated data
-pipelines and an interactive web interface.
+**Mission**: Provide accurate, real-time setlist predictions for jam band concerts through automated data pipelines and machine learning models.
 
-### Supported Bands
+**Supported Bands**:
+- **Goose** (elgoose.net API) - Primary implementation
+- **Phish** (phish.net API) - Secondary implementation  
+- **Widespread Panic** (everydaycompanion.com scraping) - Planned
 
-- **Goose** (elgoose.net API)
-- **Phish** (phish.net API)
-- **Widespread Panic** (everydaycompanion.com scraping - *planned*)
-
-### Key Features
-
-- **Automated daily data collection** from APIs and web scraping
-- **Cloud-native architecture** with Supabase backend
-- **Real-time data transformation** pipelines
-- **Multiple prediction models** with accuracy tracking
-- **Interactive web interface** for exploring predictions
-- **Modular pipeline design** for independent component updates
-- **Error monitoring** with email notifications
+**Key Technologies**: Python 3.12, UV package manager, Supabase, Streamlit, GitHub Actions
 
 ---
 

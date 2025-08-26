@@ -1,0 +1,27 @@
+[
+  {
+    "show_id": "2025-01-01",
+    "show_date": "2025-01-01",
+    "venue_name": "Test Venue",
+    "venue_city": "Test City",
+    "venue_state": "Test State",
+    "setlists": [
+      {
+        "set_number": 1,
+        "songs": [
+          {"position": 1, "song_name": "Opening Song"},
+          {"position": 2, "song_name": "Second Song"},
+          {"position": 3, "song_name": "Third Song"}
+        ]
+      },
+      {
+        "set_number": 2,
+        "songs": [
+          {"position": 1, "song_name": "Set Two Opener"},
+          {"position": 2, "song_name": "Big Jam"},
+          {"position": 3, "song_name": "Closer"}
+        ]
+      }
+    ]
+  }
+]

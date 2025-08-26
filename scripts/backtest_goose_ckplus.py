@@ -1,15 +1,8 @@
-"""Backtest Goose CK+ model over historical shows.
-
-For each show date in a specified window, use that date as the reference_show_date, generate
-top-50 predictions, compare against the show's actual setlist (unique songs), compute
-top-k metrics, and save the per-show results to the database.
-
-Finally, prints aggregated metrics for the entire window.
-"""
+"""Backtest Goose CK+ model over historical shows and save per-show accuracy."""
 from __future__ import annotations
 
 import argparse
-from datetime import date, timedelta
+from datetime import date, timedelta, timezone
 from typing import Any, Dict, List
 
 import pandas as pd
@@ -19,17 +12,17 @@ import sys
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, project_root)
 
-from src.jambandnerd.db.connection import get_supabase_client
 from src.jambandnerd.db.operations import upsert_dataframe
 from src.jambandnerd.models.ckplus.model import CKPlusPredictor
 from src.jambandnerd.models.accuracy import compute_per_show_metrics, aggregate_metrics
+from src.jambandnerd.transformations.gaps import generate_model_data
 from scripts.common import fetch_table
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Backtest Goose CK+ model and save per-show accuracy")
-    parser.add_argument("--start", help="Start show date YYYY-MM-DD (inclusive)", required=False)
-    parser.add_argument("--end", help="End show date YYYY-MM-DD (inclusive)", required=False)
+    parser.add_argument("--start", help="Start show date YYYY-MM-DD (inclusive)")
+    parser.add_argument("--end", help="End show date YYYY-MM-DD (inclusive)")
     args = parser.parse_args()
 
     shows_df = pd.DataFrame(fetch_table("goose_shows_raw"))
@@ -39,19 +32,11 @@ def main() -> None:
         print("No data to backtest")
         return
 
-    # Correctly use 'show_date' from the live schema
     shows_df["_dt"] = pd.to_datetime(shows_df["show_date"]).dt.date
     shows_df["show_id"] = shows_df["show_id"].astype(str)
 
-    # Build list of reference show dates in window
-    if args.start:
-        start_d = pd.to_datetime(args.start).date()
-    else:
-        start_d = (date.today() - timedelta(days=365 * 5)) # Widen default for historical backfill
-    if args.end:
-        end_d = pd.to_datetime(args.end).date()
-    else:
-        end_d = date.today()
+    start_d = pd.to_datetime(args.start).date() if args.start else (date.today() - timedelta(days=365 * 5))
+    end_d = pd.to_datetime(args.end).date() if args.end else date.today()
 
     ref_dates = sorted(d for d in set(shows_df["_dt"]) if start_d <= d <= end_d)
     print(f"Backtesting on {len(ref_dates)} show dates from {start_d} to {end_d}")
@@ -59,7 +44,6 @@ def main() -> None:
     predictor = CKPlusPredictor(alpha=0.7, min_plays_threshold=3, retired_gap_threshold=200)
     per_show_results: List[Dict[str, Any]] = []
 
-    # Correctly map show_date from shows_df to sets_df
     show_info_map = shows_df.set_index("show_id")["show_date"].to_dict()
     sets_df["show_id"] = sets_df["show_id"].astype(str)
     sets_df["show_date"] = sets_df["show_id"].map(show_info_map)
@@ -75,13 +59,13 @@ def main() -> None:
         if not show_id:
             continue
 
-        preds = predictor.predict(
-            shows_df=shows_df,
-            setlists_df=sets_df,
-            top_k=50,
-            reference_show_date=ref_date,
-        )
-        pred_songs = [p.song_name for p in preds]
+        try:
+            model_data = generate_model_data(shows_df, sets_df, ref_date)
+            preds = predictor.predict(model_data=model_data, top_k=50)
+            pred_songs = [p.song_name for p in preds]
+        except ValueError as e:
+            print(f"Skipping date {ref_date}: {e}")
+            continue
 
         show_metrics = {
             "band": "goose",
@@ -89,7 +73,7 @@ def main() -> None:
             "show_id": int(show_id),
             "show_date": ref_date.isoformat(),
             "actual_song_count": len(actual_songs),
-            "evaluated_at": pd.Timestamp.utcnow().isoformat(),
+            "evaluated_at": pd.Timestamp.now(tz=timezone.utc).isoformat(),
         }
 
         for k in [10, 25, 50]:
@@ -102,7 +86,6 @@ def main() -> None:
         
         per_show_results.append(show_metrics)
 
-    # Save per-show results to the database
     if per_show_results:
         results_df = pd.DataFrame(per_show_results)
         print(f"Saving {len(results_df)} per-show accuracy records to the database...")
@@ -113,12 +96,16 @@ def main() -> None:
         )
         print("Save complete.")
 
-    # Aggregate and print summary for console
     print("\n--- Aggregate Metrics for Window ---")
     for k in [10, 25, 50]:
-        # Re-calculating from the collected dicts for aggregation
-        agg_metrics_k = aggregate_metrics([{"hit": r[f"k{k}_hit"], "matches": r[f"k{k}_matches"], "precision": r[f"k{k}_precision"], "recall": r[f"k{k}_recall"], "f1": r[f"k{k}_f1"]} for r in per_show_results], k)
-        print(f"K={k}: hit_rate={agg_metrics_k.hit_rate:.3f} avg_matches={agg_metrics_k.avg_matches:.3f} precision={agg_metrics_k.precision:.3f} recall={agg_metrics_k.recall:.3f} f1={agg_metrics_k.f1:.3f}")
+        agg_metrics_k = aggregate_metrics(
+            [{"hit": r[f"k{k}_hit"], "matches": r[f"k{k}_matches"], "precision": r[f"k{k}_precision"], "recall": r[f"k{k}_recall"], "f1": r[f"k{k}_f1"]} for r in per_show_results],
+            k,
+        )
+        print(
+            f"K={k}: hit_rate={agg_metrics_k.hit_rate:.3f} avg_matches={agg_metrics_k.avg_matches:.3f} "
+            f"precision={agg_metrics_k.precision:.3f} recall={agg_metrics_k.recall:.3f} f1={agg_metrics_k.f1:.3f}"
+        )
 
 
 if __name__ == "__main__":

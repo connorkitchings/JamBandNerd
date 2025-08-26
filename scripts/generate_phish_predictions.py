@@ -1,41 +1,31 @@
-"""Generate baseline Phish next-song predictions using the notebook predictor."""
 from __future__ import annotations
+
+"""Generate baseline Phish next-song predictions using the notebook predictor."""
 
 import argparse
 import os
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date
 import json
 
 import pandas as pd
+import numpy as np
 
 # Align sys.path with other scripts
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, project_root)
 
-from src.jambandnerd.db.connection import get_supabase_client
 from src.jambandnerd.models.notebook.model import NotebookPredictor
 from src.jambandnerd.db.operations import upsert_dataframe
-from scripts.common import resolve_reference_date
-
-
-def fetch_raw_data() -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Fetch all raw shows and setlists data for Phish from Supabase."""
-    client = get_supabase_client()
-    shows_resp = client.table("phish_shows_raw").select("*").execute()
-    setlists_resp = client.table("phish_setlists_raw").select("*").execute()
-    shows_df = pd.DataFrame(shows_resp.data)
-    sets_df = pd.DataFrame(setlists_resp.data)
-    if not shows_df.empty and "show_id" not in shows_df.columns and "api_show_id" in shows_df.columns:
-        shows_df["show_id"] = shows_df["api_show_id"]
-    if not sets_df.empty and "show_id" not in sets_df.columns and "api_show_id" in sets_df.columns:
-        sets_df["show_id"] = sets_df["api_show_id"]
-    return shows_df, sets_df
+from src.jambandnerd.transformations.gaps import generate_model_data
+from scripts.common import resolve_reference_date, fetch_table
 
 
 def main(date_str: str | None) -> None:
     """Generate and save notebook predictions for a given date for Phish."""
-    shows_df, setlists_df = fetch_raw_data()
+    shows_df = pd.DataFrame(fetch_table("phish_shows_raw"))
+    setlists_df = pd.DataFrame(fetch_table("phish_setlists_raw"))
+
     if shows_df.empty or setlists_df.empty:
         print("Error: Could not fetch raw data from Supabase. Aborting.")
         return
@@ -44,20 +34,26 @@ def main(date_str: str | None) -> None:
 
     print(f"Generating Notebook predictions for Phish, reference date: {reference_date.isoformat()}")
 
+    model_data = generate_model_data(shows_df, setlists_df, reference_date)
+
     predictor = NotebookPredictor()
-    predictions, diagnostics = predictor.predict(
-        shows_df=shows_df,
-        setlists_df=setlists_df,
-        top_k=50,
-        reference_show_date=reference_date,
-    )
+    predictions, diagnostics = predictor.predict(model_data=model_data, top_k=50)
+
+    # A simple helper to convert numpy types to native Python types for JSON serialization
+    class NpEncoder(json.JSONEncoder):
+        def default(self, obj):
+            if isinstance(obj, (np.integer, np.int64)):
+                return int(obj)
+            if isinstance(obj, (np.floating, np.float64)):
+                return float(obj)
+            if isinstance(obj, np.ndarray):
+                return obj.tolist()
+            if isinstance(obj, (datetime, date)):
+                return obj.isoformat()
+            return super(NpEncoder, self).default(obj)
 
     print("--- Model Diagnostics ---")
-    print(f"Window Start: {diagnostics.get('window_start')}")
-    print(f"Window End:   {diagnostics.get('window_end')}")
-    print(f"Total song plays in window: {diagnostics.get('plays_in_window')}")
-    print(f"Unique songs in window:     {diagnostics.get('unique_songs_in_window')}")
-    print(f"Excluded recent songs count:  {len(diagnostics.get('excluded_recent_songs', []))}")
+    print(json.dumps(diagnostics, indent=2, cls=NpEncoder))
     print("-------------------------")
 
     if not predictions:
@@ -74,6 +70,12 @@ def main(date_str: str | None) -> None:
             "current_gap": p.current_gap,
             "last_played_date": p.last_played_date,
         })
+
+    # Print Top 25 to stdout
+    if predictions_list:
+        print("Top 25 Notebook predictions (Phish):")
+        for item in predictions_list[:25]:
+            print(f"{item['rank']:>2}. {item['song_name']} (plays_past_year={item['plays_past_year']}, gap={item['current_gap']})")
 
     output_row = {
         "band": "phish",
@@ -100,5 +102,3 @@ if __name__ == "__main__":
     parser.add_argument("--date", help="Reference date in YYYY-MM-DD format. Defaults to next upcoming show.")
     args = parser.parse_args()
     main(args.date)
-
-

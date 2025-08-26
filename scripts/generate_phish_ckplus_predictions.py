@@ -1,5 +1,6 @@
-"""Generate Phish predictions using the CK+ model."""
 from __future__ import annotations
+
+"""Generate Phish predictions using the CK+ model."""
 
 import argparse
 import os
@@ -13,29 +14,17 @@ import pandas as pd
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, project_root)
 
-from src.jambandnerd.db.connection import get_supabase_client
 from src.jambandnerd.models.ckplus.model import CKPlusPredictor
 from src.jambandnerd.db.operations import upsert_dataframe
-from scripts.common import resolve_reference_date
-
-
-def fetch_raw_data() -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Fetch all raw shows and setlists data for Phish from Supabase."""
-    client = get_supabase_client()
-    shows_resp = client.table("phish_shows_raw").select("*").execute()
-    setlists_resp = client.table("phish_setlists_raw").select("*").execute()
-    shows_df = pd.DataFrame(shows_resp.data)
-    sets_df = pd.DataFrame(setlists_resp.data)
-    if not shows_df.empty and "show_id" not in shows_df.columns and "api_show_id" in shows_df.columns:
-        shows_df["show_id"] = shows_df["api_show_id"]
-    if not sets_df.empty and "show_id" not in sets_df.columns and "api_show_id" in sets_df.columns:
-        sets_df["show_id"] = sets_df["api_show_id"]
-    return shows_df, sets_df
+from src.jambandnerd.transformations.gaps import generate_model_data
+from scripts.common import resolve_reference_date, fetch_table
 
 
 def main(date_str: str | None) -> None:
     """Generate and save CK+ predictions for Phish."""
-    shows_df, setlists_df = fetch_raw_data()
+    shows_df = pd.DataFrame(fetch_table("phish_shows_raw"))
+    setlists_df = pd.DataFrame(fetch_table("phish_setlists_raw"))
+
     if shows_df.empty or setlists_df.empty:
         print("Error: Could not fetch raw data from Supabase. Aborting.")
         return
@@ -44,13 +33,11 @@ def main(date_str: str | None) -> None:
 
     print(f"Generating Phish CK+ predictions for reference date: {reference_date.isoformat()}")
 
-    predictor = CKPlusPredictor()
-    predictions = predictor.predict(
-        shows_df=shows_df,
-        setlists_df=setlists_df,
-        top_k=50,
-        reference_show_date=reference_date,
-    )
+    model_data = generate_model_data(shows_df, setlists_df, reference_date)
+
+    # Adjusted parameters for Phish's larger catalog
+    predictor = CKPlusPredictor(retired_gap_threshold=500)  # Increased threshold
+    predictions = predictor.predict(model_data=model_data, top_k=50)
 
     if not predictions:
         print("No predictions were generated. This could be due to lack of data for the reference date.")
@@ -69,6 +56,14 @@ def main(date_str: str | None) -> None:
             "ckplus_score": p.ckplus_score,
             "LTP": p.LTP,
         })
+
+    # Print Top 25 to stdout
+    if predictions_list:
+        print("Top 25 CK+ predictions (Phish):")
+        for item in predictions_list[:25]:
+            print(
+                f"{item['rank']:>2}. {item['song_name']} (TP={item['times_played']}, gap={item['current_gap']}, ratio={item['gap_ratio']:.2f}, score={item['ckplus_score']:.3f})"
+            )
 
     output_row = {
         "band": "phish",
@@ -95,5 +90,3 @@ if __name__ == "__main__":
     parser.add_argument("--date", help="Reference date in YYYY-MM-DD format. Defaults to next upcoming show.")
     args = parser.parse_args()
     main(args.date)
-
-

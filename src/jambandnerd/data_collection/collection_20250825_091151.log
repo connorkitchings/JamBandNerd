@@ -1,0 +1,18 @@
+2025-08-25 09:11:51,196 - __main__ - INFO - Starting data collection for bands: ['goose'], data types: ['songs']
+2025-08-25 09:11:51,196 - __main__ - INFO - Collecting data for goose...
+2025-08-25 09:11:51,197 - src.jambandnerd.data_collection.goose.collector - INFO - Initialized GooseCollector with rate limit: 50/60s
+2025-08-25 09:11:51,197 - __main__ - INFO - Collecting songs for goose...
+2025-08-25 09:11:51,197 - src.jambandnerd.data_collection.base - INFO - Fetching data from https://elgoose.net/api/v2/songs.json
+2025-08-25 09:11:52,237 - src.jambandnerd.data_collection.goose.collector - INFO - Collected 576 Goose songs.
+2025-08-25 09:11:52,237 - __main__ - INFO - Successfully collected 576 songs records for goose
+2025-08-25 09:11:52,238 - __main__ - INFO - ============================================================
+2025-08-25 09:11:52,238 - __main__ - INFO - COLLECTION SUMMARY REPORT
+2025-08-25 09:11:52,238 - __main__ - INFO - ============================================================
+2025-08-25 09:11:52,238 - __main__ - INFO - 
+GOOSE:
+2025-08-25 09:11:52,238 - __main__ - INFO -   songs: 576 records
+2025-08-25 09:11:52,239 - __main__ - INFO - 
+TOTAL RECORDS COLLECTED: 576
+2025-08-25 09:11:52,239 - __main__ - INFO - TOTAL ERRORS: 0
+2025-08-25 09:11:52,239 - __main__ - INFO - ✅ Collection completed successfully!
+2025-08-25 09:11:52,239 - __main__ - INFO - Collection completed successfully

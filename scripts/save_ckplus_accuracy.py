@@ -14,6 +14,7 @@ sys.path.insert(0, project_root)
 from src.jambandnerd.db.connection import get_supabase_client
 from src.jambandnerd.models.ckplus.model import CKPlusPredictor
 from src.jambandnerd.models.accuracy import compute_per_show_metrics, aggregate_metrics
+from src.jambandnerd.transformations.gaps import generate_model_data
 from scripts.common import fetch_table
 
 
@@ -45,18 +46,20 @@ def main() -> None:
     shows_df["_dt"] = pd.to_datetime(shows_df["show_date"]).dt.date
     sets_df["show_id"] = sets_df["show_id"].astype(str)
 
-    # Get the last N completed show dates
-    completed_show_ids = sets_df["show_id"].unique()
-    completed_shows = shows_df[shows_df["show_id"].isin(completed_show_ids)]
-    last_n_dates = sorted(completed_shows["_dt"].unique(), reverse=True)[:args.shows]
+    # Get the last N completed show dates (mirror notebook logic)
+    completed_show_ids = sets_df["show_id"].dropna().astype(str).unique().tolist()
+    completed_shows = shows_df[shows_df["show_id"].astype(str).isin(completed_show_ids)].copy()
+    completed_shows = completed_shows.sort_values(["_dt", "show_id"])  # chronological
+    last_n_shows = completed_shows.tail(args.shows)
+    ref_dates = last_n_shows["_dt"].tolist()
 
-    if not last_n_dates:
+    if not ref_dates:
         print(f"No completed show dates found to evaluate for {band}.")
         return
 
-    window_start = min(last_n_dates)
-    window_end = max(last_n_dates)
-    print(f"Evaluating last {len(last_n_dates)} completed shows for {band} from {window_start} to {window_end}")
+    window_start = min(ref_dates)
+    window_end = max(ref_dates)
+    print(f"Evaluating last {len(ref_dates)} completed shows for {band} from {window_start} to {window_end}")
 
     predictor = CKPlusPredictor(alpha=0.7, min_plays_threshold=3, retired_gap_threshold=200)
     per_k_metrics: Dict[int, List[Dict[str, float]]] = {10: [], 25: [], 50: []}
@@ -65,19 +68,15 @@ def main() -> None:
     sets_df["show_date_str"] = sets_df["show_id"].map(showdate_by_id)
     sets_df["_dt"] = pd.to_datetime(sets_df["show_date_str"], errors='coerce').dt.date
 
-    for ref_date in last_n_dates:
+    for ref_date in ref_dates:
         if pd.isna(ref_date):
             continue
         actual = sets_df.loc[sets_df["_dt"] == ref_date, "song_name"].dropna().unique().tolist()
         if not actual:
             continue
 
-        preds = predictor.predict(
-            shows_df=shows_df,
-            setlists_df=sets_df,
-            top_k=50,
-            reference_show_date=ref_date,
-        )
+        model_data = generate_model_data(shows_df, sets_df, ref_date)
+        preds = predictor.predict(model_data=model_data, top_k=50)
         pred_songs = [p.song_name for p in preds]
 
         for k in per_k_metrics.keys():
@@ -89,7 +88,7 @@ def main() -> None:
         "model_version": "ckplus_v1",
         "window_start": window_start.isoformat(),
         "window_end": window_end.isoformat(),
-        "num_shows": len(last_n_dates),
+        "num_shows": len(ref_dates),
         "evaluated_at": pd.Timestamp.now(tz=timezone.utc).isoformat(),
     }
     for k in [10, 25, 50]:

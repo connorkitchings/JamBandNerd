@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date
-from typing import List, Dict, Any, Optional
+from datetime import date, timedelta
+from typing import List, Dict, Any
 
 import pandas as pd
 
 from src.jambandnerd.models.base import PredictionModel
-from src.jambandnerd.transformations.gaps import aggregate_past_year_for_notebook
+from src.jambandnerd.transformations.gaps import ModelData
 
 
 @dataclass
@@ -19,53 +19,65 @@ class RankedPrediction:
 
 
 class NotebookPredictor(PredictionModel):
-    """Baseline notebook predictor using past-year features.
-
-    Ranks songs primarily by plays in the past year, excluding songs
-    played in the last 3 shows, and uses current gap as a tie-breaker.
-    """
+    """Baseline notebook predictor using past-year features."""
 
     def predict(
         self,
-        shows_df: pd.DataFrame,
-        setlists_df: pd.DataFrame,
+        model_data: ModelData,
         top_k: int = 50,
-        reference_show_date: date | None = None,
     ) -> tuple[List[RankedPrediction], dict]:
-        if reference_show_date is None:
-            raise ValueError("reference_show_date is required for prediction")
+        """
+        Ranks songs primarily by plays in the past year, excluding songs
+        played in the last 3 shows, and uses current gap as a tie-breaker.
+        """
+        features = model_data.master_feature_set
+        plays = model_data.historical_plays
+        if features.empty or plays.empty:
+            return [], model_data.diagnostics
 
-        agg = aggregate_past_year_for_notebook(
-            shows_df=shows_df,
-            setlists_df=setlists_df,
-            reference_show_date=reference_show_date,
+        # 1. Define 1-Year Window
+        last_completed_show_date = features["last_played_date"].max()
+        window_start = last_completed_show_date - timedelta(days=365)
+
+        # 2. Calculate correct plays_past_year using the historical plays
+        plays_in_window = plays[plays["show_date"] >= window_start]
+        plays_past_year_count = plays_in_window.groupby("song_name")["song_name"].count().rename("plays_past_year")
+
+        # 3. Filter candidates to songs played in the window
+        song_candidates = features.merge(plays_past_year_count, on="song_name", how="inner").copy()
+
+        if song_candidates.empty:
+            return [], model_data.diagnostics
+
+        # 4. Calculate current_gap
+        song_candidates["current_gap"] = (
+            model_data.reference_index - song_candidates["last_played_index"]
         )
 
-        features = agg.features
-        diagnostics = {
-            "latest_show_date": agg.latest_show_date.isoformat() if agg.latest_show_date else None,
-            "window_start": agg.window_start_date.isoformat() if agg.window_start_date else None,
-            "window_end": agg.window_end_date.isoformat() if agg.window_end_date else None,
-            "plays_in_window": agg.plays_in_window,
-            "unique_songs_in_window": agg.unique_songs_in_window,
-            "excluded_recent_songs": agg.excluded_recent_songs,
-        }
+        # 5. Apply final exclusions
+        song_candidates = song_candidates[
+            ~song_candidates["song_name"].isin(model_data.recently_played_songs)
+        ]
 
-        if features.empty:
-            return [], diagnostics
+        # 6. Rank and Predict
+        ranked = song_candidates.sort_values(
+            by=["plays_past_year", "current_gap", "song_name"],
+            ascending=[False, False, True],
+        ).head(top_k)
 
-        top = features.head(top_k)
+        # Format output
         result: List[RankedPrediction] = []
-        for _, row in top.iterrows():
+        for _, row in ranked.iterrows():
             result.append(
                 RankedPrediction(
                     song_name=str(row["song_name"]),
                     plays_past_year=int(row["plays_past_year"]),
                     current_gap=int(row["current_gap"]),
-                    last_played_date=row.get("last_played_date"),
+                    last_played_date=row["last_played_date"].isoformat(),
                 )
             )
-        return result, diagnostics
+
+        return result, model_data.diagnostics
 
     def train(self, data, *args, **kwargs) -> None:
         """Placeholder for train method."""

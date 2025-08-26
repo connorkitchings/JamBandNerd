@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import argparse
-from datetime import date, timedelta
+from datetime import date, timedelta, timezone
 from typing import Any, Dict, List
 import os
 import sys
@@ -15,6 +15,7 @@ sys.path.insert(0, project_root)
 from src.jambandnerd.db.operations import upsert_dataframe
 from src.jambandnerd.models.notebook.model import NotebookPredictor
 from src.jambandnerd.models.accuracy import compute_per_show_metrics, aggregate_metrics
+from src.jambandnerd.transformations.gaps import generate_model_data
 from scripts.common import fetch_table
 
 
@@ -31,15 +32,19 @@ def main() -> None:
         print("No data to backtest")
         return
 
-    if "show_id" not in shows_df.columns and "api_show_id" in shows_df.columns:
+    # Normalize Phish column names
+    if "api_show_id" in shows_df.columns and "show_id" not in shows_df.columns:
         shows_df["show_id"] = shows_df["api_show_id"]
-    if "show_id" not in sets_df.columns and "api_show_id" in sets_df.columns:
+    if "api_show_id" in sets_df.columns and "show_id" not in sets_df.columns:
         sets_df["show_id"] = sets_df["api_show_id"]
+    if "showdate" in shows_df.columns and "show_date" not in shows_df.columns:
+        shows_df["show_date"] = shows_df["showdate"]
+    if "song" in sets_df.columns and "song_name" not in sets_df.columns:
+        sets_df["song_name"] = sets_df["song"]
 
     shows_df["_dt"] = pd.to_datetime(shows_df["show_date"]).dt.date
     shows_df["show_id"] = shows_df["show_id"].astype(str)
 
-    # Build list of reference show dates in window
     if args.start:
         start_d = pd.to_datetime(args.start).date()
     else:
@@ -55,11 +60,10 @@ def main() -> None:
     predictor = NotebookPredictor()
     per_show_results: List[Dict[str, Any]] = []
 
-    # Map show_date to sets_df
     show_info_map = shows_df.set_index("show_id")["show_date"].to_dict()
     sets_df["show_id"] = sets_df["show_id"].astype(str)
     sets_df["show_date"] = sets_df["show_id"].map(show_info_map)
-    sets_df["_dt"] = pd.to_datetime(sets_df["show_date"]).dt.date
+    sets_df["_dt"] = pd.to_datetime(sets_df["show_date"], errors='coerce').dt.date
     show_id_map = shows_df.set_index("_dt")["show_id"].to_dict()
 
     for ref_date in ref_dates:
@@ -71,13 +75,13 @@ def main() -> None:
         if not show_id:
             continue
 
-        preds = predictor.predict(
-            shows_df=shows_df,
-            setlists_df=sets_df,
-            top_k=50,
-            reference_show_date=ref_date,
-        )
-        pred_songs = [p.song_name for p in preds]
+        try:
+            model_data = generate_model_data(shows_df, sets_df, ref_date)
+            preds, _ = predictor.predict(model_data=model_data, top_k=50)
+            pred_songs = [p.song_name for p in preds]
+        except ValueError as e:
+            print(f"Skipping date {ref_date}: {e}")
+            continue
 
         show_metrics = {
             "band": "phish",
@@ -85,7 +89,7 @@ def main() -> None:
             "show_id": int(show_id),
             "show_date": ref_date.isoformat(),
             "actual_song_count": len(actual_songs),
-            "evaluated_at": pd.Timestamp.utcnow().isoformat(),
+            "evaluated_at": pd.Timestamp.now(tz=timezone.utc).isoformat(),
         }
 
         for k in [10, 25, 50]:

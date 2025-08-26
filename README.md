@@ -1,63 +1,15 @@
 # JamBandNerd
 
-## Project Overview
-
-JamBandNerd v2 is a cloud-based data science platform for collecting, transforming, and predicting
-jam band setlists. The system provides real-time setlist predictions through automated data
-pipelines and an interactive web interface.
-
-### Supported Bands
-
-- **Goose** (elgoose.net API)
-- **Phish** (phish.net API)
-- **Widespread Panic** (everydaycompanion.com scraping - *planned*)
-
-### Key Features
-
-- **Automated daily data collection** from APIs and web scraping
-- **Cloud-native architecture** with Supabase backend
-- **Real-time data transformation** pipelines
-- **Multiple prediction models** with accuracy tracking
-- **Interactive web interface** for exploring predictions
-- **Modular pipeline design** for independent component updates
-- **Error monitoring** with email notifications
-
----
-
-## Architecture Overview
-
-```text
-Data Sources → Raw Data (Supabase) → In-Memory Transform → Models → Predictions (Supabase) → Web Interface
-     ↓              ↓                       ↓                ↓           ↓                    ↓
-  phish.net     phish_shows_raw        Standardize         Notebook   predictions_notebook   Streamlit
-  elgoose.net   goose_setlists_raw       Format              Model      notebook_accuracy        App
-  scraping      wsp_songs_raw             ↓                  CK+                          Band/Model
-                                         Common             Model                         Selection
-                                         Schema
-```
-
-### Data Flow
-
-1. **Collection**: APIs/scraping → Raw Supabase tables (`{band}_*_raw`)
-2. **Transform (In-Memory)**: Raw data is loaded into memory, standardized, and used to generate
-   model features. No intermediate standardized tables are created.
-3. **Predict**: Features → predictions stored in unified tables (e.g., `predictions_notebook`)
-4. **Accuracy**: Backtests summarized to unified tables (e.g., `notebook_accuracy`)
-5. **Display**: Streamlit web interface
-6. **Automate**: GitHub Actions daily run
-
-For storage details on unified predictions and accuracy tables, see
-[Unified tables](docs/index.md#unified-tables).
-
----
+A cloud-based data science platform for collecting, transforming, and predicting jam band setlists. The system provides real-time setlist predictions through automated data pipelines and an interactive web interface.
 
 ## Quick Start
 
 ### Prerequisites
 
 - Python 3.12+
+- [UV package manager](https://github.com/astral-sh/uv) (recommended)
 - Supabase account and project
-- API keys (see Environment Setup)
+- API keys (see Environment Setup below)
 
 ### Installation
 
@@ -73,166 +25,76 @@ For storage details on unified predictions and accuracy tables, see
 
 2. **Environment configuration:**
 
+   Create a `.env` file in the project root with:
    ```bash
-   cp .env.example .env
-   # Edit .env with your credentials:
-   # SUPABASE_URL=your_supabase_url
-   # SUPABASE_KEY=your_supabase_key
-   # PHISH_API_KEY=your_phish_net_key
+   SUPABASE_URL=your_supabase_url
+   SUPABASE_KEY=your_supabase_key
+   PHISH_API_KEY=your_phish_net_key  # Optional, for Phish data only
    ```
 
-3. **Environment variables:**
+## Usage
 
-   Ensure `.env` exists (it is gitignored). MCP/AI handles database setup automatically; no local
-   setup script is required.
+### Optimized Pipeline (Recommended)
 
-### Usage
-
-#### Goose pipeline (current)
+The primary way to run the data pipeline is with the `run_optimized_pipeline.py` script. This script handles data collection, transformations, predictions, and accuracy calculations for the specified band(s).
 
 ```bash
-# 1) Collect Goose raw data into Supabase
-uv run python scripts/run_goose_collection.py
+# Run the complete pipeline for all supported bands
+uv run python scripts/run_optimized_pipeline.py --band all
 
-# 2) Generate top-50 predictions and save to Supabase
-# Defaults to the next upcoming show date in the database
-uv run python scripts/generate_goose_predictions.py
+# Run the pipeline for a single band (e.g., Goose)
+uv run python scripts/run_optimized_pipeline.py --band goose
 
-# Or, specify a historical date for the prediction
-uv run python scripts/generate_goose_predictions.py --date YYYY-MM-DD
-
-# 3) Backtest historical accuracy over a window
-uv run python scripts/backtest_goose_notebook.py --start 2025-06-01 --end 2025-08-16
-
-# 4) Save summary accuracy metrics (last 50 completed shows)
-uv run python scripts/save_notebook_accuracy.py --shows 50
+# Skip accuracy calculations for a faster run
+uv run python scripts/run_optimized_pipeline.py --band all --skip-accuracy
 ```
 
-#### Phish Pipeline
+### Development
 
 ```bash
-# Collect Phish raw data into Supabase
-uv run python scripts/run_phish_collection.py
+# Install development dependencies
+uv pip install -e ".[dev]"
+
+# Code quality
+ruff check src/
+black src/
+pytest tests/
 ```
 
----
+## Documentation
 
-## Project Structure
+For comprehensive documentation including architecture, API specifications, and development guides:
 
-```text
-JamBandNerd/
-├── docs/
-│   ├── models/                 # model docs (e.g., notebook.md)
-│   ├── project/                # PRD, schedule, ADR
-│   ├── guides/                 # ai_sessions, implementation, supabase_api_guide
-│   ├── schemas/                # API schemas
-│   └── logs/                   # session logs
-├── src/jambandnerd/
-│   ├── data_collection/
-│   │   └── goose/
-│   ├── transformations/
-│   ├── models/
-│   ├── db/
-│   ├── predictions/
-│   └── utils/                  # Shared utilities
-├── scripts/
-│   ├── common.py               # Shared script utilities
-│   ├── run_goose_collection.py
-│   ├── generate_goose_predictions.py
-│   ├── generate_goose_ckplus_predictions.py
-│   ├── backtest_goose_notebook.py
-│   ├── backtest_goose_ckplus.py
-│   ├── save_notebook_accuracy.py
-│   └── save_ckplus_accuracy.py
-└── tests/
+- 📚 **[Complete Documentation](docs/)** - Full project documentation
+- 🏗️ **[Technical Architecture](docs/specifications/technical_overview.md)** - System design and components
+- 📋 **[Product Requirements](docs/project/prd.md)** - Features, goals, and specifications  
+- 🚀 **[Implementation Guide](docs/guides/implementation.md)** - Development workflow
+- 📊 **[Database Schemas](docs/schemas/)** - API and database specifications
+- 📖 **[Model Documentation](docs/models/index.md)** - Prediction algorithm details
+
+Generate and serve documentation locally:
+```bash
+uv pip install -e ".[docs]"
+mkdocs serve
 ```
 
----
+## Architecture
 
-## Development
+**Modular Pipeline Design**: Data Sources → Raw Storage → In-Memory Transform → Models → Predictions → Web Interface
 
-The project is built with a modular architecture to allow for independent development, testing,
-and extension. Each major component (data collection, transformation, modeling) is designed to be
-self-contained. This structure makes it straightforward to add new bands or prediction models by
-following the existing patterns.
+**Supported Bands**: Goose (elgoose.net), Phish (phish.net), Widespread Panic (planned)
 
-### Modular Architecture
-
-Each component is independently runnable:
-
-- **Data Collection**: Band-specific collectors with unified interface
-- **Transformations**: Standardization pipeline for model input
-- **Models**: Pluggable prediction models with common API
-- **Database**: Abstracted Supabase operations
-- **Web Interface**: Model/band selection with historical comparisons
-
-### Adding New Bands
-
-1. Create collector in `src/jambandnerd/data_collection/{band}/`
-2. Define schemas in `docs/supabase_schema/{band}_*.md`
-3. Add transformation logic in `src/jambandnerd/transformations/`
-4. Update web interface band selection
-
-### Adding New Models
-
-1. Implement model in `src/jambandnerd/models/{model_name}/`
-2. Follow common prediction interface
-3. Add accuracy tracking metrics
-4. Update web interface model selection
-
----
-
-## Web Interface Features
-
-An interactive web interface for exploring predictions is planned but has not been started. Planned
-features include:
-
-- **Band Selection**: Switch between Phish, Goose, and WSP.
-- **Model Comparison**: Toggle between Notebook and CK+ models.
-- **Prediction Display**: Show next song probabilities and confidence scores.
-- **Historical Accuracy**: Visualize model performance over time.
-- **Full Setlist Predictions**: Generate predictions for an entire show.
-- **Interactive Setlist Builder**: Allow users to create and test prediction scenarios.
-- **Real-time Show Tracking**: Update predictions as a show progresses.
-
----
-
-## Automation
-
-### Daily Pipeline
-
-A daily pipeline is configured using GitHub Actions (`.github/workflows/daily-pipeline.yml`).
-This workflow runs at 19:00 UTC and performs the following steps for the Goose pipeline:
-- Collects the latest data.
-- Generates predictions for both the Notebook and CK+ models.
-- Saves the latest accuracy summaries for both models.
-
-### Error Handling
-
-- API failures: Continue with existing data, send notification
-- Scraping issues: Retry with backoff, email on persistent failure
-- Data validation: Log issues, continue pipeline where possible
-
----
+**Key Components**:
+- Band-agnostic data collectors with unified interfaces
+- In-memory transformation pipeline (no intermediate tables)
+- Pluggable prediction models (Notebook, CK+)
+- Unified cross-band prediction and accuracy storage
+- Supabase backend with automated validation
 
 ## Contributing
 
-1. Check the implementation guide for current development priorities
-2. Follow modular architecture - changes should be isolated
-3. Test individual components before integration
-4. Update relevant documentation
-
----
+See [Implementation Guide](docs/guides/implementation.md) for development workflow and current priorities.
 
 ## License
 
 MIT
-
----
-
-## References
-
-- [phish.net API](https://phish.net/)
-- [elgoose.net API](https://elgoose.net/)
-- [Widespread Panic Archive](http://www.everydaycompanion.com/)
-- [Supabase Documentation](https://supabase.com/docs)

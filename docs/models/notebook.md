@@ -6,6 +6,22 @@ This document describes the baseline “notebook” model used to produce next�
 Goose and how we measure historical accuracy. The model is intentionally simple and fast to
 compute directly from raw Supabase tables.
 
+### How it Runs
+
+The Notebook model is executed via the `run_optimized_pipeline.py` script, which is the primary method for running the full pipeline for any band. This script handles data collection, transformation, and prediction generation.
+
+To run the Notebook model for a specific band, you can use the following command:
+
+```bash
+uv run python scripts/run_optimized_pipeline.py --band <band_name>
+```
+
+This command will:
+
+1.  **Collect Data**: Fetch the latest show and setlist data for the specified band.
+2.  **Transform Data**: Prepare the raw data for the models.
+3.  **Generate Predictions**: Run the Notebook model to generate predictions and save them to the database.
+
 ### Reference Show Date
 
 - The model requires a reference show date: the show we are predicting.
@@ -82,3 +98,12 @@ We assess accuracy by iterating through historical show dates and treating each 
 - Add configurable weighting that blends `plays_past_year` with contextual features (venue, tour,
   gap bands).
 - Extend accuracy reporting with per‑era breakdowns and confidence intervals.
+
+### Rationale
+
+The Notebook model is designed to be a simple, transparent, and effective baseline for setlist prediction. Here are the reasons behind some of its key design decisions:
+
+-   **Frequency-Based**: The model's core logic is based on the simple assumption that songs played frequently in the recent past are more likely to be played again soon. This is a common pattern for many touring bands and provides a solid foundation for prediction.
+-   **One-Year Window**: The one-year window for counting plays is a heuristic that balances recency and a large enough sample size. It ensures that the model is responsive to changes in a band's rotation while still capturing a meaningful amount of data.
+-   **Last-Three-Show Exclusion**: The exclusion of songs played in the last three shows is a common-sense rule to avoid predicting songs that have been played very recently. This is a simple but effective way to improve the model's accuracy.
+-   **Simplicity and Speed**: The model is intentionally simple so that it is easy to understand, implement, and maintain. Its speed also allows for rapid backtesting and iteration.

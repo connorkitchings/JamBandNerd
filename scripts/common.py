@@ -5,10 +5,40 @@ import sys
 from datetime import date, datetime
 
 import pandas as pd
-from typing import List, Dict
+from typing import List, Dict, Tuple
 
 # Local imports
 from src.jambandnerd.db.connection import get_supabase_client
+
+
+def prepare_band_data(shows_df: pd.DataFrame, setlists_df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Clean and normalize shows and setlists data for a band.
+
+    - Handles different column names for show_id and song_name.
+    - Converts show_date to datetime.date objects.
+    - Drops rows with null essential values.
+    - Converts IDs to strings for consistency.
+    """
+    # Normalize column names
+    if "api_show_id" in shows_df.columns and "show_id" not in shows_df.columns:
+        shows_df["show_id"] = shows_df["api_show_id"]
+    if "showdate" in shows_df.columns and "show_date" not in shows_df.columns:
+        shows_df["show_date"] = shows_df["showdate"]
+    if "api_show_id" in setlists_df.columns and "show_id" not in setlists_df.columns:
+        setlists_df["show_id"] = setlists_df["api_show_id"]
+    if "song" in setlists_df.columns and "song_name" not in setlists_df.columns:
+        setlists_df["song_name"] = setlists_df["song"]
+
+    # Data cleaning and type conversion
+    shows_df["show_date"] = pd.to_datetime(shows_df["show_date"], errors='coerce').dt.date
+    shows_df.dropna(subset=["show_date", "show_id"], inplace=True)
+    setlists_df.dropna(subset=["show_id", "song_name"], inplace=True)
+
+    shows_df["show_id"] = shows_df["show_id"].astype(str)
+    setlists_df["show_id"] = setlists_df["show_id"].astype(str)
+
+    return shows_df, setlists_df
 
 
 def resolve_reference_date(
@@ -35,17 +65,19 @@ def resolve_reference_date(
             sys.exit(1)
 
     if is_today:
-        shows_df["_show_date_dt"] = pd.to_datetime(shows_df["show_date"]).dt.normalize()
+        # Ensure _show_date_dt is created on a copy to avoid SettingWithCopyWarning
+        shows_df_copy = shows_df.copy()
+        shows_df_copy["_show_date_dt"] = pd.to_datetime(shows_df_copy["show_date"]).dt.normalize()
         today_ts = pd.Timestamp(today).normalize()
-        future_shows = shows_df[shows_df["_show_date_dt"] >= today_ts].copy()
-        
+        future_shows = shows_df_copy[shows_df_copy["_show_date_dt"] >= today_ts]
+
         if not future_shows.empty:
             next_show_date = future_shows["_show_date_dt"].min()
             print(f"No specific date provided; defaulting to next upcoming show: {next_show_date.date().isoformat()}")
             return next_show_date.date()
-        
+
         # Fallback: use most recent past show when no future shows are available
-        past_shows = shows_df[shows_df["_show_date_dt"] <= today_ts].copy()
+        past_shows = shows_df_copy[shows_df_copy["_show_date_dt"] <= today_ts]
         if past_shows.empty:
             print("Error: No shows found in the database to use as a reference.")
             sys.exit(1)
@@ -58,18 +90,49 @@ def resolve_reference_date(
         return target_date
 
 
-def fetch_table(table_name: str) -> List[Dict]:
-    """Fetch all rows from a Supabase table.
-
-    Args:
-        table_name: The name of the table to fetch.
-
-    Returns:
-        A list of row dictionaries. Returns an empty list if no rows are found.
-    """
+def fetch_table(table_name: str, chunk_size: int = 1000) -> List[Dict]:
+    """Fetch all rows from a Supabase table with robust, verbose pagination."""
     client = get_supabase_client()
-    response = client.table(table_name).select("*").execute()
-    return response.data or []
+    all_data = []
+    offset = 0
+    
+    try:
+        count_response = client.table(table_name).select("*, count=exact").limit(0).execute()
+        total_rows = count_response.count
+        print(f"Found {total_rows} total rows in {table_name}.")
+    except Exception as e:
+        print(f"Could not get count from {table_name}: {e}. Fetching until empty.")
+        total_rows = -1
+
+    print(f"Fetching all records from {table_name} in chunks of {chunk_size}...")
+    while True:
+        try:
+            print(f"Fetching rows from offset {offset}...")
+            response = client.table(table_name).select("*").range(offset, offset + chunk_size - 1).execute()
+            
+            if not response.data:
+                print("Received no more data. Ending fetch.")
+                break
+
+            num_fetched = len(response.data)
+            all_data.extend(response.data)
+            print(f"Fetched {num_fetched} rows. Total so far: {len(all_data)}.")
+
+            if total_rows != -1 and len(all_data) >= total_rows:
+                print("Fetched all expected rows based on count. Ending fetch.")
+                break
+            if num_fetched < chunk_size:
+                print("Fetched last chunk. Ending fetch.")
+                break
+
+            offset += num_fetched
+
+        except Exception as e:
+            print(f"An error occurred during fetch: {e}")
+            break
+            
+    print(f"Fetched a total of {len(all_data)} records from {table_name}.")
+    return all_data
 
 
 # Backward compatibility alias for callers using the old private name

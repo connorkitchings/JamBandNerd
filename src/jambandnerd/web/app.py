@@ -4,45 +4,61 @@ import pandas as pd
 from supabase import Client
 import altair as alt
 import json
+from typing import Dict, Any
 
 from jambandnerd.db.connection import get_supabase_client
 
+# --- Configuration ---
+
 EXCLUDED_SHOW_DATES = {"2025-08-13"}
 
-def display_method_explanation(file_label: str) -> None:
-    """Render a short explanation for the selected prediction method under the picker."""
-    method_explanations = {
-        "CK+": (
-            """
-<div style='font-size:0.95em; color:#666; margin-bottom:10px;'>
-<b>CK+ Method:</b> Gap-based statistical predictor that ranks songs by how overdue they are, using historical
-show-to-show gaps, recency, and reliability scaling. It emphasizes songs likely to return given typical gaps.
-</div>
-            """
-        ),
-        "Notebook": (
-            """
-<div style='font-size:0.95em; color:#666; margin-bottom:10px;'>
-<b>Notebook Method:</b> Focuses on songs most frequently played in the last year, excluding those played in the
-last three shows. It surfaces in-rotation songs and provides last played date and current gap context.
-</div>
-            """
-        ),
-    }
+BAND_CONFIG = {
+    "goose": {
+        "display_name": "Goose",
+        "shows_table": "goose_shows_raw",
+    },
+    "phish": {
+        "display_name": "Phish",
+        "shows_table": "phish_shows_raw",
+    },
+}
 
-    st.sidebar.markdown(method_explanations.get(file_label, ""), unsafe_allow_html=True)
+MODEL_CONFIG = {
+    "notebook": {
+        "display_name": "Notebook",
+        "explanation": "Focuses on songs most frequently played in the last year, excluding those played in the last three shows. It surfaces in-rotation songs and provides last played date and current gap context.",
+        "columns": {
+            "rank": "Rank",
+            "song_name": "Song",
+            "plays_past_year": "Plays in Last Year",
+            "LTP": "LTP",
+            "current_gap": "Current Gap",
+        },
+    },
+    "ckplus": {
+        "display_name": "CK+",
+        "explanation": "Gap-based statistical predictor that ranks songs by how overdue they are, using historical show-to-show gaps, recency, and reliability scaling. It emphasizes songs likely to return given typical gaps.",
+        "columns": {
+            "rank": "Rank",
+            "song_name": "Song",
+            "LTP": "LTP",
+            "current_gap": "Current Gap",
+            "avg_gap": "Avg Gap",
+            "gap_ratio": "Gap Ratio",
+            "gap_z_score": "Gap Z-Score",
+            "ckplus_score": "CK+ Score",
+        },
+    },
+}
 
+# --- Data Fetching ---
 
 @st.cache_data
-def fetch_predictions(_db_client: Client, band: str = "goose", model: str = "notebook") -> tuple[pd.DataFrame, str | None, dict]:
+def fetch_predictions(_db_client: Client, band: str, model: str) -> tuple[pd.DataFrame, str | None, dict]:
     """Fetch the latest predictions for a given band from the unified table."""
     try:
         table_name = f"predictions_{model}"
-        query = (
-            _db_client.table(table_name)
-            .select("*")
-            .eq("band", band)
-        )
+        query = _db_client.table(table_name).select("*").eq("band", band)
         for d in EXCLUDED_SHOW_DATES:
             query = query.neq("reference_date", d)
         latest_response = query.order("reference_date", desc=True).limit(1).execute()
@@ -52,23 +68,17 @@ def fetch_predictions(_db_client: Client, band: str = "goose", model: str = "not
         row = latest_response.data[0]
         reference_date = row.get("reference_date")
         predictions_json = row.get("predictions")
-        # Handle JSON stored as a string vs. native list/dict
+        
         if isinstance(predictions_json, str):
-            try:
-                predictions_parsed = json.loads(predictions_json)
-            except Exception:
-                predictions_parsed = []
+            predictions_parsed = json.loads(predictions_json)
         else:
             predictions_parsed = predictions_json or []
-        df = pd.DataFrame(predictions_parsed) if isinstance(predictions_parsed, list) else pd.DataFrame()
+            
+        df = pd.DataFrame(predictions_parsed)
         if "last_played_date" in df.columns and "LTP" not in df.columns:
             df.rename(columns={"last_played_date": "LTP"}, inplace=True)
-        return df, reference_date, {
-            "band": row.get("band"),
-            "model_version": row.get("model_version"),
-            "predicted_at": row.get("predicted_at"),
-            "top_k": row.get("top_k"),
-        }
+            
+        return df, reference_date, row
     except Exception as e:
         st.error(f"Failed to fetch predictions: {e}")
         return pd.DataFrame(), None, {}
@@ -92,13 +102,13 @@ def fetch_per_show_accuracy(_db_client: Client, band: str, model: str, limit: in
         st.error(f"Failed to fetch per-show accuracy: {e}")
         return pd.DataFrame()
 
-
-def fetch_show_details_by_date(_db_client: Client, reference_date: str | None, band: str = "goose") -> dict | None:
-    """Fetch venue details for the given reference show date from the band's shows table."""
-    if not reference_date:
+@st.cache_data
+def fetch_show_details_by_date(_db_client: Client, reference_date: str | None, band: str) -> dict | None:
+    """Fetch venue details for the given reference show date."""
+    if not reference_date or band not in BAND_CONFIG:
         return None
     try:
-        table_name = "goose_shows_raw" if band == "goose" else "phish_shows_raw"
+        table_name = BAND_CONFIG[band]["shows_table"]
         resp = (
             _db_client.table(table_name)
             .select("show_date,venue_name,venue_city,venue_state,show_id")
@@ -111,10 +121,9 @@ def fetch_show_details_by_date(_db_client: Client, reference_date: str | None, b
     except Exception:
         return None
 
-
 @st.cache_data
 def fetch_last_collection_time(_db_client: Client, band: str) -> str | None:
-    """Fetch the most recent collection run timestamp for a band from collection_runs."""
+    """Fetch the most recent collection run timestamp."""
     try:
         resp = (
             _db_client.table("collection_runs")
@@ -124,223 +133,138 @@ def fetch_last_collection_time(_db_client: Client, band: str) -> str | None:
             .limit(1)
             .execute()
         )
-        if resp.data:
-            return resp.data[0].get("created_at")
+        return resp.data[0].get("created_at") if resp.data else None
     except Exception:
-        pass
-    return None
+        return None
 
-st.set_page_config(page_title="JamBandNerd", layout="wide")
+# --- UI Components ---
 
-# --- Sidebar --- #
-band_options = ["Goose", "Phish"]
-selected_band = st.sidebar.selectbox("Select a Band", band_options)
-model_options = {"Notebook": "notebook", "CK+": "ckplus"}
-selected_model_label = st.sidebar.selectbox("Select a Model", list(model_options.keys()))
-selected_model = model_options[selected_model_label]
-display_method_explanation(selected_model_label)
+def display_sidebar() -> tuple[str, str, int]:
+    """Render the sidebar and return selected options."""
+    st.sidebar.title("JamBandNerd")
 
-# Historical accuracy will display Top 10/25/50 simultaneously
+    band_display_names = [config["display_name"] for config in BAND_CONFIG.values()]
+    selected_band_display = st.sidebar.selectbox("Select a Band", band_display_names)
+    selected_band_slug = next(slug for slug, config in BAND_CONFIG.items() if config["display_name"] == selected_band_display)
 
-# --- Main App --- #
-try:
-    supabase_client = get_supabase_client()
-    selected_band_slug = selected_band.lower()
+    model_display_names = [config["display_name"] for config in MODEL_CONFIG.values()]
+    selected_model_display = st.sidebar.selectbox("Select a Model", model_display_names)
+    selected_model_slug = next(slug for slug, config in MODEL_CONFIG.items() if config["display_name"] == selected_model_display)
+    
+    st.sidebar.markdown(f"""
+        <div style='font-size:0.95em; color:#666; margin-bottom:10px;'>
+        <b>{selected_model_display} Method:</b> {MODEL_CONFIG[selected_model_slug]['explanation']}
+        </div>
+    """, unsafe_allow_html=True)
 
-    # --- Predictions View ---
-    predictions_df, ref_date, meta = fetch_predictions(supabase_client, selected_band_slug, selected_model)
-    st.markdown("<h1 style='text-align: center;'>JamBandNerd</h1>", unsafe_allow_html=True)
-    st.markdown(
-        f"<h3 style='text-align: center;'>{selected_band.title()} Predictions - {selected_model_label}</h3>",
-        unsafe_allow_html=True,
-    )
+    st.sidebar.markdown("---")
+    k_options = [10, 25, 50]
+    selected_k = st.sidebar.selectbox("Select K for Accuracy", k_options, index=2)
+    st.sidebar.markdown("""
+        <div style='font-size:0.95em; color:#666; margin-bottom:10px;'>
+        <b>Top-K:</b> The number of top-ranked songs in a prediction list. A smaller K is a harder target to hit.
+        </div>
+    """, unsafe_allow_html=True)
+    
+    return selected_band_slug, selected_model_slug, selected_k
+
+def format_predictions_df(df: pd.DataFrame, model: str) -> pd.DataFrame:
+    """Format the prediction dataframe for display."""
+    if df.empty or model not in MODEL_CONFIG:
+        return pd.DataFrame()
+        
+    config = MODEL_CONFIG[model]
+    cols_to_display = [col for col in config["columns"] if col in df.columns]
+    display_df = df[cols_to_display]
+    return display_df.rename(columns=config["columns"])
+
+def display_predictions(client: Client, band: str, model: str):
+    """Display the main predictions view."""
+    predictions_df, ref_date, meta = fetch_predictions(client, band, model)
+    
+    model_display_name = MODEL_CONFIG.get(model, {}).get("display_name", model.title())
+    band_display_name = BAND_CONFIG.get(band, {}).get("display_name", band.title())
+    
+    st.markdown(f"<h3 style='text-align: center;'>{band_display_name} Predictions - {model_display_name}</h3>", unsafe_allow_html=True)
 
     if not predictions_df.empty:
-        show_details = fetch_show_details_by_date(supabase_client, ref_date, band=selected_band_slug)
+        show_details = fetch_show_details_by_date(client, ref_date, band=band)
         date_str = pd.to_datetime(ref_date).strftime("%m/%d/%Y") if ref_date else ""
         header = f"Next Show: {date_str}"
         if show_details:
             header += f" at {show_details.get('venue_name')} in {show_details.get('venue_city')}, {show_details.get('venue_state')}"
         st.markdown(f"<h4 style='text-align: center;'>{header}</h4>", unsafe_allow_html=True)
 
-        # Reorder and rename columns per model
-        display_df = predictions_df.copy()
-        if selected_model == "notebook":
-            desired_order = ["rank", "song_name", "plays_past_year", "LTP", "current_gap"]
-            cols = [c for c in desired_order if c in display_df.columns]
-            display_df = display_df[cols]
-            display_df = display_df.rename(
-                columns={
-                    "rank": "Rank",
-                    "song_name": "Song",
-                    "plays_past_year": "Plays in Last Year",
-                    "LTP": "LTP",
-                    "current_gap": "Current Gap",
-                }
-            )
-        else:  # ckplus
-            desired_order = [
-                "rank",
-                "song_name",
-                "LTP",
-                "current_gap",
-                "avg_gap",
-                "gap_ratio",
-                "gap_z_score",
-                "ckplus_score",
-            ]
-            cols = [c for c in desired_order if c in display_df.columns]
-            display_df = display_df[cols]
-            display_df = display_df.rename(
-                columns={
-                    "rank": "Rank",
-                    "song_name": "Song",
-                    "LTP": "LTP",
-                    "current_gap": "Current Gap",
-                    "avg_gap": "Avg Gap",
-                    "gap_ratio": "Gap Ratio",
-                    "gap_z_score": "Gap Z-Score",
-                    "ckplus_score": "CKPlus Score",
-                }
-            )
-
+        display_df = format_predictions_df(predictions_df, model)
         st.dataframe(display_df, use_container_width=True, hide_index=True, height=900)
 
-        # Caption under table with collected_at and predicted_at
-        collected_at_raw = meta.get("collected_at") if meta else None
-        if not collected_at_raw:
-            # Fallback to last collection run in collection_runs
-            collected_at_raw = fetch_last_collection_time(supabase_client, selected_band_slug)
-        predicted_at_raw = meta.get("predicted_at") if meta else None
-        try:
-            collected_at = pd.to_datetime(collected_at_raw).floor("min") if collected_at_raw else None
-        except Exception:
-            collected_at = None
-        try:
-            predicted_at = pd.to_datetime(predicted_at_raw).floor("min") if predicted_at_raw else None
-        except Exception:
-            predicted_at = None
-        collected_at_str = collected_at.strftime("%Y-%m-%d %H:%M") if collected_at is not None else "unknown"
-        predicted_at_str = predicted_at.strftime("%Y-%m-%d %H:%M") if predicted_at is not None else "unknown"
-        st.markdown(
-            f"<p style='text-align: center; color: gray;'>Data Collected: {collected_at_str} - Predictions Made: {predicted_at_str}</p>",
-            unsafe_allow_html=True,
-        )
+        predicted_at_raw = meta.get("predicted_at")
+        predicted_at = pd.to_datetime(predicted_at_raw).floor("min") if predicted_at_raw else None
+        predicted_at_str = predicted_at.strftime("%Y-%m-%d %H:%M") if predicted_at else "unknown"
+        st.markdown(f"<p style='text-align: center; color: gray;'>Predictions Made: {predicted_at_str}</p>", unsafe_allow_html=True)
     else:
         st.warning("No predictions found for the selected model. Please run the prediction scripts first.")
 
-    # --- Historical Accuracy View ---
+def display_historical_accuracy(client: Client, band: str, model: str, k: int):
+    """Display the historical accuracy section."""
+    model_display_name = MODEL_CONFIG.get(model, {}).get("display_name", model.title())
     st.markdown("---")
-    st.markdown(f"<h3 style='text-align: center;'>Historical Accuracy - {selected_model_label}</h3>", unsafe_allow_html=True)
+    st.markdown(f"<h3 style='text-align: center;'>Historical Accuracy - {model_display_name}</h3>", unsafe_allow_html=True)
 
-    per_show_accuracy_df = fetch_per_show_accuracy(supabase_client, selected_band_slug, selected_model)
-    # Exclude non-concert shows by date
-    if not per_show_accuracy_df.empty and "show_date" in per_show_accuracy_df.columns:
-        per_show_accuracy_df = per_show_accuracy_df[~per_show_accuracy_df["show_date"].astype(str).isin(EXCLUDED_SHOW_DATES)].copy()
+    accuracy_df = fetch_per_show_accuracy(client, band, model)
+    if not accuracy_df.empty and "show_date" in accuracy_df.columns:
+        accuracy_df = accuracy_df[~accuracy_df["show_date"].astype(str).isin(EXCLUDED_SHOW_DATES)].copy()
 
-    if not per_show_accuracy_df.empty:
-        num_shows = len(per_show_accuracy_df)
-        st.markdown(f"<p style='text-align: center; color: gray;'>Aggregate metrics based on the last {num_shows} completed shows.</p>", unsafe_allow_html=True)
+    if not accuracy_df.empty:
+        num_shows = len(accuracy_df)
+        st.markdown(f"<p style='text-align: center; color: gray;'>Metrics based on the last {num_shows} completed shows.</p>", unsafe_allow_html=True)
         
-        # Calculate aggregate metrics for Top 10/25/50
+        # Aggregate metrics for all K values
         ks = [10, 25, 50]
-        recall_cols = {k: f"k{k}_recall" for k in ks}
-        matches_cols = {k: f"k{k}_matches" for k in ks}
-        avg_recall_by_k = {}
-        avg_matches_by_k = {}
-        for k in ks:
-            rcol = recall_cols[k]
-            mcol = matches_cols[k]
-            avg_recall_by_k[k] = per_show_accuracy_df[rcol].mean() if rcol in per_show_accuracy_df.columns else None
-            avg_matches_by_k[k] = per_show_accuracy_df[mcol].mean() if mcol in per_show_accuracy_df.columns else None
+        cols_recall = st.columns(len(ks))
+        for i, val in enumerate(ks):
+            recall_col = f"k{val}_recall"
+            avg_recall = accuracy_df[recall_col].mean() if recall_col in accuracy_df.columns else None
+            cols_recall[i].metric(f"Recall @ Top {val}", f"{avg_recall:.1%}" if avg_recall is not None else "N/A")
 
-        # Show metrics for Top 10/25/50 above the chart
-        # Center the three metrics by adding side spacers
-        cols_recall = st.columns([1, 2, 2, 2, 1])
-        for idx, k in enumerate(ks):
-            val = avg_recall_by_k[k]
-            cols_recall[idx + 1].metric(f"Recall @ Top {k}", f"{val:.1%}" if val is not None else "N/A")
-
-        cols_matches = st.columns([1, 2, 2, 2, 1])
-        for idx, k in enumerate(ks):
-            val = avg_matches_by_k[k]
-            cols_matches[idx + 1].metric(f"Avg. Matches @ Top {k}", f"{val:.1f}" if val is not None else "N/A")
-
-        # Build Altair multi-line chart for Recall with show index on X
-        # Most recent show should be #1, older shows increase to the right
-        df_sorted = per_show_accuracy_df.sort_values("show_date", ascending=False).reset_index(drop=True).copy()
-        df_sorted["show_num"] = range(1, len(df_sorted) + 1)
-
-        # Enrich with venue details (optional)
-        try:
-            show_ids = df_sorted["show_id"].dropna().astype(str).unique().tolist()
-            if show_ids:
-                table_name = "goose_shows_raw" if selected_band_slug == "goose" else "phish_shows_raw"
-                shows_resp = (
-                    supabase_client.table(table_name)
-                    .select("show_id,venue_name,venue_city,venue_state")
-                    .in_("show_id", show_ids)
-                    .execute()
-                )
-                venue_map = {}
-                if shows_resp.data:
-                    for r in shows_resp.data:
-                        vid = str(r.get("show_id"))
-                        vname = r.get("venue_name") or ""
-                        vcity = r.get("venue_city") or ""
-                        vstate = r.get("venue_state") or ""
-                        venue_map[vid] = ", ".join([p for p in [vname, vcity, vstate] if p])
-                df_sorted["_venue"] = df_sorted["show_id"].astype(str).map(venue_map)
-            else:
-                df_sorted["_venue"] = None
-        except Exception:
-            df_sorted["_venue"] = None
-
-        # Assemble long-form data with a Top label for legend and tooltips
-        series_frames = []
-        for k in ks:
-            rcol = recall_cols[k]
-            mcol = matches_cols[k]
-            if rcol in df_sorted.columns and mcol in df_sorted.columns:
-                s = df_sorted[["show_num", "show_date", rcol, mcol, "_venue"]].copy()
-                s["show_date"] = pd.to_datetime(s["show_date"])  # ensure temporal type
-                s.rename(columns={rcol: "Recall", mcol: "Matches"}, inplace=True)
-                s["Top"] = f"Top {k}"
-                series_frames.append(s)
-
-        chart_df = pd.concat(series_frames, ignore_index=True) if series_frames else pd.DataFrame(columns=["show_num", "show_date", "Recall", "Matches", "_venue", "Top"])  # type: ignore
-
-        line = (
-            alt.Chart(chart_df)
-            .mark_line(point=True)
-            .encode(
-                x=alt.X("show_num:Q", title="Show #", scale=alt.Scale(reverse=True)),
-                y=alt.Y("Recall:Q", title="Recall", scale=alt.Scale(domain=[0, 1])),
-                color=alt.Color("Top:N", title="Series"),
+        # Chart for selected K
+        recall_col = f"k{k}_recall"
+        matches_col = f"k{k}_matches"
+        if recall_col in accuracy_df.columns:
+            chart_df = accuracy_df.sort_values("show_date", ascending=False).reset_index(drop=True)
+            chart_df["show_num"] = range(1, len(chart_df) + 1)
+            
+            line = alt.Chart(chart_df).mark_line(point=True).encode(
+                x=alt.X("show_num:Q", title="Show # (Most Recent First)", scale=alt.Scale(reverse=True)),
+                y=alt.Y(f"{recall_col}:Q", title=f"Recall @ Top {k}", scale=alt.Scale(domain=[0, 1])),
                 tooltip=[
-                    alt.Tooltip("Top:N", title="Series"),
-                    alt.Tooltip("show_num:Q", title="Show #"),
                     alt.Tooltip("show_date:T", title="Show Date"),
-                    alt.Tooltip("_venue:N", title="Venue"),
-                    alt.Tooltip("Recall:Q", title="Recall", format=".1%"),
-                    alt.Tooltip("Matches:Q", title="Matches"),
+                    alt.Tooltip(f"{recall_col}:Q", title=f"Recall @ Top {k}", format=".1%"),
+                    alt.Tooltip(f"{matches_col}:Q", title=f"Matches @ Top {k}"),
                 ],
-            )
-        )
-        st.altair_chart(line, use_container_width=True)
-        st.markdown(
-            """
-<div style='font-size:0.9em; color: gray; text-align:center; margin-top:8px;'>
-<b>Recall</b>: Of the songs actually played, the fraction that appear in the Top-N predictions.
-</div>
-            """,
-            unsafe_allow_html=True,
-        )
+            ).interactive()
+            st.altair_chart(line, use_container_width=True)
+            st.markdown("<div style='font-size:0.9em; color: gray; text-align:center; margin-top:8px;'><b>Recall</b>: Of the songs actually played, the fraction that appear in the Top-K predictions.</div>", unsafe_allow_html=True)
+        else:
+            st.warning(f"No accuracy data available for K={k}.")
     else:
         st.warning("No per-show accuracy data found. Please run the backtesting scripts.")
 
-except Exception as e:
-    st.error(
-        f"An error occurred while trying to connect to the database or render the page. "
-        f"Please ensure your .env file is correctly configured. Error: {e}"
-    )
+# --- Main App ---
+
+def main():
+    """Main application entry point."""
+    st.set_page_config(page_title="JamBandNerd", layout="wide")
+    st.markdown("<h1 style='text-align: center;'>JamBandNerd</h1>", unsafe_allow_html=True)
+    
+    selected_band, selected_model, selected_k = display_sidebar()
+    
+    try:
+        supabase_client = get_supabase_client()
+        display_predictions(supabase_client, selected_band, selected_model)
+        display_historical_accuracy(supabase_client, selected_band, selected_model, selected_k)
+    except Exception as e:
+        st.error(f"An error occurred: {e}")
+
+if __name__ == "__main__":
+    main()

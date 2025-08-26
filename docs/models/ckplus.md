@@ -6,6 +6,22 @@ The CK+ model is a gap-based statistical predictor that ranks songs by how "over
 played, using historical show-to-show gaps between performances. It is intentionally simple, fast,
 and explainable, and complements the frequency‑based `notebook` model.
 
+### How it Runs
+
+The CK+ model is executed via the `run_optimized_pipeline.py` script, which is the primary method for running the full pipeline for any band. This script handles data collection, transformation, and prediction generation.
+
+To run the CK+ model for a specific band, you can use the following command:
+
+```bash
+uv run python scripts/run_optimized_pipeline.py --band <band_name>
+```
+
+This command will:
+
+1.  **Collect Data**: Fetch the latest show and setlist data for the specified band.
+2.  **Transform Data**: Prepare the raw data for the models.
+3.  **Generate Predictions**: Run the CK+ model to generate predictions and save them to the database.
+
 ### Reference Show Date
 
 - The model requires a reference show date: the show we are predicting.
@@ -117,12 +133,12 @@ We use a simple RPC to fetch table schemas for validation:
 
 create or replace function public.get_table_schema(p_table_name text)
 returns table (column_name text, data_type text, is_nullable text)
-language sql as $$
+language sql as $
   select column_name, data_type, is_nullable
   from information_schema.columns
   where table_schema = 'public' and table_name = p_table_name
   order by ordinal_position;
-$$;
+$;
 grant execute on function public.get_table_schema(text) to anon, authenticated, service_role;
 
 ```
@@ -143,3 +159,12 @@ grant execute on function public.get_table_schema(text) to anon, authenticated, 
 - Implement scripts and backtesting to populate `predictions_ckplus` and `accuracy_ckplus`.
 - Add per‑era breakdowns and confidence intervals similar to the notebook model.
 - Compare `notebook` vs `ckplus` performance in the UI and consider blended scoring.
+
+### Rationale
+
+The CK+ model is designed to provide a different perspective from the frequency-based Notebook model. It is based on the idea that songs that haven't been played in a while are more likely to be played soon.
+
+-   **Gap-Based**: The model's core logic is based on the concept of "gaps" between song performances. This provides a strong signal for songs that are "due" for a performance.
+-   **Reliability Scaling**: The model includes a reliability term that scales the overdue signal by the number of times a song has been played and the standard deviation of its gaps. This helps to prevent songs with very few plays or erratic histories from being ranked too highly.
+-   **Five-Year Window**: The five-year window for calculating gap statistics is a heuristic that provides a long-term view of a song's performance history. This is in contrast to the Notebook model's one-year window, which focuses on more recent trends.
+-   **Configurable Thresholds**: The model includes configurable thresholds for minimum plays and retirement gaps, which allows for band-specific tuning.

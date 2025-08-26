@@ -81,6 +81,7 @@ robust data validation, and add the new `ckplus` model for Goose.
 
 **Planned Tasks**:
 
+- [x] **Fix Core Model Logic**: Address regressions in Notebook and CK+ models by implementing the user-provided plain-text logic for windowing, gap calculation, and LTP determination.
 - [x] **Implement Phish Data Collector**:
   - [x] Create `phish_songs_raw`, `phish_shows_raw`, `phish_setlists_raw`, and `phish_venues_raw` tables in Supabase.
   - [x] Implement `PhishCollector` class in `src/jambandnerd/data_collection/phish/` to fetch data from the Phish.net API.

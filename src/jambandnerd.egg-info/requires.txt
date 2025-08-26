@@ -13,3 +13,10 @@ tqdm
 ruff
 black
 pytest
+mypy
+pytest-cov
+
+[docs]
+mkdocs
+mkdocs-material
+pymdown-extensions

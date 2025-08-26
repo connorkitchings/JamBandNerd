@@ -1,10 +1,11 @@
-"""Generate baseline Goose next-song predictions using the notebook predictor."""
 from __future__ import annotations
+
+"""Generate baseline Goose next-song predictions using the notebook predictor."""
 
 import argparse
 import os
 import sys
-from datetime import date, datetime, timezone
+from datetime import datetime, timezone
 import json
 
 import pandas as pd
@@ -13,23 +14,17 @@ import pandas as pd
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, project_root)
 
-from src.jambandnerd.db.connection import get_supabase_client
 from src.jambandnerd.models.notebook.model import NotebookPredictor
 from src.jambandnerd.db.operations import upsert_dataframe
-from scripts.common import resolve_reference_date
-
-
-def fetch_raw_data() -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Fetch all raw shows and setlists data from Supabase."""
-    client = get_supabase_client()
-    shows_resp = client.table("goose_shows_raw").select("*").execute()
-    setlists_resp = client.table("goose_setlists_raw").select("*").execute()
-    return pd.DataFrame(shows_resp.data), pd.DataFrame(setlists_resp.data)
+from src.jambandnerd.transformations.gaps import generate_model_data
+from scripts.common import resolve_reference_date, fetch_table
 
 
 def main(date_str: str | None) -> None:
     """Generate and save notebook predictions for a given date."""
-    shows_df, setlists_df = fetch_raw_data()
+    shows_df = pd.DataFrame(fetch_table("goose_shows_raw"))
+    setlists_df = pd.DataFrame(fetch_table("goose_setlists_raw"))
+
     if shows_df.empty or setlists_df.empty:
         print("Error: Could not fetch raw data from Supabase. Aborting.")
         return
@@ -38,13 +33,10 @@ def main(date_str: str | None) -> None:
     
     print(f"Generating Notebook predictions for reference date: {reference_date.isoformat()}")
 
+    model_data = generate_model_data(shows_df, setlists_df, reference_date)
+
     predictor = NotebookPredictor()
-    predictions = predictor.predict(
-        shows_df=shows_df,
-        setlists_df=setlists_df,
-        top_k=50,
-        reference_show_date=reference_date,
-    )
+    predictions, diagnostics = predictor.predict(model_data=model_data, top_k=50)
 
     if not predictions:
         print("No predictions were generated. This could be due to lack of data for the reference date.")

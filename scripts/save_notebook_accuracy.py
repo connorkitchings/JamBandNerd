@@ -14,6 +14,7 @@ sys.path.insert(0, project_root)
 from src.jambandnerd.db.connection import get_supabase_client
 from src.jambandnerd.models.notebook.model import NotebookPredictor
 from src.jambandnerd.models.accuracy import compute_per_show_metrics, aggregate_metrics
+from src.jambandnerd.transformations.gaps import generate_model_data
 from scripts.common import fetch_table
 
 
@@ -74,12 +75,8 @@ def main() -> None:
         actual = sets_df.loc[sets_df["_dt"] == ref_date, "song_name"].dropna().unique().tolist()
         if not actual:
             continue
-        preds = predictor.predict(
-            shows_df=shows_df,
-            setlists_df=sets_df,
-            top_k=50,
-            reference_show_date=ref_date,
-        )
+        model_data = generate_model_data(shows_df, sets_df, ref_date)
+        preds, _ = predictor.predict(model_data=model_data, top_k=50)
         pred_songs = [p.song_name for p in preds]
         for k in per_k.keys():
             per_k[k].append(compute_per_show_metrics(pred_songs, actual, k))

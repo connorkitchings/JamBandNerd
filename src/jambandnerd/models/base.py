@@ -1,26 +1,47 @@
-"""Abstract base classes for prediction models."""
-from abc import ABC, abstractmethod
-from typing import List, Dict, Any
+"""Abstract base classes for prediction models.
 
-# Placeholder for a standardized data object
-StandardizedData = Dict[str, Any]
-Prediction = Dict[str, Any]
-AccuracyMetrics = Dict[str, Any]
+Note: This base class defines the minimum interface that all prediction models
+must implement. The actual accuracy calculation is handled externally by
+the src.jambandnerd.models.accuracy module for consistency across models.
+"""
+from abc import ABC, abstractmethod
+from typing import List, Dict, Any, Union
+
+from ..transformations.gaps import ModelData
+
+# Type aliases for clarity
+PredictionResult = Union[List[Any], tuple[List[Any], Dict[str, Any]]]
 
 class PredictionModel(ABC):
-    """Abstract base class for prediction models."""
+    """Abstract base class for prediction models.
+    
+    Each model should implement its own prediction format that best
+    represents the insights from its algorithm (e.g., frequency-based,
+    gap-based, etc.).
+    
+    Accuracy calculation is handled externally by the accuracy module
+    to ensure consistency across all models.
+    """
 
-    @abstractmethod
-    def train(self, data: StandardizedData) -> None:
-        """Train the model with historical data."""
+    def train(self, data: ModelData) -> None:
+        """Train the model with historical data.
+        
+        Note: Statistical models may not require explicit training.
+        This method can be a no-op for such models.
+        """
         pass
 
     @abstractmethod
-    def predict(self, current_setlist: List[str], context: Dict[str, Any]) -> List[Prediction]:
-        """Generate next song predictions."""
-        pass
-
-    @abstractmethod
-    def calculate_accuracy(self, predictions: List[Prediction], actual_songs: List[str]) -> AccuracyMetrics:
-        """Calculate the accuracy of the predictions."""
+    def predict(self, model_data: ModelData, top_k: int = 50) -> PredictionResult:
+        """Generate next song predictions.
+        
+        Args:
+            model_data: Standardized data container with historical plays,
+                       feature set, and context information
+            top_k: Number of top predictions to return
+        
+        Returns:
+            Model-specific prediction results. May be a list of predictions
+            or a tuple of (predictions, diagnostics).
+        """
         pass

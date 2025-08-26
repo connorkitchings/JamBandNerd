@@ -31,8 +31,21 @@ dependencies = [
 dev = [
   "ruff",
   "black",
-  "pytest"
+  "pytest",
+  "mypy",
+  "pytest-cov"
 ]
+docs = [
+  "mkdocs",
+  "mkdocs-material",
+  "pymdown-extensions"
+]
+
+[project.scripts]
+collect-goose = "scripts.run_goose_collection:main"
+collect-phish = "scripts.run_phish_collection:main"
+predict-goose = "scripts.generate_goose_predictions:main"
+predict-phish = "scripts.generate_phish_predictions:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -52,3 +65,16 @@ target-version = ["py312"]
 
 [tool.ruff.lint]
 extend-select = ["I"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+addopts = "-v"
+
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true

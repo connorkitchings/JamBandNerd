@@ -1,3 +1,5 @@
+> **Note:** This document outlines the initial implementation plan for the project. While it provides a good overview of the project's history and architecture, some of the details may be out of date. For the most current information on the project's status and development workflow, please refer to the [README.md](../../README.md) and the [Onboarding Guide](./onboarding.md).
+
 # JamBandNerd v2 Implementation Guide
 
 > Repo alignment notes (2025-08-17):

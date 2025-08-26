@@ -19,10 +19,10 @@ import sys
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, project_root)
 
-from src.jambandnerd.db.connection import get_supabase_client
 from src.jambandnerd.db.operations import upsert_dataframe
 from src.jambandnerd.models.notebook.model import NotebookPredictor
 from src.jambandnerd.models.accuracy import compute_per_show_metrics, aggregate_metrics
+from src.jambandnerd.transformations.gaps import generate_model_data
 from scripts.common import fetch_table
 
 
@@ -39,15 +39,13 @@ def main() -> None:
         print("No data to backtest")
         return
 
-    # Correctly use 'show_date' from the live schema
     shows_df["_dt"] = pd.to_datetime(shows_df["show_date"]).dt.date
     shows_df["show_id"] = shows_df["show_id"].astype(str)
 
-    # Build list of reference show dates in window
     if args.start:
         start_d = pd.to_datetime(args.start).date()
     else:
-        start_d = (date.today() - timedelta(days=365 * 5)) # Widen default for historical backfill
+        start_d = (date.today() - timedelta(days=365 * 5))
     if args.end:
         end_d = pd.to_datetime(args.end).date()
     else:
@@ -59,11 +57,10 @@ def main() -> None:
     predictor = NotebookPredictor()
     per_show_results: List[Dict[str, Any]] = []
 
-    # Correctly map show_date from shows_df to sets_df
     show_info_map = shows_df.set_index("show_id")["show_date"].to_dict()
     sets_df["show_id"] = sets_df["show_id"].astype(str)
     sets_df["show_date"] = sets_df["show_id"].map(show_info_map)
-    sets_df["_dt"] = pd.to_datetime(sets_df["show_date"]).dt.date
+    sets_df["_dt"] = pd.to_datetime(pd.to_datetime(sets_df["show_date"], errors='coerce').dt.date)
     show_id_map = shows_df.set_index("_dt")["show_id"].to_dict()
 
     for ref_date in ref_dates:
@@ -75,13 +72,13 @@ def main() -> None:
         if not show_id:
             continue
 
-        preds = predictor.predict(
-            shows_df=shows_df,
-            setlists_df=sets_df,
-            top_k=50,
-            reference_show_date=ref_date,
-        )
-        pred_songs = [p.song_name for p in preds]
+        try:
+            model_data = generate_model_data(shows_df, sets_df, ref_date)
+            preds, _ = predictor.predict(model_data=model_data, top_k=50)
+            pred_songs = [p.song_name for p in preds]
+        except ValueError as e:
+            print(f"Skipping date {ref_date}: {e}")
+            continue
 
         show_metrics = {
             "band": "goose",
@@ -89,7 +86,7 @@ def main() -> None:
             "show_id": int(show_id),
             "show_date": ref_date.isoformat(),
             "actual_song_count": len(actual_songs),
-            "evaluated_at": pd.Timestamp.utcnow().isoformat(),
+            "evaluated_at": pd.Timestamp.now(tz=timezone.utc).isoformat(),
         }
 
         for k in [10, 25, 50]:
@@ -102,7 +99,6 @@ def main() -> None:
         
         per_show_results.append(show_metrics)
 
-    # Save per-show results to the database
     if per_show_results:
         results_df = pd.DataFrame(per_show_results)
         print(f"Saving {len(results_df)} per-show accuracy records to the database...")
@@ -113,10 +109,8 @@ def main() -> None:
         )
         print("Save complete.")
 
-    # Aggregate and print summary for console
     print("\n--- Aggregate Metrics for Window ---")
     for k in [10, 25, 50]:
-        # Re-calculating from the collected dicts for aggregation
         agg_metrics_k = aggregate_metrics([{"hit": r[f"k{k}_hit"], "matches": r[f"k{k}_matches"], "precision": r[f"k{k}_precision"], "recall": r[f"k{k}_recall"], "f1": r[f"k{k}_f1"]} for r in per_show_results], k)
         print(f"K={k}: hit_rate={agg_metrics_k.hit_rate:.3f} avg_matches={agg_metrics_k.avg_matches:.3f} precision={agg_metrics_k.precision:.3f} recall={agg_metrics_k.recall:.3f} f1={agg_metrics_k.f1:.3f}")
 

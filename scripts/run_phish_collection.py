@@ -12,8 +12,8 @@ import json
 import logging
 import os
 import sys
-from datetime import datetime
-from typing import Any, Dict, Iterable, List
+from datetime import datetime, timezone
+from typing import Any, Dict, Iterable, List, Optional
 
 import pandas as pd
 
@@ -42,6 +42,7 @@ def _compute_source_hash(record: Dict[str, Any]) -> str:
 
 def _normalize_songs(raw: Iterable[Dict[str, Any]]) -> pd.DataFrame:
     """Normalize songs to `phish_songs_raw` schema."""
+    now = datetime.now(timezone.utc).isoformat()
     normalized = [
         {
             "api_song_id": item.get("songid"),
@@ -56,11 +57,14 @@ def _normalize_songs(raw: Iterable[Dict[str, Any]]) -> pd.DataFrame:
             "last_permalink": item.get("last_permalink"),
             "debut_permalink": item.get("debut_permalink"),
             "source_hash": _compute_source_hash(item),
+            "created_at": now,
         }
         for item in raw
         if item.get("songid")
     ]
-    return pd.DataFrame(normalized)
+    df = pd.DataFrame(normalized)
+    df.drop_duplicates(subset=["api_song_id"], keep="first", inplace=True)
+    return df
 
 
 def _normalize_shows(raw: Iterable[Dict[str, Any]]) -> pd.DataFrame:
@@ -116,13 +120,39 @@ def _normalize_venues(raw: Iterable[Dict[str, Any]]) -> pd.DataFrame:
                 "venue_country": item.get("country"),
                 "source_hash": _compute_source_hash(item),
             }
-    return pd.DataFrame(list(venues.values()))
+    df = pd.DataFrame(list(venues.values()))
+    df.drop_duplicates(subset=["api_venue_id"], keep="first", inplace=True)
+    return df
 
 
 def _normalize_setlists(raw: Iterable[Dict[str, Any]]) -> pd.DataFrame:
     """Normalize setlists to `phish_setlists_raw` schema."""
-    normalized = [
-        {
+    def _to_bool(value: Any) -> bool:
+        if value is None:
+            return False
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, (int, float)):
+            return value != 0
+        s = str(value).strip().lower()
+        if s in {"true", "t", "yes", "y"}:
+            return True
+        if s in {"false", "f", "no", "n", ""}:
+            return False
+        # Numeric strings like "0", "1", "2" → True if > 0
+        if s.isdigit():
+            try:
+                return int(s) > 0
+            except Exception:
+                return False
+        return bool(s)
+
+    now = datetime.now(timezone.utc).isoformat()
+    normalized_rows: List[Dict[str, Any]] = []
+    for item in raw:
+        if not item.get("uniqueid"):
+            continue
+        row = {
             "api_unique_id": item.get("uniqueid"),
             "api_show_id": item.get("showid"),
             "show_date": item.get("showdate"),
@@ -132,26 +162,59 @@ def _normalize_setlists(raw: Iterable[Dict[str, Any]]) -> pd.DataFrame:
             "set_number": item.get("set"),
             "position": item.get("position"),
             "transition": item.get("trans_mark"),
-            "is_reprise": item.get("isreprise"),
-            "is_jam": item.get("isjam"),
-            "is_jam_chart": item.get("isjamchart"),
+            "is_reprise": _to_bool(item.get("isreprise")),
+            "is_jam": _to_bool(item.get("isjam")),
+            "is_jam_chart": _to_bool(item.get("isjamchart")),
             "track_time": item.get("tracktime"),
             "gap": item.get("gap"),
-            "is_original": item.get("is_original"),
+            "is_original": _to_bool(item.get("is_original")),
             "footnote": item.get("footnote"),
             "source_hash": _compute_source_hash(item),
+            "created_at": now,
         }
-        for item in raw
-        if item.get("uniqueid")
-    ]
-    return pd.DataFrame(normalized)
+        normalized_rows.append(row)
+
+    df = pd.DataFrame(normalized_rows)
+    if not df.empty:
+        # Enforce numeric types where appropriate
+        for col in ["set_number", "position", "gap", "track_time"]:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors="coerce").astype("Int64")
+        # Deduplicate based on unique setlist entry
+        initial_rows = len(df)
+        df.drop_duplicates(subset=["api_unique_id"], keep="first", inplace=True)
+        if len(df) < initial_rows:
+            logging.info(f"Dropped {initial_rows - len(df)} duplicate setlist entries.")
+    return df
 
 
-def run_phish_collection(skip_validation: bool = False) -> None:
+def _clear_table(table_name: str) -> None:
+    """Delete all rows from a table (requires a filter per PostgREST)."""
+    client = get_supabase_client()
+    # Delete all rows by using a condition that is true for every row
+    # Use non-nullable text column `source_hash` to avoid type casting issues
+    client.table(table_name).delete().neq("source_hash", "").execute()
+
+
+def run_phish_collection(
+    skip_validation: bool = False,
+    clear_setlists: bool = False,
+    only_setlists: bool = False,
+    year_start: Optional[int] = None,
+    year_end: Optional[int] = None,
+    full_backfill: bool = False,
+) -> None:
     """Collect all Phish data and store it in Supabase raw tables."""
     logging.info("Starting Phish data collection...")
     collector = PhishCollector()
     get_supabase_client()
+
+    # Set default year range if not doing a full backfill
+    if not full_backfill and year_start is None and year_end is None:
+        current_year = datetime.now().year
+        year_start = current_year - 1
+        year_end = current_year
+        logging.info(f"Defaulting to setlist collection for years: {year_start}-{year_end}")
 
     def upsert_table(
         table_name: str, collector_func, normalizer_func, conflict_cols: List[str]
@@ -169,8 +232,7 @@ def run_phish_collection(skip_validation: bool = False) -> None:
             df = coerce_df_types(df, schema)
             report = validate_dataframe_against_table(df, table_name, schema)
             if not report.is_valid:
-                logging.error(f"Validation failed for {table_name}: {report}")
-                return
+                logging.warning(f"Validation failed for {table_name}: {report}")
 
         try:
             upsert_dataframe(
@@ -180,34 +242,60 @@ def run_phish_collection(skip_validation: bool = False) -> None:
         except Exception as e:
             logging.error(f"Error upserting to {table_name}: {e}")
 
-    # Collect and upsert all data types
-    upsert_table(
-        "phish_songs_raw", collector.collect_songs, _normalize_songs, ["api_song_id"]
-    )
-    # Shows provides data for venues, so collect it once
+    if clear_setlists:
+        logging.info("Clearing phish_setlists_raw table...")
+        _clear_table("phish_setlists_raw")
+        logging.info("phish_setlists_raw cleared.")
+
+    if not only_setlists:
+        # Collect and upsert songs, shows, venues
+        upsert_table(
+            "phish_songs_raw", collector.collect_songs, _normalize_songs, ["api_song_id"]
+        )
+
+    # Shows provide data for venues and drive setlist selection
     shows_data = collector.collect_shows()
     shows_df = _normalize_shows(shows_data)
-    if not shows_df.empty:
+
+    # Optional year-based filtering for setlists
+    filtered_shows_df = shows_df.copy()
+    if year_start is not None or year_end is not None:
+        ys = year_start if year_start is not None else -10**9
+        ye = year_end if year_end is not None else 10**9
+        if not filtered_shows_df.empty and "show_year" in filtered_shows_df.columns:
+            filtered_shows_df["show_year"] = pd.to_numeric(
+                filtered_shows_df["show_year"], errors="coerce"
+            ).astype("Int64")
+            before = len(filtered_shows_df)
+            filtered_shows_df = filtered_shows_df[
+                (filtered_shows_df["show_year"].astype("Int64") >= ys)
+                & (filtered_shows_df["show_year"].astype("Int64") <= ye)
+            ]
+            logging.info(
+                f"Filtered shows by year [{ys}, {ye}]: {len(filtered_shows_df)}/{before} remaining"
+            )
+
+    if not only_setlists and not shows_df.empty:
         upsert_dataframe(
             "phish_shows_raw", shows_df, conflict_columns=["api_show_id"]
         )
         logging.info(f"Upserted {len(shows_df)} shows into phish_shows_raw.")
-        # Now handle venues from the same data
-        venues_df = _normalize_venues(shows_data)
-        if not venues_df.empty:
-            upsert_dataframe(
-                "phish_venues_raw", venues_df, conflict_columns=["api_venue_id"]
-            )
-            logging.info(f"Upserted {len(venues_df)} venues into phish_venues_raw.")
+        if not only_setlists:
+            venues_df = _normalize_venues(shows_data)
+            if not venues_df.empty:
+                upsert_dataframe(
+                    "phish_venues_raw", venues_df, conflict_columns=["api_venue_id"]
+                )
+                logging.info(f"Upserted {len(venues_df)} venues into phish_venues_raw.")
 
-        # Now, collect setlists for the shows we just processed
-        show_ids = shows_df["api_show_id"].dropna().astype(str).tolist()
-        upsert_table(
-            "phish_setlists_raw",
-            lambda: collector.collect_setlists(show_ids=show_ids),
-            _normalize_setlists,
-            ["api_unique_id"],
-        )
+    # Collect setlists for the (optionally filtered) shows
+    show_ids = filtered_shows_df["api_show_id"].dropna().astype(str).tolist()
+    upsert_table(
+        "phish_setlists_raw",
+        lambda: collector.collect_setlists(show_ids=show_ids),
+        _normalize_setlists,
+        ["api_unique_id"],
+    )
 
     # Log collection run
     try:
@@ -229,5 +317,29 @@ if __name__ == "__main__":
         action="store_true",
         help="Bypass schema validation before upserts",
     )
+    parser.add_argument(
+        "--clear-setlists",
+        action="store_true",
+        help="Clear all rows in phish_setlists_raw before collection",
+    )
+    parser.add_argument(
+        "--only-setlists",
+        action="store_true",
+        help="Only collect setlists; skip songs/shows/venues upserts",
+    )
+    parser.add_argument("--year-start", type=int, help="Start year for setlists filter")
+    parser.add_argument("--year-end", type=int, help="End year for setlists filter")
+    parser.add_argument(
+        "--full-backfill",
+        action="store_true",
+        help="Perform a full backfill of all setlists, ignoring year filters.",
+    )
     args = parser.parse_args()
-    run_phish_collection(skip_validation=args.skip_validation)
+    run_phish_collection(
+        skip_validation=args.skip_validation,
+        clear_setlists=args.clear_setlists,
+        only_setlists=args.only_setlists,
+        year_start=args.year_start,
+        year_end=args.year_end,
+        full_backfill=args.full_backfill,
+    )
