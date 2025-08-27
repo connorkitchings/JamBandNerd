@@ -23,7 +23,7 @@ on:
 jobs:
   # Alternative: Optimized single-script pipeline (experimental)
   optimized-pipeline:
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.use_optimized_pipeline == true
+    if: inputs.use_optimized_pipeline == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
@@ -51,12 +51,12 @@ jobs:
       - name: Run optimized pipeline
         run: |
           source .venv/bin/activate
-          python scripts/run_optimized_pipeline.py --band ${{ github.event.inputs.band || 'all' }}
+          python scripts/run_optimized_pipeline.py --band ${{ inputs.band || 'all' }}
 
   # Standard multi-step pipeline (default)
   # Step 1: Data Collection (parallel for both bands)
   collect-data:
-    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && github.event.inputs.use_optimized_pipeline == false)
+    if: github.event_name == 'schedule' || inputs.use_optimized_pipeline != 'true'
     strategy:
       matrix:
         band: [goose, phish]
@@ -86,7 +86,7 @@ jobs:
           uv pip install .
 
       - name: Run ${{ matrix.band }} data collection
-        if: github.event_name == 'schedule' || github.event.inputs.band == 'all' || github.event.inputs.band == matrix.band
+        if: github.event_name == 'schedule' || inputs.band == 'all' || inputs.band == matrix.band
         run: |
           source .venv/bin/activate
           echo "::group::Collecting ${{ matrix.band }} data"
@@ -105,7 +105,7 @@ jobs:
   # Step 2: Generate Predictions (parallel for all band/model combinations)
   generate-predictions:
     needs: collect-data
-    if: always() && !cancelled() && (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && github.event.inputs.use_optimized_pipeline == false))
+    if: always() && !cancelled() && (github.event_name == 'schedule' || inputs.use_optimized_pipeline != 'true')
     strategy:
       matrix:
         include:
@@ -143,7 +143,7 @@ jobs:
           uv pip install .
 
       - name: Generate ${{ matrix.model }} predictions for ${{ matrix.band }}
-        if: github.event_name == 'schedule' || github.event.inputs.band == 'all' || github.event.inputs.band == matrix.band
+        if: github.event_name == 'schedule' || inputs.band == 'all' || inputs.band == matrix.band
         run: |
           source .venv/bin/activate
           echo "::group::Generating ${{ matrix.model }} predictions for ${{ matrix.band }}"
@@ -162,7 +162,7 @@ jobs:
   # Step 3: Calculate Accuracy Metrics (parallel for all band/model combinations)
   calculate-accuracy:
     needs: generate-predictions
-    if: always() && !cancelled() && (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && github.event.inputs.use_optimized_pipeline == false))
+    if: always() && !cancelled() && (github.event_name == 'schedule' || inputs.use_optimized_pipeline != 'true')
     strategy:
       matrix:
         include:
@@ -200,7 +200,7 @@ jobs:
           uv pip install .
 
       - name: Calculate ${{ matrix.model }} accuracy for ${{ matrix.band }}
-        if: github.event_name == 'schedule' || github.event.inputs.band == 'all' || github.event.inputs.band == matrix.band
+        if: github.event_name == 'schedule' || inputs.band == 'all' || inputs.band == matrix.band
         run: |
           source .venv/bin/activate
           echo "::group::Calculating ${{ matrix.model }} accuracy for ${{ matrix.band }}"
