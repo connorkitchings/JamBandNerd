@@ -20,6 +20,10 @@ BAND_CONFIG = {
         "display_name": "Phish",
         "shows_table": "phish_shows_raw",
     },
+    "wsp": {
+        "display_name": "Widespread Panic",
+        "shows_table": "wsp_shows_raw",
+    },
 }
 
 MODEL_CONFIG = {
@@ -119,7 +123,9 @@ def fetch_show_details_by_date(
         table_name = BAND_CONFIG[band]["shows_table"]
         # Select band-specific venue fields to ensure full details are available
         if band == "phish":
-            select_fields = "show_date,show_id,venue,city,state"
+            select_fields = "show_date,show_id,venue_name,venue_city,venue_state"
+        elif band == "wsp":
+            select_fields = "show_date,show_id,venue_name,city,state"
         else:
             select_fields = "show_date,show_id,venue_name,venue_city,venue_state"
 
