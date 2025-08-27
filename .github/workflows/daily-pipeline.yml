@@ -56,7 +56,7 @@ jobs:
   # Standard multi-step pipeline (default)
   # Step 1: Data Collection (parallel for both bands)
   collect-data:
-    if: github.event_name == 'schedule' || github.event.inputs.use_optimized_pipeline == false
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && github.event.inputs.use_optimized_pipeline == false)
     strategy:
       matrix:
         band: [goose, phish]
@@ -105,7 +105,7 @@ jobs:
   # Step 2: Generate Predictions (parallel for all band/model combinations)
   generate-predictions:
     needs: collect-data
-    if: always() && !cancelled() && (github.event_name == 'schedule' || github.event.inputs.use_optimized_pipeline == false)
+    if: always() && !cancelled() && (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && github.event.inputs.use_optimized_pipeline == false))
     strategy:
       matrix:
         include:
@@ -162,7 +162,7 @@ jobs:
   # Step 3: Calculate Accuracy Metrics (parallel for all band/model combinations)
   calculate-accuracy:
     needs: generate-predictions
-    if: always() && !cancelled() && (github.event_name == 'schedule' || github.event.inputs.use_optimized_pipeline == false)
+    if: always() && !cancelled() && (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && github.event.inputs.use_optimized_pipeline == false))
     strategy:
       matrix:
         include:
