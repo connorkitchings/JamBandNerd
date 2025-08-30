@@ -17,73 +17,24 @@ The platform includes two powerful GitHub Actions workflows:
 
 ### Schedule & Triggers
 
-#### Automatic Execution
-- **Daily Schedule**: Runs at **3:00 PM ET (19:00 UTC)** every day
-- **Timezone**: UTC-based for consistent execution across regions
+- **Automatic**: Runs daily at **3:00 PM ET (19:00 UTC)**.
+- **Manual**: Can be triggered via the GitHub Actions UI (`workflow_dispatch`) with options to:
+  - Run for a specific band (`goose`, `phish`, `wsp`) or `all`.
+  - Skip the accuracy calculation steps for a faster run.
 
-#### Manual Execution
-- **Workflow Dispatch**: Trigger manually via GitHub Actions UI
-- **Band Selection**: Choose specific bands (`goose`, `phish`, `all`) 
-- **Pipeline Strategy**: Toggle between optimized and standard execution
+### Execution Strategy
 
-### Execution Strategies
+The workflow uses a **single job** with a **matrix strategy** to run a full pipeline for each band in parallel. This approach is both efficient and resilient.
 
-#### 1. Optimized Pipeline (Experimental)
-- **Single Script**: Uses `run_optimized_pipeline.py` for streamlined execution
-- **Faster**: Minimizes data fetching and maximizes reuse
-- **Timeout**: 60 minutes
-- **Best For**: Quick updates and testing
+- **Parallel Jobs**: A separate, parallel job is created for each band (`goose`, `phish`, `wsp`).
+- **Resilience**: Since `fail-fast` is set to `false`, a failure in one band's pipeline (e.g., an API is down) will not cancel the jobs for the other bands.
+- **Sequential Steps**: Within each band's job, the pipeline steps run sequentially to ensure data dependency is respected:
+  1.  **Data Collection**: Runs the band-specific collection script (e.g., `run_goose_collection.py`).
+  2.  **Generate Predictions**: Runs `generate_predictions.py` for both the `notebook` and `ckplus` models.
+  3.  **Run Backtest**: Runs `run_backtest.py` for both models to populate the `accuracy_per_show` table.
+  4.  **Calculate Aggregate Accuracy**: Runs `save_aggregate_accuracy.py` for both models to generate the final accuracy summaries.
 
-#### 2. Standard Pipeline (Default)
-- **Multi-Step**: Parallel execution across collection, prediction, and accuracy phases
-- **Matrix Strategy**: Simultaneous processing for multiple bands and models
-- **Resilient**: `fail-fast: false` allows partial success
-- **Best For**: Production reliability and comprehensive processing
-
-### Workflow Steps
-
-#### Data Collection (Parallel)
-```yaml
-strategy:
-  matrix:
-    band: [goose, phish, wsp]
-  fail-fast: false
-```
-
-- **Goose**: `run_goose_collection.py --skip-validation`
-- **Phish**: Recent setlists only (2024-2025) with `--only-setlists`
-- **WSP**: `run_wsp_collection.py` (when available)
-- **Timeout**: 45 minutes per band
-
-#### Prediction Generation (Matrix)
-```yaml
-strategy:
-  matrix:
-    include:
-      - band: goose, model: notebook
-      - band: goose, model: ckplus
-      - band: phish, model: notebook
-      - band: phish, model: ckplus
-```
-
-- **Parallel Processing**: All band/model combinations simultaneously
-- **Model-Specific Scripts**: `generate_{band}_{model}_predictions.py`
-- **Timeout**: 20 minutes per combination
-
-#### Accuracy Calculation (Matrix)
-```yaml
-strategy:
-  matrix:
-    include:
-      - band: goose, model: notebook
-      - band: goose, model: ckplus
-      - band: phish, model: notebook  
-      - band: phish, model: ckplus
-```
-
-- **Rolling Windows**: Last 50 completed shows by default
-- **Accuracy Scripts**: `save_{model}_accuracy.py --band {band} --shows 50`
-- **Timeout**: 30 minutes per combination
+This design simplifies the workflow's structure, making it easier to read, maintain, and debug compared to previous multi-job designs.
 
 ### Environment & Dependencies
 

@@ -30,9 +30,6 @@ jobs:
         # Run a separate job for each band to isolate failures
         band: [goose, phish, wsp]
       fail-fast: false
-    
-    # Only run the job if it's a schedule event or if the user selected this specific band (or 'all')
-    if: github.event_name == 'schedule' || inputs.band == 'all' || inputs.band == matrix.band
 
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -40,15 +37,27 @@ jobs:
       PHISH_API_KEY: ${{ secrets.PHISH_API_KEY }}
 
     steps:
+      - name: Check if job should run
+        id: check
+        run: |
+          if [[ "${{ github.event_name }}" == "schedule" || "${{ inputs.band }}" == "all" || "${{ inputs.band }}" == "${{ matrix.band }}" ]]; then
+            echo "should_run=true" >> $GITHUB_OUTPUT
+          else
+            echo "should_run=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Checkout repository
+        if: steps.check.outputs.should_run == 'true'
         uses: actions/checkout@v4
 
       - name: Set up Python and UV
+        if: steps.check.outputs.should_run == 'true'
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
       
       - name: Install Dependencies
+        if: steps.check.outputs.should_run == 'true'
         run: |
           curl -LsSf https://astral.sh/uv/install.sh | sh
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
@@ -57,6 +66,7 @@ jobs:
           uv pip install .
 
       - name: Run Data Collection
+        if: steps.check.outputs.should_run == 'true'
         run: |
           source .venv/bin/activate
           echo "::group::Collecting data for ${{ matrix.band }}"
@@ -65,6 +75,7 @@ jobs:
           echo "::endgroup::"
 
       - name: Generate Predictions (Notebook & CK+)
+        if: steps.check.outputs.should_run == 'true'
         run: |
           source .venv/bin/activate
           echo "::group::Generating predictions for ${{ matrix.band }}"
@@ -73,7 +84,7 @@ jobs:
           echo "::endgroup::"
 
       - name: Run Backtest and Calculate Aggregate Accuracy
-        if: ${{ !inputs.skip_accuracy }}
+        if: steps.check.outputs.should_run == 'true' && !inputs.skip_accuracy
         run: |
           source .venv/bin/activate
           echo "::group::Running backtest for ${{ matrix.band }}"

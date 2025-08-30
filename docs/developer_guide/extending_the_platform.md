@@ -13,7 +13,7 @@ To add a new band, you need to create a new data collector and integrate it into
 1.  **Create Raw Tables**: In Supabase, create the necessary `_raw` tables for the new band (e.g., `wsp_shows_raw`, `wsp_setlists_raw`, etc.).
 2.  **Create a New Collector**: Create a new file in `src/jambandnerd/data_collection/<band_name>/collector.py`. This file should contain a class that inherits from `BandCollector` and implements the required methods (`collect_shows`, `collect_setlists`, `collect_songs`, `collect_venues`).
 3.  **Add to `run_optimized_pipeline.py`**: In `scripts/run_optimized_pipeline.py`, add a new `elif` block in the `run_band_pipeline` function to call your new collection script. You should also add a band-specific entry to the `CKPLUS_RETIREMENT_GAPS` dictionary.
-4.  **Update GitHub Actions**: In `.github/workflows/daily-pipeline.yml`, add the new band to the `matrix.band` list in the `collect-data` job and add a corresponding `elif` block to handle its collection script.
+4.  **Update GitHub Actions**: In `.github/workflows/daily-pipeline.yml`, add the new band's slug (e.g., `new_band`) to the `matrix.band` list. The workflow will automatically call the correct collection script (`run_new_band_collection.py`) without needing any other changes.
 
 ### 2. Web Application
 
