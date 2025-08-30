@@ -139,24 +139,47 @@ def main() -> None:
             .unique()
             .tolist()
         )
-        if not actual_songs or len(actual_songs) <= 5:
+        # Skip shows with insufficient songs (but be more permissive)
+        if not actual_songs or len(actual_songs) <= 2:
+            print(f"{log_prefix} Skipping show {show_id} on {ref_date}: only {len(actual_songs)} songs")
             continue
 
         try:
-            model_data = generate_model_data(shows_df, sets_df, ref_date)
+            # Use the day before the show for more realistic backtesting
+            # This prevents data leakage from the actual show date
+            prediction_date = ref_date - timedelta(days=1) if isinstance(ref_date, date) else ref_date
+            model_data = generate_model_data(shows_df, sets_df, prediction_date)
+            
             if model == "notebook":
                 preds, _ = predictor.predict(model_data=model_data, top_k=50)
             else:
                 preds = predictor.predict(model_data=model_data, top_k=50)
+                
+            if not preds:
+                print(f"{log_prefix} No predictions generated for {ref_date}, skipping")
+                continue
+                
             pred_songs = [p.song_name for p in preds]
-        except ValueError as e:
-            print(f"{log_prefix} Skipping date {ref_date}: {e}")
+        except (ValueError, AttributeError, KeyError, TypeError) as e:
+            print(f"{log_prefix} Error generating predictions for {ref_date}: {e}")
+            continue
+        except Exception as e:
+            print(f"{log_prefix} Unexpected error for {ref_date}: {e}")
             continue
 
+        # Convert show_id safely - handle both numeric and string IDs
+        try:
+            show_id_int = int(show_id)
+        except (ValueError, TypeError):
+            # If show_id is non-numeric (e.g., date strings), hash it to an integer
+            import hashlib
+            show_id_int = int(hashlib.md5(show_id.encode()).hexdigest()[:8], 16)
+        
         show_metrics = {
             "band": band,
             "model_version": model_version,
-            "show_id": int(show_id),
+            "show_id": show_id_int,
+            "show_id_original": show_id,  # Keep original for debugging
             "show_date": ref_date.isoformat(),
             "actual_song_count": len(actual_songs),
             "evaluated_at": pd.Timestamp.now(tz=timezone.utc).isoformat(),
