@@ -23,7 +23,7 @@ class GooseCollector(BandCollector):
         records = self._fetch_from_endpoint("v2/shows.json")
         artist_lower = self.ARTIST_NAME.lower()
         filtered = [r for r in records if str(r.get('artist', '')).strip().lower() == artist_lower]
-        logger.info(f"Collected {len(filtered)} Goose shows.")
+        logger.info(f"✅ {self.ARTIST_NAME}: Collected {len(filtered)} shows.")
         return filtered
 
     def collect_setlists(self, show_ids: Optional[List[str]] = None) -> List[Dict[str, Any]]:
@@ -31,17 +31,17 @@ class GooseCollector(BandCollector):
         records = self._fetch_from_endpoint("v1/setlists.json")
         artist_lower = self.ARTIST_NAME.lower()
         filtered = [r for r in records if str(r.get('artist', '')).strip().lower() == artist_lower]
-        logger.info(f"Collected {len(filtered)} Goose setlist records.")
+        logger.info(f"✅ {self.ARTIST_NAME}: Collected {len(filtered)} setlist records.")
         return filtered
 
     def collect_songs(self) -> List[Dict[str, Any]]:
         """Collects all song data."""
         records = self._fetch_from_endpoint("v2/songs.json")
-        logger.info(f"Collected {len(records)} Goose songs.")
+        logger.info(f"✅ {self.ARTIST_NAME}: Collected {len(records)} songs.")
         return records
 
     def collect_venues(self) -> List[Dict[str, Any]]:
         """Collects all venue data."""
         records = self._fetch_from_endpoint("v2/venues.json")
-        logger.info(f"Collected {len(records)} Goose venues.")
+        logger.info(f"✅ {self.ARTIST_NAME}: Collected {len(records)} venues.")
         return records

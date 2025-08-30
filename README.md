@@ -26,6 +26,7 @@ A cloud-based data science platform for collecting, transforming, and predicting
 2. **Environment configuration:**
 
    Create a `.env` file in the project root with:
+
    ```bash
    SUPABASE_URL=your_supabase_url
    SUPABASE_KEY=your_supabase_key
@@ -49,6 +50,35 @@ uv run python scripts/run_optimized_pipeline.py --band goose
 uv run python scripts/run_optimized_pipeline.py --band all --skip-accuracy
 ```
 
+### Advanced Usage
+
+While the optimized pipeline is recommended, you can also run individual components for debugging or granular control. The main scripts accept `--band` and `--model` arguments.
+
+```bash
+# Generate predictions for a single band and model
+'uv run python scripts/generate_predictions.py --band phish --model ckplus'
+
+# Run a backtest to calculate per-show accuracy
+'uv run python scripts/run_backtest.py --band goose --model notebook --shows 50'
+```
+
+For detailed usage, please refer to the full documentation.
+
+### Web Interface
+
+```bash
+# Launch the interactive Streamlit web application
+streamlit run src/jambandnerd/web/app.py
+```
+
+The web interface provides:
+
+- **Multi-band selection**: Switch between Goose, Phish, and WSP
+- **Model comparison**: Toggle between Notebook and CK+ models  
+- **Live predictions**: View latest predictions with detailed metrics
+- **Accuracy visualization**: Historical performance charts with configurable K values (K=10/25/50; selected K highlighted)
+- **Show details**: Prominent Next Show header with venue, plus model and prediction timestamp
+
 ### Development
 
 ```bash
@@ -63,16 +93,16 @@ pytest tests/
 
 ## Documentation
 
-For comprehensive documentation including architecture, API specifications, and development guides:
+For comprehensive documentation, please visit the **[full documentation site](docs/)**.
 
-- 📚 **[Complete Documentation](docs/)** - Full project documentation
-- 🏗️ **[Technical Architecture](docs/specifications/technical_overview.md)** - System design and components
-- 📋 **[Product Requirements](docs/project/prd.md)** - Features, goals, and specifications  
-- 🚀 **[Implementation Guide](docs/guides/implementation.md)** - Development workflow
-- 📊 **[Database Schemas](docs/schemas/)** - API and database specifications
-- 📖 **[Model Documentation](docs/models/index.md)** - Prediction algorithm details
+Key sections include:
+
+- 🚀 **[User Guide](docs/user_guide/getting_started.md)**: For users who want to install, configure, and run the project.
+- 🧑‍💻 **[Developer Guide](docs/developer_guide/architecture.md)**: For contributors who want to understand the architecture and extend the platform.
+- 📚 **[Reference](docs/reference/)**: Detailed technical specifications, schemas, and guides.
 
 Generate and serve documentation locally:
+
 ```bash
 uv pip install -e ".[docs]"
 mkdocs serve
@@ -82,14 +112,26 @@ mkdocs serve
 
 **Modular Pipeline Design**: Data Sources → Raw Storage → In-Memory Transform → Models → Predictions → Web Interface
 
-**Supported Bands**: Goose (elgoose.net), Phish (phish.net), Widespread Panic (planned)
+**Supported Bands**: Goose (elgoose.net), Phish (phish.net), Widespread Panic (everydaycompanion.com)
 
 **Key Components**:
+
 - Band-agnostic data collectors with unified interfaces
 - In-memory transformation pipeline (no intermediate tables)
 - Pluggable prediction models (Notebook, CK+)
 - Unified cross-band prediction and accuracy storage
 - Supabase backend with automated validation
+- **GitHub Actions automation** with daily pipeline execution
+
+### **Automation**
+
+The platform features comprehensive automation through GitHub Actions:
+
+- **Daily Pipeline**: Runs automatically at 3 PM ET every day
+- **Multi-Strategy**: Choice between optimized single-script or parallel multi-step execution
+- **Manual Triggers**: On-demand execution with band selection via GitHub UI (goose/phish/wsp/all)
+- **Error Resilience**: Parallel matrix execution with graceful failure handling
+- **Secret Management**: Secure API key and database credential handling
 
 ## Contributing
 

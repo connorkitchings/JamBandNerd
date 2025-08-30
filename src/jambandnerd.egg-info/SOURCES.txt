@@ -16,6 +16,8 @@ src/jambandnerd/data_collection/goose/__init__.py
 src/jambandnerd/data_collection/goose/collector.py
 src/jambandnerd/data_collection/phish/__init__.py
 src/jambandnerd/data_collection/phish/collector.py
+src/jambandnerd/data_collection/wsp/__init__.py
+src/jambandnerd/data_collection/wsp/collector.py
 src/jambandnerd/db/__init__.py
 src/jambandnerd/db/connection.py
 src/jambandnerd/db/operations.py

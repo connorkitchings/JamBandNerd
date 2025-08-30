@@ -1,0 +1,63 @@
+# Extending the Platform
+
+This guide explains how to add new bands and models to the JamBandNerd project.
+
+## How to Add a New Band
+
+Adding a new band to the project requires changes in two main places: the data collection pipeline and the web application.
+
+### 1. Data Collection
+
+To add a new band, you need to create a new data collector and integrate it into the pipeline.
+
+1.  **Create Raw Tables**: In Supabase, create the necessary `_raw` tables for the new band (e.g., `wsp_shows_raw`, `wsp_setlists_raw`, etc.).
+2.  **Create a New Collector**: Create a new file in `src/jambandnerd/data_collection/<band_name>/collector.py`. This file should contain a class that inherits from `BandCollector` and implements the required methods (`collect_shows`, `collect_setlists`, `collect_songs`, `collect_venues`).
+3.  **Add to `run_optimized_pipeline.py`**: In `scripts/run_optimized_pipeline.py`, add a new `elif` block in the `run_band_pipeline` function to call your new collection script. You should also add a band-specific entry to the `CKPLUS_RETIREMENT_GAPS` dictionary.
+4.  **Update GitHub Actions**: In `.github/workflows/daily-pipeline.yml`, add the new band to the `matrix.band` list in the `collect-data` job and add a corresponding `elif` block to handle its collection script.
+
+### 2. Web Application
+
+To make the new band available in the Streamlit web application, you need to update the `BAND_CONFIG` dictionary in `src/jambandnerd/web/app.py`.
+
+```python
+BAND_CONFIG = {
+    "goose": {
+        "display_name": "Goose",
+        "shows_table": "goose_shows_raw",
+    },
+    # ... other bands
+    "new_band": {
+        "display_name": "New Band",
+        "shows_table": "new_band_shows_raw",
+    },
+}
+```
+
+## How to Add a New Model
+
+Adding a new model follows a similar pattern.
+
+### 1. Model Implementation
+
+1.  **Create a new model**: Create a new file in `src/jambandnerd/models/<model_name>/model.py`. This file should contain a class that inherits from `PredictionModel` and implements the `predict` method.
+2.  **Add prediction scripts**: Create new scripts in the `scripts/` directory to run your model and save its predictions and accuracy scores.
+
+### 2. Web Application
+
+To make the new model available in the Streamlit web application, you need to update the `MODEL_CONFIG` dictionary in `src/jambandnerd/web/app.py`.
+
+```python
+MODEL_CONFIG = {
+    "notebook": {
+        # ...
+    },
+    # ... other models
+    "new_model": {
+        "display_name": "New Model",
+        "explanation": "A brief explanation of how the new model works.",
+        "columns": {
+            # ... specify the columns to display for your model
+        },
+    },
+}
+```

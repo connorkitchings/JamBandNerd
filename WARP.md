@@ -12,6 +12,7 @@ JamBandNerd is a cloud-based data science platform for collecting, transforming,
 ## Essential Commands
 
 ### Environment Setup
+
 ```bash
 # Initial setup
 uv venv --python=3.12
@@ -27,6 +28,7 @@ uv pip install .
 ### Data Pipeline Commands
 
 #### Goose Pipeline (Primary)
+
 ```bash
 # 1. Collect raw data
 uv run python scripts/run_goose_collection.py
@@ -49,6 +51,7 @@ uv run python scripts/save_ckplus_accuracy.py --shows 50
 ```
 
 #### Phish Pipeline
+
 ```bash
 # Collect all Phish data
 uv run python scripts/run_phish_collection.py
@@ -65,6 +68,7 @@ uv run python scripts/generate_phish_ckplus_predictions.py
 ```
 
 ### Development Commands
+
 ```bash
 # Code quality
 ruff check src/  # linting
@@ -81,6 +85,7 @@ streamlit run src/jambandnerd/web/app.py
 ## Code Architecture
 
 ### Modular Design Philosophy
+
 The project uses a **modular pipeline architecture** where each component is independently runnable and extensible:
 
 - **Data Collection**: Band-specific collectors inherit from `BandCollector` abstract base class
@@ -92,6 +97,7 @@ The project uses a **modular pipeline architecture** where each component is ind
 ### Core Abstract Patterns
 
 #### Data Collection (`src/jambandnerd/data_collection/base.py`)
+
 ```python
 class BandCollector(ABC):
     @abstractmethod
@@ -102,6 +108,7 @@ class BandCollector(ABC):
 ```
 
 #### Prediction Models (`src/jambandnerd/models/base.py`)
+
 ```python
 class PredictionModel(ABC):
     @abstractmethod
@@ -121,12 +128,14 @@ class PredictionModel(ABC):
 ### Key Implementation Details
 
 #### Database Operations
+
 - **Connection**: Singleton Supabase client via `get_supabase_client()`
-- **Validation**: Schema validation with `validate_dataframe_against_table()` 
+- **Validation**: Schema validation with `validate_dataframe_against_table()`
 - **Upserts**: Conflict resolution on primary keys with `upsert_dataframe()`
 - **Pagination**: Robust chunked fetching via `fetch_table()` in `scripts/common.py`
 
 #### Data Standardization  
+
 - **Schema Normalization**: Column name mapping (e.g., `api_show_id` → `show_id`)
 - **Type Coercion**: Date parsing, string conversion, null handling
 - **Source Integrity**: SHA256 hashing of raw API responses for change detection
@@ -135,6 +144,7 @@ class PredictionModel(ABC):
 ### Extension Patterns
 
 #### Adding New Bands
+
 1. Create collector: `src/jambandnerd/data_collection/{band}/collector.py`
 2. Implement `BandCollector` interface  
 3. Define raw table schemas: `{band}_shows_raw`, `{band}_setlists_raw`, etc.
@@ -142,6 +152,7 @@ class PredictionModel(ABC):
 5. Update unified table writes
 
 #### Adding New Models
+
 1. Implement `PredictionModel`: `src/jambandnerd/models/{model_name}/`
 2. Create prediction script: `scripts/generate_{band}_{model}_predictions.py`
 3. Add backtest script: `scripts/backtest_{band}_{model}.py`  
@@ -152,7 +163,8 @@ class PredictionModel(ABC):
 **Python 3.12+** (lxml 4.9.3 pinned for stability)  
 **UV Package Manager** (used throughout scripts and README)
 **Supabase** (primary database, requires URL/KEY in .env)  
-**External APIs**: 
+**External APIs**:
+
 - elgoose.net (no auth required)
 - phish.net (requires PHISH_API_KEY)
 - Planned: everydaycompanion.com scraping

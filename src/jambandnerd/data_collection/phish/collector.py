@@ -23,7 +23,7 @@ class PhishCollector(BandCollector):
         if not self.api_key:
             raise ValueError("PHISH_API_KEY environment variable not set.")
         
-        logger.info(f"Initialized PhishCollector with API key and rate limit: {config.rate_limit_calls}/{config.rate_limit_window}s")
+        logger.info(f"Initialized PhishCollector with rate limit: {config.rate_limit_calls}/{config.rate_limit_window}s")
 
     def _fetch_phish_endpoint(self, endpoint: str) -> List[Dict[str, Any]]:
         """Phish-specific endpoint fetcher that adds API key to requests."""
@@ -43,20 +43,20 @@ class PhishCollector(BandCollector):
     def collect_songs(self) -> List[Dict[str, Any]]:
         """Collects all song data."""
         records = self._fetch_phish_endpoint("songs")
-        logger.info(f"Collected {len(records)} Phish songs.")
+        logger.info(f"✅ {self.ARTIST_NAME}: Collected {len(records)} songs.")
         return records
 
     def collect_shows(self, start_date: Optional[date] = None, end_date: Optional[date] = None) -> List[Dict[str, Any]]:
         """Collects all show data."""
         records = self._fetch_phish_endpoint("shows/artist/phish")
-        logger.info(f"Collected {len(records)} Phish shows.")
+        logger.info(f"✅ {self.ARTIST_NAME}: Collected {len(records)} shows.")
         return records
 
     def collect_venues(self) -> List[Dict[str, Any]]:
         """Collects all show data and extracts unique venues from it."""
         shows_data = self.collect_shows()
         if not shows_data:
-            logger.warning("Cannot collect venues without show data.")
+            logger.warning(f"⚠️ {self.ARTIST_NAME}: Cannot collect venues without show data.")
             return []
 
         venues = {}
@@ -72,7 +72,7 @@ class PhishCollector(BandCollector):
                 }
 
         venue_list = list(venues.values())
-        logger.info(f"Extracted {len(venue_list)} unique Phish venues.")
+        logger.info(f"✅ {self.ARTIST_NAME}: Extracted {len(venue_list)} unique venues.")
         return venue_list
 
     def collect_setlists(self, show_ids: Optional[List[str]] = None) -> List[Dict[str, Any]]:
@@ -87,8 +87,7 @@ class PhishCollector(BandCollector):
             tqdm = None  # Fallback if tqdm is not available
 
         all_setlists = []
-        logger.info(f"Collecting setlists for {len(show_ids)} shows...")
-        iterable = tqdm(show_ids, desc="Phish setlists", unit="show") if tqdm else show_ids
+        iterable = tqdm(show_ids, desc=f"Collecting {self.ARTIST_NAME} setlists", unit="show") if tqdm else show_ids
         for show_id in iterable:
             # The phish.net API uses a different endpoint to get a setlist by showid
             endpoint = f"setlists/showid/{show_id}"
@@ -101,5 +100,5 @@ class PhishCollector(BandCollector):
             except Exception as e:
                 logger.error(f"Failed to fetch setlist for show_id {show_id}: {e}")
         
-        logger.info(f"Collected {len(all_setlists)} total setlist records.")
+        logger.info(f"✅ {self.ARTIST_NAME}: Collected {len(all_setlists)} total setlist records.")
         return all_setlists

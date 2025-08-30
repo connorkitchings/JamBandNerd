@@ -1,13 +1,16 @@
 """Abstract base classes for data collection."""
+from __future__ import annotations
+
 import time
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import List, Dict, Any, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 from datetime import date, datetime
 
 import requests
 from requests.adapters import HTTPAdapter
+from requests.models import Response
 from urllib3.util.retry import Retry
 
 logger = logging.getLogger(__name__)
@@ -84,7 +87,8 @@ class BandCollector(ABC):
         # Set default headers
         self.session.headers.update({
             'User-Agent': config.user_agent,
-            'Accept': 'application/json',
+            # Accept both JSON and HTML since some collectors scrape pages
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,application/json;q=0.8,*/*;q=0.7',
         })
     
     def _fetch_from_endpoint(self, endpoint: str, **kwargs) -> List[Dict[str, Any]]:

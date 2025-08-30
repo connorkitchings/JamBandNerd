@@ -1,0 +1,82 @@
+# Architecture Overview
+
+This document defines JamBandNerd’s technical foundation. Update as architecture or standards evolve.
+
+## 1. Overview
+
+**Project Goal:**
+A modular Python platform for collecting, processing, and predicting jam band setlists, with robust orchestration and analytics. The design is extensible to add new bands and models.
+
+**Repository:**
+`https://github.com/connorkitchings/JamBandNerd`
+
+## 2. Architecture
+
+### Data Flow Diagram
+
+```mermaid
+graph TD
+    subgraph " "
+        direction LR
+        A[External APIs &<br>Websites]
+    end
+
+    subgraph "GitHub Actions: Daily Pipeline"
+        B(run_optimized_pipeline.py)
+    end
+    
+    subgraph "Supabase Database"
+        C[fa:fa-database Raw Data<br><i>{band}_*_raw</i>]
+        D[fa:fa-database Prediction & Accuracy<br><i>predictions_*, accuracy_*</i>]
+    end
+
+    subgraph "In-Memory Processing"
+        E[pandas DataFrames]
+        F(ModelData Object)
+        G[Notebook & CK+<br>Predictors]
+    end
+    
+    subgraph "Presentation"
+        H[fa:fa-desktop Streamlit Web App]
+    end
+
+    A --> B
+    B -- "1. Collect" --> C
+    C -- "2. Load" --> E
+    E -- "3. Transform (gaps.py)" --> F
+    F -- "4. Predict" --> G
+    G -- "5. Save" --> D
+    D -- "6. Display" --> H
+```
+
+### Component Architecture
+
+#### Data Collection Layer
+
+- **Purpose**: Ingest raw data from external sources
+- **Components**: Band-specific collectors with unified interface. The design allows for easy addition of new bands by implementing new collector modules.
+- **Output**: Raw data tables in Supabase (`{band}_*_raw`)
+
+#### Transformation Layer
+
+- **Purpose**: Convert raw data to a standardized format for modeling
+- **Processing**: Reads from raw tables and transforms data in-memory before feeding to models.
+- **Output**: In-memory `ModelData` objects; no intermediate tables are written.
+
+#### Model Layer
+
+- **Purpose**: Generate predictions using standardized data
+- **Models**: Pluggable architecture supporting multiple algorithms (Notebook, CK+).
+- **Output**: Predictions stored in Supabase with confidence scores.
+
+#### Presentation Layer
+
+- **Purpose**: User interface for prediction exploration
+- **Framework**: Streamlit for rapid development and deployment.
+- **Data**: Direct Supabase queries for real-time data.
+
+#### Orchestration Layer
+
+- **Purpose**: Coordinate pipeline execution and automation
+- **Scheduling**: GitHub Actions for daily pipeline execution.
+- **Monitoring**: Error detection and logging.

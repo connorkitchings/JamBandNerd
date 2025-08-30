@@ -23,6 +23,16 @@ COLLECTOR_CONFIGS = {
         rate_limit_window=60,
         user_agent="JamBandNerd/1.0 (Phish Data Collection)"
     )
+    ,
+    'wsp': CollectorConfig(
+        base_url="http://www.everydaycompanion.com",
+        timeout=60,
+        max_retries=5,
+        backoff_factor=2.0,
+        rate_limit_calls=60,
+        rate_limit_window=60,
+        user_agent="JamBandNerd/1.0 (Widespread Panic Data Collection)"
+    )
 }
 
 

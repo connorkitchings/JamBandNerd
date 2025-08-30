@@ -6,135 +6,49 @@ on:
   workflow_dispatch:
     inputs:
       band:
-        description: 'Run pipeline for specific band only (goose/phish/all)'
+        description: 'Run pipeline for a specific band (or all)'
         required: false
         default: 'all'
         type: choice
         options:
-        - all
-        - goose
-        - phish
-      use_optimized_pipeline:
-        description: 'Use optimized single-script pipeline (experimental)'
+          - all
+          - goose
+          - phish
+          - wsp
+      skip_accuracy:
+        description: 'Skip accuracy calculation to run pipeline faster'
         required: false
         default: false
         type: boolean
 
 jobs:
-  # Alternative: Optimized single-script pipeline (experimental)
-  optimized-pipeline:
-    if: inputs.use_optimized_pipeline == 'true'
+  daily-pipeline:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
-    env:
-      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-      SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
-      PHISH_API_KEY: ${{ secrets.PHISH_API_KEY }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-          
-      
-      - name: Install UV and dependencies
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-          uv venv
-          source .venv/bin/activate
-          uv pip install .
-
-      - name: Run optimized pipeline
-        run: |
-          source .venv/bin/activate
-          python scripts/run_optimized_pipeline.py --band ${{ inputs.band || 'all' }}
-
-  # Standard multi-step pipeline (default)
-  # Step 1: Data Collection (parallel for both bands)
-  collect-data:
-    if: github.event_name == 'schedule' || inputs.use_optimized_pipeline != 'true'
+    timeout-minutes: 90
     strategy:
       matrix:
-        band: [goose, phish]
-      fail-fast: false  # Let one band succeed even if the other fails
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
-    env:
-      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-      SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
-      PHISH_API_KEY: ${{ secrets.PHISH_API_KEY }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-          
-      
-      - name: Install UV and dependencies
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-          uv venv
-          source .venv/bin/activate
-          uv pip install .
-
-      - name: Run ${{ matrix.band }} data collection
-        if: github.event_name == 'schedule' || inputs.band == 'all' || inputs.band == matrix.band
-        run: |
-          source .venv/bin/activate
-          echo "::group::Collecting ${{ matrix.band }} data"
-          
-          if [ "${{ matrix.band }}" = "goose" ]; then
-            echo "Starting Goose collection..."
-            python scripts/run_goose_collection.py --skip-validation
-          elif [ "${{ matrix.band }}" = "phish" ]; then
-            echo "Starting Phish collection (recent data only)..."
-            python scripts/run_phish_collection.py --skip-validation --only-setlists --year-start 2024 --year-end 2025
-          fi
-          
-          echo "${{ matrix.band }} collection completed successfully"
-          echo "::endgroup::"
-
-  # Step 2: Generate Predictions (parallel for all band/model combinations)
-  generate-predictions:
-    needs: collect-data
-    if: always() && !cancelled() && (github.event_name == 'schedule' || inputs.use_optimized_pipeline != 'true')
-    strategy:
-      matrix:
-        include:
-          - band: goose
-            model: notebook
-          - band: goose
-            model: ckplus
-          - band: phish
-            model: notebook
-          - band: phish
-            model: ckplus
+        # Run a separate job for each band to isolate failures
+        band: [goose, phish, wsp]
       fail-fast: false
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
+    
+    # Only run the job if it's a schedule event or if the user selected this specific band (or 'all')
+    if: github.event_name == 'schedule' || inputs.band == 'all' || inputs.band == matrix.band
+
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
       PHISH_API_KEY: ${{ secrets.PHISH_API_KEY }}
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: Set up Python and UV
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-          
       
-      - name: Install dependencies
+      - name: Install Dependencies
         run: |
           curl -LsSf https://astral.sh/uv/install.sh | sh
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
@@ -142,113 +56,60 @@ jobs:
           source .venv/bin/activate
           uv pip install .
 
-      - name: Generate ${{ matrix.model }} predictions for ${{ matrix.band }}
-        if: github.event_name == 'schedule' || inputs.band == 'all' || inputs.band == matrix.band
+      - name: Run Data Collection
         run: |
           source .venv/bin/activate
-          echo "::group::Generating ${{ matrix.model }} predictions for ${{ matrix.band }}"
-          
-          if [ "${{ matrix.model }}" = "notebook" ]; then
-            echo "Running notebook predictions..."
-            python scripts/generate_${{ matrix.band }}_predictions.py
-          elif [ "${{ matrix.model }}" = "ckplus" ]; then
-            echo "Running CK+ predictions..."
-            python scripts/generate_${{ matrix.band }}_ckplus_predictions.py
-          fi
-          
-          echo "${{ matrix.model }} predictions for ${{ matrix.band }} completed"
+          echo "::group::Collecting data for ${{ matrix.band }}"
+          # Note: These collection scripts contain their own logic for fetching recent data
+          python scripts/run_${{ matrix.band }}_collection.py
           echo "::endgroup::"
 
-  # Step 3: Calculate Accuracy Metrics (parallel for all band/model combinations)
-  calculate-accuracy:
-    needs: generate-predictions
-    if: always() && !cancelled() && (github.event_name == 'schedule' || inputs.use_optimized_pipeline != 'true')
-    strategy:
-      matrix:
-        include:
-          - band: goose
-            model: notebook
-          - band: goose
-            model: ckplus
-          - band: phish
-            model: notebook
-          - band: phish
-            model: ckplus
-      fail-fast: false
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    env:
-      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-      SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
-      PHISH_API_KEY: ${{ secrets.PHISH_API_KEY }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-          
-      
-      - name: Install dependencies
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-          uv venv
-          source .venv/bin/activate
-          uv pip install .
-
-      - name: Calculate ${{ matrix.model }} accuracy for ${{ matrix.band }}
-        if: github.event_name == 'schedule' || inputs.band == 'all' || inputs.band == matrix.band
+      - name: Generate Predictions (Notebook & CK+)
         run: |
           source .venv/bin/activate
-          echo "::group::Calculating ${{ matrix.model }} accuracy for ${{ matrix.band }}"
-          
-          if [ "${{ matrix.model }}" = "notebook" ]; then
-            echo "Calculating notebook accuracy..."
-            python scripts/save_notebook_accuracy.py --band ${{ matrix.band }} --shows 50
-          elif [ "${{ matrix.model }}" = "ckplus" ]; then
-            echo "Calculating CK+ accuracy..."
-            python scripts/save_ckplus_accuracy.py --band ${{ matrix.band }} --shows 50
-          fi
-          
-          echo "${{ matrix.model }} accuracy calculation for ${{ matrix.band }} completed"
+          echo "::group::Generating predictions for ${{ matrix.band }}"
+          python scripts/generate_predictions.py --band ${{ matrix.band }} --model notebook
+          python scripts/generate_predictions.py --band ${{ matrix.band }} --model ckplus
           echo "::endgroup::"
 
-  # Final summary job
+      - name: Run Backtest and Calculate Aggregate Accuracy
+        if: ${{ !inputs.skip_accuracy }}
+        run: |
+          source .venv/bin/activate
+          echo "::group::Running backtest for ${{ matrix.band }}"
+          # Run backtest for last 100 shows to populate per-show accuracy
+          python scripts/run_backtest.py --band ${{ matrix.band }} --model notebook --shows 100
+          python scripts/run_backtest.py --band ${{ matrix.band }} --model ckplus --shows 100
+          echo "::endgroup::"
+          
+          echo "::group::Calculating aggregate accuracy for ${{ matrix.band }}"
+          # Calculate aggregate accuracy from the per-show data
+          python scripts/save_aggregate_accuracy.py --band ${{ matrix.band }} --model notebook --shows 100
+          python scripts/save_aggregate_accuracy.py --band ${{ matrix.band }} --model ckplus --shows 100
+          echo "::endgroup::"
+
   pipeline-summary:
-    needs: [optimized-pipeline, collect-data, generate-predictions, calculate-accuracy]
-    if: always()
+    name: Pipeline Summary
+    needs: [daily-pipeline]
+    if: always() # This job runs even if the matrix jobs fail
     runs-on: ubuntu-latest
     steps:
       - name: Generate pipeline summary
         run: |
           echo "## Daily Pipeline Summary - $(date)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          if [[ "${{ needs.optimized-pipeline.result }}" == "success" || "${{ needs.optimized-pipeline.result }}" == "failure" ]]; then
-            echo "### Optimized Pipeline Result:" >> $GITHUB_STEP_SUMMARY
-            echo "- **Optimized Pipeline**: ${{ needs.optimized-pipeline.result }}" >> $GITHUB_STEP_SUMMARY
-            if [ "${{ needs.optimized-pipeline.result }}" != "success" ]; then
-              echo "⚠️ **The optimized pipeline failed. Check job logs for details.**" >> $GITHUB_STEP_SUMMARY
-            else
-              echo "✅ **Optimized pipeline completed successfully!**" >> $GITHUB_STEP_SUMMARY
-            fi
+          
+          # Check the overall result of the matrix job
+          # Note: 'needs.daily-pipeline.result' will be 'success' only if all matrix jobs succeed.
+          # It will be 'failure' if at least one fails.
+          if [[ "${{ needs.daily-pipeline.result }}" == "success" ]]; then
+            echo "✅ **All band pipelines completed successfully!**" >> $GITHUB_STEP_SUMMARY
           else
-            echo "### Standard Pipeline Results:" >> $GITHUB_STEP_SUMMARY
-            echo "- **Data Collection**: ${{ needs.collect-data.result }}" >> $GITHUB_STEP_SUMMARY
-            echo "- **Generate Predictions**: ${{ needs.generate-predictions.result }}" >> $GITHUB_STEP_SUMMARY
-            echo "- **Calculate Accuracy**: ${{ needs.calculate-accuracy.result }}" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            
-            if [ "${{ needs.collect-data.result }}" != "success" ] || [ "${{ needs.generate-predictions.result }}" != "success" ] || [ "${{ needs.calculate-accuracy.result }}" != "success" ]; then
-              echo "⚠️ **Some jobs failed, were skipped, or were cancelled. Check individual job logs for details.**" >> $GITHUB_STEP_SUMMARY
-            else
-              echo "✅ **All standard pipeline steps completed successfully!**" >> $GITHUB_STEP_SUMMARY
-            fi
+            echo "⚠️ **One or more band pipelines failed, were skipped, or were cancelled.**" >> $GITHUB_STEP_SUMMARY
+            echo "Please check the logs for the 'daily-pipeline' job matrix for details." >> $GITHUB_STEP_SUMMARY
           fi
           
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Next Steps:" >> $GITHUB_STEP_SUMMARY
-          echo "- Visit the [JamBandNerd web app](https://your-app-url.com) to view updated predictions" >> $GITHUB_STEP_SUMMARY
-          echo "- Check the Supabase dashboard for data validation" >> $GITHUB_STEP_SUMMARY
+          echo "- Visit the [JamBandNerd web app](https://jambandnerd.streamlit.app/) to view updated predictions." >> $GITHUB_STEP_SUMMARY
+          echo "- Check the Supabase dashboard for data validation." >> $GITHUB_STEP_SUMMARY

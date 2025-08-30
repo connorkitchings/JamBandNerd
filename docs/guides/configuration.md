@@ -8,10 +8,12 @@ Adding a new band to the project requires changes in two main places: the data c
 
 ### 1. Data Collection
 
-To add a new band, you need to create a new data collector for that band. The collectors are located in the `src/jambandnerd/data_collection/` directory.
+To add a new band, you need to create a new data collector and integrate it into the pipeline.
 
-1.  **Create a new collector**: Create a new file in `src/jambandnerd/data_collection/<band_name>/collector.py`. This file should contain a class that inherits from `BandCollector` and implements the required methods (`collect_shows`, `collect_setlists`, `collect_songs`, `collect_venues`).
-2.  **Add to `run_optimized_pipeline.py`**: In `scripts/run_optimized_pipeline.py`, add the new band to the `CKPLUS_RETIREMENT_GAPS` dictionary and add a new `elif` block in the `run_band_pipeline` function to call your new collection script.
+1.  **Create Raw Tables**: In Supabase, create the necessary `_raw` tables for the new band (e.g., `wsp_shows_raw`, `wsp_setlists_raw`, etc.).
+2.  **Create a New Collector**: Create a new file in `src/jambandnerd/data_collection/<band_name>/collector.py`. This file should contain a class that inherits from `BandCollector` and implements the required methods (`collect_shows`, `collect_setlists`, `collect_songs`, `collect_venues`).
+3.  **Add to `run_optimized_pipeline.py`**: In `scripts/run_optimized_pipeline.py`, add a new `elif` block in the `run_band_pipeline` function to call your new collection script. You should also add a band-specific entry to the `CKPLUS_RETIREMENT_GAPS` dictionary.
+4.  **Update GitHub Actions**: In `.github/workflows/daily-pipeline.yml`, add the new band to the `matrix.band` list in the `collect-data` job and add a corresponding `elif` block to handle its collection script.
 
 ### 2. Web Application
 
@@ -67,17 +69,35 @@ MODEL_CONFIG = {
 }
 ```
 
-## Model Parameters
+## Model Parameter Tuning
 
-Some models have parameters that can be configured. For example, the CK+ model has a `retired_gap_threshold` that can be set on a per-band basis.
+Some models have parameters that can be configured to adjust their behavior. These are primarily located in `scripts/run_optimized_pipeline.py` and `src/jambandnerd/models/ckplus/model.py`.
 
-This is currently configured in the `scripts/run_optimized_pipeline.py` script, in the `CKPLUS_RETIREMENT_GAPS` dictionary.
+### CK+ Model Parameters
 
-```python
-CKPLUS_RETIREMENT_GAPS = {
-    "goose": 100,
-    "phish": 150,
-}
-```
+The CK+ model is highly configurable. The key parameters are:
 
-To change the retirement gap for a band, you can simply update this dictionary.
+#### 1. Retirement Gap Threshold
+
+This parameter, defined in the `CKPLUS_RETIREMENT_GAPS` dictionary in `scripts/run_optimized_pipeline.py`, sets the maximum `current_gap` a song can have before it is considered "retired" and excluded from predictions. 
+
+- **Why Tune It?** Bands have different rotation patterns. A band like Phish with a vast catalog may have longer gaps for non-retired songs compared to a band like Goose. Setting this on a per-band basis improves the model's accuracy by not prematurely excluding songs.
+- **Example**:
+  ```python
+  CKPLUS_RETIREMENT_GAPS = {
+      "goose": 100,  # A smaller gap for a band with a more regular rotation
+      "phish": 150,  # A larger gap for a band with a deeper catalog
+  }
+  ```
+
+#### 2. Alpha (`alpha`)
+
+This parameter in the `CKPlusPredictor` class controls the weighting between the `gap_ratio` and the `gap_z_score` in the final score calculation. 
+
+- **Why Tune It?** A higher alpha gives more weight to the simple ratio of current gap to average gap, while a lower alpha gives more weight to the statistical significance (z-score). The default is `0.7`.
+
+#### 3. Minimum Plays Threshold (`min_plays_threshold`)
+
+This parameter in the `CKPlusPredictor` class sets the minimum number of times a song must have been played in the five-year window to be considered for prediction.
+
+- **Why Tune It?** This prevents songs with very little historical data (and therefore unreliable gap statistics) from appearing in the predictions. The default is `5`.

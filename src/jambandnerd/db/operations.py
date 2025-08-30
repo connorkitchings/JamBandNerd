@@ -1,7 +1,11 @@
 """Provides high-level database operations."""
-from typing import Optional, Set, List, Dict, Any
+from __future__ import annotations
+
+from typing import Any, Dict, List, Optional, Set
+
 import pandas as pd
 from supabase import Client
+
 from .connection import get_supabase_client
 
 def fetch_existing_ids(

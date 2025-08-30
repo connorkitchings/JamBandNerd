@@ -106,19 +106,28 @@ We assess accuracy by iterating through historical show dates and treating each 
   `gap_z_score`) with reliability scaling.
 - The model never looks ahead of the reference date.
 
-### CLI Usage
+### Pipeline Usage
 
-- Generate predictions for the next upcoming show:
+The recommended way to run the pipeline is with the `run_optimized_pipeline.py` script, which handles data collection, transformations, and predictions for all models.
+
+- **Run the full pipeline for a specific band**:
+  ```bash
+  uv run python scripts/run_optimized_pipeline.py --band goose
+  ```
+
+- **Run without accuracy calculations for speed**:
+  ```bash
+  uv run python scripts/run_optimized_pipeline.py --band goose --skip-accuracy
+  ```
+
+For debugging or granular control, you can use the individual scripts:
+
+- **Generate predictions for the next upcoming show**:
   - `uv run python scripts/generate_goose_ckplus_predictions.py`
-
-- Generate predictions for a specific historical show date:
-  - `uv run python scripts/generate_goose_ckplus_predictions.py --date YYYY-MM-DD`
-
-- Backtest over a window of show dates:
+- **Backtest over a window of show dates**:
   - `uv run python scripts/backtest_goose_ckplus.py --start YYYY-MM-DD --end YYYY-MM-DD`
-
-- Save accuracy summary for the last 50 completed shows:
-  - `uv run python scripts/save_ckplus_accuracy.py --shows 50`
+- **Save accuracy summary for the last 50 completed shows**:
+  - `uv run python scripts/save_ckplus_accuracy.py --band goose --shows 50`
 
 ### Storage
 

@@ -51,35 +51,35 @@ pytest
 
 ### Making Changes
 
-1.  **Create a new branch**: Create a new branch for your changes.
-2.  **Write your code**: Make your changes to the code, following the existing style and conventions.
-3.  **Write tests**: If you are adding new functionality, please add corresponding tests.
-4.  **Update documentation**: If your changes affect the documentation, please update it accordingly.
-5.  **Run the linter and formatter**: Before you commit your changes, run the linter and formatter to ensure your code follows the project's style guide.
+1. **Create a new branch**: Create a new branch for your changes.
+2. **Write your code**: Make your changes to the code, following the existing style and conventions.
+3. **Write tests**: If you are adding new functionality, please add corresponding tests.
+4. **Update documentation**: If your changes affect the documentation, please update it accordingly.
+5. **Run the linter and formatter**: Before you commit your changes, run the linter and formatter to ensure your code follows the project's style guide.
 
     ```bash
     ruff check src/
     black src/
     ```
 
-6.  **Commit your changes**: Commit your changes with a clear and descriptive commit message.
-7.  **Push your changes and open a pull request**: Push your changes to your fork and open a pull request against the main repository.
+6. **Commit your changes**: Commit your changes with a clear and descriptive commit message.
+7. **Push your changes and open a pull request**: Push your changes to your fork and open a pull request against the main repository.
 
 ## 4. How to Add a New Band
 
 To add a new band to the project, you will need to:
 
-1.  Create a new data collector for the band in `src/jambandnerd/data_collection/`.
-2.  Add the band to the `BAND_CONFIG` in `src/jambandnerd/web/app.py`.
-3.  Add the band to the `run_optimized_pipeline.py` script.
-4.  Add the band to the GitHub Actions workflow.
+1. Create a new data collector for the band in `src/jambandnerd/data_collection/`.
+2. Add the band to the `BAND_CONFIG` in `src/jambandnerd/web/app.py`.
+3. Add the band to the `run_optimized_pipeline.py` script.
+4. Add the band to the GitHub Actions workflow.
 
 ## 5. How to Add a New Model
 
 To add a new prediction model, you will need to:
 
-1.  Create a new model in `src/jambandnerd/models/`.
-2.  Add the model to the `MODEL_CONFIG` in `src/jambandnerd/web/app.py`.
-3.  Create new prediction and accuracy scripts in the `scripts/` directory.
-4.  Add the model to the `run_optimized_pipeline.py` script.
-5.  Add the model to the GitHub Actions workflow.
+1. Create a new model in `src/jambandnerd/models/`.
+2. Add the model to the `MODEL_CONFIG` in `src/jambandnerd/web/app.py`.
+3. Create new prediction and accuracy scripts in the `scripts/` directory.
+4. Add the model to the `run_optimized_pipeline.py` script.
+5. Add the model to the GitHub Actions workflow.

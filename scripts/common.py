@@ -3,9 +3,9 @@ from __future__ import annotations
 
 import sys
 from datetime import date, datetime
+from typing import Any, Dict, List, Tuple
 
 import pandas as pd
-from typing import List, Dict, Tuple
 
 # Local imports
 from src.jambandnerd.db.connection import get_supabase_client

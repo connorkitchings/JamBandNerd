@@ -1,8 +1,14 @@
 # Widespread Panic Web Scrape Data Schema
 
-This document outlines the schema of the pandas DataFrames produced by the web scraping scripts in
-`src/jambandnerd/data_collection/wsp/`. This represents the final structure of the data after it has
-been scraped from everydaycompanion.com and processed by the various `scrape_*.py` modules.
+This document outlines the schema of the data collected by the WSP collector in
+`src/jambandnerd/data_collection/wsp/collector.py`. This represents the final structure of the data after it has
+been scraped from everydaycompanion.com and stored in the Supabase raw tables.
+
+**Collection Status**: ✅ **COMPLETE** - Successfully collected 40 years of data (1985-2025)
+- **3,226 shows** documented across all eras
+- **62,414 setlist records** with comprehensive song-level data 
+- **699 unique songs** cataloged with play statistics
+- **Production-ready pipeline** with robust error handling
 
 ## 1. Songs (`scrape_wsp_songs.py`)
 

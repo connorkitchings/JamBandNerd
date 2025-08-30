@@ -14,10 +14,41 @@ orchestration and analytics. The design is extensible to add new bands and model
 
 ## 2. Architecture
 
-### High-Level Flow
+### Data Flow Diagram
 
 ```mermaid
-Data Sources → Raw Data (Supabase) → In-Memory Transform → Models → Predictions (Supabase) → Web Interface
+graph TD
+    subgraph " "
+        direction LR
+        A[External APIs &<br>Websites]
+    end
+
+    subgraph "GitHub Actions: Daily Pipeline"
+        B(run_optimized_pipeline.py)
+    end
+    
+    subgraph "Supabase Database"
+        C[fa:fa-database Raw Data<br><i>{band}_*_raw</i>]
+        D[fa:fa-database Prediction & Accuracy<br><i>predictions_*, accuracy_*</i>]
+    end
+
+    subgraph "In-Memory Processing"
+        E[pandas DataFrames]
+        F(ModelData Object)
+        G[Notebook & CK+<br>Predictors]
+    end
+    
+    subgraph "Presentation"
+        H[fa:fa-desktop Streamlit Web App]
+    end
+
+    A --> B
+    B -- "1. Collect" --> C
+    C -- "2. Load" --> E
+    E -- "3. Transform (gaps.py)" --> F
+    F -- "4. Predict" --> G
+    G -- "5. Save" --> D
+    D -- "6. Display" --> H
 ```
 
 ### Component Architecture

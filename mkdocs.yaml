@@ -47,31 +47,36 @@ plugins:
 
 nav:
   - Home: index.md
-  - Project:
-      - Product Requirements: project/prd.md
-      - Implementation Schedule: project/schedule.md
-      - Architecture Decisions: project/adr.md
-  - Guides:
-      - Implementation Guide: guides/implementation.md
-      - Pipeline Optimization: guides/pipeline_optimization.md
-      - AI Session Guides: guides/ai_sessions.md
-      - Supabase API Guide: guides/supabase_api_guide.md
-  - Specifications:
-      - Technical Overview: specifications/technical_overview.md
-      - CLI: specifications/cli.md
-      - Database: specifications/database.md
-      - Goose Pipeline: specifications/goose_pipeline.md
-      - Predictions Schema: specifications/predictions_schema.md
-  - Models:
-      - Overview: models/index.md
-      - Notebook Model: models/notebook.md
-      - CK+ Model: models/ckplus.md
-  - Schemas:
-      - Unified Tables: schemas/unified_tables.md
-      - Phish API: schemas/phish_api.md
-      - Goose API: schemas/goose_api.md
-      - WSP Webscrape: schemas/wsp_webscrape.md
-  - Dev Logs:
-      - 2025-08-17 Session 1: logs/2025-08-17/01.md
-      - 2025-08-17 Session 2: logs/2025-08-17/02.md
-      - 2025-08-25 Pipeline Optimization: logs/2025-08-25/02.md
+  - Status: IMPLEMENTATION_STATUS.md
+  - User Guide:
+      - Getting Started: user_guide/getting_started.md
+      - Pipeline Usage: user_guide/pipeline_usage.md
+      - Configuration: user_guide/configuration.md
+  - Developer Guide:
+      - Architecture: developer_guide/architecture.md
+      - Extending the Platform: developer_guide/extending_the_platform.md
+      - AI Sessions: developer_guide/ai_sessions.md
+  - Reference:
+      - Collectors:
+          - WSP Improvements: reference/collectors/wsp_improvements.md
+      - Schemas:
+          - Unified Tables: reference/schemas/unified_tables.md
+          - Goose API: reference/schemas/goose_api.md
+          - Phish API: reference/schemas/phish_api.md
+          - WSP Webscrape: reference/schemas/wsp_webscrape.md
+      - Specifications:
+          - Database: reference/specifications/database.md
+          - Goose Pipeline: reference/specifications/goose_pipeline.md
+          - Predictions Schema: reference/specifications/predictions_schema.md
+      - Guides:
+          - GitHub Actions: reference/guides/github_actions.md
+          - Pipeline Optimization: reference/guides/pipeline_optimization.md
+          - Supabase API Guide: reference/guides/supabase_api_guide.md
+          - Supabase Inserts: reference/guides/supabase_inserts.md
+  - Archive:
+      - Implementation Guide: archive/implementation_guide_v2.md
+      - Project Planning:
+          - Product Requirements: archive/project/prd.md
+          - Architecture Decisions: archive/project/adr.md
+          - Implementation Schedule: archive/project/schedule.md
+      - Dev Logs: logs/2025-08-29-wsp-parsing-fix.md

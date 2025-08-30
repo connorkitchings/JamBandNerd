@@ -4,8 +4,10 @@ Note: This base class defines the minimum interface that all prediction models
 must implement. The actual accuracy calculation is handled externally by
 the src.jambandnerd.models.accuracy module for consistency across models.
 """
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
-from typing import List, Dict, Any, Union
+from typing import Any, Dict, List, Union
 
 from ..transformations.gaps import ModelData
 

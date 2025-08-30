@@ -4,7 +4,7 @@ Version: 0.1.0
 Summary: Modular data science platform for jam band setlists, pipelines, and analytics.
 Author: Connor Kitchings
 License: MIT
-Requires-Python: >=3.12
+Requires-Python: ~=3.12.0
 Description-Content-Type: text/markdown
 Requires-Dist: pandas
 Requires-Dist: requests
