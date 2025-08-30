@@ -123,7 +123,12 @@ def main() -> None:
         record[f"k{k}_f1"] = agg.f1
 
     # 3. Upsert the aggregated record
-    table_name = f"accuracy_{model}"
+    # Use correct table naming convention based on what exists in database
+    table_mapping = {
+        "notebook": "notebook_accuracy",
+        "ckplus": "accuracy_ckplus"
+    }
+    table_name = table_mapping.get(model, f"accuracy_{model}")
     print(f"{log_prefix} Saving aggregate accuracy summary to {table_name}...")
     
     try:

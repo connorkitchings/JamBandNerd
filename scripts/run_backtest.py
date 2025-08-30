@@ -179,7 +179,6 @@ def main() -> None:
             "band": band,
             "model_version": model_version,
             "show_id": show_id_int,
-            "show_id_original": show_id,  # Keep original for debugging
             "show_date": ref_date.isoformat(),
             "actual_song_count": len(actual_songs),
             "evaluated_at": pd.Timestamp.now(tz=timezone.utc).isoformat(),
