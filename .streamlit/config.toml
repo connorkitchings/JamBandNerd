@@ -1,0 +1,15 @@
+[server]
+headless = true
+address = "0.0.0.0"
+port = 8501
+enableCORS = false
+enableXsrfProtection = true
+enableWebsocketCompression = true
+maxUploadSize = 200
+baseUrlPath = ""
+
+[theme]
+base = "light"
+primaryColor = "#1f77b4"
+font = "sans serif"
+

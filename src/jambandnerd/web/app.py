@@ -232,12 +232,47 @@ def fetch_last_collection_time(_db_client: Client, band: str) -> str | None:
 # --- UI Components ---
 
 
-def display_sidebar() -> tuple[str, str, int]:
+def get_initial_selection_from_url(default_band: str, default_model: str, default_k: int) -> dict:
+    try:
+        qp = dict(st.query_params)
+    except Exception:
+        qp = st.experimental_get_query_params()
+    band_val = qp.get("band", [default_band])[0] if isinstance(qp.get("band"), list) else qp.get("band", default_band)
+    model_val = qp.get("model", [default_model])[0] if isinstance(qp.get("model"), list) else qp.get("model", default_model)
+    try:
+        k_raw = qp.get("k", [str(default_k)])[0] if isinstance(qp.get("k"), list) else qp.get("k", str(default_k))
+        k_val = int(k_raw)
+    except Exception:
+        k_val = default_k
+    return {"band": band_val, "model": model_val, "k": k_val}
+
+
+def sync_query_params(band: str, model: str, k: int) -> None:
+    try:
+        st.query_params.update(band=band, model=model, k=str(k))
+    except Exception:
+        st.experimental_set_query_params(band=band, model=model, k=str(k))
+
+
+@st.cache_resource
+def supabase_client_cached() -> Client:
+    return get_supabase_client()
+
+
+def display_sidebar(initial_band: Optional[str] = None, initial_model: Optional[str] = None, initial_k: Optional[int] = None) -> tuple[str, str, int]:
     """Render the sidebar and return selected options."""
     st.sidebar.title("JamBandNerd")
 
     band_display_names = [config["display_name"] for config in BAND_CONFIG.values()]
-    selected_band_display = st.sidebar.selectbox("Select a Band", band_display_names)
+    if initial_band in BAND_CONFIG:
+        initial_band_display = BAND_CONFIG[initial_band]["display_name"]  # type: ignore[index]
+    else:
+        initial_band_display = band_display_names[0]
+    try:
+        band_index = band_display_names.index(initial_band_display)
+    except ValueError:
+        band_index = 0
+    selected_band_display = st.sidebar.selectbox("Select a Band", band_display_names, index=band_index)
     selected_band_slug = next(
         slug
         for slug, config in BAND_CONFIG.items()
@@ -245,7 +280,15 @@ def display_sidebar() -> tuple[str, str, int]:
     )
 
     model_display_names = [config["display_name"] for config in MODEL_CONFIG.values()]
-    selected_model_display = st.sidebar.selectbox("Select a Model", model_display_names)
+    if initial_model in MODEL_CONFIG:
+        initial_model_display = MODEL_CONFIG[initial_model]["display_name"]  # type: ignore[index]
+    else:
+        initial_model_display = model_display_names[0]
+    try:
+        model_index = model_display_names.index(initial_model_display)
+    except ValueError:
+        model_index = 0
+    selected_model_display = st.sidebar.selectbox("Select a Model", model_display_names, index=model_index)
     selected_model_slug = next(
         slug
         for slug, config in MODEL_CONFIG.items()
@@ -256,10 +299,14 @@ def display_sidebar() -> tuple[str, str, int]:
     st.sidebar.caption(f"{selected_model_display}: {MODEL_CONFIG[selected_model_slug]['explanation']}")
 
     k_options = [10, 25, 50]
+    if initial_k in k_options:
+        k_index = k_options.index(initial_k)  # type: ignore[arg-type]
+    else:
+        k_index = 2
     selected_k = st.sidebar.selectbox(
         "K for Accuracy (Top-K)",
         k_options,
-        index=2,
+        index=k_index,
         help="Number of top-ranked songs considered for the recall metric.",
     )
     st.sidebar.caption(
@@ -520,7 +567,20 @@ def main():
     st.set_page_config(page_title="JamBandNerd", layout="wide")
     st.markdown("<h1 style='text-align: center;'>JamBandNerd</h1>", unsafe_allow_html=True)
 
-    selected_band, selected_model, selected_k = display_sidebar()
+    # Read initial selection from URL with sensible defaults
+    defaults = {
+        "band": next(iter(BAND_CONFIG.keys())),
+        "model": next(iter(MODEL_CONFIG.keys())),
+        "k": 50,
+    }
+    initial = get_initial_selection_from_url(defaults["band"], defaults["model"], defaults["k"])
+    selected_band, selected_model, selected_k = display_sidebar(
+        initial_band=initial["band"],
+        initial_model=initial["model"],
+        initial_k=initial["k"],
+    )
+    # Keep URL in sync with current selection
+    sync_query_params(selected_band, selected_model, selected_k)
     
     # Display centered band marker just under the title
     band_display_name = BAND_CONFIG.get(selected_band, {}).get("display_name", selected_band.title())
@@ -530,7 +590,7 @@ def main():
     )
 
     try:
-        supabase_client = get_supabase_client()
+        supabase_client = supabase_client_cached()
         display_predictions(supabase_client, selected_band, selected_model)
         display_historical_accuracy(
             supabase_client, selected_band, selected_model, selected_k
