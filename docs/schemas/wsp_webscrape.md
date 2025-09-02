@@ -5,8 +5,9 @@ This document outlines the schema of the data collected by the WSP collector in
 been scraped from everydaycompanion.com and stored in the Supabase raw tables.
 
 **Collection Status**: ✅ **COMPLETE** - Successfully collected 40 years of data (1985-2025)
+
 - **3,226 shows** documented across all eras
-- **62,414 setlist records** with comprehensive song-level data 
+- **62,414 setlist records** with comprehensive song-level data
 - **699 unique songs** cataloged with play statistics
 - **Production-ready pipeline** with robust error handling
 

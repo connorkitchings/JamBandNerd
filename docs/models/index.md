@@ -16,6 +16,6 @@ The project employs a modular, pluggable architecture for its prediction models,
 
 To add a new prediction model to the project, follow these steps:
 
-1.  **Create the Model Logic**: Implement the new model in its own subdirectory within `src/jambandnerd/models/`.
-2.  **Create Prediction Scripts**: Add new scripts to the `scripts/` directory to run the model and save its predictions and accuracy.
-3.  **Update Documentation**: Add a new documentation file for the model in this directory and update this index to include a link to it.
+1. **Create the Model Logic**: Implement the new model in its own subdirectory within `src/jambandnerd/models/`.
+2. **Create Prediction Scripts**: Add new scripts to the `scripts/` directory to run the model and save its predictions and accuracy.
+3. **Update Documentation**: Add a new documentation file for the model in this directory and update this index to include a link to it.

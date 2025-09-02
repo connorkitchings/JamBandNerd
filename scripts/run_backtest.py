@@ -121,8 +121,7 @@ def main() -> None:
         predictor = NotebookPredictor()
         model_version = "notebook_v1"
     elif model == "ckplus":
-        params = {"goose": 200, "phish": 500, "wsp": 150}
-        predictor = CKPlusPredictor(retired_gap_threshold=params.get(band, 250))
+        predictor = CKPlusPredictor(band=band)
         model_version = "ckplus_v1"
     else:
         raise ValueError(f"Invalid model: {model}")
@@ -132,6 +131,11 @@ def main() -> None:
     for _, show_row in target_shows.iterrows():
         ref_date = show_row["show_date"]
         show_id = str(show_row["show_id"])
+
+        # Stricter validation to skip rows with invalid date types
+        if not isinstance(ref_date, date):
+            print(f"{log_prefix} Skipping show_id {show_id} due to invalid date type: {type(ref_date)} (value: {ref_date})")
+            continue
 
         actual_songs = (
             sets_df.loc[sets_df["show_id"] == show_id, "song_name"]

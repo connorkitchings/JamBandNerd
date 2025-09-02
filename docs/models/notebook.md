@@ -8,19 +8,25 @@ compute directly from raw Supabase tables.
 
 ### How it Runs
 
-The Notebook model is executed via the `run_optimized_pipeline.py` script, which is the primary method for running the full pipeline for any band. This script handles data collection, transformation, and prediction generation.
+The Notebook model is executed via the consolidated pipeline scripts. The primary method for running the full pipeline is the `run_optimized_pipeline.py` script, which handles data collection, transformation, and prediction generation for all models.
 
-To run the Notebook model for a specific band, you can use the following command:
-
+**Recommended: Full Pipeline**
 ```bash
+# Run complete pipeline for any band (includes Notebook model)
 uv run python scripts/run_optimized_pipeline.py --band <band_name>
 ```
 
-This command will:
+**Advanced: Individual Model Execution**
+```bash
+# Generate Notebook predictions only
+uv run python scripts/generate_predictions.py --band <band_name> --model notebook
+```
 
-1.  **Collect Data**: Fetch the latest show and setlist data for the specified band.
-2.  **Transform Data**: Prepare the raw data for the models.
-3.  **Generate Predictions**: Run the Notebook model to generate predictions and save them to the database.
+This will:
+
+1. **Collect Data**: Fetch the latest show and setlist data for the specified band.
+2. **Transform Data**: Prepare the raw data using the ModelData container.
+3. **Generate Predictions**: Run the Notebook model to generate predictions and save them to the database.
 
 ### Reference Show Date
 
@@ -79,23 +85,35 @@ We assess accuracy by iterating through historical show dates and treating each 
 The recommended way to run the pipeline is with the `run_optimized_pipeline.py` script, which handles data collection, transformations, and predictions for all models.
 
 - **Run the full pipeline for a specific band**:
+
   ```bash
   uv run python scripts/run_optimized_pipeline.py --band goose
   ```
 
 - **Run without accuracy calculations for speed**:
+
   ```bash
   uv run python scripts/run_optimized_pipeline.py --band goose --skip-accuracy
   ```
 
-For debugging or granular control, you can use the individual scripts:
+For debugging or granular control, you can use the consolidated individual scripts:
 
-- **Generate predictions for the next upcoming show**:
-  - `uv run python scripts/generate_goose_predictions.py`
+- **Generate predictions for any band/model combination**:
+  ```bash
+  uv run python scripts/generate_predictions.py --band goose --model notebook
+  uv run python scripts/generate_predictions.py --band phish --model notebook
+  ```
+
 - **Backtest over a window of show dates**:
-  - `uv run python scripts/backtest_goose_notebook.py --start YYYY-MM-DD --end YYYY-MM-DD`
-- **Save accuracy summary for the last 50 completed shows**:
-  - `uv run python scripts/save_notebook_accuracy.py --band goose --shows 50`
+  ```bash
+  uv run python scripts/run_backtest.py --band goose --model notebook --start YYYY-MM-DD --end YYYY-MM-DD
+  uv run python scripts/run_backtest.py --band goose --model notebook --shows 50
+  ```
+
+- **Save accuracy summary**:
+  ```bash
+  uv run python scripts/save_aggregate_accuracy.py --band goose --model notebook --shows 50
+  ```
 
 ### Storage
 
@@ -112,7 +130,7 @@ For debugging or granular control, you can use the individual scripts:
 
 The Notebook model is designed to be a simple, transparent, and effective baseline for setlist prediction. Here are the reasons behind some of its key design decisions:
 
--   **Frequency-Based**: The model's core logic is based on the simple assumption that songs played frequently in the recent past are more likely to be played again soon. This is a common pattern for many touring bands and provides a solid foundation for prediction.
--   **One-Year Window**: The one-year window for counting plays is a heuristic that balances recency and a large enough sample size. It ensures that the model is responsive to changes in a band's rotation while still capturing a meaningful amount of data.
--   **Last-Three-Show Exclusion**: The exclusion of songs played in the last three shows is a common-sense rule to avoid predicting songs that have been played very recently. This is a simple but effective way to improve the model's accuracy.
--   **Simplicity and Speed**: The model is intentionally simple so that it is easy to understand, implement, and maintain. Its speed also allows for rapid backtesting and iteration.
+- **Frequency-Based**: The model's core logic is based on the simple assumption that songs played frequently in the recent past are more likely to be played again soon. This is a common pattern for many touring bands and provides a solid foundation for prediction.
+- **One-Year Window**: The one-year window for counting plays is a heuristic that balances recency and a large enough sample size. It ensures that the model is responsive to changes in a band's rotation while still capturing a meaningful amount of data.
+- **Last-Three-Show Exclusion**: The exclusion of songs played in the last three shows is a common-sense rule to avoid predicting songs that have been played very recently. This is a simple but effective way to improve the model's accuracy.
+- **Simplicity and Speed**: The model is intentionally simple so that it is easy to understand, implement, and maintain. Its speed also allows for rapid backtesting and iteration.

@@ -98,12 +98,14 @@ model_data = generate_model_data(shows_df, setlists_df, reference_date, debug=Fa
 ### Model Robustness Improvements
 
 **CK+ Model Enhancements:**
+
 - Parameter validation on initialization
 - Finite value checks for mathematical operations
 - Z-score clamping to prevent extreme outliers
 - Comprehensive error handling with graceful fallbacks
 
 **Transformation Optimizations:**
+
 - Conditional debug output reduces log noise
 - Efficient data type conversions
 - Memory-optimized DataFrame operations
@@ -178,16 +180,19 @@ The optimized pipeline provides detailed success/failure reporting:
 ### Common Issues
 
 **GitHub Actions Timeout:**
+
 - Check individual job timeouts (currently 45-60 minutes)
 - Consider using optimized pipeline for faster execution
 - Monitor Supabase connection health
 
 **Partial Failures:**
+
 - Review individual matrix job logs
 - Validate API keys and Supabase credentials
 - Check for data quality issues in source APIs
 
 **Performance Degradation:**
+
 - Monitor database response times
 - Check for API rate limiting
 - Validate transformation efficiency with debug mode
@@ -195,6 +200,7 @@ The optimized pipeline provides detailed success/failure reporting:
 ### Performance Monitoring
 
 Track these metrics over time:
+
 - Total pipeline execution time
 - Individual stage timing (collection, prediction, accuracy)
 - Error rates by band and model

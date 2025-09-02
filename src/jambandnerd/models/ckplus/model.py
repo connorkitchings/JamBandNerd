@@ -26,18 +26,26 @@ class CKPlusPrediction:
 class CKPlusPredictor(PredictionModel):
     """Gap-based CK+ predictor per docs/models/ckplus.md."""
 
-    def __init__(self, alpha: float = 0.7, min_plays_threshold: int = 5, retired_gap_threshold: int = 250):
+    # Centralized, band-specific configuration for the model
+    RETIREMENT_GAPS = {
+        "goose": 100,  # A smaller gap for a band with a more regular rotation
+        "phish": 150,  # A larger gap for a band with a deeper catalog
+        "wsp": 150,    # Similar to Phish
+        "default": 250 # A safe fallback for other bands
+    }
+
+    def __init__(self, band: str, alpha: float = 0.7, min_plays_threshold: int = 5):
         # Validate parameters
         if not 0 <= alpha <= 1:
             raise ValueError(f"alpha must be between 0 and 1, got {alpha}")
         if min_plays_threshold < 1:
             raise ValueError(f"min_plays_threshold must be at least 1, got {min_plays_threshold}")
-        if retired_gap_threshold < 1:
-            raise ValueError(f"retired_gap_threshold must be at least 1, got {retired_gap_threshold}")
             
+        self.band = band
         self.alpha = float(alpha)
         self.min_plays_threshold = int(min_plays_threshold)
-        self.retired_gap_threshold = int(retired_gap_threshold)
+        self.retired_gap_threshold = self.RETIREMENT_GAPS.get(band, self.RETIREMENT_GAPS["default"])
+
 
     def _score_row(self, row: pd.Series) -> float:
         """Calculate CK+ score for a single song, with robust error handling."""

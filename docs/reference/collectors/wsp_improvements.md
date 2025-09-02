@@ -1,10 +1,11 @@
 # WSP Data Collection Improvements
 
-This document outlines planned improvements for the Widespread Panic (WSP) data collector.
+This document outlines current status and potential improvements for the Widespread Panic (WSP) data collector.
 
 ## Current Status
 
 The WSP collector is **production-ready** with the following features:
+
 - ✅ Complete historical show collection (1986-2025)
 - ✅ Enhanced setlist parsing with Set 0 (soundcheck) support
 - ✅ Performance optimized (year filtering, optimized queries)
@@ -19,10 +20,12 @@ The WSP collector is **production-ready** with the following features:
 **Goal**: Extract and parse show notes from setlist pages to capture special events and context.
 
 **Examples from everydaycompanion.com**:
+
 - `[Soundcheck; Panic en la Playa Once]` → Parse as show type and event
 - `[Panic en la Playa Doce; 'Folsom Prison Blues' rap by JB during 'Let It Rock']` → Extract event and song-specific notes
 
 **Implementation Strategy**:
+
 ```python
 def _extract_show_notes(self, soup: BeautifulSoup) -> Dict[str, Any]:
     """Extract bracketed notes and special event information."""
@@ -39,10 +42,12 @@ def _extract_show_notes(self, soup: BeautifulSoup) -> Dict[str, Any]:
 **Goal**: Improve venue name normalization and extract additional venue metadata.
 
 **Current Issues**:
+
 - Venue names may have inconsistent formatting
 - Missing capacity, type, or geographical data that could be extracted
 
 **Implementation Strategy**:
+
 ```python
 def _parse_venue_details(self, venue_cell) -> Dict[str, Any]:
     """Extract comprehensive venue information."""
@@ -61,6 +66,7 @@ def _parse_venue_details(self, venue_cell) -> Dict[str, Any]:
 **Areas for Improvement**:
 
 #### A. Retry Logic for Failed Parses
+
 ```python
 def _scrape_with_retry(self, show_url: str, max_attempts: int = 3):
     """Implement exponential backoff retry for failed requests."""
@@ -70,6 +76,7 @@ def _scrape_with_retry(self, show_url: str, max_attempts: int = 3):
 ```
 
 #### B. Fallback Parsing Methods
+
 ```python
 def _fallback_parsing_strategies(self, soup: BeautifulSoup):
     """Multiple parsing approaches for difficult pages."""
@@ -80,6 +87,7 @@ def _fallback_parsing_strategies(self, soup: BeautifulSoup):
 ```
 
 #### C. Data Quality Monitoring
+
 ```python
 def _validate_setlist_structure(self, setlist_data: List[Dict]):
     """Validate parsed setlist makes structural sense."""
@@ -90,6 +98,7 @@ def _validate_setlist_structure(self, setlist_data: List[Dict]):
 ```
 
 #### D. Progressive Parsing
+
 ```python  
 def _progressive_collection(self, shows: List[Dict]):
     """Collect data with graceful degradation on failures."""

@@ -12,20 +12,20 @@ Previously, the pipeline relied on numerous individual scripts for each band and
 
 The primary optimization is the consolidation of 14+ scripts into a few core orchestrators and runners. This follows the **Don't Repeat Yourself (DRY)** principle, making the codebase easier to manage and extend.
 
--   `scripts/run_optimized_pipeline.py`: The main entry point for running the end-to-end pipeline locally. It orchestrates calls to the other consolidated scripts.
--   `scripts/generate_predictions.py`: A single script to generate predictions for any band/model combination.
--   `scripts/run_backtest.py`: A single script to run historical backtests and populate per-show accuracy data.
--   `scripts/save_aggregate_accuracy.py`: A single script to calculate and save aggregate accuracy metrics from the backtest results.
+- `scripts/run_optimized_pipeline.py`: The main entry point for running the end-to-end pipeline locally. It orchestrates calls to the other consolidated scripts.
+- `scripts/generate_predictions.py`: A single script to generate predictions for any band/model combination.
+- `scripts/run_backtest.py`: A single script to run historical backtests and populate per-show accuracy data.
+- `scripts/save_aggregate_accuracy.py`: A single script to calculate and save aggregate accuracy metrics from the backtest results.
 
 ## GitHub Actions Optimization
 
 The GitHub Actions workflow (`.github/workflows/daily-pipeline.yml`) has been completely redesigned around the new consolidated scripts.
 
-### Key Features:
+### Key Features
 
--   **Simplified Matrix Strategy**: The workflow now uses a simple matrix to parallelize jobs by band (`goose`, `phish`, `wsp`). The complex, hardcoded matrix for each band/model pair has been removed.
--   **Streamlined Job**: The previous multi-job approach (`collect-data`, `generate-predictions`, `calculate-accuracy`) has been replaced by a single `daily-pipeline` job. This job contains sequential steps to run the full pipeline for each band, which is simpler to read and debug.
--   **Declarative Steps**: The `run` steps now make direct, clean calls to the consolidated scripts, eliminating the need for conditional `if` logic within the YAML to select the correct script.
+- **Simplified Matrix Strategy**: The workflow now uses a simple matrix to parallelize jobs by band (`goose`, `phish`, `wsp`). The complex, hardcoded matrix for each band/model pair has been removed.
+- **Streamlined Job**: The previous multi-job approach (`collect-data`, `generate-predictions`, `calculate-accuracy`) has been replaced by a single `daily-pipeline` job. This job contains sequential steps to run the full pipeline for each band, which is simpler to read and debug.
+- **Declarative Steps**: The `run` steps now make direct, clean calls to the consolidated scripts, eliminating the need for conditional `if` logic within the YAML to select the correct script.
 
 ```yaml
 # Example of the new, simplified workflow structure
@@ -51,6 +51,6 @@ jobs:
 
 ## Performance and Efficiency
 
--   **Efficient Accuracy Calculation**: The `save_aggregate_accuracy.py` script now reads from the `accuracy_per_show` table instead of re-running predictions. This avoids redundant, computationally expensive work and makes the final accuracy step much faster.
--   **Data Reuse**: The local `run_optimized_pipeline.py` script was the inspiration for the new design, and it still provides an efficient way to run the entire process locally by loading data once and reusing it for multiple models.
--   **Robust Error Handling**: The GitHub Actions workflow is configured with `fail-fast: false`, so a failure in one band's pipeline will not cancel the others.
+- **Efficient Accuracy Calculation**: The `save_aggregate_accuracy.py` script now reads from the `accuracy_per_show` table instead of re-running predictions. This avoids redundant, computationally expensive work and makes the final accuracy step much faster.
+- **Data Reuse**: The local `run_optimized_pipeline.py` script was the inspiration for the new design, and it still provides an efficient way to run the entire process locally by loading data once and reusing it for multiple models.
+- **Robust Error Handling**: The GitHub Actions workflow is configured with `fail-fast: false`, so a failure in one band's pipeline will not cancel the others.

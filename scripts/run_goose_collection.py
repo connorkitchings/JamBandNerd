@@ -164,15 +164,21 @@ def run_goose_collection(skip_validation: bool = False) -> None:
 
         schema = get_table_schema(table_name)
         if schema and not skip_validation:
-            df = coerce_df_types(df, schema)
-            report = validate_dataframe_against_table(df, table_name, schema)
+            # First, coerce types to match the database schema.
+            coerced_df = coerce_df_types(df, schema)
+            # Then, validate the coerced DataFrame.
+            report = validate_dataframe_against_table(coerced_df, table_name, schema)
             if not report.is_valid:
                 print(f"Validation failed for {table_name}: {report}")
                 # Do not proceed with upsert if validation fails
                 return
+            # Use the coerced DataFrame for the upsert
+            df_to_upsert = coerced_df
+        else:
+            df_to_upsert = df
         
         try:
-            upsert_dataframe(table_name=table_name, df=df, conflict_columns=conflict_cols)
+            upsert_dataframe(table_name=table_name, df=df_to_upsert, conflict_columns=conflict_cols)
             print(f"Upserted data into {table_name}.")
         except Exception as e:
             print(f"Error upserting to {table_name}: {e}")

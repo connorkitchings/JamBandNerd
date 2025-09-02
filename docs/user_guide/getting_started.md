@@ -21,7 +21,7 @@ The project is designed to be modular and extensible, so you can easily add new 
 
 Please follow these steps to set up your local environment.
 
-1.  **Clone and setup environment:**
+1. **Clone and setup environment:**
 
     ```bash
     git clone https://github.com/connorkitchings/JamBandNerd.git
@@ -31,7 +31,7 @@ Please follow these steps to set up your local environment.
     uv pip install .
     ```
 
-2.  **Environment Variables**:
+2. **Environment Variables**:
 
     Before you can run the project, you will need to set up your environment variables. Copy the `.env.example` file to a new file named `.env` and fill in the required values for your Supabase project.
 

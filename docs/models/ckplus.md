@@ -8,19 +8,25 @@ and explainable, and complements the frequency‑based `notebook` model.
 
 ### How it Runs
 
-The CK+ model is executed via the `run_optimized_pipeline.py` script, which is the primary method for running the full pipeline for any band. This script handles data collection, transformation, and prediction generation.
+The CK+ model is executed via the consolidated pipeline scripts. The primary method for running the full pipeline is the `run_optimized_pipeline.py` script, which handles data collection, transformation, and prediction generation for all models.
 
-To run the CK+ model for a specific band, you can use the following command:
-
+**Recommended: Full Pipeline**
 ```bash
+# Run complete pipeline for any band (includes CK+ model)
 uv run python scripts/run_optimized_pipeline.py --band <band_name>
 ```
 
-This command will:
+**Advanced: Individual Model Execution**
+```bash
+# Generate CK+ predictions only
+uv run python scripts/generate_predictions.py --band <band_name> --model ckplus
+```
 
-1.  **Collect Data**: Fetch the latest show and setlist data for the specified band.
-2.  **Transform Data**: Prepare the raw data for the models.
-3.  **Generate Predictions**: Run the CK+ model to generate predictions and save them to the database.
+This will:
+
+1. **Collect Data**: Fetch the latest show and setlist data for the specified band.
+2. **Transform Data**: Prepare the raw data using the ModelData container.
+3. **Generate Predictions**: Run the CK+ model to generate predictions and save them to the database.
 
 ### Reference Show Date
 
@@ -111,23 +117,35 @@ We assess accuracy by iterating through historical show dates and treating each 
 The recommended way to run the pipeline is with the `run_optimized_pipeline.py` script, which handles data collection, transformations, and predictions for all models.
 
 - **Run the full pipeline for a specific band**:
+
   ```bash
   uv run python scripts/run_optimized_pipeline.py --band goose
   ```
 
 - **Run without accuracy calculations for speed**:
+
   ```bash
   uv run python scripts/run_optimized_pipeline.py --band goose --skip-accuracy
   ```
 
-For debugging or granular control, you can use the individual scripts:
+For debugging or granular control, you can use the consolidated individual scripts:
 
-- **Generate predictions for the next upcoming show**:
-  - `uv run python scripts/generate_goose_ckplus_predictions.py`
+- **Generate predictions for any band/model combination**:
+  ```bash
+  uv run python scripts/generate_predictions.py --band goose --model ckplus
+  uv run python scripts/generate_predictions.py --band phish --model ckplus
+  ```
+
 - **Backtest over a window of show dates**:
-  - `uv run python scripts/backtest_goose_ckplus.py --start YYYY-MM-DD --end YYYY-MM-DD`
-- **Save accuracy summary for the last 50 completed shows**:
-  - `uv run python scripts/save_ckplus_accuracy.py --band goose --shows 50`
+  ```bash
+  uv run python scripts/run_backtest.py --band goose --model ckplus --start YYYY-MM-DD --end YYYY-MM-DD
+  uv run python scripts/run_backtest.py --band goose --model ckplus --shows 50
+  ```
+
+- **Save accuracy summary**:
+  ```bash
+  uv run python scripts/save_aggregate_accuracy.py --band goose --model ckplus --shows 50
+  ```
 
 ### Storage
 
@@ -173,7 +191,7 @@ grant execute on function public.get_table_schema(text) to anon, authenticated, 
 
 The CK+ model is designed to provide a different perspective from the frequency-based Notebook model. It is based on the idea that songs that haven't been played in a while are more likely to be played soon.
 
--   **Gap-Based**: The model's core logic is based on the concept of "gaps" between song performances. This provides a strong signal for songs that are "due" for a performance.
--   **Reliability Scaling**: The model includes a reliability term that scales the overdue signal by the number of times a song has been played and the standard deviation of its gaps. This helps to prevent songs with very few plays or erratic histories from being ranked too highly.
--   **Five-Year Window**: The five-year window for calculating gap statistics is a heuristic that provides a long-term view of a song's performance history. This is in contrast to the Notebook model's one-year window, which focuses on more recent trends.
--   **Configurable Thresholds**: The model includes configurable thresholds for minimum plays and retirement gaps, which allows for band-specific tuning.
+- **Gap-Based**: The model's core logic is based on the concept of "gaps" between song performances. This provides a strong signal for songs that are "due" for a performance.
+- **Reliability Scaling**: The model includes a reliability term that scales the overdue signal by the number of times a song has been played and the standard deviation of its gaps. This helps to prevent songs with very few plays or erratic histories from being ranked too highly.
+- **Five-Year Window**: The five-year window for calculating gap statistics is a heuristic that provides a long-term view of a song's performance history. This is in contrast to the Notebook model's one-year window, which focuses on more recent trends.
+- **Configurable Thresholds**: The model includes configurable thresholds for minimum plays and retirement gaps, which allows for band-specific tuning.

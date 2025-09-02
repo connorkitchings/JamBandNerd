@@ -60,10 +60,9 @@ Several scripts in the `scripts/` directory rely on shared utility functions hou
 
 - **`fetch_table(table_name: str)`**: A robust function to fetch all rows from a specified Supabase table. It includes pagination logic to handle large tables, ensuring that the entire dataset is retrieved.
 
-- **`resolve_reference_date(date_str: str | None, shows_df: pd.DataFrame)`**: A crucial utility for determining the date for which predictions should be generated. 
+- **`resolve_reference_date(date_str: str | None, shows_df: pd.DataFrame)`**: A crucial utility for determining the date for which predictions should be generated.
   - If a date is provided, it uses that date.
   - If no date is provided, it intelligently finds the date of the next upcoming show in the database.
   - This ensures that running a prediction script without arguments always targets the next relevant show.
 
 - **`prepare_band_data(shows_df: pd.DataFrame, setlists_df: pd.DataFrame)`**: Normalizes the column names and data types of the raw show and setlist DataFrames. This is important because different data sources (e.g., Phish.net vs. elgoose.net) have slightly different schemas. This function creates a consistent data structure before the transformation step.
-

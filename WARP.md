@@ -6,7 +6,7 @@ This file provides guidance to WARP (warp.dev) when working with code in this re
 
 JamBandNerd is a cloud-based data science platform for collecting, transforming, and predicting jam band setlists. The system operates with modular pipelines that collect data from APIs/scraping, transform it in-memory, run prediction models, and store results in Supabase.
 
-**Supported Bands**: Goose (elgoose.net API), Phish (phish.net API), Widespread Panic (planned)  
+**Supported Bands**: Goose (elgoose.net API), Phish (phish.net API), Widespread Panic (everydaycompanion.com scraping - 95% complete)  
 **Architecture**: Data Sources → Raw Data (Supabase) → In-Memory Transform → Models → Predictions (Supabase) → Web Interface
 
 ## Essential Commands
@@ -27,44 +27,60 @@ uv pip install .
 
 ### Data Pipeline Commands
 
-#### Goose Pipeline (Primary)
+#### Recommended: Optimized Pipeline (All Bands)
 
 ```bash
-# 1. Collect raw data
-uv run python scripts/run_goose_collection.py
-uv run python scripts/run_goose_collection.py --skip-validation  # bypass schema validation
+# Run complete pipeline for all supported bands (fastest, most reliable)
+uv run python scripts/run_optimized_pipeline.py --band all
 
-# 2. Generate predictions (defaults to next upcoming show)
-uv run python scripts/generate_goose_predictions.py
-uv run python scripts/generate_goose_predictions.py --date YYYY-MM-DD  # historical date
+# Run pipeline for a single band
+uv run python scripts/run_optimized_pipeline.py --band goose
+uv run python scripts/run_optimized_pipeline.py --band phish
+uv run python scripts/run_optimized_pipeline.py --band wsp
 
-# 3. Generate CK+ model predictions  
-uv run python scripts/generate_goose_ckplus_predictions.py
-
-# 4. Backtest accuracy over time window
-uv run python scripts/backtest_goose_notebook.py --start 2025-06-01 --end 2025-08-16
-uv run python scripts/backtest_goose_ckplus.py --start 2025-06-01 --end 2025-08-16
-
-# 5. Save accuracy summaries (last N completed shows)
-uv run python scripts/save_notebook_accuracy.py --shows 50
-uv run python scripts/save_ckplus_accuracy.py --shows 50
+# Skip accuracy calculations for faster runs
+uv run python scripts/run_optimized_pipeline.py --band all --skip-accuracy
 ```
 
-#### Phish Pipeline
+#### Individual Pipeline Components (Advanced Usage)
 
+##### Data Collection
 ```bash
-# Collect all Phish data
+# Collect raw data by band
+uv run python scripts/run_goose_collection.py
 uv run python scripts/run_phish_collection.py
+uv run python scripts/run_wsp_collection.py
 
-# Collect only setlists for specific years (faster when shows are current)
-uv run python scripts/run_phish_collection.py --only-setlists --year-start 2024 --year-end 2025 --skip-validation
+# Collection with options
+uv run python scripts/run_goose_collection.py --skip-validation
+uv run python scripts/run_phish_collection.py --only-setlists --year-start 2024 --year-end 2025
+uv run python scripts/run_wsp_collection.py --year-start 2023 --year-end 2024
+```
 
-# Clear and rebuild setlists (DESTRUCTIVE)
-uv run python scripts/run_phish_collection.py --clear-setlists --only-setlists --year-start 1983 --year-end 1989 --skip-validation
+##### Prediction Generation (Consolidated Scripts)
+```bash
+# Generate predictions for any band/model combination
+uv run python scripts/generate_predictions.py --band goose --model notebook
+uv run python scripts/generate_predictions.py --band goose --model ckplus
+uv run python scripts/generate_predictions.py --band phish --model notebook
+uv run python scripts/generate_predictions.py --band phish --model ckplus
+uv run python scripts/generate_predictions.py --band wsp --model notebook
+uv run python scripts/generate_predictions.py --band wsp --model ckplus
 
-# Generate predictions
-uv run python scripts/generate_phish_predictions.py
-uv run python scripts/generate_phish_ckplus_predictions.py
+# Generate predictions for historical date
+uv run python scripts/generate_predictions.py --band goose --model notebook --date 2024-08-15
+```
+
+##### Accuracy & Backtesting (Consolidated Scripts)
+```bash
+# Run historical backtests for any band/model combination
+uv run python scripts/run_backtest.py --band goose --model notebook --shows 50
+uv run python scripts/run_backtest.py --band goose --model ckplus --shows 50
+uv run python scripts/run_backtest.py --band phish --model notebook --start 2024-01-01 --end 2024-08-31
+
+# Save accuracy summaries
+uv run python scripts/save_aggregate_accuracy.py --band goose --model notebook --shows 50
+uv run python scripts/save_aggregate_accuracy.py --band phish --model ckplus --shows 100
 ```
 
 ### Development Commands
@@ -75,7 +91,7 @@ ruff check src/  # linting
 black src/       # formatting
 pytest tests/    # run tests (when available)
 
-# Web interface (planned)
+# Web interface (fully implemented)
 streamlit run src/jambandnerd/web/app.py
 
 # Test secrets availability in GitHub Actions
@@ -154,9 +170,12 @@ class PredictionModel(ABC):
 #### Adding New Models
 
 1. Implement `PredictionModel`: `src/jambandnerd/models/{model_name}/`
-2. Create prediction script: `scripts/generate_{band}_{model}_predictions.py`
-3. Add backtest script: `scripts/backtest_{band}_{model}.py`  
-4. Define accuracy table: `accuracy_{model}`
+2. Update consolidated scripts to support new model:
+   - Add model choice to `scripts/generate_predictions.py`
+   - Add model choice to `scripts/run_backtest.py`
+   - Add model choice to `scripts/save_aggregate_accuracy.py`
+3. Define accuracy table: `accuracy_{model}`
+4. Update `run_optimized_pipeline.py` to include new model
 
 ### Critical Environment Dependencies
 
@@ -167,7 +186,7 @@ class PredictionModel(ABC):
 
 - elgoose.net (no auth required)
 - phish.net (requires PHISH_API_KEY)
-- Planned: everydaycompanion.com scraping
+- everydaycompanion.com (WSP scraping - 95% complete)
 
 ### Development Guidelines from .cursorrules
 

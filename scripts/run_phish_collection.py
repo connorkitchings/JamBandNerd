@@ -57,7 +57,7 @@ def _normalize_songs(raw: Iterable[Dict[str, Any]]) -> pd.DataFrame:
             "last_permalink": item.get("last_permalink"),
             "debut_permalink": item.get("debut_permalink"),
             "source_hash": _compute_source_hash(item),
-            "created_at": now,
+            "created_at": now,  # Added this line
         }
         for item in raw
         if item.get("songid")
@@ -170,7 +170,7 @@ def _normalize_setlists(raw: Iterable[Dict[str, Any]]) -> pd.DataFrame:
             "is_original": _to_bool(item.get("is_original")),
             "footnote": item.get("footnote"),
             "source_hash": _compute_source_hash(item),
-            "created_at": now,
+            "created_at": now, # Added this line
         }
         normalized_rows.append(row)
 

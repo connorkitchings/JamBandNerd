@@ -70,7 +70,10 @@ def fetch_predictions(
     try:
         table_name = f"predictions_{model}"
         query = _db_client.table(table_name).select("*").eq("band", band)
-        for d in EXCLUDED_SHOW_DATES:
+        
+        # Apply exclusions - filter out empty/invalid strings to avoid database query errors
+        valid_excluded_dates = {d for d in EXCLUDED_SHOW_DATES if d and d.strip()}
+        for d in valid_excluded_dates:
             query = query.neq("reference_date", d)
         latest_response = query.order("reference_date", desc=True).limit(1).execute()
         if not latest_response.data:
@@ -99,21 +102,64 @@ def fetch_predictions(
 def fetch_per_show_accuracy(
     _db_client: Client, band: str, model: str, limit: int = 100
 ) -> pd.DataFrame:
-    """Fetch the last N per-show accuracy records for charting."""
+    """
+    Fetch the last N per-show accuracy records for charting, applying backend exclusions.
+    """
     try:
         model_version = f"{model}_v1"
-        response = (
+        
+        # Use simple query without complex filtering to avoid date parsing errors
+        query = (
             _db_client.table("accuracy_per_show")
             .select("*")
             .eq("band", band)
             .eq("model_version", model_version)
-            .order("show_date", desc=True)
-            .limit(limit)
-            .execute()
         )
-        return pd.DataFrame(response.data) if response.data else pd.DataFrame()
+
+        # Execute the query without date filtering first
+        response = query.execute()
+        
+        if not response.data:
+            return pd.DataFrame()
+            
+        # Process and filter the data in Python instead of at database level
+        df = pd.DataFrame(response.data)
+        
+        if 'show_date' in df.columns and not df.empty:
+            original_count = len(df)
+            
+            # Remove rows with invalid show_date values
+            df = df.dropna(subset=['show_date'])
+            df = df[df['show_date'].astype(str).str.strip() != '']
+            
+            # Apply exclusions in Python
+            valid_excluded_dates = {d for d in EXCLUDED_SHOW_DATES if d and d.strip()}
+            if valid_excluded_dates:
+                df = df[~df['show_date'].isin(valid_excluded_dates)]
+            
+            # Convert show_date to datetime for proper sorting
+            df['_show_date_dt'] = pd.to_datetime(df['show_date'], errors='coerce')
+            df = df.dropna(subset=['_show_date_dt'])  # Remove any that couldn't be parsed
+            
+            # Sort and limit in Python
+            df = df.sort_values('_show_date_dt', ascending=False).head(limit)
+            
+            # Remove the temporary column
+            df = df.drop(columns=['_show_date_dt'])
+            
+            if len(df) < original_count:
+                filtered_count = original_count - len(df)
+                # Only show warning for debugging, not in production
+                # st.info(f"Processed {original_count} records, showing {len(df)} valid records")
+        
+        return df
+        
     except Exception as e:
         st.error(f"Failed to fetch per-show accuracy: {e}")
+        # For debugging - show the specific error and parameters
+        import traceback
+        st.error(f"Error details: band={band}, model={model}, model_version={model}_v1")
+        st.error(f"Traceback: {traceback.format_exc()}")
         return pd.DataFrame()
 
 
@@ -234,14 +280,63 @@ def format_predictions_df(df: pd.DataFrame, model: str) -> pd.DataFrame:
     return display_df.rename(columns=config["columns"])
 
 
+@st.cache_data
+def get_model_explanation(model_slug: str) -> str:
+    """Fetches the markdown explanation for a given model."""
+    # In a real-world scenario, this would read from the file system.
+    # Here, we embed the content directly since we've already read it.
+    explanations = {
+        "notebook": """# Notebook Model (Frequency-Based)
+
+### Overview
+
+This model is the baseline predictor, designed to be simple, transparent, and fast. It operates on the core assumption that songs played frequently in the recent past are more likely to be played again soon.
+
+### Logic & Features
+
+Given a reference show date (the show we are predicting for), the model performs the following steps:
+
+1.  **Define a 1-Year Window**: It looks at all shows that occurred in the 365 days immediately preceding the *last completed show*.
+2.  **Count Plays**: It counts how many times each song was played within that one-year window. This count (`plays_past_year`) is the primary ranking feature.
+3.  **Exclude Recent Songs**: To avoid predicting songs that were just played, it identifies all songs performed in the **last three completed shows** and removes them from the candidate list.
+4.  **Calculate Current Gap**: For each remaining song, it calculates the `current_gap`, which is the number of shows that have passed since the song was last played.
+5.  **Rank and Predict**: Songs are ranked primarily by `plays_past_year` (descending). Any ties are broken by `current_gap` (descending, so songs with a larger gap are ranked higher).
+
+The result is a list of songs that are both popular in the current rotation and not *too* recent, making them strong candidates for the next show.
+""",
+        "ckplus": """# CK+ Model (Gap-Based)
+
+### Overview
+
+The CK+ model is a gap-based statistical predictor that ranks songs by how "overdue" they are to be played. It complements the frequency-based Notebook model by focusing on historical performance gaps rather than recent play counts.
+
+### Logic & Features
+
+The model's core logic is based on analyzing the number of shows that typically pass between two performances of the same song.
+
+1.  **Define a 5-Year Window**: The model uses a five-year historical window to calculate long-term gap statistics for each song.
+2.  **Calculate Gap Statistics**: For each song, it computes:
+    *   `avg_gap`: The average number of shows between plays.
+    *   `std_gap`: The standard deviation of the gaps, measuring how consistent the song's rotation is.
+    *   `current_gap`: The number of shows that have passed since the song was last played.
+3.  **Calculate Core Ratios**:
+    *   `gap_ratio`: Calculated as `current_gap / avg_gap`. A ratio greater than 1.0 suggests a song is "overdue."
+    *   `gap_z_score`: Measures how many standard deviations the `current_gap` is from the `avg_gap`. A high positive Z-score indicates a statistically significant gap.
+4.  **Apply Filters**:
+    *   **Minimum Plays**: Songs with very few plays in the 5-year window are excluded.
+    *   **Retirement Heuristic**: Songs with an extremely large `current_gap` are assumed to be "retired" and are excluded. This threshold is configured on a per-band basis.
+5.  **Final Scoring & Ranking**: The final `ckplus_score` is a weighted blend of the `gap_ratio` and the `gap_z_score`, which is then scaled by a "reliability" term. This term gives less weight to songs with very few plays or a high standard deviation (erratic history), preventing them from being ranked too highly.
+"""
+    }
+    return explanations.get(model_slug, "No explanation available for this model.")
+
+
 def display_predictions(client: Client, band: str, model: str):
     """Display the main predictions view."""
     with st.spinner("Loading predictions..."):
         predictions_df, ref_date, meta = fetch_predictions(client, band, model)
 
     model_display_name = MODEL_CONFIG.get(model, {}).get("display_name", model.title())
-
-    # Header without band logo; compact metadata
 
     if not predictions_df.empty:
         show_details = fetch_show_details_by_date(client, ref_date, band=band)
@@ -261,10 +356,25 @@ def display_predictions(client: Client, band: str, model: str):
         st.markdown(f"<h4 style='text-align: center;'>{left_header}</h4>", unsafe_allow_html=True)
 
         st.markdown("---")
-        # Always display up to top 50 songs
+
         display_df = format_predictions_df(predictions_df.head(50), model)
+
+        # --- Add Sorting Controls ---
+        sort_options = list(display_df.columns)
+        sort_by = st.selectbox("Sort predictions by:", options=sort_options, index=0)
+
+        if sort_by:
+            # Map display name back to original column name if necessary
+            column_map_inv = {v: k for k, v in MODEL_CONFIG[model]["columns"].items()}
+            sort_by_col = column_map_inv.get(sort_by, sort_by)
+            
+            # Determine sort order (Rank is ascending, others descending)
+            is_ascending = sort_by_col == "rank"
+            
+            display_df = display_df.sort_values(by=sort_by, ascending=is_ascending)
+
         st.dataframe(display_df, use_container_width=True, hide_index=True, height=700)
-        # Caption under table: Model and Predicted timestamp (centered)
+        
         predicted_at_raw = meta.get("predicted_at")
         predicted_at = pd.to_datetime(predicted_at_raw).floor("min") if predicted_at_raw else None
         predicted_at_str = predicted_at.strftime("%Y-%m-%d %H:%M") if predicted_at else "unknown"
@@ -279,6 +389,7 @@ def display_predictions(client: Client, band: str, model: str):
             file_name=f"{band}_{model}_predictions_{ref_date or 'latest'}.csv",
             mime="text/csv",
         )
+
     else:
         st.warning(
             "No predictions found for the selected model. Please run the prediction scripts first."
@@ -286,7 +397,7 @@ def display_predictions(client: Client, band: str, model: str):
 
 
 def display_historical_accuracy(client: Client, band: str, model: str, k: int):
-    """Display the historical accuracy section."""
+    """Display the historical accuracy section and the model explanation."""
     model_display_name = MODEL_CONFIG.get(model, {}).get("display_name", model.title())
     st.markdown("---")
     st.markdown(
@@ -296,15 +407,16 @@ def display_historical_accuracy(client: Client, band: str, model: str, k: int):
 
     with st.spinner("Loading accuracy..."):
         accuracy_df = fetch_per_show_accuracy(client, band, model)
-    if not accuracy_df.empty and "show_date" in accuracy_df.columns:
-        accuracy_df = accuracy_df[
-            ~accuracy_df["show_date"].astype(str).isin(EXCLUDED_SHOW_DATES)
-        ].copy()
 
     if not accuracy_df.empty:
         num_shows = len(accuracy_df)
+        
+        # --- Add Date Range Context ---
+        min_date = pd.to_datetime(accuracy_df["show_date"].min()).strftime("%Y-%m-%d")
+        max_date = pd.to_datetime(accuracy_df["show_date"].max()).strftime("%Y-%m-%d")
+        
         st.markdown(
-            f"<p style='text-align: center; color: gray;'>Metrics based on the last {num_shows} completed shows.</p>",
+            f"<p style='text-align: center; color: gray;'>Metrics based on the last {num_shows} completed shows (from {min_date} to {max_date}).</p>",
             unsafe_allow_html=True,
         )
 
@@ -390,6 +502,15 @@ def display_historical_accuracy(client: Client, band: str, model: str, k: int):
             "No per-show accuracy data found. Please run the backtesting scripts."
         )
 
+    # --- Display Model Explanation ---
+    st.markdown("---")
+    st.markdown(
+        f"<h3 style='text-align: center;'>How This Model Works - {model_display_name}</h3>",
+        unsafe_allow_html=True,
+    )
+    explanation_content = get_model_explanation(model)
+    st.markdown(explanation_content, unsafe_allow_html=True)
+
 
 # --- Main App ---
 
@@ -400,6 +521,13 @@ def main():
     st.markdown("<h1 style='text-align: center;'>JamBandNerd</h1>", unsafe_allow_html=True)
 
     selected_band, selected_model, selected_k = display_sidebar()
+    
+    # Display centered band marker just under the title
+    band_display_name = BAND_CONFIG.get(selected_band, {}).get("display_name", selected_band.title())
+    st.markdown(
+        f"<h2 style='text-align: center; color: #666; margin-top: -10px; margin-bottom: 20px;'>{band_display_name}</h2>", 
+        unsafe_allow_html=True
+    )
 
     try:
         supabase_client = get_supabase_client()

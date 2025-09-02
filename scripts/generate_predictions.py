@@ -103,9 +103,7 @@ def main() -> None:
         print(json.dumps(diagnostics, indent=2, cls=NpEncoder))
         print(f"{log_prefix} -------------------------")
     elif model == "ckplus":
-        # Band-specific model parameters
-        params = {"goose": 200, "phish": 500, "wsp": 150}
-        predictor = CKPlusPredictor(retired_gap_threshold=params.get(band, 250))
+        predictor = CKPlusPredictor(band=band)
         predictions = predictor.predict(model_data=model_data, top_k=50)
 
     if not predictions:
