@@ -147,7 +147,8 @@ def _normalize_setlists(raw: Iterable[Dict[str, Any]]) -> pd.DataFrame:
                 return False
         return bool(s)
 
-    now = datetime.now(timezone.utc).isoformat()
+    # Use a naive timestamp string compatible with Postgres timestamp without time zone
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     normalized_rows: List[Dict[str, Any]] = []
     for item in raw:
         if not item.get("uniqueid"):
@@ -170,7 +171,7 @@ def _normalize_setlists(raw: Iterable[Dict[str, Any]]) -> pd.DataFrame:
             "is_original": _to_bool(item.get("is_original")),
             "footnote": item.get("footnote"),
             "source_hash": _compute_source_hash(item),
-            "created_at": now, # Added this line
+            "created_at": now,
         }
         normalized_rows.append(row)
 

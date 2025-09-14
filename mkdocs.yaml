@@ -73,6 +73,7 @@ nav:
           - Pipeline Optimization: reference/guides/pipeline_optimization.md
           - Supabase API Guide: reference/guides/supabase_api_guide.md
           - Supabase Inserts: reference/guides/supabase_inserts.md
+          - Troubleshooting Data Quality: reference/guides/troubleshooting_data_quality.md
   - Archive:
       - Implementation Guide: archive/implementation_guide_v2.md
       - Project Planning:

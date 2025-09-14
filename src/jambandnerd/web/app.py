@@ -99,6 +99,38 @@ def fetch_predictions(
 
 
 @st.cache_data(ttl=60)
+def fetch_predictions_for_date(
+    _db_client: Client, band: str, model: str, reference_date: str
+) -> pd.DataFrame:
+    """Fetch predictions for a specific band/model/reference_date from unified table."""
+    try:
+        table_name = f"predictions_{model}"
+        query = (
+            _db_client.table(table_name)
+            .select("*")
+            .eq("band", band)
+            .eq("reference_date", reference_date)
+            .limit(1)
+        )
+        resp = query.execute()
+        if not resp.data:
+            return pd.DataFrame()
+        row = resp.data[0]
+        predictions_json = row.get("predictions")
+        if isinstance(predictions_json, str):
+            predictions_parsed = json.loads(predictions_json)
+        else:
+            predictions_parsed = predictions_json or []
+        df = pd.DataFrame(predictions_parsed)
+        # Normalize columns for consistent downstream use
+        if "last_played_date" in df.columns and "LTP" not in df.columns:
+            df.rename(columns={"last_played_date": "LTP"}, inplace=True)
+        return df
+    except Exception:
+        return pd.DataFrame()
+
+
+@st.cache_data(ttl=60)
 def fetch_per_show_accuracy(
     _db_client: Client, band: str, model: str, limit: int = 100
 ) -> pd.DataFrame:
@@ -161,6 +193,195 @@ def fetch_per_show_accuracy(
         st.error(f"Error details: band={band}, model={model}, model_version={model}_v1")
         st.error(f"Traceback: {traceback.format_exc()}")
         return pd.DataFrame()
+
+
+@st.cache_data(ttl=300)
+def fetch_last_show_setlist(
+    _db_client: Client, band: str
+) -> tuple[pd.DataFrame, dict | None]:
+    """Fetch the most recent completed show's setlist for the given band."""
+    if band not in BAND_CONFIG:
+        return pd.DataFrame(), None
+    
+    try:
+        # Get the most recent completed show with setlist data
+        setlist_table = f"{band}_setlists_raw"
+        shows_table = f"{band}_shows_raw"
+        
+        # Get the most recent show that has setlist data by joining shows and setlists
+        if band == "phish":
+            # For Phish, find the most recent show with setlists by intersecting recent shows with existing setlists
+            recent_shows_resp = (
+                _db_client.table(shows_table)
+                .select("api_show_id, show_date")
+                .order("show_date", desc=True)
+                .limit(50)
+                .execute()
+            )
+            if not recent_shows_resp.data:
+                return pd.DataFrame(), None
+            recent_shows = recent_shows_resp.data
+            recent_ids = [str(r.get("api_show_id")) for r in recent_shows if r.get("api_show_id") is not None]
+            if not recent_ids:
+                return pd.DataFrame(), None
+            setlist_ids_resp = (
+                _db_client.table(setlist_table)
+                .select("api_show_id")
+                .in_("api_show_id", recent_ids)
+                .execute()
+            )
+            setlist_ids = {str(r.get("api_show_id")) for r in (setlist_ids_resp.data or []) if r.get("api_show_id") is not None}
+            candidates = [r for r in recent_shows if str(r.get("api_show_id")) in setlist_ids]
+            if not candidates:
+                return pd.DataFrame(), None
+            candidates_sorted = sorted(candidates, key=lambda x: str(x.get("show_date", "")), reverse=True)
+            most_recent_show_id = str(candidates_sorted[0].get("api_show_id"))
+            most_recent_show_date = candidates_sorted[0].get("show_date")
+            if not most_recent_show_id:
+                return pd.DataFrame(), None
+        elif band == "goose":
+            # For Goose, intersect recent shows with setlists on show_id
+            recent_shows_resp = (
+                _db_client.table(shows_table)
+                .select("show_id, show_date")
+                .order("show_date", desc=True)
+                .limit(50)
+                .execute()
+            )
+            if not recent_shows_resp.data:
+                return pd.DataFrame(), None
+            recent_shows = recent_shows_resp.data
+            recent_ids = [str(r.get("show_id")) for r in recent_shows if r.get("show_id") is not None]
+            if not recent_ids:
+                return pd.DataFrame(), None
+            setlist_ids_resp = (
+                _db_client.table(setlist_table)
+                .select("show_id")
+                .in_("show_id", recent_ids)
+                .execute()
+            )
+            setlist_ids = {str(r.get("show_id")) for r in (setlist_ids_resp.data or []) if r.get("show_id") is not None}
+            # Choose candidate with max show_date among those having setlists
+            candidates = [r for r in recent_shows if str(r.get("show_id")) in setlist_ids]
+            if not candidates:
+                return pd.DataFrame(), None
+            # Sort by show_date desc reliably
+            candidates_sorted = sorted(candidates, key=lambda x: str(x.get("show_date", "")), reverse=True)
+            most_recent_show_id = str(candidates_sorted[0].get("show_id"))
+            most_recent_show_date = candidates_sorted[0].get("show_date")
+            if not most_recent_show_id:
+                return pd.DataFrame(), None
+        else:
+            # For WSP, intersect recent shows with setlists on show_id
+            recent_shows_resp = (
+                _db_client.table(shows_table)
+                .select("show_id, show_date")
+                .order("show_date", desc=True)
+                .limit(50)
+                .execute()
+            )
+            if not recent_shows_resp.data:
+                return pd.DataFrame(), None
+            recent_shows = recent_shows_resp.data
+            recent_ids = [str(r.get("show_id")) for r in recent_shows if r.get("show_id") is not None]
+            if not recent_ids:
+                return pd.DataFrame(), None
+            setlist_ids_resp = (
+                _db_client.table(setlist_table)
+                .select("show_id")
+                .in_("show_id", recent_ids)
+                .execute()
+            )
+            setlist_ids = {str(r.get("show_id")) for r in (setlist_ids_resp.data or []) if r.get("show_id") is not None}
+            candidates = [r for r in recent_shows if str(r.get("show_id")) in setlist_ids]
+            if not candidates:
+                return pd.DataFrame(), None
+            candidates_sorted = sorted(candidates, key=lambda x: str(x.get("show_date", "")), reverse=True)
+            most_recent_show_id = str(candidates_sorted[0].get("show_id"))
+            most_recent_show_date = candidates_sorted[0].get("show_date")
+            if not most_recent_show_id:
+                return pd.DataFrame(), None
+        
+        # Get full setlist for this show
+        if band == "goose":
+            # Goose normalized schema: set_number, song_position, song_name
+            setlist_data = (
+                _db_client.table(setlist_table)
+                .select("set_number, song_position, song_name")
+                .eq("show_id", most_recent_show_id)
+                .order("set_number")
+                .order("song_position")
+                .execute()
+            )
+            setlist_df = pd.DataFrame(setlist_data.data)
+        elif band == "phish":
+            # Phish normalized schema: set_number, position, song_name; join on api_show_id
+            setlist_data = (
+                _db_client.table(setlist_table)
+                .select("set_number, position, song_name")
+                .eq("api_show_id", most_recent_show_id)
+                .order("set_number")
+                .order("position")
+                .execute()
+            )
+            setlist_df = pd.DataFrame(setlist_data.data)
+            if not setlist_df.empty:
+                # Align column names with display expectations; coerce set_number safely
+                setlist_df = setlist_df.rename(columns={"position": "song_position"})
+                # Convert any string 'E' encodes to 99 for consistency
+                def _coerce_setnum(v):
+                    if v is None or (isinstance(v, float) and pd.isna(v)):
+                        return v
+                    s = str(v).strip().upper()
+                    if s in {"E", "ENCORE"}:
+                        return 99
+                    try:
+                        return int(float(s))
+                    except Exception:
+                        return v
+                setlist_df['set_number'] = setlist_df['set_number'].apply(_coerce_setnum)
+        elif band == "wsp":
+            # WSP schema: set_number, song_position, song_name
+            setlist_data = (
+                _db_client.table(setlist_table)
+                .select("set_number, song_position, song_name")
+                .eq("show_id", most_recent_show_id)
+                .order("set_number")
+                .order("song_position")
+                .execute()
+            )
+            setlist_df = pd.DataFrame(setlist_data.data)
+        else:
+            return pd.DataFrame(), None
+            
+        # Get show details
+        show_details = None
+        if band == "phish":
+            show_query = (
+                _db_client.table(shows_table)
+                .select("*")
+                .eq("api_show_id", most_recent_show_id)
+                .limit(1)
+                .execute()
+            )
+        else:
+            # Both Goose and WSP use show_id
+            show_query = (
+                _db_client.table(shows_table)
+                .select("*")
+                .eq("show_id", most_recent_show_id)
+                .limit(1)
+                .execute()
+            )
+        
+        if show_query.data:
+            show_details = show_query.data[0]
+            
+        return setlist_df, show_details
+        
+    except Exception as e:
+        st.error(f"Failed to fetch last show setlist: {e}")
+        return pd.DataFrame(), None
 
 
 @st.cache_data(ttl=300)
@@ -378,6 +599,169 @@ The model's core logic is based on analyzing the number of shows that typically 
     return explanations.get(model_slug, "No explanation available for this model.")
 
 
+def display_last_show_setlist(client: Client, band: str, model: str):
+    """Display the last show's setlist with prediction highlights."""
+    with st.spinner("Loading last show setlist..."):
+        setlist_df, show_details = fetch_last_show_setlist(client, band)
+    
+    if setlist_df.empty or show_details is None:
+        st.warning("No recent setlist data available.")
+        return
+    
+    # Extract show information
+    if band == "phish":
+        show_date_key = "show_date"
+    elif band == "goose":
+        show_date_key = "show_date"  # Goose shows table uses show_date (normalized from showdate)
+    else:  # WSP
+        show_date_key = "show_date"
+    
+    show_date = show_details.get(show_date_key)
+    
+    if show_date:
+        formatted_date = pd.to_datetime(show_date).strftime("%m/%d/%Y")
+    else:
+        formatted_date = "Unknown Date"
+    
+    # Get venue information
+    # Prefer normalized venue_name; fall back to legacy keys if present
+    venue = show_details.get("venue_name") or show_details.get("venue") or show_details.get("venuename")
+    if not venue:
+        venue = "Unknown Venue"
+    city = show_details.get("venue_city") or show_details.get("city") or ""
+    state = show_details.get("venue_state") or show_details.get("state") or ""
+    
+    venue_info = venue
+    if city and state:
+        venue_info += f" • {city}, {state}"
+    
+    st.markdown(f"<h4 style='text-align: center;'>Last Show: {formatted_date} — {venue_info}</h4>", unsafe_allow_html=True)
+    
+    # Retrieve predictions for this specific show_date if available
+    predictions_df_for_show = pd.DataFrame()
+    if show_date:
+        predictions_df_for_show = fetch_predictions_for_date(client, band, model, str(pd.to_datetime(show_date).date()))
+    
+    # Fallback to latest predictions if historical not available
+    if predictions_df_for_show.empty:
+        latest_df, _, _ = fetch_predictions(client, band, model)
+        predictions_df_for_show = latest_df
+    
+    # Create prediction lookup for highlighting
+    prediction_ranks: dict[str, int] = {}
+    if not predictions_df_for_show.empty and 'song_name' in predictions_df_for_show.columns:
+        # Prefer explicit 'rank' if present; else use row order
+        use_rank_col = 'rank' in predictions_df_for_show.columns
+        for idx, row in predictions_df_for_show.iterrows():
+            song_name = str(row['song_name'])
+            rank = int(row['rank']) if use_rank_col and pd.notna(row['rank']) else (idx + 1)
+            prediction_ranks[song_name] = rank
+    
+    # Group songs by set (handle missing set numbers)
+    if 'set_number' not in setlist_df.columns:
+        st.warning("Setlist missing 'set_number' column.")
+        return
+    
+    # For Phish, fill missing set numbers (encores) as 99 for consistent grouping
+    if band == "phish":
+        setlist_df['set_number'] = setlist_df['set_number'].apply(lambda v: 99 if (v is None or (isinstance(v, float) and pd.isna(v)) or (pd.isna(v))) else v)
+    
+    sets = setlist_df.groupby('set_number', dropna=True)
+    
+    # Create columns for sets with robust sorting across mixed types
+    def _set_order_key(v: Any) -> int:
+        s = str(v).strip().upper()
+        if s in {"E", "ENCORE", "99"}:
+            return 99
+        if s in {"0", "SOUNDCHECK"}:
+            return 0
+        try:
+            return int(float(s))
+        except Exception:
+            return 50
+    
+    set_numbers_raw = [k for k in sets.groups.keys()]
+    set_numbers = sorted(set_numbers_raw, key=_set_order_key)
+    
+    # Handle different numbers of sets dynamically
+    if len(set_numbers) == 1:
+        cols = [st.container()]
+    elif len(set_numbers) == 2:
+        cols = st.columns(2)
+    elif len(set_numbers) == 3:
+        cols = st.columns(3)
+    else:
+        # For 4+ sets, use 2 columns and stack sets
+        cols = st.columns(2)
+    
+    for i, set_num in enumerate(set_numbers):
+        col_idx = i if len(set_numbers) <= 3 else i % 2
+        col = cols[col_idx]
+        
+        # Defensive: some schemas use 'position' vs 'song_position'
+        set_data = sets.get_group(set_num)
+        if 'song_position' in set_data.columns:
+            set_data = set_data.sort_values('song_position')
+        elif 'position' in set_data.columns:
+            set_data = set_data.sort_values('position')
+        
+        # Format set header
+        set_num_str = str(set_num).upper()
+        if set_num_str in {'E', 'ENCORE'} or set_num in (99, '99'):
+            set_header = "**Encore**"
+        elif set_num_str == '0' or set_num in (0, '0'):
+            set_header = "**Soundcheck**"
+        else:
+            set_header = f"**Set {set_num}**"
+        
+        col.markdown(set_header)
+        
+        # Display songs with highlights
+        song_list = []
+        for _, song_row in set_data.iterrows():
+            song_name = song_row['song_name']
+            
+            # Check if song was predicted
+            if song_name in prediction_ranks:
+                rank = prediction_ranks[song_name]
+                if rank <= 15:
+                    # Top 15: Gold background
+                    song_display = f'<span style="background-color: #FFD700; padding: 2px 4px; border-radius: 3px; color: black;"><strong>{song_name}</strong> (#{rank})</span>'
+                elif rank <= 25:
+                    # Top 25: Silver background
+                    song_display = f'<span style="background-color: #C0C0C0; padding: 2px 4px; border-radius: 3px; color: black;"><strong>{song_name}</strong> (#{rank})</span>'
+                elif rank <= 50:
+                    # Top 50: Bronze background
+                    song_display = f'<span style="background-color: #CD7F32; padding: 2px 4px; border-radius: 3px; color: white;">{song_name} (#{rank})</span>'
+                else:
+                    song_display = song_name
+            else:
+                song_display = song_name
+                
+            song_list.append(song_display)
+        
+        # Display songs in the set
+        songs_html = "<br>".join(song_list)
+        col.markdown(songs_html, unsafe_allow_html=True)
+        
+        if i < len(set_numbers) - 1:  # Don't add space after last set
+            col.markdown("")
+    
+    # Add legend
+    st.markdown("---")
+    legend_cols = st.columns(4)
+    with legend_cols[0]:
+        st.markdown('<span style="background-color: #FFD700; padding: 2px 6px; border-radius: 3px; color: black;"><strong>Top 15</strong></span>', unsafe_allow_html=True)
+    with legend_cols[1]:
+        st.markdown('<span style="background-color: #C0C0C0; padding: 2px 6px; border-radius: 3px; color: black;"><strong>Top 25</strong></span>', unsafe_allow_html=True)
+    with legend_cols[2]:
+        st.markdown('<span style="background-color: #CD7F32; padding: 2px 6px; border-radius: 3px; color: white;">Top 50</span>', unsafe_allow_html=True)
+    with legend_cols[3]:
+        total_predicted = len([s for s in setlist_df['song_name'] if s in prediction_ranks])
+        total_songs = len(setlist_df)
+        st.markdown(f"**{total_predicted}/{total_songs} songs predicted**")
+
+
 def display_predictions(client: Client, band: str, model: str):
     """Display the main predictions view."""
     with st.spinner("Loading predictions..."):
@@ -406,20 +790,6 @@ def display_predictions(client: Client, band: str, model: str):
 
         display_df = format_predictions_df(predictions_df.head(50), model)
 
-        # --- Add Sorting Controls ---
-        sort_options = list(display_df.columns)
-        sort_by = st.selectbox("Sort predictions by:", options=sort_options, index=0)
-
-        if sort_by:
-            # Map display name back to original column name if necessary
-            column_map_inv = {v: k for k, v in MODEL_CONFIG[model]["columns"].items()}
-            sort_by_col = column_map_inv.get(sort_by, sort_by)
-            
-            # Determine sort order (Rank is ascending, others descending)
-            is_ascending = sort_by_col == "rank"
-            
-            display_df = display_df.sort_values(by=sort_by, ascending=is_ascending)
-
         st.dataframe(display_df, use_container_width=True, hide_index=True, height=700)
         
         predicted_at_raw = meta.get("predicted_at")
@@ -436,6 +806,14 @@ def display_predictions(client: Client, band: str, model: str):
             file_name=f"{band}_{model}_predictions_{ref_date or 'latest'}.csv",
             mime="text/csv",
         )
+        
+        # Display last show setlist with prediction highlights
+        st.markdown("---")
+        st.markdown(
+            "<h3 style='text-align: center;'>Last Show Setlist</h3>",
+            unsafe_allow_html=True,
+        )
+        display_last_show_setlist(client, band, model)
 
     else:
         st.warning(
