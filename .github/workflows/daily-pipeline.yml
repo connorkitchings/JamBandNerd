@@ -163,33 +163,16 @@ jobs:
           python scripts/generate_predictions.py --band ${{ matrix.band }} --model ckplus
           
           # Also generate for the most recent completed show to power setlist highlighting
-          python -c "import os,sys,pandas as pd; sys.path.insert(0, 'src'); from jambandnerd.db.connection import get_supabase_client
-from datetime import date
-band='${{ matrix.band }}'
-client=get_supabase_client()
-shows_tbl=f'{band}_shows_raw'
-sets_tbl=f'{band}_setlists_raw'
-# Pull shows and setlists
-shows=pd.DataFrame((client.table(shows_tbl).select('*').execute()).data)
-sets=pd.DataFrame((client.table(sets_tbl).select('*').execute()).data)
-if not shows.empty and not sets.empty:
-    # Normalize expected columns
-    if 'api_show_id' in shows.columns and 'show_id' not in shows.columns:
-        shows['show_id']=shows['api_show_id'].astype(str)
-    if 'showdate' in shows.columns and 'show_date' not in shows.columns:
-        shows['show_date']=shows['showdate']
-    if 'api_show_id' in sets.columns and 'show_id' not in sets.columns:
-        sets['show_id']=sets['api_show_id'].astype(str)
-    # Identify completed shows
-    completed_ids=sets['show_id'].dropna().astype(str).unique().tolist()
-    comp=shows[shows['show_id'].astype(str).isin(completed_ids)].copy()
-    if not comp.empty and 'show_date' in comp.columns:
-        comp['show_date']=pd.to_datetime(comp['show_date'], errors='coerce')
-        comp=comp.dropna(subset=['show_date']).sort_values(['show_date','show_id'])
-        last_date=str(comp['show_date'].max().date())
-        os.system(f\"python scripts/generate_predictions.py --band {band} --model notebook --date {last_date}\")
-        os.system(f\"python scripts/generate_predictions.py --band {band} --model ckplus --date {last_date}\")
-print('Done')"
+          echo "Finding last completed show date..."
+          LAST_COMPLETED_DATE=$(python scripts/get_last_completed_show_date.py --band ${{ matrix.band }})
+          
+          if [[ -n "$LAST_COMPLETED_DATE" ]]; then
+            echo "Last completed show date is $LAST_COMPLETED_DATE. Generating predictions for this date."
+            python scripts/generate_predictions.py --band ${{ matrix.band }} --model notebook --date $LAST_COMPLETED_DATE
+            python scripts/generate_predictions.py --band ${{ matrix.band }} --model ckplus --date $LAST_COMPLETED_DATE
+          else
+            echo "Could not determine last completed show date. Skipping predictions for it."
+          fi
           echo "::endgroup::"
 
       - name: Run Backtest and Calculate Aggregate Accuracy
