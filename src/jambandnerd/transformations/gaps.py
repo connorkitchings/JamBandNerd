@@ -15,7 +15,8 @@ import pandas as pd
 
 def _stats_for_song(group: pd.DataFrame) -> pd.Series:
     """Helper function to calculate historical stats for a single song."""
-    plays_idx = sorted(group["show_index"].tolist())
+    # Use unique show indices to avoid counting reprises/encores as separate plays
+    plays_idx = sorted(group["show_index"].unique().tolist())
     gaps = [plays_idx[i] - plays_idx[i - 1] for i in range(1, len(plays_idx))]
     return pd.Series({
         "times_played": len(plays_idx),

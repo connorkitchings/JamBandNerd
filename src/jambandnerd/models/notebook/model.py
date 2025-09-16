@@ -40,8 +40,10 @@ class NotebookPredictor(PredictionModel):
         window_start = last_completed_show_date - timedelta(days=365)
 
         # 2. Calculate correct plays_past_year using the historical plays
+        # Count unique shows per song to avoid counting reprises/encores as separate plays
         plays_in_window = plays[plays["show_date"] >= window_start]
-        plays_past_year_count = plays_in_window.groupby("song_name")["song_name"].count().rename("plays_past_year")
+        # Use nunique on show_index (or show_id) to count distinct shows where the song was played
+        plays_past_year_count = plays_in_window.groupby("song_name")["show_index"].nunique().rename("plays_past_year")
 
         # 3. Filter candidates to songs played in the window
         song_candidates = features.merge(plays_past_year_count, on="song_name", how="inner").copy()
