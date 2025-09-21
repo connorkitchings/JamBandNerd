@@ -72,6 +72,12 @@ def main() -> None:
         "--date",
         help="Reference date in YYYY-MM-DD format. Defaults to next upcoming show.",
     )
+    parser.add_argument(
+        "--exclusion-window",
+        type=int,
+        default=3,
+        help="Number of recent shows to exclude songs from (default: 3).",
+    )
     args = parser.parse_args()
 
     band = args.band.lower()
@@ -91,7 +97,9 @@ def main() -> None:
     reference_date = resolve_reference_date(args.date, shows_df)
     print(f"{log_prefix} Generating predictions for reference date: {reference_date.isoformat()}")
 
-    model_data = generate_model_data(shows_df, setlists_df, reference_date)
+    model_data = generate_model_data(
+        shows_df, setlists_df, reference_date, exclusion_window=args.exclusion_window
+    )
 
     # 2. Select and run model
     predictions: List[Any] = []
@@ -101,6 +109,7 @@ def main() -> None:
         predictions = preds
         print(f"{log_prefix} --- Model Diagnostics ---")
         print(json.dumps(diagnostics, indent=2, cls=NpEncoder))
+        print(f"{log_prefix} Recently played songs (excluded): {model_data.recently_played_songs}")
         print(f"{log_prefix} -------------------------")
     elif model == "ckplus":
         predictor = CKPlusPredictor(band=band)

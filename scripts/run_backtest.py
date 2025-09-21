@@ -65,6 +65,12 @@ def main() -> None:
         type=int,
         help="Limit to the last N completed shows (overrides start/end).",
     )
+    parser.add_argument(
+        "--exclusion-window",
+        type=int,
+        default=3,
+        help="Number of recent shows to exclude songs from (default: 3).",
+    )
     args = parser.parse_args()
 
     band = args.band.lower()
@@ -152,7 +158,9 @@ def main() -> None:
             # Use the day before the show for more realistic backtesting
             # This prevents data leakage from the actual show date
             prediction_date = ref_date - timedelta(days=1) if isinstance(ref_date, date) else ref_date
-            model_data = generate_model_data(shows_df, sets_df, prediction_date)
+            model_data = generate_model_data(
+                shows_df, sets_df, prediction_date, exclusion_window=args.exclusion_window
+            )
             
             if model == "notebook":
                 preds, _ = predictor.predict(model_data=model_data, top_k=50)

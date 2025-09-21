@@ -102,3 +102,14 @@ This parameter in the `CKPlusPredictor` class controls the weighting between the
 This parameter in the `CKPlusPredictor` class sets the minimum number of times a song must have been played in the five-year window to be considered for prediction.
 
 - **Why Tune It?** This prevents songs with very little historical data (and therefore unreliable gap statistics) from appearing in the predictions. The default is `5`.
+
+### Notebook Model Parameters
+
+The Notebook model has one key configurable parameter.
+
+#### 1. Exclusion Window
+
+This parameter, set via the `--exclusion-window` argument in the `generate_predictions.py` and `run_backtest.py` scripts, defines how many recent shows to look back when excluding songs from predictions.
+
+- **Why Tune It?** Some bands rarely repeat songs within a short window, while others might. Adjusting this value allows you to fine-tune the model's recency filter. For example, setting it to `1` would only exclude songs from the very last show, while setting it to `5` would create a more aggressive filter.
+- **Default**: `3`

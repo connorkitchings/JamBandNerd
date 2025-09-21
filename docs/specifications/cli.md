@@ -30,6 +30,7 @@ Generates and saves predictions for a given band and model.
 - `--band {goose,phish,wsp}`: (Required) The band to process.
 - `--model {notebook,ckplus}`: (Required) The model to use.
 - `--date {YYYY-MM-DD}`: (Optional) The reference date for predictions. Defaults to the next upcoming show.
+- `--exclusion-window {N}`: (Optional) For the Notebook model, the number of recent shows to exclude songs from. Defaults to 3.
 
 ### `run_backtest.py`
 
@@ -39,6 +40,7 @@ Runs a historical backtest, calculating and saving per-show accuracy metrics to 
 - `--model {notebook,ckplus}`: (Required) The model to backtest.
 - `--shows {N}`: (Optional) Backtest the last N completed shows.
 - `--start {YYYY-MM-DD}` / `--end {YYYY-MM-DD}`: (Optional) Define a specific date range for the backtest.
+- `--exclusion-window {N}`: (Optional) For the Notebook model, the number of recent shows to exclude songs from. Defaults to 3.
 
 ### `save_aggregate_accuracy.py`
 

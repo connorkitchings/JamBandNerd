@@ -240,10 +240,10 @@ def fetch_last_show_setlist(
             if not most_recent_show_id:
                 return pd.DataFrame(), None
         elif band == "goose":
-            # For Goose, intersect recent shows with setlists on show_id
+            # For Goose, intersect recent shows with setlists on api_show_id
             recent_shows_resp = (
                 _db_client.table(shows_table)
-                .select("show_id, show_date")
+                .select("show_id, api_show_id, show_date")
                 .order("show_date", desc=True)
                 .limit(50)
                 .execute()
@@ -251,24 +251,21 @@ def fetch_last_show_setlist(
             if not recent_shows_resp.data:
                 return pd.DataFrame(), None
             recent_shows = recent_shows_resp.data
-            recent_ids = [str(r.get("show_id")) for r in recent_shows if r.get("show_id") is not None]
+            recent_ids = [str(r.get("api_show_id")) for r in recent_shows if r.get("api_show_id") is not None]
             if not recent_ids:
                 return pd.DataFrame(), None
             setlist_ids_resp = (
                 _db_client.table(setlist_table)
-                .select("show_id")
-                .in_("show_id", recent_ids)
+                .select("api_show_id")
+                .in_("api_show_id", recent_ids)
                 .execute()
             )
-            setlist_ids = {str(r.get("show_id")) for r in (setlist_ids_resp.data or []) if r.get("show_id") is not None}
-            # Choose candidate with max show_date among those having setlists
-            candidates = [r for r in recent_shows if str(r.get("show_id")) in setlist_ids]
+            setlist_ids = {str(r.get("api_show_id")) for r in (setlist_ids_resp.data or []) if r.get("api_show_id") is not None}
+            candidates = [r for r in recent_shows if str(r.get("api_show_id")) in setlist_ids]
             if not candidates:
                 return pd.DataFrame(), None
-            # Sort by show_date desc reliably
             candidates_sorted = sorted(candidates, key=lambda x: str(x.get("show_date", "")), reverse=True)
-            most_recent_show_id = str(candidates_sorted[0].get("show_id"))
-            most_recent_show_date = candidates_sorted[0].get("show_date")
+            most_recent_show_id = str(candidates_sorted[0].get("api_show_id"))
             if not most_recent_show_id:
                 return pd.DataFrame(), None
         else:
@@ -308,7 +305,7 @@ def fetch_last_show_setlist(
             setlist_data = (
                 _db_client.table(setlist_table)
                 .select("set_number, song_position, song_name")
-                .eq("show_id", most_recent_show_id)
+                .eq("api_show_id", most_recent_show_id)
                 .order("set_number")
                 .order("song_position")
                 .execute()
@@ -357,6 +354,14 @@ def fetch_last_show_setlist(
         # Get show details
         show_details = None
         if band == "phish":
+            show_query = (
+                _db_client.table(shows_table)
+                .select("*")
+                .eq("api_show_id", most_recent_show_id)
+                .limit(1)
+                .execute()
+            )
+        elif band == "goose":
             show_query = (
                 _db_client.table(shows_table)
                 .select("*")
@@ -724,15 +729,15 @@ def display_last_show_setlist(client: Client, band: str, model: str):
             # Check if song was predicted
             if song_name in prediction_ranks:
                 rank = prediction_ranks[song_name]
-                if rank <= 15:
-                    # Top 15: Gold background
-                    song_display = f'<span style="background-color: #FFD700; padding: 2px 4px; border-radius: 3px; color: black;"><strong>{song_name}</strong> (#{rank})</span>'
+                if rank <= 10:
+                    # Top 10: Green background
+                    song_display = f'<span style="background-color: #4CAF50; padding: 2px 4px; border-radius: 3px; color: white;"><strong>{song_name}</strong> (#{rank})</span>'
                 elif rank <= 25:
-                    # Top 25: Silver background
-                    song_display = f'<span style="background-color: #C0C0C0; padding: 2px 4px; border-radius: 3px; color: black;"><strong>{song_name}</strong> (#{rank})</span>'
+                    # Top 25: Gold background
+                    song_display = f'<span style="background-color: #FFD700; padding: 2px 4px; border-radius: 3px; color: black;"><strong>{song_name}</strong> (#{rank})</span>'
                 elif rank <= 50:
-                    # Top 50: Bronze background
-                    song_display = f'<span style="background-color: #CD7F32; padding: 2px 4px; border-radius: 3px; color: white;">{song_name} (#{rank})</span>'
+                    # Top 50: Light Grey background
+                    song_display = f'<span style="background-color: #D3D3D3; padding: 2px 4px; border-radius: 3px; color: black;">{song_name} (#{rank})</span>'
                 else:
                     song_display = song_name
             else:
@@ -751,11 +756,11 @@ def display_last_show_setlist(client: Client, band: str, model: str):
     st.markdown("---")
     legend_cols = st.columns(4)
     with legend_cols[0]:
-        st.markdown('<span style="background-color: #FFD700; padding: 2px 6px; border-radius: 3px; color: black;"><strong>Top 15</strong></span>', unsafe_allow_html=True)
+        st.markdown('<span style="background-color: #4CAF50; padding: 2px 6px; border-radius: 3px; color: white;"><strong>Top 10</strong></span>', unsafe_allow_html=True)
     with legend_cols[1]:
-        st.markdown('<span style="background-color: #C0C0C0; padding: 2px 6px; border-radius: 3px; color: black;"><strong>Top 25</strong></span>', unsafe_allow_html=True)
+        st.markdown('<span style="background-color: #FFD700; padding: 2px 6px; border-radius: 3px; color: black;"><strong>Top 25</strong></span>', unsafe_allow_html=True)
     with legend_cols[2]:
-        st.markdown('<span style="background-color: #CD7F32; padding: 2px 6px; border-radius: 3px; color: white;">Top 50</span>', unsafe_allow_html=True)
+        st.markdown('<span style="background-color: #D3D3D3; padding: 2px 6px; border-radius: 3px; color: black;">Top 50</span>', unsafe_allow_html=True)
     with legend_cols[3]:
         total_predicted = len([s for s in setlist_df['song_name'] if s in prediction_ranks])
         total_songs = len(setlist_df)

@@ -66,7 +66,8 @@ def _compute_base_features(
     shows_df: pd.DataFrame,
     setlists_df: pd.DataFrame,
     reference_date: date,
-    debug: bool = False
+    debug: bool = False,
+    exclusion_window: int = 3,
 ) -> Tuple[pd.DataFrame, pd.DataFrame, int, List[str]]:
     """
     First-pass feature engineering.
@@ -79,7 +80,7 @@ def _compute_base_features(
 
     # 1. Set absolute cutoff date
     shows = shows_df.copy()
-    shows["show_date"] = shows["show_date"].apply(_parse_iso_date)
+    shows["show_date"] = pd.to_datetime(shows["show_date"], errors='coerce').dt.date
     historical_shows = shows[shows["show_date"] < reference_date].copy()
     if debug:
         print(f"Shape after filtering for historical shows: {historical_shows.shape}")
@@ -130,8 +131,11 @@ def _compute_base_features(
         print(f"Shape of master_feature_set: {song_features.shape}")
 
     # 5. Identify recently played songs
-    last_3_indices = range(max(1, last_historical_index - 2), last_historical_index + 1)
-    recent_plays_mask = plays["show_index"].isin(last_3_indices)
+    last_n_indices = range(
+        max(1, last_historical_index - (exclusion_window - 1)),
+        last_historical_index + 1,
+    )
+    recent_plays_mask = plays["show_index"].isin(last_n_indices)
     recently_played = sorted(set(plays.loc[recent_plays_mask, "song_name"].tolist()))
     if debug:
         print("--- End Debugging ---\n")
@@ -143,8 +147,10 @@ def generate_model_data(
     shows_df: pd.DataFrame,
     setlists_df: pd.DataFrame,
     reference_date: date,
-    debug: bool = False
+    debug: bool = False,
+    exclusion_window: int = 3,
 ) -> ModelData:
+
     """
     Orchestrates the full feature generation pipeline.
     """
@@ -159,7 +165,7 @@ def generate_model_data(
         setlists_df["song_name"] = setlists_df["song"]
 
     historical_plays, master_features, ref_index, recent_songs = _compute_base_features(
-        shows_df, setlists_df, reference_date, debug
+        shows_df, setlists_df, reference_date, debug, exclusion_window
     )
 
     diagnostics = {

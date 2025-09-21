@@ -46,7 +46,7 @@ Given a reference show date:
 1. Determine the last completed show (by setlists strictly before reference).
 2. Define last‑year window as [last_completed_date − 365 days, last_completed_date].
 3. Restrict plays to that window (hard rule: only last‑year plays count).
-4. Exclude songs played in the last 3 completed shows (immediately before reference).
+4. Exclude songs played in the last N completed shows (default is 3, but this window is configurable when running the prediction scripts).
 5. Compute for each song in window:
    - plays_past_year: count of plays in the window
    - last_played_show_index: index of most recent play in the window
