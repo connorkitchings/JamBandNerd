@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import date
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import altair as alt
@@ -209,65 +210,44 @@ def fetch_last_show_setlist(
         shows_table = f"{band}_shows_raw"
         
         # Get the most recent show that has setlist data by joining shows and setlists
-        if band == "phish":
-            # For Phish, find the most recent show with setlists by intersecting recent shows with existing setlists
-            recent_shows_resp = (
-                _db_client.table(shows_table)
-                .select("api_show_id, show_date")
-                .order("show_date", desc=True)
-                .limit(50)
-                .execute()
-            )
-            if not recent_shows_resp.data:
-                return pd.DataFrame(), None
-            recent_shows = recent_shows_resp.data
-            recent_ids = [str(r.get("api_show_id")) for r in recent_shows if r.get("api_show_id") is not None]
-            if not recent_ids:
-                return pd.DataFrame(), None
-            setlist_ids_resp = (
-                _db_client.table(setlist_table)
-                .select("api_show_id")
-                .in_("api_show_id", recent_ids)
-                .execute()
-            )
-            setlist_ids = {str(r.get("api_show_id")) for r in (setlist_ids_resp.data or []) if r.get("api_show_id") is not None}
-            candidates = [r for r in recent_shows if str(r.get("api_show_id")) in setlist_ids]
-            if not candidates:
-                return pd.DataFrame(), None
-            candidates_sorted = sorted(candidates, key=lambda x: str(x.get("show_date", "")), reverse=True)
-            most_recent_show_id = str(candidates_sorted[0].get("api_show_id"))
-            most_recent_show_date = candidates_sorted[0].get("show_date")
-            if not most_recent_show_id:
-                return pd.DataFrame(), None
-        elif band == "goose":
-            # For Goose, intersect recent shows with setlists on api_show_id
-            recent_shows_resp = (
-                _db_client.table(shows_table)
-                .select("show_id, api_show_id, show_date")
-                .order("show_date", desc=True)
-                .limit(50)
-                .execute()
-            )
-            if not recent_shows_resp.data:
-                return pd.DataFrame(), None
-            recent_shows = recent_shows_resp.data
-            recent_ids = [str(r.get("api_show_id")) for r in recent_shows if r.get("api_show_id") is not None]
-            if not recent_ids:
-                return pd.DataFrame(), None
-            setlist_ids_resp = (
-                _db_client.table(setlist_table)
-                .select("api_show_id")
-                .in_("api_show_id", recent_ids)
-                .execute()
-            )
-            setlist_ids = {str(r.get("api_show_id")) for r in (setlist_ids_resp.data or []) if r.get("api_show_id") is not None}
-            candidates = [r for r in recent_shows if str(r.get("api_show_id")) in setlist_ids]
-            if not candidates:
-                return pd.DataFrame(), None
-            candidates_sorted = sorted(candidates, key=lambda x: str(x.get("show_date", "")), reverse=True)
-            most_recent_show_id = str(candidates_sorted[0].get("api_show_id"))
-            if not most_recent_show_id:
-                return pd.DataFrame(), None
+        id_col = "api_show_id" if band == "phish" else "show_id"
+        
+        # Get the most recent show that has setlist data by joining shows and setlists
+        today_iso = date.today().isoformat()
+        recent_shows_resp = (
+            _db_client.table(shows_table)
+            .select(f"{id_col}, show_date")
+            .lt("show_date", today_iso)
+            .order("show_date", desc=True)
+            .limit(50)
+            .execute()
+        )
+        if not recent_shows_resp.data:
+            return pd.DataFrame(), None
+        
+        recent_shows = recent_shows_resp.data
+        recent_ids = [str(r.get(id_col)) for r in recent_shows if r.get(id_col) is not None]
+        if not recent_ids:
+            return pd.DataFrame(), None
+            
+        setlist_ids_resp = (
+            _db_client.table(setlist_table)
+            .select(id_col)
+            .in_(id_col, recent_ids)
+            .execute()
+        )
+        setlist_ids = {str(r.get(id_col)) for r in (setlist_ids_resp.data or []) if r.get(id_col) is not None}
+        
+        candidates = [r for r in recent_shows if str(r.get(id_col)) in setlist_ids]
+        if not candidates:
+            return pd.DataFrame(), None
+            
+        candidates_sorted = sorted(candidates, key=lambda x: str(x.get("show_date", "")), reverse=True)
+        most_recent_show_id = str(candidates_sorted[0].get(id_col))
+        most_recent_show_date = candidates_sorted[0].get("show_date")
+        
+        if not most_recent_show_id:
+            return pd.DataFrame(), None
         else:
             # For WSP, intersect recent shows with setlists on show_id
             recent_shows_resp = (
@@ -300,84 +280,25 @@ def fetch_last_show_setlist(
                 return pd.DataFrame(), None
         
         # Get full setlist for this show
-        if band == "goose":
-            # Goose normalized schema: set_number, song_position, song_name
-            setlist_data = (
-                _db_client.table(setlist_table)
-                .select("set_number, song_position, song_name")
-                .eq("api_show_id", most_recent_show_id)
-                .order("set_number")
-                .order("song_position")
-                .execute()
-            )
-            setlist_df = pd.DataFrame(setlist_data.data)
-        elif band == "phish":
-            # Phish normalized schema: set_number, position, song_name; join on api_show_id
-            setlist_data = (
-                _db_client.table(setlist_table)
-                .select("set_number, position, song_name")
-                .eq("api_show_id", most_recent_show_id)
-                .order("set_number")
-                .order("position")
-                .execute()
-            )
-            setlist_df = pd.DataFrame(setlist_data.data)
-            if not setlist_df.empty:
-                # Align column names with display expectations; coerce set_number safely
-                setlist_df = setlist_df.rename(columns={"position": "song_position"})
-                # Convert any string 'E' encodes to 99 for consistency
-                def _coerce_setnum(v):
-                    if v is None or (isinstance(v, float) and pd.isna(v)):
-                        return v
-                    s = str(v).strip().upper()
-                    if s in {"E", "ENCORE"}:
-                        return 99
-                    try:
-                        return int(float(s))
-                    except Exception:
-                        return v
-                setlist_df['set_number'] = setlist_df['set_number'].apply(_coerce_setnum)
-        elif band == "wsp":
-            # WSP schema: set_number, song_position, song_name
-            setlist_data = (
-                _db_client.table(setlist_table)
-                .select("set_number, song_position, song_name")
-                .eq("show_id", most_recent_show_id)
-                .order("set_number")
-                .order("song_position")
-                .execute()
-            )
-            setlist_df = pd.DataFrame(setlist_data.data)
-        else:
-            return pd.DataFrame(), None
-            
+        setlist_data = (
+            _db_client.table(setlist_table)
+            .select("set_number, song_position, song_name")
+            .eq(id_col, most_recent_show_id)
+            .order("set_number")
+            .order("song_position")
+            .execute()
+        )
+        setlist_df = pd.DataFrame(setlist_data.data)
+
         # Get show details
         show_details = None
-        if band == "phish":
-            show_query = (
-                _db_client.table(shows_table)
-                .select("*")
-                .eq("api_show_id", most_recent_show_id)
-                .limit(1)
-                .execute()
-            )
-        elif band == "goose":
-            show_query = (
-                _db_client.table(shows_table)
-                .select("*")
-                .eq("api_show_id", most_recent_show_id)
-                .limit(1)
-                .execute()
-            )
-        else:
-            # Both Goose and WSP use show_id
-            show_query = (
-                _db_client.table(shows_table)
-                .select("*")
-                .eq("show_id", most_recent_show_id)
-                .limit(1)
-                .execute()
-            )
+        show_query = (
+            _db_client.table(shows_table)
+            .select("*")
+            .eq(id_col, most_recent_show_id)
+            .limit(1)
+            .execute()
+        )
         
         if show_query.data:
             show_details = show_query.data[0]

@@ -77,7 +77,7 @@ def resolve_reference_date(
             return next_show_date.date()
 
         # Fallback: use most recent past show when no future shows are available
-        past_shows = shows_df_copy[shows_df_copy["_show_date_dt"] <= today_ts]
+        past_shows = shows_df_copy[shows_df_copy["_show_date_dt"] < today_ts]
         if past_shows.empty:
             print("Error: No shows found in the database to use as a reference.")
             sys.exit(1)
