@@ -210,7 +210,10 @@ def fetch_last_show_setlist(
         shows_table = f"{band}_shows_raw"
         
         # Get the most recent show that has setlist data by joining shows and setlists
-        id_col = "api_show_id" if band == "phish" else "show_id"
+                if band == "phish":
+            id_col = "api_show_id"
+        else:
+            id_col = "show_id"
         
         # Get the most recent show that has setlist data by joining shows and setlists
         today_iso = date.today().isoformat()
@@ -248,36 +251,6 @@ def fetch_last_show_setlist(
         
         if not most_recent_show_id:
             return pd.DataFrame(), None
-        else:
-            # For WSP, intersect recent shows with setlists on show_id
-            recent_shows_resp = (
-                _db_client.table(shows_table)
-                .select("show_id, show_date")
-                .order("show_date", desc=True)
-                .limit(50)
-                .execute()
-            )
-            if not recent_shows_resp.data:
-                return pd.DataFrame(), None
-            recent_shows = recent_shows_resp.data
-            recent_ids = [str(r.get("show_id")) for r in recent_shows if r.get("show_id") is not None]
-            if not recent_ids:
-                return pd.DataFrame(), None
-            setlist_ids_resp = (
-                _db_client.table(setlist_table)
-                .select("show_id")
-                .in_("show_id", recent_ids)
-                .execute()
-            )
-            setlist_ids = {str(r.get("show_id")) for r in (setlist_ids_resp.data or []) if r.get("show_id") is not None}
-            candidates = [r for r in recent_shows if str(r.get("show_id")) in setlist_ids]
-            if not candidates:
-                return pd.DataFrame(), None
-            candidates_sorted = sorted(candidates, key=lambda x: str(x.get("show_date", "")), reverse=True)
-            most_recent_show_id = str(candidates_sorted[0].get("show_id"))
-            most_recent_show_date = candidates_sorted[0].get("show_date")
-            if not most_recent_show_id:
-                return pd.DataFrame(), None
         
         # Get full setlist for this show
         setlist_data = (
