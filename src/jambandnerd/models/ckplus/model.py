@@ -114,7 +114,7 @@ class CKPlusPredictor(PredictionModel):
         f = f[f["current_gap"] <= self.retired_gap_threshold]
 
         if self.band == "wsp":
-            f = f[~f["song_name"].str.lower().isin(["jam", "drums"])]
+            f = f[~f["song_name"].str.lower().str.strip().isin(["jam", "drums"])]
 
         if f.empty:
             return []

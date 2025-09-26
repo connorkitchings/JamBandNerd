@@ -66,7 +66,7 @@ class NotebookPredictor(PredictionModel):
 
         if self.band == "wsp":
             song_candidates = song_candidates[
-                ~song_candidates["song_name"].str.lower().isin(["jam", "drums"])
+                ~song_candidates["song_name"].str.lower().str.strip().isin(["jam", "drums"])
             ]
 
         # 6. Rank and Predict
