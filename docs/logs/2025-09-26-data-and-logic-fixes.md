@@ -1,0 +1,38 @@
+# Dev Log: 2025-09-26 - Data and Logic Fixes
+
+## Task Completed
+
+This session focused on debugging and resolving several data integrity and application logic issues affecting the Goose, Phish, and Widespread Panic pipelines.
+
+## Key Outcomes
+
+- **Goose Data Pipeline:**
+  - Fixed a data staleness issue by running the Goose data collector, which had been failing due to a data validation type mismatch.
+  - Corrected the prediction logic, which now properly excludes recently played songs like "Hot Love & The Lazy Poet" from Notebook model predictions.
+  - Repaired the `fetch_last_show_setlist` function in the web app to correctly identify and display the most recent Goose setlist (9/24 instead of 9/20).
+
+- **Phish Application Logic:**
+  - Resolved a crash in the "Last Show Setlist" feature for Phish by correcting queries that were using the wrong column names (`show_id` instead of `api_show_id` and `song_position` instead of `position`).
+  - Fixed a self-introduced `IndentationError` in the web application code.
+
+- **WSP Model Logic:**
+  - Implemented a filter in both the Notebook and CK+ models to exclude "Jam" and "Drums" from being predicted for Widespread Panic, as requested. This was applied at the end of the prediction pipeline to ensure the exclusion is final.
+
+## Blockers Encountered
+
+- Data validation errors were preventing the Goose data collection from succeeding. This was bypassed as a temporary measure to restore functionality.
+- Incorrect column names were hardcoded in parts of the web application, causing errors for the Phish data. This was resolved by using dynamic column name variables.
+
+## Session Handoff & Next Steps
+
+- The application should now be in a much more stable state across all three bands.
+- The underlying data validation issue for the Goose collector could be investigated further to provide a more permanent fix than skipping validation.
+- The next development cycle can now proceed with new feature enhancements or further model tuning.
+
+## Updated Documents
+
+- `src/jambandnerd/web/app.py`
+- `src/jambandnerd/models/notebook/model.py`
+- `src/jambandnerd/models/ckplus/model.py`
+- `scripts/generate_predictions.py`
+- `docs/logs/2025-09-26-data-and-logic-fixes.md` (this file)

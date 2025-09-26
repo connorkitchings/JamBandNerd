@@ -122,7 +122,7 @@ class CKPlusPredictor(PredictionModel):
         top = f.head(top_k)
 
         if self.band == "wsp":
-            top = top[~top["song_name"].str.lower().str.strip().isin(["jam", "drums"])
+            top = top[~top["song_name"].str.lower().str.strip().isin(["jam", "drums"])]
 
         # Format output
         results: List[CKPlusPrediction] = []

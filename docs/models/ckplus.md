@@ -65,6 +65,7 @@ Given a reference show date:
    - Exclude recently played: exclude `current_gap ∈ {0, 1}`
    - Retired heuristic: exclude songs with `current_gap > retired_gap_threshold_by_band`
      (configurable per band)
+   - For Widespread Panic, exclude "Jam" and "Drums" from the candidates.
    - Exclude rows with undefined math (e.g., missing `avg_gap`, non‑finite values)
 
 #### Scoring Formula (ckplus_v1)
