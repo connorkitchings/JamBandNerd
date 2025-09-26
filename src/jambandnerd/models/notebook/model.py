@@ -21,6 +21,9 @@ class RankedPrediction:
 class NotebookPredictor(PredictionModel):
     """Baseline notebook predictor using past-year features."""
 
+    def __init__(self, band: str | None = None):
+        self.band = band
+
     def predict(
         self,
         model_data: ModelData,
@@ -60,6 +63,11 @@ class NotebookPredictor(PredictionModel):
         song_candidates = song_candidates[
             ~song_candidates["song_name"].isin(model_data.recently_played_songs)
         ]
+
+        if self.band == "wsp":
+            song_candidates = song_candidates[
+                ~song_candidates["song_name"].str.lower().isin(["jam", "drums"])
+            ]
 
         # 6. Rank and Predict
         ranked = song_candidates.sort_values(

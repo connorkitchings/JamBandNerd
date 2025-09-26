@@ -113,6 +113,9 @@ class CKPlusPredictor(PredictionModel):
         f = f[f["current_gap"] > 1]  # Exclude songs played in the very last show
         f = f[f["current_gap"] <= self.retired_gap_threshold]
 
+        if self.band == "wsp":
+            f = f[~f["song_name"].str.lower().isin(["jam", "drums"])]
+
         if f.empty:
             return []
 

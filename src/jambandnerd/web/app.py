@@ -210,10 +210,12 @@ def fetch_last_show_setlist(
         shows_table = f"{band}_shows_raw"
         
         # Get the most recent show that has setlist data by joining shows and setlists
-                if band == "phish":
+        if band == "phish":
             id_col = "api_show_id"
+            pos_col = "position"
         else:
             id_col = "show_id"
+            pos_col = "song_position"
         
         # Get the most recent show that has setlist data by joining shows and setlists
         today_iso = date.today().isoformat()
@@ -255,10 +257,10 @@ def fetch_last_show_setlist(
         # Get full setlist for this show
         setlist_data = (
             _db_client.table(setlist_table)
-            .select("set_number, song_position, song_name")
+            .select(f"set_number, {pos_col}, song_name")
             .eq(id_col, most_recent_show_id)
             .order("set_number")
-            .order("song_position")
+            .order(pos_col)
             .execute()
         )
         setlist_df = pd.DataFrame(setlist_data.data)

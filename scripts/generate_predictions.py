@@ -104,7 +104,7 @@ def main() -> None:
     # 2. Select and run model
     predictions: List[Any] = []
     if model == "notebook":
-        predictor = NotebookPredictor()
+        predictor = NotebookPredictor(band=band)
         preds, diagnostics = predictor.predict(model_data=model_data, top_k=50)
         predictions = preds
         print(f"{log_prefix} --- Model Diagnostics ---")
