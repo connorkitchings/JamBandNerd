@@ -64,16 +64,16 @@ class NotebookPredictor(PredictionModel):
             ~song_candidates["song_name"].isin(model_data.recently_played_songs)
         ]
 
-        if self.band == "wsp":
-            song_candidates = song_candidates[
-                ~song_candidates["song_name"].str.lower().str.strip().isin(["jam", "drums"])
-            ]
-
         # 6. Rank and Predict
         ranked = song_candidates.sort_values(
             by=["plays_past_year", "current_gap", "song_name"],
             ascending=[False, False, True],
         ).head(top_k)
+
+        if self.band == "wsp":
+            ranked = ranked[
+                ~ranked["song_name"].str.lower().str.strip().isin(["jam", "drums"])
+            ]
 
         # Format output
         result: List[RankedPrediction] = []

@@ -113,9 +113,6 @@ class CKPlusPredictor(PredictionModel):
         f = f[f["current_gap"] > 1]  # Exclude songs played in the very last show
         f = f[f["current_gap"] <= self.retired_gap_threshold]
 
-        if self.band == "wsp":
-            f = f[~f["song_name"].str.lower().str.strip().isin(["jam", "drums"])]
-
         if f.empty:
             return []
 
@@ -123,6 +120,9 @@ class CKPlusPredictor(PredictionModel):
         f["ckplus_score"] = f.apply(self._score_row, axis=1)
         f = f.sort_values(["ckplus_score", "gap_ratio", "song_name"], ascending=[False, False, True])
         top = f.head(top_k)
+
+        if self.band == "wsp":
+            top = top[~top["song_name"].str.lower().str.strip().isin(["jam", "drums"])
 
         # Format output
         results: List[CKPlusPrediction] = []
