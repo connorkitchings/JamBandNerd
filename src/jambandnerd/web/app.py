@@ -10,10 +10,16 @@ import streamlit as st
 from supabase import Client
 
 from jambandnerd.db.connection import get_supabase_client
+from jambandnerd.config import (
+    BAND_ID_COLUMNS,
+    EXCLUDED_SHOW_DATES,
+    STREAMLIT_CACHE_TTL,
+    STREAMLIT_CACHE_TTL_LONG,
+)
 
 # --- Configuration ---
 
-EXCLUDED_SHOW_DATES = {"2025-08-13"}
+# Note: EXCLUDED_SHOW_DATES imported from config
 
 BAND_CONFIG = {
     "goose": {
@@ -63,7 +69,7 @@ MODEL_CONFIG = {
 # --- Data Fetching ---
 
 
-@st.cache_data(ttl=60)
+@st.cache_data(ttl=STREAMLIT_CACHE_TTL)
 def fetch_predictions(
     _db_client: Client, band: str, model: str
 ) -> tuple[pd.DataFrame, str | None, dict]:
@@ -99,7 +105,7 @@ def fetch_predictions(
         return pd.DataFrame(), None, {}
 
 
-@st.cache_data(ttl=60)
+@st.cache_data(ttl=STREAMLIT_CACHE_TTL)
 def fetch_predictions_for_date(
     _db_client: Client, band: str, model: str, reference_date: str
 ) -> pd.DataFrame:
@@ -131,7 +137,7 @@ def fetch_predictions_for_date(
         return pd.DataFrame()
 
 
-@st.cache_data(ttl=60)
+@st.cache_data(ttl=STREAMLIT_CACHE_TTL)
 def fetch_per_show_accuracy(
     _db_client: Client, band: str, model: str, limit: int = 100
 ) -> pd.DataFrame:
@@ -196,26 +202,22 @@ def fetch_per_show_accuracy(
         return pd.DataFrame()
 
 
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=STREAMLIT_CACHE_TTL_LONG)
 def fetch_last_show_setlist(
     _db_client: Client, band: str
 ) -> tuple[pd.DataFrame, dict | None]:
     """Fetch the most recent completed show's setlist for the given band."""
     if band not in BAND_CONFIG:
+        st.warning(f"Band '{band}' not found in configuration")
         return pd.DataFrame(), None
     
     try:
-        # Get the most recent completed show with setlist data
+        # Use centralized config for ID columns
+        id_col = BAND_ID_COLUMNS.get(band, "show_id")
+        pos_col = "position" if band == "phish" else "song_position"
+        
         setlist_table = f"{band}_setlists_raw"
         shows_table = f"{band}_shows_raw"
-        
-        # Get the most recent show that has setlist data by joining shows and setlists
-        if band == "phish":
-            id_col = "api_show_id"
-            pos_col = "position"
-        else:
-            id_col = "show_id"
-            pos_col = "song_position"
         
         # Get the most recent show that has setlist data by joining shows and setlists
         today_iso = date.today().isoformat()
@@ -232,7 +234,9 @@ def fetch_last_show_setlist(
         
         recent_shows = recent_shows_resp.data
         recent_ids = [str(r.get(id_col)) for r in recent_shows if r.get(id_col) is not None]
+        
         if not recent_ids:
+            st.info(f"No recent shows found for {band}")
             return pd.DataFrame(), None
             
         setlist_ids_resp = (
@@ -245,6 +249,7 @@ def fetch_last_show_setlist(
         
         candidates = [r for r in recent_shows if str(r.get(id_col)) in setlist_ids]
         if not candidates:
+            st.info(f"No completed shows found in the last 50 {band} shows. They may all be upcoming.")
             return pd.DataFrame(), None
             
         candidates_sorted = sorted(candidates, key=lambda x: str(x.get("show_date", "")), reverse=True)
@@ -281,11 +286,14 @@ def fetch_last_show_setlist(
         return setlist_df, show_details
         
     except Exception as e:
-        st.error(f"Failed to fetch last show setlist: {e}")
+        st.error(f"Failed to fetch last show setlist for {band}: {e}")
+        import traceback
+        with st.expander("Show error details"):
+            st.code(traceback.format_exc())
         return pd.DataFrame(), None
 
 
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=STREAMLIT_CACHE_TTL_LONG)
 def fetch_show_details_by_date(
     _db_client: Client, reference_date: str | None, band: str
 ) -> dict | None:

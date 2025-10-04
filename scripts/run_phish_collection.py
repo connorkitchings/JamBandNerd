@@ -233,7 +233,14 @@ def run_phish_collection(
             df = coerce_df_types(df, schema)
             report = validate_dataframe_against_table(df, table_name, schema)
             if not report.is_valid:
-                logging.warning(f"Validation failed for {table_name}: {report}")
+                logging.warning(f"⚠️  Validation warnings for {table_name}:")
+                if report.missing_columns:
+                    logging.warning(f"    Missing columns: {report.missing_columns}")
+                if report.type_mismatches:
+                    logging.warning(f"    Type mismatches: {len(report.type_mismatches)} columns")
+                if report.nullable_violations:
+                    logging.warning(f"    Nullable violations: {report.nullable_violations}")
+                # Proceed anyway with coerced data - validation is now warning-only
 
         try:
             upsert_dataframe(

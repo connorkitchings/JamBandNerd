@@ -22,8 +22,9 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, project_root)
 
 from src.jambandnerd.data_collection.wsp.collector import WSPCollector
-from src.jambandnerd.db.operations import upsert_dataframe
+from src.jambandnerd.db.operations import upsert_dataframe, get_table_schema
 from src.jambandnerd.db.connection import get_supabase_client
+from src.jambandnerd.db.validation import coerce_df_types, validate_dataframe_against_table
 from scripts.common import fetch_table
 
 logging.basicConfig(
@@ -40,7 +41,7 @@ def _compute_source_hash(record: pd.Series) -> str:
     return hashlib.sha256(payload).hexdigest()
 
 
-def run_wsp_collection(skip_existing_setlists: bool = True, year_start: int | None = None, year_end: int | None = None, skip_url_validation: bool = False, full_backfill: bool = False) -> None:
+def run_wsp_collection(skip_existing_setlists: bool = True, year_start: int | None = None, year_end: int | None = None, skip_url_validation: bool = False, full_backfill: bool = False, skip_validation: bool = False) -> None:
     """Collect all WSP data and store it in Supabase raw tables."""
     logging.info("Starting Widespread Panic data collection...")
     collector = WSPCollector()
@@ -60,6 +61,21 @@ def run_wsp_collection(skip_existing_setlists: bool = True, year_start: int | No
                 songs_df[date_col] = songs_df[date_col].dt.date.apply(lambda d: d.isoformat() if pd.notnull(d) else None)
         songs_df = songs_df.where(pd.notnull(songs_df), None)
         songs_df["source_hash"] = songs_df.apply(_compute_source_hash, axis=1)
+        
+        # Validation for songs
+        schema = get_table_schema("wsp_songs_raw")
+        if schema and not skip_validation:
+            songs_df = coerce_df_types(songs_df, schema)
+            report = validate_dataframe_against_table(songs_df, "wsp_songs_raw", schema)
+            if not report.is_valid:
+                logging.warning(f"⚠️  Validation warnings for wsp_songs_raw:")
+                if report.missing_columns:
+                    logging.warning(f"    Missing columns: {report.missing_columns}")
+                if report.type_mismatches:
+                    logging.warning(f"    Type mismatches: {len(report.type_mismatches)} columns")
+                if report.nullable_violations:
+                    logging.warning(f"    Nullable violations: {report.nullable_violations}")
+        
         upsert_dataframe(
             table_name="wsp_songs_raw",
             df=songs_df,
@@ -85,6 +101,21 @@ def run_wsp_collection(skip_existing_setlists: bool = True, year_start: int | No
     if shows_data:
         shows_df = pd.DataFrame(shows_data)
         shows_df["source_hash"] = shows_df.apply(_compute_source_hash, axis=1)
+        
+        # Validation for shows
+        schema = get_table_schema("wsp_shows_raw")
+        if schema and not skip_validation:
+            shows_df = coerce_df_types(shows_df, schema)
+            report = validate_dataframe_against_table(shows_df, "wsp_shows_raw", schema)
+            if not report.is_valid:
+                logging.warning(f"⚠️  Validation warnings for wsp_shows_raw:")
+                if report.missing_columns:
+                    logging.warning(f"    Missing columns: {report.missing_columns}")
+                if report.type_mismatches:
+                    logging.warning(f"    Type mismatches: {len(report.type_mismatches)} columns")
+                if report.nullable_violations:
+                    logging.warning(f"    Nullable violations: {report.nullable_violations}")
+        
         upsert_dataframe(
             table_name="wsp_shows_raw",
             df=shows_df,
@@ -186,6 +217,21 @@ def run_wsp_collection(skip_existing_setlists: bool = True, year_start: int | No
         if setlists_data:
             setlists_df = pd.DataFrame(setlists_data)
             setlists_df["source_hash"] = setlists_df.apply(_compute_source_hash, axis=1)
+            
+            # Validation for setlists
+            schema = get_table_schema("wsp_setlists_raw")
+            if schema and not skip_validation:
+                setlists_df = coerce_df_types(setlists_df, schema)
+                report = validate_dataframe_against_table(setlists_df, "wsp_setlists_raw", schema)
+                if not report.is_valid:
+                    logging.warning(f"⚠️  Validation warnings for wsp_setlists_raw:")
+                    if report.missing_columns:
+                        logging.warning(f"    Missing columns: {report.missing_columns}")
+                    if report.type_mismatches:
+                        logging.warning(f"    Type mismatches: {len(report.type_mismatches)} columns")
+                    if report.nullable_violations:
+                        logging.warning(f"    Nullable violations: {report.nullable_violations}")
+            
             upsert_dataframe(
                 table_name="wsp_setlists_raw",
                 df=setlists_df,
@@ -214,7 +260,7 @@ if __name__ == "__main__":
     parser.add_argument("--year_start", type=int, help="The first year to collect shows for.")
     parser.add_argument("--year_end", type=int, help="The last year to collect shows for.")
     parser.add_argument("--full_backfill", action="store_true", help="Perform a full backfill of all historical data, ignoring year filters.")
-    
+    parser.add_argument("--skip_validation", action="store_true", help="Bypass schema validation before upserts.")
     parser.add_argument("--skip_url_validation", action="store_true", help="Skip URL validation for faster processing (use when URLs are known to be good).")
 
     args = parser.parse_args()
@@ -229,4 +275,5 @@ if __name__ == "__main__":
         year_end=args.year_end,
         skip_url_validation=args.skip_url_validation,
         full_backfill=args.full_backfill,
+        skip_validation=args.skip_validation,
     )

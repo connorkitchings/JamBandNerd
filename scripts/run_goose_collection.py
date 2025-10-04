@@ -169,9 +169,14 @@ def run_goose_collection(skip_validation: bool = False) -> None:
             # Then, validate the coerced DataFrame.
             report = validate_dataframe_against_table(coerced_df, table_name, schema)
             if not report.is_valid:
-                print(f"Validation failed for {table_name}: {report}")
-                # Do not proceed with upsert if validation fails
-                return
+                print(f"⚠️  Validation warnings for {table_name}:")
+                if report.missing_columns:
+                    print(f"    Missing columns: {report.missing_columns}")
+                if report.type_mismatches:
+                    print(f"    Type mismatches: {len(report.type_mismatches)} columns")
+                if report.nullable_violations:
+                    print(f"    Nullable violations: {report.nullable_violations}")
+                # Proceed anyway with coerced data - validation is now warning-only
             # Use the coerced DataFrame for the upsert
             df_to_upsert = coerced_df
         else:
