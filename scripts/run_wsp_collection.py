@@ -22,6 +22,7 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, project_root)
 
 from src.jambandnerd.data_collection.wsp.collector import WSPCollector
+from src.jambandnerd.data_collection.wsp.tourwrangler import fetch_setlist_from_tourwrangler
 from src.jambandnerd.db.operations import upsert_dataframe, get_table_schema
 from src.jambandnerd.db.connection import get_supabase_client
 from src.jambandnerd.db.validation import coerce_df_types, validate_dataframe_against_table
@@ -217,9 +218,27 @@ def run_wsp_collection(skip_existing_setlists: bool = True, year_start: int | No
         if setlists_data:
             setlists_df = pd.DataFrame(setlists_data)
             setlists_df["source_hash"] = setlists_df.apply(_compute_source_hash, axis=1)
-            
-            # Validation for setlists
+
+            # Optionally tag source if column exists
             schema = get_table_schema("wsp_setlists_raw")
+            has_source_col = False
+            if schema:
+                for col in schema:
+                    if str(col.get("column_name", "")).lower() == "source":
+                        has_source_col = True
+                        break
+            if has_source_col:
+                setlists_df["source"] = "everydaycompanion"
+            else:
+                # If the column doesn't exist, add a light note for future traceability
+                if "song_notes" in setlists_df.columns:
+                    setlists_df["song_notes"] = setlists_df["song_notes"].fillna("").astype(str)
+                    setlists_df["song_notes"] = setlists_df["song_notes"].where(
+                        setlists_df["song_notes"].str.contains("from TourWrangler|from Everyday", case=False, na=False),
+                        setlists_df["song_notes"].str.cat(pd.Series(["" for _ in range(len(setlists_df))]), sep="")
+                    )
+
+            # Validation for setlists
             if schema and not skip_validation:
                 setlists_df = coerce_df_types(setlists_df, schema)
                 report = validate_dataframe_against_table(setlists_df, "wsp_setlists_raw", schema)
@@ -238,10 +257,158 @@ def run_wsp_collection(skip_existing_setlists: bool = True, year_start: int | No
                 conflict_columns=["show_id", "set_number", "song_position"],
             )
             logging.info(f"Upserted {len(setlists_df)} setlist records into wsp_setlists_raw.")
-    else:
-        logging.info("No new shows require setlist scraping.")
+        else:
+            logging.info("No new shows require setlist scraping.")
 
-    # 6. Log collection run
+    # 6. Promote EC over TW for recent shows: if EC exists, remove TW rows for those shows
+    try:
+        from datetime import date as _date, timedelta as _timedelta
+        import os as _os
+        today = _date.today()
+        window_days = int(_os.environ.get("WSP_BACKUP_WINDOW_DAYS", "3"))
+        window_start = today - _timedelta(days=window_days)
+        schema = get_table_schema("wsp_setlists_raw")
+        has_source_col = False
+        if schema:
+            for col in schema:
+                if str(col.get("column_name", "")).lower() == "source":
+                    has_source_col = True
+                    break
+        # Get recent show_ids from shows table (before today)
+        resp_shows = client.table("wsp_shows_raw").select("show_id, show_date").gte("show_date", window_start.isoformat()).lt("show_date", today.isoformat()).execute()
+        recent_ids = [str(r.get("show_id")) for r in (resp_shows.data or []) if r.get("show_id")]
+        if has_source_col:
+            logging.info("Promoting Everyday Companion data over TourWrangler for recent shows...")
+            if recent_ids:
+                # Find which of these have EC rows
+                resp_ec = client.table("wsp_setlists_raw").select("show_id").in_("show_id", recent_ids).eq("source", "everydaycompanion").execute()
+                ec_ids = sorted({str(r.get("show_id")) for r in (resp_ec.data or []) if r.get("show_id")})
+                if ec_ids:
+                    # Delete TW rows for these shows
+                    client.table("wsp_setlists_raw").delete().in_("show_id", ec_ids).eq("source", "tourwrangler").execute()
+                    logging.info(f"Removed TourWrangler rows for {len(ec_ids)} show(s) now covered by EC.")
+        else:
+            logging.info("No 'source' column detected; will attempt structural cleanup instead.")
+
+        # Structural cleanup: for any recent show with EC rows, remove rows not present in EC (handles cases with no source tags)
+        if recent_ids:
+            # Determine shows with any EC rows (with or without source tag)
+            if has_source_col:
+                resp_any_ec = client.table("wsp_setlists_raw").select("show_id").in_("show_id", recent_ids).eq("source", "everydaycompanion").execute()
+                shows_with_ec = sorted({str(r.get("show_id")) for r in (resp_any_ec.data or []) if r.get("show_id")})
+            else:
+                # Fallback: assume all rows for a show after this run are EC; safe only if we compare positions
+                # Identify EC positions by re-reading rows we just inserted for each recent show
+                shows_with_ec = []
+                for sid in recent_ids:
+                    # Heuristic: check if there are rows for the show at all (post EC upsert)
+                    chk = client.table("wsp_setlists_raw").select("show_id").eq("show_id", sid).limit(1).execute()
+                    if chk.data:
+                        shows_with_ec.append(sid)
+
+            for sid in shows_with_ec:
+                # Fetch EC key set (set_number, song_position) for the show
+                if has_source_col:
+                    ec_rows = client.table("wsp_setlists_raw").select("set_number,song_position").eq("show_id", sid).eq("source", "everydaycompanion").execute().data or []
+                else:
+                    ec_rows = client.table("wsp_setlists_raw").select("set_number,song_position").eq("show_id", sid).execute().data or []
+                ec_keys = {(str(r.get("set_number")), int(r.get("song_position") or 0)) for r in ec_rows}
+
+                # Fetch all rows for the show with ids
+                all_rows = client.table("wsp_setlists_raw").select("id,set_number,song_position").eq("show_id", sid).execute().data or []
+                extras = [r for r in all_rows if (str(r.get("set_number")), int(r.get("song_position") or 0)) not in ec_keys]
+                if extras:
+                    ids_to_delete = [r.get("id") for r in extras if r.get("id")]
+                    # Batch delete extras
+                    if ids_to_delete:
+                        client.table("wsp_setlists_raw").delete().in_("id", ids_to_delete).execute()
+                        logging.info(f"Cleaned {len(ids_to_delete)} extra setlist rows for show_id={sid} not present in EC.")
+    except Exception as exc:
+        logging.warning(f"EC-over-TW promotion step encountered an error: {exc}")
+
+    # 7. TourWrangler fallback for missing recent historical setlists (last 3 days, excluding today)
+    try:
+        from datetime import date as _date, timedelta as _timedelta
+        import os as _os
+        today = _date.today()
+        window_days = int(_os.environ.get("WSP_BACKUP_WINDOW_DAYS", "3"))
+        window_start = today - _timedelta(days=window_days)
+        logging.info(f"Checking for missing setlists in window {window_start.isoformat()}..{today.isoformat()} (excluding today); window_days={window_days}")
+
+        # Fetch recent shows (before today)
+        recent_shows_resp = client.table("wsp_shows_raw").select("show_id, show_date, city, state").gte("show_date", window_start.isoformat()).lt("show_date", today.isoformat()).execute()
+        recent_shows = recent_shows_resp.data or []
+        if recent_shows:
+            show_ids = [str(r.get("show_id")) for r in recent_shows if r.get("show_id")]
+            # Determine which of these already have any setlist rows
+            if show_ids:
+                setlists_resp = client.table("wsp_setlists_raw").select("show_id").in_("show_id", show_ids).execute()
+                with_setlists = {str(r.get("show_id")) for r in (setlists_resp.data or []) if r.get("show_id")}
+            else:
+                with_setlists = set()
+
+            missing = [r for r in recent_shows if str(r.get("show_id")) not in with_setlists]
+            logging.info(f"Found {len(missing)} recent shows with empty setlists needing backup.")
+
+            if missing:
+                backup_rows: List[Dict[str, Any]] = []
+                for rec in missing:
+                    sid = str(rec.get("show_id"))
+                    sdate_str = rec.get("show_date")
+                    try:
+                        sdate = pd.to_datetime(sdate_str).date() if sdate_str else None
+                    except Exception:
+                        sdate = None
+                    if not sdate:
+                        continue
+                    city = rec.get("city")
+                    state = rec.get("state")
+                    try:
+                        rows = fetch_setlist_from_tourwrangler(sdate, sid, city, state)
+                    except Exception as e:
+                        logging.warning(f"TourWrangler fetch failed for show_id={sid} ({sdate_str}): {e}")
+                        rows = []
+                    if rows:
+                        for r in rows:
+                            r.setdefault("song_notes", "")
+                        backup_rows.extend(rows)
+                        logging.info(f"TourWrangler provided {len(rows)} rows for show_id={sid} ({sdate_str}).")
+
+                if backup_rows:
+                    backup_df = pd.DataFrame(backup_rows)
+                    backup_df["source_hash"] = backup_df.apply(_compute_source_hash, axis=1)
+
+                    schema = get_table_schema("wsp_setlists_raw")
+                    has_source_col = False
+                    if schema:
+                        for col in schema:
+                            if str(col.get("column_name", "")).lower() == "source":
+                                has_source_col = True
+                                break
+                    if has_source_col:
+                        backup_df["source"] = "tourwrangler"
+                    else:
+                        if "song_notes" in backup_df.columns:
+                            backup_df["song_notes"] = backup_df["song_notes"].fillna("").astype(str) + (backup_df["song_notes"].map(lambda _: "").astype(str))
+
+                    if schema and not skip_validation:
+                        backup_df = coerce_df_types(backup_df, schema)
+                        report = validate_dataframe_against_table(backup_df, "wsp_setlists_raw", schema)
+                        if not report.is_valid:
+                            logging.warning("⚠️ Validation warnings for wsp_setlists_raw (TourWrangler backup)")
+
+                    upsert_dataframe(
+                        table_name="wsp_setlists_raw",
+                        df=backup_df,
+                        conflict_columns=["show_id", "set_number", "song_position"],
+                    )
+                    logging.info(f"Upserted {len(backup_df)} TourWrangler backup setlist rows.")
+        else:
+            logging.info("No recent historical shows found in window; no backup needed.")
+    except Exception as exc:
+        logging.warning(f"TourWrangler fallback step encountered an error: {exc}")
+
+    # 8. Log collection run
     try:
         client.table("collection_runs").insert({"band": "wsp"}).execute()
         logging.info("Logged collection run.")

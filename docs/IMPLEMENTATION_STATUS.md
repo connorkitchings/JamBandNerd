@@ -1,6 +1,6 @@
 # JamBandNerd Implementation Status
 
-**Last Updated**: 2025-08-30  
+**Last Updated**: 2025-10-07  
 **Project Version**: 0.1.0
 
 ## 📊 Overall Project Status: **99% Complete**
@@ -72,7 +72,7 @@ JamBandNerd has evolved from a planning-stage project to a **production-ready da
 
 ## 🔄 **PARTIALLY IMPLEMENTED COMPONENTS**
 
-### **1. WSP (Widespread Panic) Pipeline (95%)**
+### **1. WSP (Widespread Panic) Pipeline (97%)**
 
 - **✅ WSP Collector**: Complete and production-ready with fixed HTML parsing for everydaycompanion.com
 - **✅ Historical Data Collection**: Successfully collected 40 years of data (1985-2025):
@@ -81,8 +81,10 @@ JamBandNerd has evolved from a planning-stage project to a **production-ready da
   - **699 unique songs** cataloged with play statistics
 - **✅ Raw Data Schemas**: Database schemas fully implemented and populated
 - **✅ Data Quality**: Robust error handling and validation with excellent success rates
+- **✅ TourWrangler Fallback (Parser Implemented)**: Clean, generalized backup reader with Encore trimming, artist-credit and footnote stripping
+- **⚠️ EC-over-TW Promotion**: Implemented in code; requires `source` column in `wsp_setlists_raw` to fully enable automatic replacement
 - **⚠️ Integration with Optimized Pipeline**: Ready for integration into main orchestrator
-- **❌ Prediction & Accuracy Scripts**: WSP-specific prediction models pending (final 5%)
+- **❌ Prediction & Accuracy Scripts**: WSP-specific prediction models pending (final 3%)
 
 ### **2. Database Validation (85%)**
 
@@ -117,6 +119,15 @@ JamBandNerd has evolved from a planning-stage project to a **production-ready da
 ---
 
 ## 📋 **PLANNED COMPONENTS**
+
+### WSP Fallback Completion Checklist
+
+- [ ] Add column to Supabase: `ALTER TABLE public.wsp_setlists_raw ADD COLUMN IF NOT EXISTS source text;`
+- [ ] Re-run WSP collection so EC rows are tagged `source='everydaycompanion'`
+- [ ] Confirm EC-over-TW promotion step deletes `source='tourwrangler'` rows for recent shows when EC appears
+- [ ] Optional: Backfill historical rows with appropriate `source` where applicable
+- [ ] Monitor Encore parsing for any UI-text leakage; current parser trims at stop words and removes artist credits/footnotes
+- [ ] Known source discrepancy: TourWrangler misses "Sewing Machine" on 2025-10-03 (accepted)
 
 ### **1. Web Interface Enhancements (0%)**
 

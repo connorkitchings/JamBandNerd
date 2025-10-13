@@ -64,6 +64,8 @@ While the optimized pipeline is recommended, you can also run individual compone
 
 For detailed usage, please refer to the full documentation.
 
+Note on WSP fallback: If Everyday Companion has not updated a recent historical setlist (last 3 days by default, excluding today), the pipeline will attempt a backup read from TourWrangler with a cleaned parser (Encore trimmed, artist credits and footnotes removed). When EC later publishes the setlist, EC data should replace TW data automatically. To fully enable automatic replacement, add a `source` column to `wsp_setlists_raw` (see docs/guides/tourwrangler_fallback.md).
+
 ### Web Interface
 
 ```bash
