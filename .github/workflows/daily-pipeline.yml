@@ -291,7 +291,7 @@ for band in bands:
     except Exception as e:
         print(f'**{band.upper()}**: ❌ Error checking data: {str(e)}')
         print()
-          PY
+PY
           
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Next Steps:" >> $GITHUB_STEP_SUMMARY
@@ -393,4 +393,4 @@ for band in bands:
         )
     except Exception as exc:
         print(f"| {band.upper()} | Error: {exc} | n/a | n/a |")
-          PY
+PY
