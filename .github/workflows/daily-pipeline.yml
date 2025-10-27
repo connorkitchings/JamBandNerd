@@ -244,8 +244,8 @@ jobs:
           
           # Run data quality check using centralized config
           echo "### Data Quality Check" >> $GITHUB_STEP_SUMMARY
-          python - <<'PY' >> $GITHUB_STEP_SUMMARY
-import json
+          python - <<'EOF' >> $GITHUB_STEP_SUMMARY
+  import json
 import os
 import sys
 import pandas as pd
@@ -291,7 +291,7 @@ for band in bands:
     except Exception as e:
         print(f'**{band.upper()}**: ❌ Error checking data: {str(e)}')
         print()
-PY
+EOF
           
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Next Steps:" >> $GITHUB_STEP_SUMMARY
@@ -300,8 +300,8 @@ PY
           echo "- Review any warnings above and re-run collection if needed." >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Prediction Coverage" >> $GITHUB_STEP_SUMMARY
-          python - <<'PY' >> $GITHUB_STEP_SUMMARY
-import json
+          python - <<'EOF' >> $GITHUB_STEP_SUMMARY
+  import json
 import os
 import sys
 from datetime import date
@@ -393,4 +393,4 @@ for band in bands:
         )
     except Exception as exc:
         print(f"| {band.upper()} | Error: {exc} | n/a | n/a |")
-PY
+EOF
