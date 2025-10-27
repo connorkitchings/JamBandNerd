@@ -35,46 +35,15 @@ from src.jambandnerd.models.notebook.model import NotebookPredictor
 from src.jambandnerd.transformations.gaps import generate_model_data
 
 
-def main() -> None:
+def run_backtest(
+    band: str,
+    model: str,
+    start: str | None,
+    end: str | None,
+    shows: int | None,
+    exclusion_window: int,
+) -> None:
     """Run a backtest for a given band and model."""
-    parser = argparse.ArgumentParser(
-        description="Run a historical backtest for a specific band and model."
-    )
-    parser.add_argument(
-        "--band",
-        type=str,
-        required=True,
-        choices=["goose", "phish", "wsp"],
-        help="The band to process.",
-    )
-    parser.add_argument(
-        "--model",
-        type=str,
-        required=True,
-        choices=["notebook", "ckplus"],
-        help="The model to backtest.",
-    )
-    parser.add_argument(
-        "--start", help="Start date for backtest window (YYYY-MM-DD)."
-    )
-    parser.add_argument(
-        "--end", help="End date for backtest window (YYYY-MM-DD)."
-    )
-    parser.add_argument(
-        "--shows",
-        type=int,
-        help="Limit to the last N completed shows (overrides start/end).",
-    )
-    parser.add_argument(
-        "--exclusion-window",
-        type=int,
-        default=3,
-        help="Number of recent shows to exclude songs from (default: 3).",
-    )
-    args = parser.parse_args()
-
-    band = args.band.lower()
-    model = args.model.lower()
     log_prefix = f"[{band.upper()}/{model.upper()}]"
 
     # 1. Fetch and prepare data
@@ -96,8 +65,8 @@ def main() -> None:
         .sort_values(["show_date", "show_id"])
     )
 
-    if args.shows and args.shows > 0:
-        target_shows = completed_shows.tail(args.shows)
+    if shows and shows > 0:
+        target_shows = completed_shows.tail(shows)
         window_start = target_shows["show_date"].min()
         window_end = target_shows["show_date"].max()
         print(
@@ -105,11 +74,11 @@ def main() -> None:
         )
     else:
         start_d = (
-            pd.to_datetime(args.start).date()
-            if args.start
+            pd.to_datetime(start).date()
+            if start
             else (date.today() - timedelta(days=365 * 10))
         )
-        end_d = pd.to_datetime(args.end).date() if args.end else date.today()
+        end_d = pd.to_datetime(end).date() if end else date.today()
         target_shows = completed_shows[
             (completed_shows["show_date"] >= start_d)
             & (completed_shows["show_date"] <= end_d)
@@ -159,7 +128,7 @@ def main() -> None:
             # This prevents data leakage from the actual show date
             prediction_date = ref_date - timedelta(days=1) if isinstance(ref_date, date) else ref_date
             model_data = generate_model_data(
-                shows_df, sets_df, prediction_date, exclusion_window=args.exclusion_window
+                shows_df, sets_df, prediction_date, exclusion_window=exclusion_window
             )
             
             if model == "notebook":
@@ -240,6 +209,54 @@ def main() -> None:
             )
     else:
         print(f"{log_prefix} No results generated from backtest.")
+
+
+def main() -> None:
+    """Main entry point for the script."""
+    parser = argparse.ArgumentParser(
+        description="Run a historical backtest for a specific band and model."
+    )
+    parser.add_argument(
+        "--band",
+        type=str,
+        required=True,
+        choices=["goose", "phish", "wsp", "billy", "um"],
+        help="The band to process.",
+    )
+    parser.add_argument(
+        "--model",
+        type=str,
+        required=True,
+        choices=["notebook", "ckplus"],
+        help="The model to backtest.",
+    )
+    parser.add_argument(
+        "--start", help="Start date for backtest window (YYYY-MM-DD)."
+    )
+    parser.add_argument(
+        "--end", help="End date for backtest window (YYYY-MM-DD)."
+    )
+    parser.add_argument(
+        "--shows",
+        type=int,
+        help="Limit to the last N completed shows (overrides start/end).",
+    )
+    parser.add_argument(
+        "--exclusion-window",
+        type=int,
+        default=3,
+        help="Number of recent shows to exclude songs from (default: 3).",
+    )
+    args = parser.parse_args()
+
+    run_backtest(
+        band=args.band,
+        model=args.model,
+        start=args.start,
+        end=args.end,
+        shows=args.shows,
+        exclusion_window=args.exclusion_window,
+    )
 
 
 if __name__ == "__main__":

@@ -437,7 +437,7 @@ class WSPCollector(BandCollector):
             # Clean and format data
             songs_df['times_played'] = pd.to_numeric(songs_df['times_played'], errors='coerce').fillna(0).astype(int)
             for col in ["first_played", "last_played"]:
-                songs_df[col] = pd.to_datetime(songs_df[col], errors='coerce').dt.date
+                songs_df[col] = pd.to_datetime(songs_df[col], format='%m/%d/%y', errors='coerce').dt.date
 
             logger.info(f"✅ {self.ARTIST_NAME}: Scraped {len(songs_df)} songs.")
             return songs_df.to_dict('records')

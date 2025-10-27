@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import time
 import logging
+import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Union
@@ -101,7 +102,9 @@ class BandCollector(ABC):
         # Set default timeout if not provided
         kwargs.setdefault('timeout', self.config.timeout)
         
-        logger.info(f"Fetching data from {url}")
+        # Redact API key from URL for logging
+        log_url = re.sub(r"apikey=[^&]*", "apikey=REDACTED", url)
+        logger.info(f"Fetching data from {log_url}")
         
         try:
             self.rate_limiter.record_call()

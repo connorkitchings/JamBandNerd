@@ -44,8 +44,12 @@ docs = [
 [project.scripts]
 collect-goose = "scripts.run_goose_collection:main"
 collect-phish = "scripts.run_phish_collection:main"
+collect-billy = "scripts.run_billy_collection:main"
+collect-um = "scripts.run_um_collection:main"
 predict-goose = "scripts.generate_goose_predictions:main"
 predict-phish = "scripts.generate_phish_predictions:main"
+predict-billy = "scripts.generate_billy_predictions:main"
+predict-billy-ckplus = "scripts.generate_billy_ckplus_predictions:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

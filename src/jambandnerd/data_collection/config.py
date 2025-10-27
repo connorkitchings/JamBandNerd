@@ -13,7 +13,7 @@ COLLECTOR_CONFIGS = {
         rate_limit_window=60,
         user_agent="JamBandNerd/1.0 (Goose Data Collection)"
     ),
-    
+
     'phish': CollectorConfig(
         base_url="https://api.phish.net/v5",
         timeout=120,  # Phish API can be slow with large datasets
@@ -32,6 +32,24 @@ COLLECTOR_CONFIGS = {
         rate_limit_calls=60,
         rate_limit_window=60,
         user_agent="JamBandNerd/1.0 (Widespread Panic Data Collection)"
+    ),
+    'billy': CollectorConfig(
+        base_url="https://bmfsdb.com",
+        timeout=120,
+        max_retries=4,
+        backoff_factor=2.0,
+        rate_limit_calls=45,
+        rate_limit_window=60,
+        user_agent="JamBandNerd/1.0 (Billy Strings Data Collection)"
+    ),
+    'um': CollectorConfig(
+        base_url="https://allthings.umphreys.com",
+        timeout=60,
+        max_retries=5,
+        backoff_factor=2.0,
+        rate_limit_calls=45,
+        rate_limit_window=60,
+        user_agent="JamBandNerd/1.0 (Umphrey's McGee Data Collection)"
     )
 }
 

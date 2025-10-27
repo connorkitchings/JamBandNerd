@@ -49,56 +49,34 @@ class NpEncoder(json.JSONEncoder):
         return super(NpEncoder, self).default(obj)
 
 
-def main() -> None:
+def generate_predictions(band: str, model: str, date_str: str | None, exclusion_window: int):
     """Generate and save predictions for a given band and model."""
-    parser = argparse.ArgumentParser(
-        description="Generate predictions for a specific band and model."
-    )
-    parser.add_argument(
-        "--band",
-        type=str,
-        required=True,
-        choices=["goose", "phish", "wsp"],
-        help="The band to process.",
-    )
-    parser.add_argument(
-        "--model",
-        type=str,
-        required=True,
-        choices=["notebook", "ckplus"],
-        help="The model to use for predictions.",
-    )
-    parser.add_argument(
-        "--date",
-        help="Reference date in YYYY-MM-DD format. Defaults to next upcoming show.",
-    )
-    parser.add_argument(
-        "--exclusion-window",
-        type=int,
-        default=3,
-        help="Number of recent shows to exclude songs from (default: 3).",
-    )
-    args = parser.parse_args()
-
-    band = args.band.lower()
-    model = args.model.lower()
+    band = band.lower()
+    model = model.lower()
 
     # 1. Fetch and prepare data
     log_prefix = f"[{band.upper()}/{model.upper()}]"
     print(f"{log_prefix} Fetching raw data...")
     shows_df = pd.DataFrame(fetch_table(f"{band}_shows_raw"))
     setlists_df = pd.DataFrame(fetch_table(f"{band}_setlists_raw"))
+    upcoming_df: pd.DataFrame | None = None
+    if date_str is None and band == "um":
+        try:
+            upcoming_df = pd.DataFrame(fetch_table("um_upcoming_shows"))
+        except Exception as exc:  # pragma: no cover - Supabase connectivity
+            print(f"[{band.upper()}/{model.upper()}] Warning: could not load upcoming shows ({exc}).")
+            upcoming_df = None
 
     if shows_df.empty or setlists_df.empty:
         print(f"{log_prefix} Error: Could not fetch raw data. Aborting.")
         return
 
     shows_df, setlists_df = prepare_band_data(shows_df, setlists_df)
-    reference_date = resolve_reference_date(args.date, shows_df)
+    reference_date = resolve_reference_date(date_str, shows_df, upcoming_df=upcoming_df)
     print(f"{log_prefix} Generating predictions for reference date: {reference_date.isoformat()}")
 
     model_data = generate_model_data(
-        shows_df, setlists_df, reference_date, exclusion_window=args.exclusion_window
+        shows_df, setlists_df, reference_date, exclusion_window=exclusion_window
     )
 
     # 2. Select and run model
@@ -171,6 +149,45 @@ def main() -> None:
         conflict_columns=["band", "reference_date", "model_version"],
     )
     print(f"{log_prefix} Successfully saved predictions.")
+
+
+def main() -> None:
+    """Main entry point for the script."""
+    parser = argparse.ArgumentParser(
+        description="Generate predictions for a specific band and model."
+    )
+    parser.add_argument(
+        "--band",
+        type=str,
+        required=True,
+        choices=["goose", "phish", "wsp", "billy", "um"],
+        help="The band to process.",
+    )
+    parser.add_argument(
+        "--model",
+        type=str,
+        required=True,
+        choices=["notebook", "ckplus"],
+        help="The model to use for predictions.",
+    )
+    parser.add_argument(
+        "--date",
+        help="Reference date in YYYY-MM-DD format. Defaults to next upcoming show.",
+    )
+    parser.add_argument(
+        "--exclusion-window",
+        type=int,
+        default=3,
+        help="Number of recent shows to exclude songs from (default: 3).",
+    )
+    args = parser.parse_args()
+
+    generate_predictions(
+        band=args.band,
+        model=args.model,
+        date_str=args.date,
+        exclusion_window=args.exclusion_window,
+    )
 
 
 if __name__ == "__main__":

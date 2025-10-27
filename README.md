@@ -13,25 +13,25 @@ A cloud-based data science platform for collecting, transforming, and predicting
 
 ### Installation
 
-1. **Clone and setup environment:**
+1.  **Clone and setup environment:**
 
-   ```bash
-   git clone https://github.com/connorkitchings/JamBandNerd.git
-   cd JamBandNerd
-   uv venv --python=3.12
-   source .venv/bin/activate
-   uv pip install .
-   ```
+    ```bash
+    git clone https://github.com/connorkitchings/JamBandNerd.git
+    cd JamBandNerd
+    uv venv --python=3.12
+    source .venv/bin/activate
+    uv pip install .
+    ```
 
-2. **Environment configuration:**
+2.  **Environment configuration:**
 
-   Create a `.env` file in the project root with:
+    Create a `.env` file in the project root with:
 
-   ```bash
-   SUPABASE_URL=your_supabase_url
-   SUPABASE_KEY=your_supabase_key
-   PHISH_API_KEY=your_phish_net_key  # Optional, for Phish data only
-   ```
+    ```bash
+    SUPABASE_URL=your_supabase_url
+    SUPABASE_KEY=your_supabase_key
+    PHISH_API_KEY=your_phish_net_key  # Optional, for Phish data only
+    ```
 
 ## Usage
 
@@ -60,11 +60,13 @@ While the optimized pipeline is recommended, you can also run individual compone
 
 # Run a backtest to calculate per-show accuracy
 'uv run python scripts/run_backtest.py --band goose --model notebook --shows 50'
+
+# Convenience wrappers for Billy Strings predictions
+'uv run predict-billy -- --date 2025-10-24'
+'uv run predict-billy-ckplus -- --date 2025-10-24'
 ```
 
 For detailed usage, please refer to the full documentation.
-
-Note on WSP fallback: If Everyday Companion has not updated a recent historical setlist (last 3 days by default, excluding today), the pipeline will attempt a backup read from TourWrangler with a cleaned parser (Encore trimmed, artist credits and footnotes removed). When EC later publishes the setlist, EC data should replace TW data automatically. To fully enable automatic replacement, add a `source` column to `wsp_setlists_raw` (see docs/guides/tourwrangler_fallback.md).
 
 ### Web Interface
 
@@ -75,11 +77,11 @@ streamlit run src/jambandnerd/web/app.py
 
 The web interface provides:
 
-- **Multi-band selection**: Switch between Goose, Phish, and WSP
-- **Model comparison**: Toggle between Notebook and CK+ models  
-- **Live predictions**: View latest predictions with detailed metrics
-- **Accuracy visualization**: Historical performance charts with configurable K values (K=10/25/50; selected K highlighted)
-- **Show details**: Prominent Next Show header with venue, plus model and prediction timestamp
+- **Multi-band selection**: Switch between Goose, Phish, Widespread Panic, and Billy Strings.
+- **Model comparison**: Toggle between Notebook and CK+ models.
+- **Live predictions**: View latest predictions with detailed metrics.
+- **Accuracy visualization**: Historical performance charts with configurable K values (K=10/25/50; selected K highlighted).
+- **Show details**: Prominent Next Show header with venue, plus model and prediction timestamp.
 
 ### Development
 
@@ -99,9 +101,10 @@ For comprehensive documentation, please visit the **[full documentation site](do
 
 Key sections include:
 
-- 🚀 **[User Guide](docs/user_guide/getting_started.md)**: For users who want to install, configure, and run the project.
-- 🧑‍💻 **[Developer Guide](docs/developer_guide/architecture.md)**: For contributors who want to understand the architecture and extend the platform.
+- 🚀 **[User Guide](docs/user/getting_started.md)**: For users who want to install, configure, and run the project.
+- 🧑‍💻 **[Contributor Guide](docs/contributor/developer_guide/architecture.md)**: For contributors who want to understand the architecture and extend the platform.
 - 📚 **[Reference](docs/reference/)**: Detailed technical specifications, schemas, and guides.
+- 📈 **[Reports](docs/reports/)**: Summaries of improvements and validation testing.
 
 Generate and serve documentation locally:
 
@@ -114,26 +117,30 @@ mkdocs serve
 
 **Modular Pipeline Design**: Data Sources → Raw Storage → In-Memory Transform → Models → Predictions → Web Interface
 
-**Supported Bands**: Goose (elgoose.net), Phish (phish.net), Widespread Panic (everydaycompanion.com)
+**Supported Bands**: Goose (elgoose.net), Phish (phish.net), Widespread Panic (everydaycompanion.com), Billy Strings (bmfsdb.com), and Umphrey's McGee (allthings.umphreys.com).
 
 **Key Components**:
 
-- Band-agnostic data collectors with unified interfaces
-- In-memory transformation pipeline (no intermediate tables)
-- Pluggable prediction models (Notebook, CK+)
-- Unified cross-band prediction and accuracy storage
-- Supabase backend with automated validation
-- **GitHub Actions automation** with daily pipeline execution
+- Band-agnostic data collectors with unified interfaces.
+- In-memory transformation pipeline (no intermediate tables).
+- Pluggable prediction models (Notebook, CK+).
+- Unified cross-band prediction and accuracy storage.
+- Supabase backend with automated validation.
+- **GitHub Actions automation** with daily pipeline execution.
 
-### **Automation**
+### Widespread Panic Data & Fallback
+
+The WSP data collector scrapes `everydaycompanion.com`. If a recent historical setlist is missing from EC, the pipeline attempts a backup read from `TourWrangler.com` using a cleaned parser. When EC later publishes the setlist, the EC data will automatically replace the TourWrangler data, ensuring the highest quality data is used.
+
+### Automation
 
 The platform features comprehensive automation through GitHub Actions:
 
-- **Daily Pipeline**: Runs automatically at 3 PM ET every day
-- **Multi-Strategy**: Choice between optimized single-script or parallel multi-step execution
-- **Manual Triggers**: On-demand execution with band selection via GitHub UI (goose/phish/wsp/all)
-- **Error Resilience**: Parallel matrix execution with graceful failure handling
-- **Secret Management**: Secure API key and database credential handling
+- **Daily Pipeline**: Runs automatically at 3 PM ET every day.
+- **Multi-Strategy**: Choice between optimized single-script or parallel multi-step execution.
+- **Manual Triggers**: On-demand execution with band selection via GitHub UI (goose/phish/wsp/all).
+- **Error Resilience**: Parallel matrix execution with graceful failure handling.
+- **Secret Management**: Secure API key and database credential handling.
 
 ## Contributing
 

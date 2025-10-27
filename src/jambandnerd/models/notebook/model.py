@@ -59,9 +59,11 @@ class NotebookPredictor(PredictionModel):
             model_data.reference_index - song_candidates["last_played_index"]
         )
 
-        # 5. Apply final exclusions
+        # 5. Apply final exclusions – ensure songs played within the last three shows are removed
+        # recently_played_songs already contains the last three shows by default; keep the guard anyway.
         song_candidates = song_candidates[
-            ~song_candidates["song_name"].isin(model_data.recently_played_songs)
+            (song_candidates["current_gap"] > 3)
+            & (~song_candidates["song_name"].isin(model_data.recently_played_songs))
         ]
 
         # 6. Rank and Predict
@@ -98,5 +100,4 @@ class NotebookPredictor(PredictionModel):
         """Placeholder for calculate_accuracy method."""
         print("Accuracy calculation not implemented for this model.")
         return {}
-
 

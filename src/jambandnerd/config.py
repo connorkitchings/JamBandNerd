@@ -26,6 +26,8 @@ RETIREMENT_GAPS: Final[dict[str, int]] = {
     "goose": 100,   # Smaller gap for a band with more regular rotation
     "phish": 150,   # Larger gap for a band with deeper catalog
     "wsp": 150,     # Similar to Phish
+    "billy": 150,
+    "um": 150,
     "default": 250  # Safe fallback for other bands
 }
 
@@ -48,27 +50,40 @@ DATE_FORMATS: Final[tuple[str, ...]] = (
 # ==================== Band-Specific Configuration ====================
 
 # Supported bands
-SUPPORTED_BANDS: Final[tuple[str, ...]] = ("goose", "phish", "wsp")
+SUPPORTED_BANDS: Final[tuple[str, ...]] = ("goose", "phish", "wsp", "billy", "um")
 
 # Band display names
 BAND_DISPLAY_NAMES: Final[dict[str, str]] = {
     "goose": "Goose",
     "phish": "Phish",
-    "wsp": "Widespread Panic"
+    "wsp": "Widespread Panic",
+    "billy": "Billy Strings",
+    "um": "Umphrey's McGee",
 }
 
 # Primary key column names by band (for ID normalization)
 BAND_ID_COLUMNS: Final[dict[str, str]] = {
     "goose": "show_id",
     "phish": "api_show_id",
-    "wsp": "show_id"
+    "wsp": "show_id",
+    "billy": "show_id",
+    "um": "show_id",
 }
 
 # Songs to exclude from predictions (noise, not actual songs)
 EXCLUDED_SONGS: Final[dict[str, list[str]]] = {
-    "wsp": ["jam", "drums"],  # WSP-specific exclusions
+    "wsp": [
+        "jam",
+        "drums",
+        "David Bromberg Band",
+        "New Riders of the Purple Sage",
+        "J.J. Cale",
+        "The Doors",
+    ],  # WSP-specific exclusions
     "goose": [],
-    "phish": []
+    "phish": [],
+    "billy": [],
+    "um": [],
 }
 
 # ==================== Web Interface Configuration ====================

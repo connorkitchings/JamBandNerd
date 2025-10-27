@@ -9,6 +9,10 @@ from typing import List, Dict
 
 import pandas as pd
 
+# Add project root to path to allow src imports
+project_root = Path(__file__).resolve().parent.parent
+sys.path.append(str(project_root))
+
 # Import DB client from the project
 from src.jambandnerd.db.connection import get_supabase_client
 

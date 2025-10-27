@@ -26,16 +26,23 @@ ARTIST_MARKERS = {
     "brute.",
     "talking heads",
     "buffalo springfield",
+    "bloodkin",
+    "nrbq",
+    "bobby rush",
+    "beanland",
+    "murray mclauchlan",
+    "the jimi hendrix experience",
+    "traditional",
 }
 
 # Build a regex replacer for artist markers that does not rely on \b at the end of punctuation
 def _strip_artist_markers(s: str) -> str:
     out = s
     for marker in ARTIST_MARKERS:
-        pat = re.compile(rf"(?i)(?<![A-Za-z0-9]){re.escape(marker)}(?![A-Za-z0-9])")
-        out = pat.sub(",", out)
+        pat = re.compile(rf"\s*,\s*{re.escape(marker)}", re.IGNORECASE)
+        out = pat.sub("", out)
     # Also handle 'Widespread Panic' capitalized variants
-    out = re.sub(r"(?i)(?<![A-Za-z0-9])Widespread\s+Panic(?![A-Za-z0-9])", ",", out)
+    out = re.sub(r"\s*,\s*Widespread\s+Panic", "", out, flags=re.IGNORECASE)
     return out
 
 # Segment terminators that indicate end of useful setlist content
@@ -103,6 +110,28 @@ def _slug_matches_city_state(slug: str, city: Optional[str], state: Optional[str
         ok = ok and (_normalize_token(state) in slug_norm)
     return ok
 
+def _normalize_song_name(song_name: str) -> str:
+    """Apply specific normalizations to song names."""
+    cleaned = song_name.strip()
+    lowered = cleaned.lower()
+
+    if lowered == "walkin'":
+        return "Walkin' (For Your Love)"
+
+    if lowered in {
+        "bowlegged woman knock kneed man",
+        "bowlegged woman, knock kneed man",
+        "knock kneed man",
+    }:
+        return "Bowlegged Woman"
+
+    return cleaned
+
+
+def _remove_parenthesized_text(text: str) -> str:
+    """Remove parenthesized text from a string."""
+    return re.sub(r"\s*\([^)]*\)", "", text).strip()
+
 
 def _clean_song_text(text: str) -> str:
     # remove bracketed references like [ 1 ] or [1]
@@ -113,7 +142,6 @@ def _clean_song_text(text: str) -> str:
     text = re.sub(r"\s+", " ", text)
     return text.strip()
 
-
 def _split_segue(song_chunk: str) -> List[Tuple[str, bool]]:
     """Split a song chunk on '>' segues and mark is_segue for all but the last."""
     parts = [p.strip() for p in song_chunk.split(">") if p.strip()]
@@ -121,7 +149,6 @@ def _split_segue(song_chunk: str) -> List[Tuple[str, bool]]:
     for i, p in enumerate(parts):
         out.append((_clean_song_text(p.rstrip("*")), i < len(parts) - 1))
     return out
-
 
 def _parse_sets_from_text(block_text: str, show_id: str) -> List[Dict[str, Any]]:
     """Parse a text block that includes 'Set 1', 'Set 2', 'Encore' sections.
@@ -194,6 +221,9 @@ def _parse_sets_from_text(block_text: str, show_id: str) -> List[Dict[str, Any]]
         # extremely long lines not typical for song titles
         if len(t) > 80:
             return True
+        # explicit artist-credit spillover that should not persist as songs
+        if tl in ARTIST_MARKERS:
+            return True
         return False
 
     rows: List[Dict[str, Any]] = []
@@ -210,8 +240,9 @@ def _parse_sets_from_text(block_text: str, show_id: str) -> List[Dict[str, Any]]
                     continue
                 # Token-level cleanup: strip artist markers and brackets again
                 token = _strip_artist_markers(song_name)
+                token = _remove_parenthesized_text(token)
                 token = _clean_song_text(token)
-                cleaned = token.strip()
+                cleaned = _normalize_song_name(token.strip())
                 # Drop non-song tokens
                 if looks_like_non_song(cleaned):
                     continue
@@ -230,8 +261,7 @@ def _parse_sets_from_text(block_text: str, show_id: str) -> List[Dict[str, Any]]
 def find_show_on_index(target_date: date, city: Optional[str], state: Optional[str]) -> Tuple[Optional[str], Optional[str]]:
     """Search the TourWrangler setlists index for a show matching the target date.
 
-    Returns (url, text_block) if found, otherwise (None, None).
-    """
+    Returns (url, text_block) if found, otherwise (None, None)."""
     resp = requests.get(TW_SETLISTS_INDEX, timeout=30)
     resp.raise_for_status()
     soup = BeautifulSoup(resp.content, "html.parser")
@@ -273,7 +303,6 @@ def parse_show_page(url: str, show_id: str) -> List[Dict[str, Any]]:
     soup = BeautifulSoup(resp.content, "html.parser")
     page_text = soup.get_text("\n", strip=True)
     return _parse_sets_from_text(page_text, show_id)
-
 
 def fetch_setlist_from_tourwrangler(
     show_date: date,

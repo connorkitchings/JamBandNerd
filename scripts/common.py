@@ -3,12 +3,49 @@ from __future__ import annotations
 
 import sys
 from datetime import date, datetime
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 import pandas as pd
+import requests
 
 # Local imports
 from src.jambandnerd.db.connection import get_supabase_client
+from src.jambandnerd.data_collection.config import get_collector_config
+
+
+def ensure_source_reachable(band: str, *, timeout: int = 15) -> None:
+    """Perform a shallow health check for a band's data source.
+
+    Args:
+        band: Band identifier (goose/phish/etc.)
+        timeout: Request timeout in seconds.
+
+    Raises:
+        RuntimeError: If the upstream endpoint is unreachable or returns a fatal error.
+    """
+    config = get_collector_config(band)
+    url = config.base_url
+    try:
+        response = requests.get(
+            url,
+            timeout=timeout,
+            allow_redirects=True,
+            headers={"User-Agent": config.user_agent},
+        )
+        status = response.status_code
+        # Treat any network-level errors or 5xx responses as fatal. 4xx responses imply the host is reachable.
+        if status >= 500:
+            raise RuntimeError(f"Received status {status} from {url}")
+    except requests.RequestException as exc:
+        raise RuntimeError(f"Failed to contact {url}: {exc}") from exc
+
+
+def assert_required_columns(table_name: str, df: pd.DataFrame, columns: Iterable[str]) -> None:
+    """Ensure that a DataFrame contains the required columns."""
+
+    missing = [column for column in columns if column not in df.columns]
+    if missing:
+        raise RuntimeError(f"{table_name} missing expected columns: {', '.join(missing)}")
 
 
 def prepare_band_data(shows_df: pd.DataFrame, setlists_df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
@@ -42,7 +79,10 @@ def prepare_band_data(shows_df: pd.DataFrame, setlists_df: pd.DataFrame) -> Tupl
 
 
 def resolve_reference_date(
-    date_str: str | None, shows_df: pd.DataFrame
+    date_str: str | None,
+    shows_df: pd.DataFrame,
+    *,
+    upcoming_df: Optional[pd.DataFrame] = None,
 ) -> date:
     """
     Resolves the reference date for predictions.
@@ -76,6 +116,23 @@ def resolve_reference_date(
             print(f"No specific date provided; defaulting to next upcoming show: {next_show_date.date().isoformat()}")
             return next_show_date.date()
 
+        if upcoming_df is not None and not upcoming_df.empty:
+            upcoming_copy = upcoming_df.copy()
+            for column in ("show_date", "starts_at", "starts_at_local"):
+                if column not in upcoming_copy.columns:
+                    continue
+                parsed = pd.to_datetime(upcoming_copy[column], errors="coerce")
+                if parsed.isna().all():
+                    continue
+                future_candidates = [d.date() for d in parsed.dropna() if d.date() >= today]
+                if future_candidates:
+                    next_show = min(future_candidates)
+                    print(
+                        "Using upcoming shows table for next show date: "
+                        f"{next_show.isoformat()}"
+                    )
+                    return next_show
+
         # Fallback: use most recent past show when no future shows are available
         past_shows = shows_df_copy[shows_df_copy["_show_date_dt"] < today_ts]
         if past_shows.empty:
@@ -90,14 +147,15 @@ def resolve_reference_date(
         return target_date
 
 
-def fetch_table(table_name: str, chunk_size: int = 1000) -> List[Dict]:
+def fetch_table(table_name: str, chunk_size: int = 10000) -> List[Dict]:
     """Fetch all rows from a Supabase table with robust, verbose pagination."""
     client = get_supabase_client()
     all_data = []
     offset = 0
     
     try:
-        count_response = client.table(table_name).select("*, count=exact").limit(0).execute()
+        # Correctly pass count as a keyword argument
+        count_response = client.table(table_name).select("*", count="exact").limit(0).execute()
         total_rows = count_response.count
         print(f"Found {total_rows} total rows in {table_name}.")
     except Exception as e:

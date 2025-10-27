@@ -31,6 +31,8 @@ class CKPlusPredictor(PredictionModel):
         "goose": 100,  # A smaller gap for a band with a more regular rotation
         "phish": 150,  # A larger gap for a band with a deeper catalog
         "wsp": 150,    # Similar to Phish
+        "billy": 150,
+        "um": 150,
         "default": 250 # A safe fallback for other bands
     }
 
@@ -150,6 +152,4 @@ class CKPlusPredictor(PredictionModel):
         """Placeholder for calculate_accuracy method."""
         print("Accuracy calculation not implemented for this model.")
         return {}
-
-
 

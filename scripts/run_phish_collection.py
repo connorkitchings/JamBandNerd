@@ -28,6 +28,7 @@ from src.jambandnerd.db.validation import (
     coerce_df_types,
     validate_dataframe_against_table,
 )
+from scripts.common import ensure_source_reachable, assert_required_columns
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
@@ -57,7 +58,7 @@ def _normalize_songs(raw: Iterable[Dict[str, Any]]) -> pd.DataFrame:
             "last_permalink": item.get("last_permalink"),
             "debut_permalink": item.get("debut_permalink"),
             "source_hash": _compute_source_hash(item),
-            "created_at": now,  # Added this line
+            "created_at": now,
         }
         for item in raw
         if item.get("songid")
@@ -69,6 +70,7 @@ def _normalize_songs(raw: Iterable[Dict[str, Any]]) -> pd.DataFrame:
 
 def _normalize_shows(raw: Iterable[Dict[str, Any]]) -> pd.DataFrame:
     """Normalize shows to `phish_shows_raw` schema."""
+    now = datetime.now(timezone.utc).isoformat()
     normalized = [
         {
             "api_show_id": item.get("showid"),
@@ -91,6 +93,7 @@ def _normalize_shows(raw: Iterable[Dict[str, Any]]) -> pd.DataFrame:
             "api_created_at": item.get("created_at"),
             "api_updated_at": item.get("updated_at"),
             "source_hash": _compute_source_hash(item),
+            "created_at": now,
         }
         for item in raw
         if item.get("showid")
@@ -108,6 +111,7 @@ def _normalize_shows(raw: Iterable[Dict[str, Any]]) -> pd.DataFrame:
 
 def _normalize_venues(raw: Iterable[Dict[str, Any]]) -> pd.DataFrame:
     """Normalize venues to `phish_venues_raw` schema."""
+    now = datetime.now(timezone.utc).isoformat()
     venues = {}
     for item in raw:
         venue_id = item.get("venueid")
@@ -119,6 +123,7 @@ def _normalize_venues(raw: Iterable[Dict[str, Any]]) -> pd.DataFrame:
                 "venue_state": item.get("state"),
                 "venue_country": item.get("country"),
                 "source_hash": _compute_source_hash(item),
+                "created_at": now,
             }
     df = pd.DataFrame(list(venues.values()))
     df.drop_duplicates(subset=["api_venue_id"], keep="first", inplace=True)
@@ -148,7 +153,7 @@ def _normalize_setlists(raw: Iterable[Dict[str, Any]]) -> pd.DataFrame:
         return bool(s)
 
     # Use a naive timestamp string compatible with Postgres timestamp without time zone
-    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    now = datetime.now(timezone.utc).isoformat()
     normalized_rows: List[Dict[str, Any]] = []
     for item in raw:
         if not item.get("uniqueid"):
@@ -178,7 +183,7 @@ def _normalize_setlists(raw: Iterable[Dict[str, Any]]) -> pd.DataFrame:
     df = pd.DataFrame(normalized_rows)
     if not df.empty:
         # Enforce numeric types where appropriate
-        for col in ["set_number", "position", "gap", "track_time"]:
+        for col in ["set_number", "song_position", "position", "gap", "track_time"]:
             if col in df.columns:
                 df[col] = pd.to_numeric(df[col], errors="coerce").astype("Int64")
         # Deduplicate based on unique setlist entry
@@ -207,6 +212,7 @@ def run_phish_collection(
 ) -> None:
     """Collect all Phish data and store it in Supabase raw tables."""
     logging.info("Starting Phish data collection...")
+    ensure_source_reachable("phish")
     collector = PhishCollector()
     get_supabase_client()
 
@@ -218,7 +224,11 @@ def run_phish_collection(
         logging.info(f"Defaulting to setlist collection for years: {year_start}-{year_end}")
 
     def upsert_table(
-        table_name: str, collector_func, normalizer_func, conflict_cols: List[str]
+        table_name: str,
+        collector_func,
+        normalizer_func,
+        conflict_cols: List[str],
+        required_columns: List[str] | None = None,
     ):
         logging.info(f"Collecting {table_name}...")
         raw_data = collector_func()
@@ -227,6 +237,20 @@ def run_phish_collection(
         if df.empty:
             logging.info(f"No data for {table_name}; skipping upsert.")
             return
+
+        if required_columns:
+            # Final guard against column name mismatches
+            if (
+                "song_position" in required_columns
+                and "position" in df.columns
+                and "song_position" not in df.columns
+            ):
+                df.rename(columns={"position": "song_position"}, inplace=True)
+            assert_required_columns(table_name, df, required_columns)
+
+        # Final guard to ensure created_at exists
+        if "created_at" not in df.columns:
+            df["created_at"] = datetime.now(timezone.utc).isoformat()
 
         schema = get_table_schema(table_name)
         if schema and not skip_validation:
@@ -249,6 +273,7 @@ def run_phish_collection(
             logging.info(f"Upserted data into {table_name}.")
         except Exception as e:
             logging.error(f"Error upserting to {table_name}: {e}")
+            raise
 
     if clear_setlists:
         logging.info("Clearing phish_setlists_raw table...")
@@ -303,6 +328,7 @@ def run_phish_collection(
         lambda: collector.collect_setlists(show_ids=show_ids),
         _normalize_setlists,
         ["api_unique_id"],
+        required_columns=["set_number", "position"],
     )
 
     # Log collection run

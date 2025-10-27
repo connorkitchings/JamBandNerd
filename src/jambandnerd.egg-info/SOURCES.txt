@@ -1,6 +1,7 @@
 README.md
 pyproject.toml
 src/jambandnerd/__init__.py
+src/jambandnerd/config.py
 src/jambandnerd.egg-info/PKG-INFO
 src/jambandnerd.egg-info/SOURCES.txt
 src/jambandnerd.egg-info/dependency_links.txt
@@ -12,12 +13,16 @@ src/jambandnerd/data_collection/base.py
 src/jambandnerd/data_collection/collect_data.py
 src/jambandnerd/data_collection/config.py
 src/jambandnerd/data_collection/test_enhanced_collectors.py
+src/jambandnerd/data_collection/billy/collector.py
 src/jambandnerd/data_collection/goose/__init__.py
 src/jambandnerd/data_collection/goose/collector.py
 src/jambandnerd/data_collection/phish/__init__.py
 src/jambandnerd/data_collection/phish/collector.py
+src/jambandnerd/data_collection/um/__init__.py
+src/jambandnerd/data_collection/um/collector.py
 src/jambandnerd/data_collection/wsp/__init__.py
 src/jambandnerd/data_collection/wsp/collector.py
+src/jambandnerd/data_collection/wsp/tourwrangler.py
 src/jambandnerd/db/__init__.py
 src/jambandnerd/db/connection.py
 src/jambandnerd/db/operations.py
@@ -33,7 +38,9 @@ src/jambandnerd/predictions/__init__.py
 src/jambandnerd/transformations/__init__.py
 src/jambandnerd/transformations/gaps.py
 src/jambandnerd/utils/__init__.py
+src/jambandnerd/utils/logging.py
 src/jambandnerd/web/app.py
+tests/test_collectors.py
 tests/test_data_collection.py
 tests/test_db.py
 tests/test_models.py

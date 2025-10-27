@@ -73,5 +73,5 @@
     "editor.defaultFormatter": "charliermarsh.ruff",
     "ruff.enable": true,
     "ruff.lintOnSave": true,
-    "ruff.organizeImports": true
+    "ruff.organizeImports": true,
 }

@@ -1,0 +1,38 @@
+# Activity Logs
+
+This directory archives daily AI-assisted development sessions. Each entry captures the task focus,
+key outcomes, and follow-up notes for the date in the filename.
+
+## 2025 Sessions
+- [2025-10-27 — Billy ingestion session](2025-10-27/billy_ingestion_session.md)
+- [2025-10-27 — Umphrey's pipeline hardening](2025-10-27/um_pipeline_hardening.md)
+- [2025-10-25 — Pipeline stabilization series](2025-10-25/01.md)
+- [2025-10-25 — Validation improvements](2025-10-25/02.md)
+- [2025-10-25 — Streamlit updates](2025-10-25/03.md)
+- [2025-10-25 — Deployment follow-up](2025-10-25/04.md)
+- [2025-10-07 — WSP fallback guide](2025-10-07/01.md)
+- [2025-10-04 — Validation fixes](2025-10-04/01.md)
+- [2025-10-04 — Validation follow-up](2025-10-04/02.md)
+- [2025-09-26 — Data and logic fixes](2025-09-26/01.md)
+- [2025-09-21 — Highlighting fixes](2025-09-21/01.md)
+- [2025-09-17 — Exclusion window fix](2025-09-17/01.md)
+- [2025-09-16 — Workflow improvements](2025-09-16/01.md)
+- [2025-09-14 — Developer guide review](2025-09-14/01.md)
+- [2025-09-13 — Phish prediction data fix](2025-09-13/01.md)
+- [2025-08-30 — Session 03](2025-08-30/03.md)
+- [2025-08-30 — Session 02](2025-08-30/02.md)
+- [2025-08-30 — Session 01](2025-08-30/01.md)
+- [2025-08-29 — WSP parsing fix](2025-08-29/01.md)
+- [2025-08-26 — Daily session](2025-08-26/01.md)
+- [2025-08-25 — Session 02](2025-08-25/02.md)
+- [2025-08-25 — Session 01](2025-08-25/01.md)
+- [2025-08-24 — Session 01](2025-08-24/01.md)
+- [2025-08-23 — Session 01](2025-08-23/01.md)
+- [2025-08-22 — Session 01](2025-08-22/01.md)
+- [2025-08-20 — Session 02](2025-08-20/02.md)
+- [2025-08-20 — Session 01](2025-08-20/01.md)
+- [2025-08-19 — Session 01](2025-08-19/01.md)
+- [2025-08-18 — Session 01](2025-08-18/01.md)
+- [2025-08-17 — Session 03](2025-08-17/03.md)
+- [2025-08-17 — Session 02](2025-08-17/02.md)
+- [2025-08-17 — Session 01](2025-08-17/01.md)

@@ -1,6 +1,6 @@
 # WSP Data Collection Improvements
 
-This document outlines current status and potential improvements for the Widespread Panic (WSP) data collector.
+This document outlines planned improvements for the Widespread Panic (WSP) data collector.
 
 ## Current Status
 

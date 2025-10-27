@@ -47,38 +47,56 @@ plugins:
 
 nav:
   - Home: index.md
-  - Status: IMPLEMENTATION_STATUS.md
+  - Status: overview/implementation_status.md
   - User Guide:
-      - Getting Started: user_guide/getting_started.md
-      - Pipeline Usage: user_guide/pipeline_usage.md
-      - Configuration: user_guide/configuration.md
-  - Developer Guide:
-      - Architecture: developer_guide/architecture.md
-      - Extending the Platform: developer_guide/extending_the_platform.md
-      - AI Sessions: developer_guide/ai_sessions.md
+      - Getting Started: user/getting_started.md
+      - Pipeline Usage: user/pipeline_usage.md
+      - Configuration: user/configuration.md
+  - Contributor Guide:
+      - Onboarding: contributor/onboarding.md
+      - Architecture: contributor/developer_guide/architecture.md
+      - Extending the Platform: contributor/developer_guide/extending_the_platform.md
+      - AI Sessions: contributor/developer_guide/ai_sessions.md
+  - Operations:
+      - Daily Pipeline: operations/github_actions.md
+      - Pipeline Optimization: operations/pipeline_optimization.md
+      - Streamlit Deployment: operations/streamlit_deploy.md
+      - TourWrangler Fallback (WSP): operations/tourwrangler_fallback.md
   - Reference:
       - Collectors:
           - WSP Improvements: reference/collectors/wsp_improvements.md
+      - Specifications:
+          - Technical Overview: reference/specifications/technical_overview.md
+          - CLI & Scripts: reference/specifications/cli.md
+          - Database: reference/specifications/database.md
+          - Goose Pipeline: reference/specifications/goose_pipeline.md
+          - Transformations: reference/specifications/transformations.md
+          - Predictions Schema: reference/specifications/predictions_schema.md
       - Schemas:
           - Unified Tables: reference/schemas/unified_tables.md
           - Goose API: reference/schemas/goose_api.md
           - Phish API: reference/schemas/phish_api.md
           - WSP Webscrape: reference/schemas/wsp_webscrape.md
-      - Specifications:
-          - Database: reference/specifications/database.md
-          - Goose Pipeline: reference/specifications/goose_pipeline.md
-          - Predictions Schema: reference/specifications/predictions_schema.md
+          - UM AllThings: reference/schemas/um_allthings.md
+      - Models:
+          - Overview: reference/models/index.md
+          - Notebook Model: reference/models/notebook.md
+          - CK+ Model: reference/models/ckplus.md
       - Guides:
-          - GitHub Actions: reference/guides/github_actions.md
-          - Pipeline Optimization: reference/guides/pipeline_optimization.md
           - Supabase API Guide: reference/guides/supabase_api_guide.md
           - Supabase Inserts: reference/guides/supabase_inserts.md
-          - Troubleshooting Data Quality: reference/guides/troubleshooting_data_quality.md
-          - TourWrangler Fallback (WSP): guides/tourwrangler_fallback.md
+  - Troubleshooting:
+      - Data Ingestion & Streamlit Issues: troubleshooting/data_ingestion_and_streamlit_issues.md
+      - Validation Fix Log (2025-10-04): troubleshooting/VALIDATION_FIX_2025-10-04.md
+      - Data Quality Checklist: troubleshooting/troubleshooting_data_quality.md
+  - Project Docs:
+      - Product Requirements: overview/project/prd.md
+      - Architecture Decisions: overview/project/adr.md
+      - Implementation Schedule: overview/project/schedule.md
+  - Reports:
+      - Improvements Summary: reports/IMPROVEMENTS_SUMMARY.md
+      - Validation Improvements: reports/VALIDATION_IMPROVEMENTS.md
+      - Validation Test Report: reports/TEST_REPORT_VALIDATION.md
+  - Logs: logs/index.md
   - Archive:
-      - Implementation Guide: archive/implementation_guide_v2.md
-      - Project Planning:
-          - Product Requirements: archive/project/prd.md
-          - Architecture Decisions: archive/project/adr.md
-          - Implementation Schedule: archive/project/schedule.md
-      - Dev Logs: logs/2025-08-29-wsp-parsing-fix.md
+      - Implementation Guide: archive/implementation_guide.md

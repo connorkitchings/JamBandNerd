@@ -23,6 +23,7 @@ from src.jambandnerd.data_collection.goose.collector import GooseCollector  # no
 from src.jambandnerd.db.operations import upsert_dataframe, get_table_schema  # noqa: E402
 from src.jambandnerd.db.connection import get_supabase_client  # noqa: E402
 from src.jambandnerd.db.validation import validate_dataframe_against_table, coerce_df_types # noqa: E402
+from scripts.common import ensure_source_reachable, assert_required_columns  # noqa: E402
 import argparse
 
 
@@ -149,11 +150,12 @@ def _normalize_setlists(raw: Iterable[Dict[str, Any]]) -> pd.DataFrame:
 def run_goose_collection(skip_validation: bool = False) -> None:
     """Collect all Goose data and store it in Supabase raw tables."""
     print("Starting Goose data collection...")
+    ensure_source_reachable("goose")
     collector = GooseCollector()
     get_supabase_client()
 
     # Upsert logic for each table type
-    def upsert_table(table_name: str, collector_func, normalizer_func, conflict_cols: List[str]):
+    def upsert_table(table_name: str, collector_func, normalizer_func, conflict_cols: List[str], required_columns: List[str] | None = None):
         print(f"Collecting {table_name}...")
         raw_data = collector_func()
         df = normalizer_func(raw_data)
@@ -161,6 +163,9 @@ def run_goose_collection(skip_validation: bool = False) -> None:
         if df.empty:
             print(f"No data for {table_name}; skipping upsert.")
             return
+
+        if required_columns:
+            assert_required_columns(table_name, df, required_columns)
 
         schema = get_table_schema(table_name)
         if schema and not skip_validation:
@@ -191,7 +196,7 @@ def run_goose_collection(skip_validation: bool = False) -> None:
     upsert_table("goose_songs_raw", collector.collect_songs, _normalize_songs, ["api_song_id"])
     upsert_table("goose_shows_raw", collector.collect_shows, _normalize_shows, ["show_id"])
     upsert_table("goose_venues_raw", collector.collect_venues, _normalize_venues, ["venue_id"])
-    upsert_table("goose_setlists_raw", collector.collect_setlists, _normalize_setlists, ["show_id", "set_number", "song_position"])
+    upsert_table("goose_setlists_raw", collector.collect_setlists, _normalize_setlists, ["show_id", "set_number", "song_position"], required_columns=["set_number", "song_position"])
 
     # Log collection run
     try:

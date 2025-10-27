@@ -1,0 +1,269 @@
+2025-10-27 09:37:10,994 - INFO - Starting Phish data collection...
+2025-10-27 09:37:11,260 - INFO - Initialized PhishCollector with rate limit: 80/60s
+2025-10-27 09:37:11,314 - INFO - Defaulting to setlist collection for years: 2024-2025
+2025-10-27 09:37:11,314 - INFO - Collecting phish_songs_raw...
+2025-10-27 09:37:11,314 - INFO - Fetching data from https://api.phish.net/v5/songs.json?apikey=REDACTED
+2025-10-27 09:37:11,508 - INFO - ✅ Phish: Collected 970 songs.
+2025-10-27 09:37:11,520 - INFO - Prepared 957 records for phish_songs_raw.
+2025-10-27 09:37:12,526 - INFO - Upserted data into phish_songs_raw.
+2025-10-27 09:37:12,528 - INFO - Fetching data from https://api.phish.net/v5/shows/artist/phish.json?apikey=REDACTED
+2025-10-27 09:37:12,732 - INFO - ✅ Phish: Collected 2213 shows.
+2025-10-27 09:37:12,760 - INFO - Filtered shows by year [2024, 2025]: 93/2213 remaining
+2025-10-27 09:37:14,135 - INFO - Upserted 2213 shows into phish_shows_raw.
+2025-10-27 09:37:14,427 - INFO - Upserted 866 venues into phish_venues_raw.
+2025-10-27 09:37:14,428 - INFO - Collecting phish_setlists_raw...
+[2025-10-27 09:37:10] 🚀 Starting JamBandNerd Pipeline Orchestrator
+[2025-10-27 09:37:10] [PHISH] Starting full pipeline...
+[2025-10-27 09:37:10] [PHISH] Starting: Data Collection
+Collecting Phish setlists:   0%|          | 0/93 [00:00<?, ?show/s]2025-10-27 09:37:14,449 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1684286323.json?apikey=REDACTED
+2025-10-27 09:37:14,517 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1684286358.json?apikey=REDACTED
+Collecting Phish setlists:   2%|▏         | 2/93 [00:00<00:06, 15.03show/s]2025-10-27 09:37:14,583 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1684286408.json?apikey=REDACTED
+2025-10-27 09:37:14,661 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1684286440.json?apikey=REDACTED
+Collecting Phish setlists:   4%|▍         | 4/93 [00:00<00:06, 14.45show/s]2025-10-27 09:37:14,726 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1694536244.json?apikey=REDACTED
+2025-10-27 09:37:14,787 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1694536484.json?apikey=REDACTED
+Collecting Phish setlists:   6%|▋         | 6/93 [00:00<00:05, 15.18show/s]2025-10-27 09:37:14,850 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1694536535.json?apikey=REDACTED
+2025-10-27 09:37:14,914 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1694536576.json?apikey=REDACTED
+Collecting Phish setlists:   9%|▊         | 8/93 [00:00<00:05, 15.40show/s]2025-10-27 09:37:14,977 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1701353198.json?apikey=REDACTED
+2025-10-27 09:37:15,288 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1701353225.json?apikey=REDACTED
+Collecting Phish setlists:  11%|█         | 10/93 [00:00<00:08,  9.24show/s]2025-10-27 09:37:15,346 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1701353427.json?apikey=REDACTED
+2025-10-27 09:37:15,407 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1701353487.json?apikey=REDACTED
+Collecting Phish setlists:  13%|█▎        | 12/93 [00:01<00:07, 10.93show/s]2025-10-27 09:37:15,464 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1708468023.json?apikey=REDACTED
+2025-10-27 09:37:15,518 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1709061666.json?apikey=REDACTED
+Collecting Phish setlists:  15%|█▌        | 14/93 [00:01<00:06, 12.28show/s]2025-10-27 09:37:15,586 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1709061690.json?apikey=REDACTED
+2025-10-27 09:37:15,643 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1709061711.json?apikey=REDACTED
+Collecting Phish setlists:  17%|█▋        | 16/93 [00:01<00:05, 13.67show/s]2025-10-27 09:37:15,696 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1709061734.json?apikey=REDACTED
+2025-10-27 09:37:15,749 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1709061756.json?apikey=REDACTED
+Collecting Phish setlists:  19%|█▉        | 18/93 [00:01<00:05, 14.45show/s]2025-10-27 09:37:15,818 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1709061781.json?apikey=REDACTED
+2025-10-27 09:37:15,872 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1709061804.json?apikey=REDACTED
+Collecting Phish setlists:  22%|██▏       | 20/93 [00:01<00:04, 14.76show/s]2025-10-27 09:37:15,947 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1709061823.json?apikey=REDACTED
+2025-10-27 09:37:16,005 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1709061846.json?apikey=REDACTED
+Collecting Phish setlists:  24%|██▎       | 22/93 [00:01<00:04, 15.34show/s]2025-10-27 09:37:16,065 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1709061872.json?apikey=REDACTED
+2025-10-27 09:37:16,128 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1709061889.json?apikey=REDACTED
+Collecting Phish setlists:  26%|██▌       | 24/93 [00:01<00:04, 15.41show/s]2025-10-27 09:37:16,193 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1709061909.json?apikey=REDACTED
+2025-10-27 09:37:16,254 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1709061924.json?apikey=REDACTED
+Collecting Phish setlists:  28%|██▊       | 26/93 [00:01<00:04, 15.77show/s]2025-10-27 09:37:16,314 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1709061944.json?apikey=REDACTED
+2025-10-27 09:37:16,385 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1709061965.json?apikey=REDACTED
+Collecting Phish setlists:  30%|███       | 28/93 [00:01<00:04, 15.66show/s]2025-10-27 09:37:16,444 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1709061985.json?apikey=REDACTED
+2025-10-27 09:37:16,504 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1709062017.json?apikey=REDACTED
+Collecting Phish setlists:  32%|███▏      | 30/93 [00:02<00:04, 15.73show/s]2025-10-27 09:37:16,569 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1709062035.json?apikey=REDACTED
+2025-10-27 09:37:16,630 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1709062053.json?apikey=REDACTED
+Collecting Phish setlists:  34%|███▍      | 32/93 [00:02<00:03, 16.16show/s]2025-10-27 09:37:16,685 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1709062071.json?apikey=REDACTED
+2025-10-27 09:37:16,748 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1709062091.json?apikey=REDACTED
+Collecting Phish setlists:  37%|███▋      | 34/93 [00:02<00:03, 16.01show/s]2025-10-27 09:37:16,813 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1709062115.json?apikey=REDACTED
+2025-10-27 09:37:16,874 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1718730861.json?apikey=REDACTED
+Collecting Phish setlists:  39%|███▊      | 36/93 [00:02<00:03, 16.14show/s]2025-10-27 09:37:16,934 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1718730894.json?apikey=REDACTED
+2025-10-27 09:37:17,005 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1718730936.json?apikey=REDACTED
+Collecting Phish setlists:  41%|████      | 38/93 [00:02<00:03, 15.89show/s]2025-10-27 09:37:17,065 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1718730981.json?apikey=REDACTED
+2025-10-27 09:37:17,123 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1720403683.json?apikey=REDACTED
+Collecting Phish setlists:  43%|████▎     | 40/93 [00:02<00:03, 15.88show/s]2025-10-27 09:37:17,191 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1720546298.json?apikey=REDACTED
+2025-10-27 09:37:17,254 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1723666648.json?apikey=REDACTED
+Collecting Phish setlists:  45%|████▌     | 42/93 [00:02<00:03, 15.75show/s]2025-10-27 09:37:17,321 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1725991638.json?apikey=REDACTED
+2025-10-27 09:37:17,387 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1725991657.json?apikey=REDACTED
+Collecting Phish setlists:  47%|████▋     | 44/93 [00:03<00:03, 15.61show/s]2025-10-27 09:37:17,451 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1725991676.json?apikey=REDACTED
+2025-10-27 09:37:17,511 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1727805806.json?apikey=REDACTED
+Collecting Phish setlists:  49%|████▉     | 46/93 [00:03<00:02, 15.79show/s]2025-10-27 09:37:17,574 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1727805824.json?apikey=REDACTED
+2025-10-27 09:37:17,634 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1727805841.json?apikey=REDACTED
+Collecting Phish setlists:  52%|█████▏    | 48/93 [00:03<00:02, 16.10show/s]2025-10-27 09:37:17,694 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1727805859.json?apikey=REDACTED
+2025-10-27 09:37:17,752 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1737486654.json?apikey=REDACTED
+Collecting Phish setlists:  54%|█████▍    | 50/93 [00:03<00:02, 16.22show/s]2025-10-27 09:37:17,814 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1737486683.json?apikey=REDACTED
+2025-10-27 09:37:17,872 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1737486760.json?apikey=REDACTED
+Collecting Phish setlists:  56%|█████▌    | 52/93 [00:03<00:02, 16.43show/s]2025-10-27 09:37:17,932 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1737486782.json?apikey=REDACTED
+2025-10-27 09:37:17,990 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1737486800.json?apikey=REDACTED
+Collecting Phish setlists:  58%|█████▊    | 54/93 [00:03<00:02, 16.42show/s]2025-10-27 09:37:18,054 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1737486827.json?apikey=REDACTED
+2025-10-27 09:37:18,109 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1737486843.json?apikey=REDACTED
+Collecting Phish setlists:  60%|██████    | 56/93 [00:03<00:02, 16.90show/s]2025-10-27 09:37:18,164 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1737486860.json?apikey=REDACTED
+2025-10-27 09:37:18,223 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1738096515.json?apikey=REDACTED
+Collecting Phish setlists:  62%|██████▏   | 58/93 [00:03<00:02, 17.01show/s]2025-10-27 09:37:18,280 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1738775047.json?apikey=REDACTED
+2025-10-27 09:37:18,336 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1739905672.json?apikey=REDACTED
+Collecting Phish setlists:  65%|██████▍   | 60/93 [00:03<00:01, 16.94show/s]2025-10-27 09:37:18,399 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1739905708.json?apikey=REDACTED
+2025-10-27 09:37:18,463 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1739905740.json?apikey=REDACTED
+Collecting Phish setlists:  67%|██████▋   | 62/93 [00:04<00:01, 16.99show/s]2025-10-27 09:37:18,516 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1739906123.json?apikey=REDACTED
+2025-10-27 09:37:18,571 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1739906224.json?apikey=REDACTED
+Collecting Phish setlists:  69%|██████▉   | 64/93 [00:04<00:01, 17.35show/s]2025-10-27 09:37:18,626 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1739906330.json?apikey=REDACTED
+2025-10-27 09:37:18,685 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1739906355.json?apikey=REDACTED
+Collecting Phish setlists:  71%|███████   | 66/93 [00:04<00:01, 17.48show/s]2025-10-27 09:37:18,738 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1739906380.json?apikey=REDACTED
+2025-10-27 09:37:18,795 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1739906489.json?apikey=REDACTED
+Collecting Phish setlists:  73%|███████▎  | 68/93 [00:04<00:01, 17.38show/s]2025-10-27 09:37:18,855 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1739906512.json?apikey=REDACTED
+2025-10-27 09:37:18,913 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1739906539.json?apikey=REDACTED
+Collecting Phish setlists:  75%|███████▌  | 70/93 [00:04<00:01, 17.10show/s]2025-10-27 09:37:18,976 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1739906558.json?apikey=REDACTED
+2025-10-27 09:37:19,041 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1739906591.json?apikey=REDACTED
+Collecting Phish setlists:  77%|███████▋  | 72/93 [00:04<00:01, 16.84show/s]2025-10-27 09:37:19,099 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1739906636.json?apikey=REDACTED
+2025-10-27 09:37:19,156 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1739906659.json?apikey=REDACTED
+Collecting Phish setlists:  80%|███████▉  | 74/93 [00:04<00:01, 16.85show/s]2025-10-27 09:37:19,218 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1739906688.json?apikey=REDACTED
+2025-10-27 09:37:19,278 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1739906713.json?apikey=REDACTED
+Collecting Phish setlists:  82%|████████▏ | 76/93 [00:04<00:01, 16.46show/s]2025-10-27 09:37:19,346 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1739906763.json?apikey=REDACTED
+2025-10-27 09:37:19,451 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1739906798.json?apikey=REDACTED
+Collecting Phish setlists:  84%|████████▍ | 78/93 [00:05<00:01, 14.82show/s]2025-10-27 09:37:19,512 - INFO - Rate limit reached (80/80), sleeping for 51.8s
+Collecting Phish setlists:  84%|████████▍ | 78/93 [00:20<00:01, 14.82show/s]2025-10-27 09:38:11,322 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1739906822.json?apikey=REDACTED
+Collecting Phish setlists:  85%|████████▍ | 79/93 [00:56<02:08,  9.21s/show]2025-10-27 09:38:11,404 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1739906842.json?apikey=REDACTED
+2025-10-27 09:38:11,464 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1739906861.json?apikey=REDACTED
+Collecting Phish setlists:  87%|████████▋ | 81/93 [00:57<01:14,  6.19s/show]2025-10-27 09:38:11,801 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1739906954.json?apikey=REDACTED
+2025-10-27 09:38:11,863 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1748974713.json?apikey=REDACTED
+Collecting Phish setlists:  89%|████████▉ | 83/93 [00:57<00:42,  4.21s/show]2025-10-27 09:38:11,929 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1748974739.json?apikey=REDACTED
+2025-10-27 09:38:11,991 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1748974769.json?apikey=REDACTED
+Collecting Phish setlists:  91%|█████████▏| 85/93 [00:57<00:23,  2.90s/show]2025-10-27 09:38:12,061 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1748974795.json?apikey=REDACTED
+2025-10-27 09:38:12,129 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1748974821.json?apikey=REDACTED
+Collecting Phish setlists:  94%|█████████▎| 87/93 [00:57<00:12,  2.02s/show]2025-10-27 09:38:12,189 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1748974843.json?apikey=REDACTED
+2025-10-27 09:38:12,250 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1748974866.json?apikey=REDACTED
+Collecting Phish setlists:  96%|█████████▌| 89/93 [00:58<00:05,  1.45s/show]2025-10-27 09:38:12,525 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1758047919.json?apikey=REDACTED
+2025-10-27 09:38:12,624 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1758048007.json?apikey=REDACTED
+Collecting Phish setlists:  98%|█████████▊| 91/93 [00:58<00:02,  1.03s/show]2025-10-27 09:38:12,710 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1758048029.json?apikey=REDACTED
+2025-10-27 09:38:12,788 - INFO - Fetching data from https://api.phish.net/v5/setlists/showid/1758048050.json?apikey=REDACTED
+Collecting Phish setlists: 100%|██████████| 93/93 [00:58<00:00,  1.35show/s]Collecting Phish setlists: 100%|██████████| 93/93 [00:58<00:00,  1.59show/s]
+2025-10-27 09:38:12,864 - INFO - ✅ Phish: Collected 1567 total setlist records.
+2025-10-27 09:38:12,900 - INFO - Prepared 1567 records for phish_setlists_raw.
+2025-10-27 09:38:14,222 - INFO - Upserted data into phish_setlists_raw.
+2025-10-27 09:38:14,308 - INFO - Logged collection run.
+2025-10-27 09:38:14,309 - INFO - Phish data collection finished.
+[2025-10-27 09:38:14] [PHISH] Finished: Data Collection
+[2025-10-27 09:38:14] [PHISH] Starting: Notebook Predictions
+[PHISH/NOTEBOOK] Fetching raw data...
+Found 2213 total rows in phish_shows_raw.
+Fetching all records from phish_shows_raw in chunks of 10000...
+Fetching rows from offset 0...
+Fetched 2213 rows. Total so far: 2213.
+Fetched all expected rows based on count. Ending fetch.
+Fetched a total of 2213 records from phish_shows_raw.
+Found 39208 total rows in phish_setlists_raw.
+Fetching all records from phish_setlists_raw in chunks of 10000...
+Fetching rows from offset 0...
+Fetched 10000 rows. Total so far: 10000.
+Fetching rows from offset 10000...
+Fetched 10000 rows. Total so far: 20000.
+Fetching rows from offset 20000...
+Fetched 10000 rows. Total so far: 30000.
+Fetching rows from offset 30000...
+Fetched 9208 rows. Total so far: 39208.
+Fetched all expected rows based on count. Ending fetch.
+Fetched a total of 39208 records from phish_setlists_raw.
+No specific date provided; defaulting to next upcoming show: 2025-12-28
+[PHISH/NOTEBOOK] Generating predictions for reference date: 2025-12-28
+[PHISH/NOTEBOOK] --- Model Diagnostics ---
+{
+  "reference_date": "2025-12-28",
+  "reference_index": 2206,
+  "total_songs_in_history": 987,
+  "recently_played_count": 58
+}
+[PHISH/NOTEBOOK] Recently played songs (excluded): ['46 Days', 'A Life Beyond The Dream', 'A Wave of Hope', 'AC/DC Bag', 'Also Sprach Zarathustra', 'Army of One', 'Beneath a Sea of Stars Part 1', 'Birds of a Feather', 'Boogie On Reggae Woman', 'Bouncing Around the Room', 'Bug', 'Chalk Dust Torture', 'Energy', 'Esther', 'Ether Edge', "Everything's Right", 'First Tube', 'Fluffhead', 'Foam', 'Funky Bitch', 'Ghost', 'Golgi Apparatus', 'Gotta Jibboo', 'Gumbo', 'Harry Hood', 'I Am Hydrogen', "It's Ice", 'Izabella', 'Julius', 'Life Saving Gun', 'Lonely Trip', 'Meat', "Mike's Song", 'Moonage Daydream', "Most Events Aren't Planned", 'My Friend, My Friend', "No Men In No Man's Land", 'Pebbles and Marbles', 'Possum', 'Prince Caspian', 'Rift', 'Rock and Roll', 'Roggae', 'Ruby Waves', 'Scents and Subtle Sounds', 'Simple', 'Split Open and Melt', 'Suzy Greenberg', 'The Wedge', 'Tweezer', 'Tweezer Reprise', 'Twenty Years Later', 'Undermind', 'Walls of the Cave', 'Waste', 'Weekapaug Groove', "What's Going Through Your Mind", 'Ya Mar']
+[PHISH/NOTEBOOK] -------------------------
+[PHISH/NOTEBOOK] Generated 50 predictions. Saving to predictions_notebook...
+[PHISH/NOTEBOOK] Successfully saved predictions.
+[2025-10-27 09:38:18] [PHISH] Finished: Notebook Predictions
+[2025-10-27 09:38:18] [PHISH] Starting: Notebook Backtest
+[PHISH/NOTEBOOK] Fetching raw data...
+Found 2213 total rows in phish_shows_raw.
+Fetching all records from phish_shows_raw in chunks of 10000...
+Fetching rows from offset 0...
+Fetched 2213 rows. Total so far: 2213.
+Fetched all expected rows based on count. Ending fetch.
+Fetched a total of 2213 records from phish_shows_raw.
+Found 39208 total rows in phish_setlists_raw.
+Fetching all records from phish_setlists_raw in chunks of 10000...
+Fetching rows from offset 0...
+Fetched 10000 rows. Total so far: 10000.
+Fetching rows from offset 10000...
+Fetched 10000 rows. Total so far: 20000.
+Fetching rows from offset 20000...
+Fetched 10000 rows. Total so far: 30000.
+Fetching rows from offset 30000...
+Fetched 9208 rows. Total so far: 39208.
+Fetched all expected rows based on count. Ending fetch.
+Fetched a total of 39208 records from phish_setlists_raw.
+[PHISH/NOTEBOOK] Backtesting on last 100 completed shows from 2023-10-07 to 2025-09-21
+[PHISH/NOTEBOOK] Skipping show 1720403683 on 2024-07-11: only 1 songs
+[PHISH/NOTEBOOK] Saving 99 per-show accuracy records to the database...
+[PHISH/NOTEBOOK] Save complete.
+
+[PHISH/NOTEBOOK] --- Aggregate Metrics for Window ---
+[PHISH/NOTEBOOK] K=10: hit_rate=0.889 avg_matches=2.859 precision=0.286 recall=0.155 f1=0.201
+[PHISH/NOTEBOOK] K=25: hit_rate=0.949 avg_matches=5.889 precision=0.236 recall=0.323 f1=0.271
+[PHISH/NOTEBOOK] K=50: hit_rate=0.990 avg_matches=9.192 precision=0.184 recall=0.508 f1=0.268
+[2025-10-27 09:38:32] [PHISH] Finished: Notebook Backtest
+[2025-10-27 09:38:32] [PHISH] Starting: Notebook Aggregate Accuracy
+[PHISH/NOTEBOOK] Fetching last 100 per-show accuracy records...
+[PHISH/NOTEBOOK] Found 100 records to aggregate.
+[PHISH/NOTEBOOK] Saving aggregate accuracy summary to notebook_accuracy...
+[PHISH/NOTEBOOK] Successfully saved aggregate accuracy.
+[PHISH/NOTEBOOK] Summary: 100 shows from 2023-10-06 to 2025-09-21
+[PHISH/NOTEBOOK] K=10: hit_rate=0.890 precision=0.286 recall=0.156
+[PHISH/NOTEBOOK] K=25: hit_rate=0.950 precision=0.235 recall=0.322
+[PHISH/NOTEBOOK] K=50: hit_rate=0.990 precision=0.183 recall=0.506
+[2025-10-27 09:38:32] [PHISH] Finished: Notebook Aggregate Accuracy
+[2025-10-27 09:38:32] [PHISH] Starting: Ckplus Predictions
+[PHISH/CKPLUS] Fetching raw data...
+Found 2213 total rows in phish_shows_raw.
+Fetching all records from phish_shows_raw in chunks of 10000...
+Fetching rows from offset 0...
+Fetched 2213 rows. Total so far: 2213.
+Fetched all expected rows based on count. Ending fetch.
+Fetched a total of 2213 records from phish_shows_raw.
+Found 39208 total rows in phish_setlists_raw.
+Fetching all records from phish_setlists_raw in chunks of 10000...
+Fetching rows from offset 0...
+Fetched 10000 rows. Total so far: 10000.
+Fetching rows from offset 10000...
+Fetched 10000 rows. Total so far: 20000.
+Fetching rows from offset 20000...
+Fetched 10000 rows. Total so far: 30000.
+Fetching rows from offset 30000...
+Fetched 9208 rows. Total so far: 39208.
+Fetched all expected rows based on count. Ending fetch.
+Fetched a total of 39208 records from phish_setlists_raw.
+No specific date provided; defaulting to next upcoming show: 2025-12-28
+[PHISH/CKPLUS] Generating predictions for reference date: 2025-12-28
+[PHISH/CKPLUS] Generated 50 predictions. Saving to predictions_ckplus...
+[PHISH/CKPLUS] Successfully saved predictions.
+[2025-10-27 09:38:34] [PHISH] Finished: Ckplus Predictions
+[2025-10-27 09:38:34] [PHISH] Starting: Ckplus Backtest
+[PHISH/CKPLUS] Fetching raw data...
+Found 2213 total rows in phish_shows_raw.
+Fetching all records from phish_shows_raw in chunks of 10000...
+Fetching rows from offset 0...
+Fetched 2213 rows. Total so far: 2213.
+Fetched all expected rows based on count. Ending fetch.
+Fetched a total of 2213 records from phish_shows_raw.
+Found 39208 total rows in phish_setlists_raw.
+Fetching all records from phish_setlists_raw in chunks of 10000...
+Fetching rows from offset 0...
+Fetched 10000 rows. Total so far: 10000.
+Fetching rows from offset 10000...
+Fetched 10000 rows. Total so far: 20000.
+Fetching rows from offset 20000...
+Fetched 10000 rows. Total so far: 30000.
+Fetching rows from offset 30000...
+Fetched 9208 rows. Total so far: 39208.
+Fetched all expected rows based on count. Ending fetch.
+Fetched a total of 39208 records from phish_setlists_raw.
+[PHISH/CKPLUS] Backtesting on last 100 completed shows from 2023-10-07 to 2025-09-21
+[PHISH/CKPLUS] Skipping show 1720403683 on 2024-07-11: only 1 songs
+[PHISH/CKPLUS] Saving 99 per-show accuracy records to the database...
+[PHISH/CKPLUS] Save complete.
+
+[PHISH/CKPLUS] --- Aggregate Metrics for Window ---
+[PHISH/CKPLUS] K=10: hit_rate=0.475 avg_matches=0.758 precision=0.076 recall=0.041 f1=0.053
+[PHISH/CKPLUS] K=25: hit_rate=0.859 avg_matches=2.172 precision=0.087 recall=0.119 f1=0.100
+[PHISH/CKPLUS] K=50: hit_rate=0.960 avg_matches=4.677 precision=0.094 recall=0.256 f1=0.136
+[2025-10-27 09:38:48] [PHISH] Finished: Ckplus Backtest
+[2025-10-27 09:38:48] [PHISH] Starting: Ckplus Aggregate Accuracy
+[PHISH/CKPLUS] Fetching last 100 per-show accuracy records...
+[PHISH/CKPLUS] Found 100 records to aggregate.
+[PHISH/CKPLUS] Saving aggregate accuracy summary to accuracy_ckplus...
+[PHISH/CKPLUS] Successfully saved aggregate accuracy.
+[PHISH/CKPLUS] Summary: 100 shows from 2023-10-06 to 2025-09-21
+[PHISH/CKPLUS] K=10: hit_rate=0.470 precision=0.075 recall=0.041
+[PHISH/CKPLUS] K=25: hit_rate=0.860 precision=0.086 recall=0.118
+[PHISH/CKPLUS] K=50: hit_rate=0.960 precision=0.093 recall=0.255
+[2025-10-27 09:38:48] [PHISH] Finished: Ckplus Aggregate Accuracy
+[2025-10-27 09:38:48] [PHISH] Starting: Prediction Validation
+
+== Validating predictions_notebook (notebook_v1) ==
+[OK] phish: reference_date=2025-12-28 predicted_at=2025-10-27T13:38:18.734826+00:00 age=0.0h top_song=Carini
+
+== Validating predictions_ckplus (ckplus_v1) ==
+[OK] phish: reference_date=2025-12-28 predicted_at=2025-10-27T13:38:34.393087+00:00 age=0.0h top_song=Hold Your Head Up
+[2025-10-27 09:38:48] [PHISH] Finished: Prediction Validation
+[2025-10-27 09:38:48] [PHISH] ✅ Successfully completed pipeline.
+[2025-10-27 09:38:48] 📊 Pipeline Summary (Total Time: 97.5s)
+[2025-10-27 09:38:48]   PHISH: ✅ SUCCESS (took 97.5s)
+[2025-10-27 09:38:48] 🎉 All pipelines completed successfully!

@@ -229,7 +229,7 @@ Examples:
   python scripts/diagnose_band_data.py --band phish --verbose
   
   # Check all bands
-  for band in goose phish wsp; do
+  for band in goose phish wsp billy um; do
     python scripts/diagnose_band_data.py --band $band
   done
         """
@@ -237,7 +237,7 @@ Examples:
     parser.add_argument(
         "--band",
         required=True,
-        choices=["goose", "phish", "wsp"],
+        choices=["goose", "phish", "wsp", "billy", "um"],
         help="Band to diagnose"
     )
     parser.add_argument(

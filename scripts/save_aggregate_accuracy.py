@@ -28,41 +28,14 @@ from src.jambandnerd.db.connection import get_supabase_client
 from src.jambandnerd.models.accuracy import aggregate_metrics
 
 
-def main() -> None:
+def save_aggregate_accuracy(band: str, model: str, shows: int) -> None:
     """Fetch per-show metrics and save an aggregate accuracy summary."""
-    parser = argparse.ArgumentParser(
-        description="Save aggregate model accuracy from per-show backtest results."
-    )
-    parser.add_argument(
-        "--band",
-        type=str,
-        required=True,
-        choices=["goose", "phish", "wsp"],
-        help="The band to process.",
-    )
-    parser.add_argument(
-        "--model",
-        type=str,
-        required=True,
-        choices=["notebook", "ckplus"],
-        help="The model to aggregate accuracy for.",
-    )
-    parser.add_argument(
-        "--shows",
-        type=int,
-        default=100,
-        help="Number of recent shows to average over.",
-    )
-    args = parser.parse_args()
-
-    band = args.band.lower()
-    model = args.model.lower()
     log_prefix = f"[{band.upper()}/{model.upper()}]"
 
     client = get_supabase_client()
     model_version = f"{model}_v1"
 
-    print(f"{log_prefix} Fetching last {args.shows} per-show accuracy records...")
+    print(f"{log_prefix} Fetching last {shows} per-show accuracy records...")
 
     # 1. Fetch per-show accuracy data
     response = (
@@ -71,7 +44,7 @@ def main() -> None:
         .eq("band", band)
         .eq("model_version", model_version)
         .order("show_date", desc=True)
-        .limit(args.shows)
+        .limit(shows)
         .execute()
     )
 
@@ -146,6 +119,36 @@ def main() -> None:
         print(f"{log_prefix} Error saving to {table_name}: {e}")
         print(f"{log_prefix} Record data: {record}")
         raise
+
+
+def main() -> None:
+    """Main entry point for the script."""
+    parser = argparse.ArgumentParser(
+        description="Save aggregate model accuracy from per-show backtest results."
+    )
+    parser.add_argument(
+        "--band",
+        type=str,
+        required=True,
+        choices=["goose", "phish", "wsp", "billy", "um"],
+        help="The band to process.",
+    )
+    parser.add_argument(
+        "--model",
+        type=str,
+        required=True,
+        choices=["notebook", "ckplus"],
+        help="The model to aggregate accuracy for.",
+    )
+    parser.add_argument(
+        "--shows",
+        type=int,
+        default=100,
+        help="Number of recent shows to average over.",
+    )
+    args = parser.parse_args()
+
+    save_aggregate_accuracy(band=args.band, model=args.model, shows=args.shows)
 
 
 if __name__ == "__main__":

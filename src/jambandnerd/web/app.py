@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import json
-from datetime import date
+from datetime import date, datetime, timezone
+# Where we need regex helpers
+import re
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import altair as alt
@@ -63,6 +65,40 @@ MODEL_CONFIG = {
         },
     },
 }
+
+# Artist-credit spillovers we strip from WSP setlists/Panic displays
+WSP_ARTIST_MARKERS = {
+    "david bromberg band",
+    "new riders of the purple sage",
+    "j.j. cale",
+    "the doors",
+}
+
+@st.cache_data(ttl=STREAMLIT_CACHE_TTL)
+def fetch_wsp_upcoming_show(_db_client: Client) -> dict | None:
+    """Fetch the next upcoming WSP show from the manual upcoming table."""
+    try:
+        today_iso = datetime.now(timezone.utc).isoformat()
+        resp = (
+            _db_client.table("wsp_shows_upcoming")
+            .select("*")
+            .gte("show_date", today_iso[:10])
+            .order("show_date", desc=False)
+            .limit(1)
+            .execute()
+        )
+        if resp.data:
+            return resp.data[0]
+        resp = (
+            _db_client.table("wsp_shows_upcoming")
+            .select("*")
+            .order("show_date", desc=False)
+            .limit(1)
+            .execute()
+        )
+        return resp.data[0] if resp.data else None
+    except Exception:
+        return None
 
 # (Logos removed for a cleaner header)
 
@@ -359,7 +395,56 @@ def fetch_last_collection_time(_db_client: Client, band: str) -> str | None:
         return None
 
 
+@st.cache_data(ttl=STREAMLIT_CACHE_TTL)
+def fetch_um_upcoming_show(_db_client: Client) -> dict | None:
+    """Fetch the next upcoming UM show from the Seated-backed table."""
+    try:
+        today_iso = datetime.now(timezone.utc).isoformat()
+        resp = (
+            _db_client.table("um_upcoming_shows")
+            .select("*")
+            .gte("starts_at", today_iso)
+            .order("starts_at", desc=False)
+            .limit(1)
+            .execute()
+        )
+        if resp.data:
+            return resp.data[0]
+
+        # Fallback to the most recently stored upcoming show if nothing is in the future
+        resp = (
+            _db_client.table("um_upcoming_shows")
+            .select("*")
+            .order("starts_at", desc=False)
+            .limit(1)
+            .execute()
+        )
+        return resp.data[0] if resp.data else None
+    except Exception:
+        return None
+
+
 # --- UI Components ---
+
+
+def _clean_song_name_for_display(name: str, band: str) -> str:
+    """Normalize song names for display/highlighting, stripping unwanted artist credits."""
+    if not isinstance(name, str):
+        return ""
+    cleaned = name.rstrip('>').rstrip('*').strip()
+    if not cleaned:
+        return ""
+    lowered = cleaned.lower()
+    if band == "wsp":
+        if lowered in WSP_ARTIST_MARKERS:
+            return ""
+        for marker in WSP_ARTIST_MARKERS:
+            pattern = re.compile(rf"\s*,\s*{re.escape(marker)}\s*$", re.IGNORECASE)
+            cleaned = pattern.sub("", cleaned)
+    cleaned = cleaned.strip()
+    if not cleaned:
+        return ""
+    return cleaned
 
 
 def get_initial_selection_from_url(default_band: str, default_model: str, default_k: int) -> dict:
@@ -393,7 +478,10 @@ def display_sidebar(initial_band: Optional[str] = None, initial_model: Optional[
     """Render the sidebar and return selected options."""
     st.sidebar.title("JamBandNerd")
 
-    band_display_names = [config["display_name"] for config in BAND_CONFIG.values()]
+    sorted_bands = sorted(BAND_CONFIG.items(), key=lambda item: item[1]["display_name"].lower())
+    band_display_names = [config["display_name"] for _, config in sorted_bands]
+    display_to_slug = {config["display_name"]: slug for slug, config in sorted_bands}
+
     if initial_band in BAND_CONFIG:
         initial_band_display = BAND_CONFIG[initial_band]["display_name"]  # type: ignore[index]
     else:
@@ -402,12 +490,9 @@ def display_sidebar(initial_band: Optional[str] = None, initial_model: Optional[
         band_index = band_display_names.index(initial_band_display)
     except ValueError:
         band_index = 0
+
     selected_band_display = st.sidebar.selectbox("Select a Band", band_display_names, index=band_index)
-    selected_band_slug = next(
-        slug
-        for slug, config in BAND_CONFIG.items()
-        if config["display_name"] == selected_band_display
-    )
+    selected_band_slug = display_to_slug[selected_band_display]
 
     model_display_names = [config["display_name"] for config in MODEL_CONFIG.values()]
     if initial_model in MODEL_CONFIG:
@@ -562,9 +647,11 @@ def display_last_show_setlist(client: Client, band: str, model: str):
         # Prefer explicit 'rank' if present; else use row order
         use_rank_col = 'rank' in predictions_df_for_show.columns
         for idx, row in predictions_df_for_show.iterrows():
-            song_name = str(row['song_name'])
+            normalized = _clean_song_name_for_display(str(row['song_name']), band).lower()
+            if not normalized:
+                continue
             rank = int(row['rank']) if use_rank_col and pd.notna(row['rank']) else (idx + 1)
-            prediction_ranks[song_name] = rank
+            prediction_ranks[normalized] = rank
     
     # Group songs by set (handle missing set numbers)
     if 'set_number' not in setlist_df.columns:
@@ -628,25 +715,28 @@ def display_last_show_setlist(client: Client, band: str, model: str):
         # Display songs with highlights
         song_list = []
         for _, song_row in set_data.iterrows():
-            song_name = song_row['song_name']
-            
+            song_name_clean = _clean_song_name_for_display(song_row['song_name'], band)
+            if not song_name_clean:
+                continue
+            lookup_key = song_name_clean.lower()
+
             # Check if song was predicted
-            if song_name in prediction_ranks:
-                rank = prediction_ranks[song_name]
+            if lookup_key in prediction_ranks:
+                rank = prediction_ranks[lookup_key]
                 if rank <= 10:
                     # Top 10: Green background
-                    song_display = f'<span style="background-color: #4CAF50; padding: 2px 4px; border-radius: 3px; color: white;"><strong>{song_name}</strong> (#{rank})</span>'
+                    song_display = f'<span style="background-color: #4CAF50; padding: 2px 4px; border-radius: 3px; color: white;"><strong>{song_name_clean}</strong> (#{rank})</span>'
                 elif rank <= 25:
                     # Top 25: Gold background
-                    song_display = f'<span style="background-color: #FFD700; padding: 2px 4px; border-radius: 3px; color: black;"><strong>{song_name}</strong> (#{rank})</span>'
+                    song_display = f'<span style="background-color: #FFD700; padding: 2px 4px; border-radius: 3px; color: black;"><strong>{song_name_clean}</strong> (#{rank})</span>'
                 elif rank <= 50:
                     # Top 50: Light Grey background
-                    song_display = f'<span style="background-color: #D3D3D3; padding: 2px 4px; border-radius: 3px; color: black;">{song_name} (#{rank})</span>'
+                    song_display = f'<span style="background-color: #D3D3D3; padding: 2px 4px; border-radius: 3px; color: black;">{song_name_clean} (#{rank})</span>'
                 else:
-                    song_display = song_name
+                    song_display = song_name_clean
             else:
-                song_display = song_name
-                
+                song_display = song_name_clean
+            
             song_list.append(song_display)
         
         # Display songs in the set
@@ -666,9 +756,19 @@ def display_last_show_setlist(client: Client, band: str, model: str):
     with legend_cols[2]:
         st.markdown('<span style="background-color: #D3D3D3; padding: 2px 6px; border-radius: 3px; color: black;">Top 50</span>', unsafe_allow_html=True)
     with legend_cols[3]:
-        total_predicted = len([s for s in setlist_df['song_name'] if s in prediction_ranks])
-        total_songs = len(setlist_df)
-        st.markdown(f"**{total_predicted}/{total_songs} songs predicted**")
+        total_predicted = 0
+        total_songs = 0
+        for name in setlist_df['song_name']:
+            cleaned = _clean_song_name_for_display(name, band)
+            if not cleaned:
+                continue
+            total_songs += 1
+            if cleaned.lower() in prediction_ranks:
+                total_predicted += 1
+        if total_songs == 0:
+            st.markdown("**0 songs predicted**")
+        else:
+            st.markdown(f"**{total_predicted}/{total_songs} songs predicted**")
 
 
 def display_predictions(client: Client, band: str, model: str):
@@ -680,17 +780,61 @@ def display_predictions(client: Client, band: str, model: str):
 
     if not predictions_df.empty:
         show_details = fetch_show_details_by_date(client, ref_date, band=band)
-        date_str = pd.to_datetime(ref_date).strftime("%m/%d/%Y") if ref_date else ""
-        venue_bits = []
-        if show_details:
-            venue = show_details.get("venue_name") or show_details.get("venue")
-            city = show_details.get("venue_city") or show_details.get("city")
-            state = show_details.get("venue_state") or show_details.get("state")
+        show_date_obj: Optional[date] = None
+        if ref_date:
+            try:
+                show_date_obj = pd.to_datetime(ref_date).date()
+            except Exception:
+                show_date_obj = None
+
+        header_prefix = "Next Show"
+        date_str = ""
+        venue_bits: List[str] = []
+
+        upcoming_details: Optional[dict] = None
+        if band == "um":
+            upcoming_details = fetch_um_upcoming_show(client)
+        elif band == "wsp":
+            upcoming_details = fetch_wsp_upcoming_show(client)
+
+        if upcoming_details:
+            start_str = (
+                upcoming_details.get("starts_at_local")
+                or upcoming_details.get("starts_at")
+                or upcoming_details.get("show_date")
+            )
+            try:
+                start_dt = pd.to_datetime(start_str).date() if start_str else None
+            except Exception:
+                start_dt = None
+            if start_dt:
+                date_str = start_dt.strftime("%m/%d/%Y")
+            venue = upcoming_details.get("venue_name")
+            city = upcoming_details.get("city") or upcoming_details.get("venue_city")
+            region = upcoming_details.get("region") or upcoming_details.get("venue_state")
+            country = upcoming_details.get("country") or upcoming_details.get("venue_country")
             if venue:
                 venue_bits.append(venue)
-            if city and state:
-                venue_bits.append(f"{city}, {state}")
-        left_header = f"Next Show: {date_str}"
+            location_parts = [part for part in [city, region] if part]
+            if location_parts:
+                venue_bits.append(", ".join(location_parts))
+            if country and country not in venue_bits:
+                venue_bits.append(country)
+        else:
+            if show_details:
+                venue = show_details.get("venue_name") or show_details.get("venue")
+                city = show_details.get("venue_city") or show_details.get("city")
+                state = show_details.get("venue_state") or show_details.get("state")
+                if venue:
+                    venue_bits.append(venue)
+                if city and state:
+                    venue_bits.append(f"{city}, {state}")
+            today = date.today()
+            if show_date_obj and show_date_obj < today:
+                header_prefix = "Most Recent Show"
+            date_str = show_date_obj.strftime("%m/%d/%Y") if show_date_obj else ""
+
+        left_header = f"{header_prefix}: {date_str}" if date_str else header_prefix
         if venue_bits:
             left_header += f" — {' • '.join(venue_bits)}"
         st.markdown(f"<h4 style='text-align: center;'>{left_header}</h4>", unsafe_allow_html=True)
@@ -709,13 +853,6 @@ def display_predictions(client: Client, band: str, model: str):
             f"<div style='text-align: center; color: gray;'>Model: {model_display_name} ({model_version}) · Predicted: {predicted_at_str}</div>",
             unsafe_allow_html=True,
         )
-        st.download_button(
-            label="Download CSV",
-            data=display_df.to_csv(index=False),
-            file_name=f"{band}_{model}_predictions_{ref_date or 'latest'}.csv",
-            mime="text/csv",
-        )
-        
         # Display last show setlist with prediction highlights
         st.markdown("---")
         st.markdown(

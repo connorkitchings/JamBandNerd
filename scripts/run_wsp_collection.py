@@ -11,7 +11,7 @@ import json
 import logging
 import sys
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List
 import requests
 
@@ -26,7 +26,7 @@ from src.jambandnerd.data_collection.wsp.tourwrangler import fetch_setlist_from_
 from src.jambandnerd.db.operations import upsert_dataframe, get_table_schema
 from src.jambandnerd.db.connection import get_supabase_client
 from src.jambandnerd.db.validation import coerce_df_types, validate_dataframe_against_table
-from scripts.common import fetch_table
+from scripts.common import fetch_table, ensure_source_reachable, assert_required_columns
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
@@ -45,6 +45,7 @@ def _compute_source_hash(record: pd.Series) -> str:
 def run_wsp_collection(skip_existing_setlists: bool = True, year_start: int | None = None, year_end: int | None = None, skip_url_validation: bool = False, full_backfill: bool = False, skip_validation: bool = False) -> None:
     """Collect all WSP data and store it in Supabase raw tables."""
     logging.info("Starting Widespread Panic data collection...")
+    ensure_source_reachable("wsp")
     collector = WSPCollector()
     client = get_supabase_client()
 
@@ -62,6 +63,10 @@ def run_wsp_collection(skip_existing_setlists: bool = True, year_start: int | No
                 songs_df[date_col] = songs_df[date_col].dt.date.apply(lambda d: d.isoformat() if pd.notnull(d) else None)
         songs_df = songs_df.where(pd.notnull(songs_df), None)
         songs_df["source_hash"] = songs_df.apply(_compute_source_hash, axis=1)
+        songs_df["is_cover"] = None
+        songs_df["original_artist"] = None
+        songs_df["created_at"] = datetime.now(timezone.utc).isoformat()
+        songs_df["updated_at"] = datetime.now(timezone.utc).isoformat()
         
         # Validation for songs
         schema = get_table_schema("wsp_songs_raw")
@@ -102,6 +107,9 @@ def run_wsp_collection(skip_existing_setlists: bool = True, year_start: int | No
     if shows_data:
         shows_df = pd.DataFrame(shows_data)
         shows_df["source_hash"] = shows_df.apply(_compute_source_hash, axis=1)
+        shows_df["show_notes"] = None
+        shows_df["created_at"] = datetime.now(timezone.utc).isoformat()
+        shows_df["updated_at"] = datetime.now(timezone.utc).isoformat()
         
         # Validation for shows
         schema = get_table_schema("wsp_shows_raw")
@@ -217,6 +225,10 @@ def run_wsp_collection(skip_existing_setlists: bool = True, year_start: int | No
         setlists_data = collector.collect_setlists(records_for_scrape)
         if setlists_data:
             setlists_df = pd.DataFrame(setlists_data)
+            assert_required_columns("wsp_setlists_raw", setlists_df, ["set_number", "song_position"])
+            timestamp = datetime.now(timezone.utc).isoformat()
+            setlists_df["created_at"] = timestamp
+            setlists_df["updated_at"] = timestamp
             setlists_df["source_hash"] = setlists_df.apply(_compute_source_hash, axis=1)
 
             # Optionally tag source if column exists
@@ -350,8 +362,8 @@ def run_wsp_collection(skip_existing_setlists: bool = True, year_start: int | No
             missing = [r for r in recent_shows if str(r.get("show_id")) not in with_setlists]
             logging.info(f"Found {len(missing)} recent shows with empty setlists needing backup.")
 
+            backup_rows: List[Dict[str, Any]] = []
             if missing:
-                backup_rows: List[Dict[str, Any]] = []
                 for rec in missing:
                     sid = str(rec.get("show_id"))
                     sdate_str = rec.get("show_date")
@@ -374,35 +386,36 @@ def run_wsp_collection(skip_existing_setlists: bool = True, year_start: int | No
                         backup_rows.extend(rows)
                         logging.info(f"TourWrangler provided {len(rows)} rows for show_id={sid} ({sdate_str}).")
 
-                if backup_rows:
-                    backup_df = pd.DataFrame(backup_rows)
-                    backup_df["source_hash"] = backup_df.apply(_compute_source_hash, axis=1)
+            if backup_rows:
+                backup_df = pd.DataFrame(backup_rows)
+                assert_required_columns("wsp_setlists_raw", backup_df, ["set_number", "song_position"])
+                backup_df["source_hash"] = backup_df.apply(_compute_source_hash, axis=1)
 
-                    schema = get_table_schema("wsp_setlists_raw")
-                    has_source_col = False
-                    if schema:
-                        for col in schema:
-                            if str(col.get("column_name", "")).lower() == "source":
-                                has_source_col = True
-                                break
-                    if has_source_col:
-                        backup_df["source"] = "tourwrangler"
-                    else:
-                        if "song_notes" in backup_df.columns:
-                            backup_df["song_notes"] = backup_df["song_notes"].fillna("").astype(str) + (backup_df["song_notes"].map(lambda _: "").astype(str))
+                schema = get_table_schema("wsp_setlists_raw")
+                has_source_col = False
+                if schema:
+                    for col in schema:
+                        if str(col.get("column_name", "")).lower() == "source":
+                            has_source_col = True
+                            break
+                if has_source_col:
+                    backup_df["source"] = "tourwrangler"
+                else:
+                    if "song_notes" in backup_df.columns:
+                        backup_df["song_notes"] = backup_df["song_notes"].fillna("").astype(str) + (backup_df["song_notes"].map(lambda _: "").astype(str))
 
-                    if schema and not skip_validation:
-                        backup_df = coerce_df_types(backup_df, schema)
-                        report = validate_dataframe_against_table(backup_df, "wsp_setlists_raw", schema)
-                        if not report.is_valid:
-                            logging.warning("⚠️ Validation warnings for wsp_setlists_raw (TourWrangler backup)")
+                if schema and not skip_validation:
+                    backup_df = coerce_df_types(backup_df, schema)
+                    report = validate_dataframe_against_table(backup_df, "wsp_setlists_raw", schema)
+                    if not report.is_valid:
+                        logging.warning("⚠️ Validation warnings for wsp_setlists_raw (TourWrangler backup)")
 
-                    upsert_dataframe(
-                        table_name="wsp_setlists_raw",
-                        df=backup_df,
-                        conflict_columns=["show_id", "set_number", "song_position"],
-                    )
-                    logging.info(f"Upserted {len(backup_df)} TourWrangler backup setlist rows.")
+                upsert_dataframe(
+                    table_name="wsp_setlists_raw",
+                    df=backup_df,
+                    conflict_columns=["show_id", "set_number", "song_position"],
+                )
+                logging.info(f"Upserted {len(backup_df)} TourWrangler backup setlist rows.")
         else:
             logging.info("No recent historical shows found in window; no backup needed.")
     except Exception as exc:

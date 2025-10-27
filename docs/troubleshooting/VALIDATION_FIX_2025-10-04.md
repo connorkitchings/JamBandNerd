@@ -138,7 +138,7 @@ All band collection scripts now use warning-only validation:
 - ✅ Type mismatches logged as warnings but don't block inserts
 - ✅ Missing required columns still cause validation failure (critical)
 - ✅ Nullable violations still cause validation failure (critical)
-- ✅ Consistent warning format across all bands (Goose, Phish, WSP)
+- ✅ Consistent warning format across all bands (Goose, Phish, WSP, Billy)
 - ✅ GitHub Actions workflow updated to use permissive validation by default
 
 For details, see:

@@ -1,0 +1,214 @@
+2025-10-27 09:57:29,176 - INFO - Starting Widespread Panic data collection...
+2025-10-27 09:57:29,461 - INFO - Initialized WSPCollector with rate limit: 60/60s
+2025-10-27 09:57:29,461 - INFO - --- Starting WSP Song Collection ---
+2025-10-27 09:57:29,461 - INFO - Scraping songs from http://www.everydaycompanion.com/asp/songcode.asp
+2025-10-27 09:57:29,925 - INFO - ✅ Widespread Panic: Scraped 699 songs.
+2025-10-27 09:57:30,692 - INFO - Upserted 699 songs into wsp_songs_raw.
+2025-10-27 09:57:30,693 - INFO - --- Finished WSP Song Collection ---
+2025-10-27 09:57:30,694 - INFO - Defaulting to show collection for years: 2024-2025
+2025-10-27 09:57:30,694 - INFO - --- Starting WSP Show Collection ---
+2025-10-27 09:57:30,695 - INFO - Collecting shows for years: 2024-2025 (2-digit: [24, 25])
+[2025-10-27 09:57:29] 🚀 Starting JamBandNerd Pipeline Orchestrator
+[2025-10-27 09:57:29] [WSP] Starting full pipeline...
+[2025-10-27 09:57:29] [WSP] Starting: Data Collection
+Collecting Widespread Panic shows:   0%|          | 0/2 [00:00<?, ?year/s]Collecting Widespread Panic shows:  50%|█████     | 1/2 [00:00<00:00,  4.65year/s]Collecting Widespread Panic shows: 100%|██████████| 2/2 [00:00<00:00,  3.91year/s]Collecting Widespread Panic shows: 100%|██████████| 2/2 [00:00<00:00,  4.00year/s]
+2025-10-27 09:57:31,216 - INFO - ✅ Widespread Panic: Collected 52 show URLs.
+2025-10-27 09:57:31,425 - INFO - Upserted 52 shows into wsp_shows_raw.
+2025-10-27 09:57:31,426 - INFO - --- Finished WSP Show Collection ---
+2025-10-27 09:57:31,427 - INFO - Fetching shows from database for years 2024-2025...
+2025-10-27 09:57:31,858 - INFO - Year filter applied: 3230 -> 53 shows (2024-2025)
+2025-10-27 09:57:31,859 - INFO - Checking for existing setlists in the database (optimized query)...
+2025-10-27 09:57:31,977 - INFO - Found 569 shows with existing setlists. Scraping for 50 remaining shows.
+2025-10-27 09:57:31,978 - INFO - Validating 50 setlist URLs for availability...
+Found 3230 total rows in wsp_shows_raw.
+Fetching all records from wsp_shows_raw in chunks of 10000...
+Fetching rows from offset 0...
+Fetched 3230 rows. Total so far: 3230.
+Fetched all expected rows based on count. Ending fetch.
+Fetched a total of 3230 records from wsp_shows_raw.
+Validating URLs:   0%|          | 0/50 [00:00<?, ?url/s]Validating URLs:   2%|▏         | 1/50 [00:00<00:15,  3.19url/s]Validating URLs:   4%|▍         | 2/50 [00:00<00:11,  4.22url/s]Validating URLs:   6%|▌         | 3/50 [00:00<00:08,  5.57url/s]Validating URLs:   8%|▊         | 4/50 [00:00<00:07,  6.56url/s]Validating URLs:  10%|█         | 5/50 [00:00<00:06,  7.27url/s]Validating URLs:  12%|█▏        | 6/50 [00:01<00:06,  6.36url/s]Validating URLs:  14%|█▍        | 7/50 [00:01<00:06,  6.98url/s]Validating URLs:  16%|█▌        | 8/50 [00:01<00:05,  7.56url/s]Validating URLs:  18%|█▊        | 9/50 [00:01<00:05,  7.89url/s]Validating URLs:  20%|██        | 10/50 [00:01<00:04,  8.33url/s]Validating URLs:  22%|██▏       | 11/50 [00:01<00:04,  8.74url/s]Validating URLs:  24%|██▍       | 12/50 [00:01<00:04,  9.01url/s]Validating URLs:  26%|██▌       | 13/50 [00:01<00:04,  9.17url/s]Validating URLs:  28%|██▊       | 14/50 [00:01<00:04,  8.75url/s]Validating URLs:  30%|███       | 15/50 [00:02<00:03,  8.99url/s]Validating URLs:  32%|███▏      | 16/50 [00:02<00:03,  9.15url/s]Validating URLs:  34%|███▍      | 17/50 [00:02<00:03,  8.29url/s]Validating URLs:  36%|███▌      | 18/50 [00:02<00:03,  8.35url/s]Validating URLs:  38%|███▊      | 19/50 [00:02<00:03,  8.64url/s]Validating URLs:  40%|████      | 20/50 [00:02<00:03,  8.90url/s]Validating URLs:  42%|████▏     | 21/50 [00:02<00:03,  8.82url/s]Validating URLs:  44%|████▍     | 22/50 [00:02<00:03,  9.08url/s]Validating URLs:  46%|████▌     | 23/50 [00:02<00:02,  9.33url/s]Validating URLs:  48%|████▊     | 24/50 [00:03<00:02,  9.28url/s]Validating URLs:  50%|█████     | 25/50 [00:03<00:02,  9.42url/s]Validating URLs:  52%|█████▏    | 26/50 [00:03<00:02,  9.45url/s]Validating URLs:  56%|█████▌    | 28/50 [00:03<00:02,  9.37url/s]Validating URLs:  58%|█████▊    | 29/50 [00:03<00:02,  9.47url/s]Validating URLs:  62%|██████▏   | 31/50 [00:03<00:01,  9.71url/s]Validating URLs:  64%|██████▍   | 32/50 [00:03<00:01,  9.72url/s]Validating URLs:  66%|██████▌   | 33/50 [00:03<00:01,  9.49url/s]Validating URLs:  68%|██████▊   | 34/50 [00:04<00:01,  9.57url/s]Validating URLs:  70%|███████   | 35/50 [00:04<00:01,  9.60url/s]Validating URLs:  72%|███████▏  | 36/50 [00:04<00:01,  9.59url/s]Validating URLs:  74%|███████▍  | 37/50 [00:04<00:01,  9.45url/s]Validating URLs:  76%|███████▌  | 38/50 [00:04<00:01,  8.92url/s]Validating URLs:  78%|███████▊  | 39/50 [00:04<00:01,  8.90url/s]Validating URLs:  80%|████████  | 40/50 [00:04<00:01,  8.94url/s]Validating URLs:  82%|████████▏ | 41/50 [00:04<00:01,  8.81url/s]Validating URLs:  84%|████████▍ | 42/50 [00:04<00:00,  9.10url/s]Validating URLs:  86%|████████▌ | 43/50 [00:05<00:00,  9.18url/s]Validating URLs:  88%|████████▊ | 44/50 [00:05<00:00,  9.14url/s]Validating URLs:  90%|█████████ | 45/50 [00:05<00:00,  9.26url/s]Validating URLs:  94%|█████████▍| 47/50 [00:05<00:00, 11.52url/s]Validating URLs:  98%|█████████▊| 49/50 [00:05<00:00,  9.83url/s]Validating URLs: 100%|██████████| 50/50 [00:05<00:00,  8.69url/s]
+2025-10-27 09:57:37,736 - INFO - Validated 49/50 setlist URLs with 200 status.
+2025-10-27 09:57:37,737 - INFO - Starting setlist collection for 49 shows.
+Collecting Widespread Panic setlists:   0%|          | 0/49 [00:00<?, ?it/s]Collecting Widespread Panic setlists:   2%|▏         | 1/49 [00:00<00:19,  2.52it/s]Collecting Widespread Panic setlists:  12%|█▏        | 6/49 [00:00<00:03, 11.86it/s]Collecting Widespread Panic setlists:  16%|█▋        | 8/49 [00:00<00:03, 13.29it/s]Collecting Widespread Panic setlists:  22%|██▏       | 11/49 [00:00<00:02, 15.10it/s]Collecting Widespread Panic setlists:  27%|██▋       | 13/49 [00:01<00:02, 13.74it/s]Collecting Widespread Panic setlists:  35%|███▍      | 17/49 [00:01<00:02, 15.98it/s]2025-10-27 09:57:39,074 - WARNING - Could not find setlist table for http://www.everydaycompanion.com/setlists/20251026a.asp
+Collecting Widespread Panic setlists:  39%|███▉      | 19/49 [00:01<00:01, 16.67it/s]Collecting Widespread Panic setlists:  45%|████▍     | 22/49 [00:01<00:01, 14.94it/s]Collecting Widespread Panic setlists:  55%|█████▌    | 27/49 [00:01<00:01, 15.25it/s]Collecting Widespread Panic setlists:  65%|██████▌   | 32/49 [00:02<00:01, 14.88it/s]Collecting Widespread Panic setlists:  76%|███████▌  | 37/49 [00:02<00:00, 17.13it/s]Collecting Widespread Panic setlists:  82%|████████▏ | 40/49 [00:02<00:00, 18.34it/s]Collecting Widespread Panic setlists:  86%|████████▌ | 42/49 [00:02<00:00, 15.80it/s]Collecting Widespread Panic setlists:  96%|█████████▌| 47/49 [00:03<00:00, 17.01it/s]Collecting Widespread Panic setlists: 100%|██████████| 49/49 [00:03<00:00, 15.70it/s]
+2025-10-27 09:57:40,864 - INFO - ✅ Widespread Panic: Collected 1034 total setlist records.
+2025-10-27 09:57:41,572 - INFO - Upserted 1034 setlist records into wsp_setlists_raw.
+2025-10-27 09:57:41,807 - INFO - No 'source' column detected; will attempt structural cleanup instead.
+2025-10-27 09:57:43,059 - INFO - Checking for missing setlists in window 2025-10-24..2025-10-27 (excluding today); window_days=3
+2025-10-27 09:57:43,248 - INFO - Found 0 recent shows with empty setlists needing backup.
+2025-10-27 09:57:43,347 - INFO - Logged collection run.
+2025-10-27 09:57:43,349 - INFO - Widespread Panic data collection finished.
+[2025-10-27 09:57:43] [WSP] Finished: Data Collection
+[2025-10-27 09:57:43] [WSP] Starting: Notebook Predictions
+[WSP/NOTEBOOK] Fetching raw data...
+Found 3230 total rows in wsp_shows_raw.
+Fetching all records from wsp_shows_raw in chunks of 10000...
+Fetching rows from offset 0...
+Fetched 3230 rows. Total so far: 3230.
+Fetched all expected rows based on count. Ending fetch.
+Fetched a total of 3230 records from wsp_shows_raw.
+Found 62658 total rows in wsp_setlists_raw.
+Fetching all records from wsp_setlists_raw in chunks of 10000...
+Fetching rows from offset 0...
+Fetched 10000 rows. Total so far: 10000.
+Fetching rows from offset 10000...
+Fetched 10000 rows. Total so far: 20000.
+Fetching rows from offset 20000...
+Fetched 10000 rows. Total so far: 30000.
+Fetching rows from offset 30000...
+Fetched 10000 rows. Total so far: 40000.
+Fetching rows from offset 40000...
+Fetched 10000 rows. Total so far: 50000.
+Fetching rows from offset 50000...
+Fetched 10000 rows. Total so far: 60000.
+Fetching rows from offset 60000...
+Fetched 2658 rows. Total so far: 62658.
+Fetched all expected rows based on count. Ending fetch.
+Fetched a total of 62658 records from wsp_setlists_raw.
+No specific date provided; defaulting to next upcoming show: 2025-11-21
+[WSP/NOTEBOOK] Generating predictions for reference date: 2025-11-21
+[WSP/NOTEBOOK] --- Model Diagnostics ---
+{
+  "reference_date": "2025-11-21",
+  "reference_index": 3228,
+  "total_songs_in_history": 754,
+  "recently_played_count": 50
+}
+[WSP/NOTEBOOK] Recently played songs (excluded): ['A of D', 'Action Man', "Ain't Life Grand", 'Airplane', 'B of D', 'Barstools and Dreamers', 'Blight', 'Christmas Katie', 'Cosmic Confidante', 'David Bromberg Band', 'Dirty Business', "Don't Wanna Lose You", 'Down', 'Driving Song', 'Drums', 'Fishing', 'Fishwater', 'Flat Foot Flewzy', 'From The Cradle', 'Gimme', 'Heroes', 'Holden Oversoul', 'J.J. Cale', 'Jam', 'Jamais Vu', 'Little By Little', 'Little Kin', 'Little Wing', 'Love Tractor', 'Machine', 'Mercy', 'Mr. Soul', 'New Riders of the Purple Sage', 'Old Neighborhood', "Papa's Home", 'Pigeons', 'Pleas', 'Porch Song', 'Postcard', 'Radio Child', 'Ride Me High', 'Sharon', 'Small Town', 'Soul Kitchen', 'The Doors', 'The Take Out', 'Up All Night', 'Vacation', 'Visiting Day', 'We Walk Each Other Home']
+[WSP/NOTEBOOK] -------------------------
+[WSP/NOTEBOOK] Generated 50 predictions. Saving to predictions_notebook...
+[WSP/NOTEBOOK] Successfully saved predictions.
+[2025-10-27 09:57:46] [WSP] Finished: Notebook Predictions
+[2025-10-27 09:57:46] [WSP] Starting: Notebook Backtest
+[WSP/NOTEBOOK] Fetching raw data...
+Found 3230 total rows in wsp_shows_raw.
+Fetching all records from wsp_shows_raw in chunks of 10000...
+Fetching rows from offset 0...
+Fetched 3230 rows. Total so far: 3230.
+Fetched all expected rows based on count. Ending fetch.
+Fetched a total of 3230 records from wsp_shows_raw.
+Found 62658 total rows in wsp_setlists_raw.
+Fetching all records from wsp_setlists_raw in chunks of 10000...
+Fetching rows from offset 0...
+Fetched 10000 rows. Total so far: 10000.
+Fetching rows from offset 10000...
+Fetched 10000 rows. Total so far: 20000.
+Fetching rows from offset 20000...
+Fetched 10000 rows. Total so far: 30000.
+Fetching rows from offset 30000...
+Fetched 10000 rows. Total so far: 40000.
+Fetching rows from offset 40000...
+Fetched 10000 rows. Total so far: 50000.
+Fetching rows from offset 50000...
+Fetched 10000 rows. Total so far: 60000.
+Fetching rows from offset 60000...
+Fetched 2658 rows. Total so far: 62658.
+Fetched all expected rows based on count. Ending fetch.
+Fetched a total of 62658 records from wsp_setlists_raw.
+[WSP/NOTEBOOK] Backtesting on last 100 completed shows from 2022-10-21 to 2025-10-26
+[WSP/NOTEBOOK] Saving 100 per-show accuracy records to the database...
+[WSP/NOTEBOOK] Save complete.
+
+[WSP/NOTEBOOK] --- Aggregate Metrics for Window ---
+[WSP/NOTEBOOK] K=10: hit_rate=0.950 avg_matches=3.170 precision=0.317 recall=0.147 f1=0.200
+[WSP/NOTEBOOK] K=25: hit_rate=0.980 avg_matches=6.860 precision=0.274 recall=0.320 f1=0.295
+[WSP/NOTEBOOK] K=50: hit_rate=0.990 avg_matches=10.340 precision=0.207 recall=0.485 f1=0.288
+[2025-10-27 09:57:59] [WSP] Finished: Notebook Backtest
+[2025-10-27 09:57:59] [WSP] Starting: Notebook Aggregate Accuracy
+[WSP/NOTEBOOK] Fetching last 100 per-show accuracy records...
+[WSP/NOTEBOOK] Found 100 records to aggregate.
+[WSP/NOTEBOOK] Saving aggregate accuracy summary to notebook_accuracy...
+[WSP/NOTEBOOK] Successfully saved aggregate accuracy.
+[WSP/NOTEBOOK] Summary: 100 shows from 2023-01-15 to 2025-10-26
+[WSP/NOTEBOOK] K=10: hit_rate=0.960 precision=0.341 recall=0.156
+[WSP/NOTEBOOK] K=25: hit_rate=0.990 precision=0.280 recall=0.324
+[WSP/NOTEBOOK] K=50: hit_rate=0.990 precision=0.204 recall=0.474
+[2025-10-27 09:57:59] [WSP] Finished: Notebook Aggregate Accuracy
+[2025-10-27 09:57:59] [WSP] Starting: Ckplus Predictions
+[WSP/CKPLUS] Fetching raw data...
+Found 3230 total rows in wsp_shows_raw.
+Fetching all records from wsp_shows_raw in chunks of 10000...
+Fetching rows from offset 0...
+Fetched 3230 rows. Total so far: 3230.
+Fetched all expected rows based on count. Ending fetch.
+Fetched a total of 3230 records from wsp_shows_raw.
+Found 62658 total rows in wsp_setlists_raw.
+Fetching all records from wsp_setlists_raw in chunks of 10000...
+Fetching rows from offset 0...
+Fetched 10000 rows. Total so far: 10000.
+Fetching rows from offset 10000...
+Fetched 10000 rows. Total so far: 20000.
+Fetching rows from offset 20000...
+Fetched 10000 rows. Total so far: 30000.
+Fetching rows from offset 30000...
+Fetched 10000 rows. Total so far: 40000.
+Fetching rows from offset 40000...
+Fetched 10000 rows. Total so far: 50000.
+Fetching rows from offset 50000...
+Fetched 10000 rows. Total so far: 60000.
+Fetching rows from offset 60000...
+Fetched 2658 rows. Total so far: 62658.
+Fetched all expected rows based on count. Ending fetch.
+Fetched a total of 62658 records from wsp_setlists_raw.
+No specific date provided; defaulting to next upcoming show: 2025-11-21
+[WSP/CKPLUS] Generating predictions for reference date: 2025-11-21
+[WSP/CKPLUS] Generated 50 predictions. Saving to predictions_ckplus...
+[WSP/CKPLUS] Successfully saved predictions.
+[2025-10-27 09:58:03] [WSP] Finished: Ckplus Predictions
+[2025-10-27 09:58:03] [WSP] Starting: Ckplus Backtest
+[WSP/CKPLUS] Fetching raw data...
+Found 3230 total rows in wsp_shows_raw.
+Fetching all records from wsp_shows_raw in chunks of 10000...
+Fetching rows from offset 0...
+Fetched 3230 rows. Total so far: 3230.
+Fetched all expected rows based on count. Ending fetch.
+Fetched a total of 3230 records from wsp_shows_raw.
+Found 62658 total rows in wsp_setlists_raw.
+Fetching all records from wsp_setlists_raw in chunks of 10000...
+Fetching rows from offset 0...
+Fetched 10000 rows. Total so far: 10000.
+Fetching rows from offset 10000...
+Fetched 10000 rows. Total so far: 20000.
+Fetching rows from offset 20000...
+Fetched 10000 rows. Total so far: 30000.
+Fetching rows from offset 30000...
+Fetched 10000 rows. Total so far: 40000.
+Fetching rows from offset 40000...
+Fetched 10000 rows. Total so far: 50000.
+Fetching rows from offset 50000...
+Fetched 10000 rows. Total so far: 60000.
+Fetching rows from offset 60000...
+Fetched 2658 rows. Total so far: 62658.
+Fetched all expected rows based on count. Ending fetch.
+Fetched a total of 62658 records from wsp_setlists_raw.
+[WSP/CKPLUS] Backtesting on last 100 completed shows from 2022-10-21 to 2025-10-26
+[WSP/CKPLUS] Saving 100 per-show accuracy records to the database...
+[WSP/CKPLUS] Save complete.
+
+[WSP/CKPLUS] --- Aggregate Metrics for Window ---
+[WSP/CKPLUS] K=10: hit_rate=0.600 avg_matches=0.840 precision=0.084 recall=0.039 f1=0.053
+[WSP/CKPLUS] K=25: hit_rate=0.970 avg_matches=3.850 precision=0.154 recall=0.181 f1=0.166
+[WSP/CKPLUS] K=50: hit_rate=0.990 avg_matches=7.710 precision=0.154 recall=0.363 f1=0.215
+[2025-10-27 09:58:16] [WSP] Finished: Ckplus Backtest
+[2025-10-27 09:58:16] [WSP] Starting: Ckplus Aggregate Accuracy
+[WSP/CKPLUS] Fetching last 100 per-show accuracy records...
+[WSP/CKPLUS] Found 100 records to aggregate.
+[WSP/CKPLUS] Saving aggregate accuracy summary to accuracy_ckplus...
+[WSP/CKPLUS] Successfully saved aggregate accuracy.
+[WSP/CKPLUS] Summary: 100 shows from 2023-01-15 to 2025-10-26
+[WSP/CKPLUS] K=10: hit_rate=0.600 precision=0.080 recall=0.037
+[WSP/CKPLUS] K=25: hit_rate=0.990 precision=0.149 recall=0.175
+[WSP/CKPLUS] K=50: hit_rate=1.000 precision=0.150 recall=0.354
+[2025-10-27 09:58:16] [WSP] Finished: Ckplus Aggregate Accuracy
+[2025-10-27 09:58:16] [WSP] Starting: Prediction Validation
+
+== Validating predictions_notebook (notebook_v1) ==
+[OK] wsp: reference_date=2025-11-21 predicted_at=2025-10-27T13:57:46.481021+00:00 age=0.0h top_song=King Baby
+
+== Validating predictions_ckplus (ckplus_v1) ==
+[OK] wsp: reference_date=2025-11-21 predicted_at=2025-10-27T13:58:02.886932+00:00 age=0.0h top_song=Sell Sell
+[2025-10-27 09:58:16] [WSP] Finished: Prediction Validation
+[2025-10-27 09:58:16] [WSP] ✅ Successfully completed pipeline.
+[2025-10-27 09:58:16] 📊 Pipeline Summary (Total Time: 47.5s)
+[2025-10-27 09:58:16]   WSP: ✅ SUCCESS (took 47.5s)
+[2025-10-27 09:58:16] 🎉 All pipelines completed successfully!
