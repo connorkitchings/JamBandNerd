@@ -2,7 +2,7 @@ name: Daily Data Pipeline
 
 on:
   schedule:
-    - cron: '0 19 * * *' # Runs daily at 19:00 UTC (3:00 PM ET during DST)
+    - cron: '0 19 * * *' # Runs daily at 19:00 UTC (3 PM ET during DST, 2 PM ET otherwise)
   workflow_dispatch:
     inputs:
       band:
@@ -24,11 +24,12 @@ on:
         type: boolean
 
 env:
+  # Single source of truth for band list
   BAND_LIST_JSON: '["goose","phish","wsp","billy","um"]'
 
 jobs:
   daily-pipeline:
-    name: Daily Pipeline
+    name: Daily Pipeline - ${{ matrix.band }}
     runs-on: ubuntu-latest
     timeout-minutes: 90
     strategy:
@@ -41,6 +42,9 @@ jobs:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
       PHISH_API_KEY: ${{ secrets.PHISH_API_KEY }}
+
+    outputs:
+      band_status: ${{ steps.set_status.outputs.status }}
 
     steps:
       - name: Check if job should run
@@ -57,6 +61,31 @@ jobs:
         if: steps.check.outputs.should_run == 'true'
         uses: actions/checkout@v4
 
+      - name: Validate required secrets
+        if: steps.check.outputs.should_run == 'true'
+        run: |
+          MISSING=()
+          
+          # Check each secret by testing if it's empty
+          if [[ -z "${{ secrets.SUPABASE_URL }}" ]]; then
+            MISSING+=("SUPABASE_URL")
+          fi
+          
+          if [[ -z "${{ secrets.SUPABASE_KEY }}" ]]; then
+            MISSING+=("SUPABASE_KEY")
+          fi
+          
+          if [[ -z "${{ secrets.PHISH_API_KEY }}" ]]; then
+            MISSING+=("PHISH_API_KEY")
+          fi
+          
+          if [[ ${#MISSING[@]} -gt 0 ]]; then
+            echo "::error::Missing required secrets: ${MISSING[*]}"
+            exit 1
+          fi
+          
+          echo "✅ All required secrets are configured"
+
       - name: Set up Python and UV
         if: steps.check.outputs.should_run == 'true'
         uses: actions/setup-python@v5
@@ -67,6 +96,7 @@ jobs:
         if: steps.check.outputs.should_run == 'true'
         run: |
           curl -LsSf https://astral.sh/uv/install.sh | sh
+          export PATH="$HOME/.cargo/bin:$PATH"
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
           uv venv
           source .venv/bin/activate
@@ -78,81 +108,101 @@ jobs:
           source .venv/bin/activate
           echo "::group::Collecting data for ${{ matrix.band }}"
           
-          # For Goose (stable API), a direct run is sufficient.
-          if [[ "${{ matrix.band }}" == "goose" ]]; then
-            python scripts/run_goose_collection.py
-          else
-            # For Phish (API) and scrapers (WSP, Billy, UM), use retry logic for reliability.
-            MAX_RETRIES=3
-            RETRY_COUNT=0
-            while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-              echo "Attempt $((RETRY_COUNT + 1)) of $MAX_RETRIES for ${{ matrix.band }} collection"
-              if python scripts/run_${{ matrix.band }}_collection.py; then
-                echo "Collection for ${{ matrix.band }} successful"
-                break
-              else
-                RETRY_COUNT=$((RETRY_COUNT + 1))
-                if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
-                  echo "Collection for ${{ matrix.band }} failed, retrying in 30 seconds..."
-                  sleep 30
-                else
-                  echo "Collection for ${{ matrix.band }} failed after $MAX_RETRIES attempts"
-                  exit 1
-                fi
-              fi
-            done
+          # Verify collection script exists
+          SCRIPT_PATH="scripts/run_${{ matrix.band }}_collection.py"
+          if [[ ! -f "$SCRIPT_PATH" ]]; then
+            echo "::error::Collection script not found: $SCRIPT_PATH"
+            exit 1
           fi
+          
+          # Use retry logic for all bands for consistency
+          MAX_RETRIES=3
+          RETRY_COUNT=0
+          RETRY_DELAY=30
+          
+          while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+            echo "Attempt $((RETRY_COUNT + 1)) of $MAX_RETRIES for ${{ matrix.band }} collection"
+            
+            if python "$SCRIPT_PATH"; then
+              echo "✅ Collection for ${{ matrix.band }} successful"
+              break
+            else
+              RETRY_COUNT=$((RETRY_COUNT + 1))
+              if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+                echo "⚠️ Collection for ${{ matrix.band }} failed, retrying in ${RETRY_DELAY} seconds..."
+                sleep $RETRY_DELAY
+              else
+                echo "::error::Collection for ${{ matrix.band }} failed after $MAX_RETRIES attempts"
+                exit 1
+              fi
+            fi
+          done
           
           echo "::endgroup::"
 
       - name: Verify Data Freshness
         if: steps.check.outputs.should_run == 'true'
         id: data_check
-        continue-on-error: true
         run: |
           source .venv/bin/activate
           echo "::group::Verifying data freshness for ${{ matrix.band }}"
           
           # Check if we have recent setlist data using centralized config
-          python -c "
-          import sys, pandas as pd, os
-          from datetime import date, timedelta
-          sys.path.insert(0, 'src')
-          from jambandnerd.db.connection import get_supabase_client
-          from jambandnerd.config import BAND_ID_COLUMNS
-          
-          band = '${{ matrix.band }}'
-          client = get_supabase_client()
-          id_col = BAND_ID_COLUMNS.get(band, 'show_id')
-          
-          # Get shows from last 7 days
-          cutoff = (date.today() - timedelta(days=7)).isoformat()
-          shows = pd.DataFrame(client.table(f'{band}_shows_raw').select('*').gte('show_date', cutoff).execute().data)
-          setlists = pd.DataFrame(client.table(f'{band}_setlists_raw').select(id_col).execute().data)
-          
-          if not shows.empty:
-              show_ids = set(shows[id_col].astype(str))
-              setlist_ids = set(setlists[id_col].astype(str)) if not setlists.empty else set()
-              missing = show_ids - setlist_ids
-              
-              github_output = os.environ.get('GITHUB_OUTPUT')
-              if missing:
-                  print(f'::warning::WARNING: {len(missing)} recent shows missing setlist data for {band}')
-                  print(f'WARNING: {len(missing)} recent shows missing setlist data')
-                  for show_id in list(missing)[:5]:
-                      show = shows[shows[id_col].astype(str) == show_id].iloc[0]
-                      print(f\"  - {show.get('show_date', 'Unknown date')} (ID: {show_id})\")
-                  if github_output:
-                      with open(github_output, 'a') as f:
-                          f.write(f'missing_data=true\\n')
-                          f.write(f'missing_count={len(missing)}\\n')
-              else:
-                  print(f'✅ All recent shows have setlist data for {band}')
-                  if github_output:
-                      with open(github_output, 'a') as f:
-                          f.write(f'missing_data=false\\n')
-                          f.write(f'missing_count=0\\n')
-          "
+          python <<'EOF'
+import sys
+import os
+import pandas as pd
+from datetime import date, timedelta
+
+# Ensure we're importing from the correct path
+repo_root = os.environ.get('GITHUB_WORKSPACE', '.')
+sys.path.insert(0, os.path.join(repo_root, 'src'))
+
+from jambandnerd.db.connection import get_supabase_client
+from jambandnerd.config import BAND_ID_COLUMNS
+
+band = '${{ matrix.band }}'
+client = get_supabase_client()
+id_col = BAND_ID_COLUMNS.get(band, 'show_id')
+
+# Get shows from last 7 days
+cutoff = (date.today() - timedelta(days=7)).isoformat()
+shows_data = client.table(f'{band}_shows_raw').select('*').gte('show_date', cutoff).execute().data
+setlists_data = client.table(f'{band}_setlists_raw').select(id_col).execute().data
+
+shows = pd.DataFrame(shows_data) if shows_data else pd.DataFrame()
+setlists = pd.DataFrame(setlists_data) if setlists_data else pd.DataFrame()
+
+github_output = os.environ.get('GITHUB_OUTPUT')
+
+if not shows.empty:
+    show_ids = set(shows[id_col].astype(str))
+    setlist_ids = set(setlists[id_col].astype(str)) if not setlists.empty else set()
+    missing = show_ids - setlist_ids
+    
+    if missing:
+        print(f'::warning::WARNING: {len(missing)} recent shows missing setlist data for {band}')
+        print(f'WARNING: {len(missing)} recent shows missing setlist data')
+        for show_id in list(missing)[:5]:
+            show = shows[shows[id_col].astype(str) == show_id].iloc[0]
+            print(f"  - {show.get('show_date', 'Unknown date')} (ID: {show_id})")
+        if github_output:
+            with open(github_output, 'a') as f:
+                f.write(f'missing_data=true\n')
+                f.write(f'missing_count={len(missing)}\n')
+    else:
+        print(f'✅ All recent shows have setlist data for {band}')
+        if github_output:
+            with open(github_output, 'a') as f:
+                f.write(f'missing_data=false\n')
+                f.write(f'missing_count=0\n')
+else:
+    print(f'ℹ️ No recent shows found for {band} in the last 7 days')
+    if github_output:
+        with open(github_output, 'a') as f:
+            f.write(f'missing_data=false\n')
+            f.write(f'missing_count=0\n')
+EOF
           
           echo "::endgroup::"
           
@@ -171,6 +221,7 @@ jobs:
         run: |
           source .venv/bin/activate
           echo "::group::Generating predictions for ${{ matrix.band }}"
+          
           # Generate for the next upcoming show (default behavior)
           python scripts/generate_predictions.py --band ${{ matrix.band }} --model notebook
           python scripts/generate_predictions.py --band ${{ matrix.band }} --model ckplus
@@ -186,6 +237,7 @@ jobs:
           else
             echo "Could not determine last completed show date. Skipping predictions for it."
           fi
+          
           echo "::endgroup::"
 
       - name: Run Backtest and Calculate Aggregate Accuracy
@@ -193,16 +245,26 @@ jobs:
         run: |
           source .venv/bin/activate
           echo "::group::Running backtest for ${{ matrix.band }}"
+          
           # Run backtest for last 100 shows to populate per-show accuracy
           python scripts/run_backtest.py --band ${{ matrix.band }} --model notebook --shows 100
           python scripts/run_backtest.py --band ${{ matrix.band }} --model ckplus --shows 100
+          
           echo "::endgroup::"
           
           echo "::group::Calculating aggregate accuracy for ${{ matrix.band }}"
+          
           # Calculate aggregate accuracy from the per-show data
           python scripts/save_aggregate_accuracy.py --band ${{ matrix.band }} --model notebook --shows 100
           python scripts/save_aggregate_accuracy.py --band ${{ matrix.band }} --model ckplus --shows 100
+          
           echo "::endgroup::"
+
+      - name: Set Job Status Output
+        id: set_status
+        if: always()
+        run: |
+          echo "status=${{ job.status }}" >> $GITHUB_OUTPUT
 
   pipeline-summary:
     name: Pipeline Summary
@@ -237,6 +299,9 @@ jobs:
             echo "✅ **All band pipelines completed successfully!**" >> $GITHUB_STEP_SUMMARY
           else
             echo "⚠️ **One or more band pipelines failed, were skipped, or were cancelled.**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Individual Band Results:**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
             echo "Please check the logs for the 'daily-pipeline' job matrix for details." >> $GITHUB_STEP_SUMMARY
           fi
           
@@ -245,13 +310,16 @@ jobs:
           # Run data quality check using centralized config
           echo "### Data Quality Check" >> $GITHUB_STEP_SUMMARY
           python - <<'EOF' >> $GITHUB_STEP_SUMMARY
-  import json
+import json
 import os
 import sys
 import pandas as pd
 from datetime import date, timedelta
 
-sys.path.insert(0, 'src')
+# Ensure we're importing from the correct path
+repo_root = os.environ.get('GITHUB_WORKSPACE', '.')
+sys.path.insert(0, os.path.join(repo_root, 'src'))
+
 from jambandnerd.db.connection import get_supabase_client
 from jambandnerd.config import BAND_ID_COLUMNS
 
@@ -262,19 +330,22 @@ bands = json.loads(os.environ['BAND_LIST_JSON'])
 for band in bands:
     try:
         id_col = BAND_ID_COLUMNS.get(band, 'show_id')
-        shows = pd.DataFrame(
+        shows_data = (
             client.table(f'{band}_shows_raw')
             .select('*')
             .gte('show_date', cutoff)
             .execute()
             .data
         )
-        setlists = pd.DataFrame(
+        setlists_data = (
             client.table(f'{band}_setlists_raw')
             .select(id_col)
             .execute()
             .data
         )
+        
+        shows = pd.DataFrame(shows_data) if shows_data else pd.DataFrame()
+        setlists = pd.DataFrame(setlists_data) if setlists_data else pd.DataFrame()
 
         if not shows.empty:
             show_ids = set(shows[id_col].astype(str))
@@ -288,25 +359,26 @@ for band in bands:
                 print(f'  - ✅ All recent shows have setlist data')
             print(f'  - Total recent shows: {len(show_ids)}')
             print()
+        else:
+            print(f'**{band.upper()}**: ℹ️ No recent shows in last 7 days')
+            print()
     except Exception as e:
         print(f'**{band.upper()}**: ❌ Error checking data: {str(e)}')
         print()
 EOF
           
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Next Steps:" >> $GITHUB_STEP_SUMMARY
-          echo "- Visit the [JamBandNerd web app](https://jambandnerd.streamlit.app/) to view updated predictions." >> $GITHUB_STEP_SUMMARY
-          echo "- Check the Supabase dashboard for data validation." >> $GITHUB_STEP_SUMMARY
-          echo "- Review any warnings above and re-run collection if needed." >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Prediction Coverage" >> $GITHUB_STEP_SUMMARY
           python - <<'EOF' >> $GITHUB_STEP_SUMMARY
-  import json
+import json
 import os
 import sys
 from datetime import date
 
-sys.path.insert(0, 'src')
+# Ensure we're importing from the correct path
+repo_root = os.environ.get('GITHUB_WORKSPACE', '.')
+sys.path.insert(0, os.path.join(repo_root, 'src'))
+
 from jambandnerd.config import BAND_ID_COLUMNS
 from jambandnerd.db.connection import get_supabase_client
 
@@ -328,6 +400,7 @@ for band in bands:
             .limit(50)
             .execute()
         )
+        
         latest_show = None
         for row in shows_resp.data or []:
             show_id = row.get(id_col)
@@ -345,7 +418,7 @@ for band in bands:
                 break
 
         if not latest_show:
-            print(f"| {band.upper()} | n/a | n/a | n/a |")
+            print(f"| {band.upper()} | n/a | n/a | No completed shows |")
             continue
 
         show_id_value = str(latest_show.get(id_col))
@@ -394,3 +467,9 @@ for band in bands:
     except Exception as exc:
         print(f"| {band.upper()} | Error: {exc} | n/a | n/a |")
 EOF
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Next Steps:" >> $GITHUB_STEP_SUMMARY
+          echo "- Visit the [JamBandNerd web app](https://jambandnerd.streamlit.app/) to view updated predictions." >> $GITHUB_STEP_SUMMARY
+          echo "- Check the Supabase dashboard for data validation." >> $GITHUB_STEP_SUMMARY
+          echo "- Review any warnings above and re-run collection if needed." >> $GITHUB_STEP_SUMMARY
