@@ -17,14 +17,14 @@ on:
           - phish
           - um
           - wsp
-
-env:
-  BAND_LIST_JSON: '["goose","phish","wsp","billy","um"]'
       skip_accuracy:
         description: 'Skip accuracy calculation to run pipeline faster'
         required: false
         default: false
         type: boolean
+
+env:
+  BAND_LIST_JSON: '["goose","phish","wsp","billy","um"]'
 
 jobs:
   daily-pipeline:
