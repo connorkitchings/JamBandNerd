@@ -34,7 +34,7 @@ jobs:
     strategy:
       matrix:
         # Run a separate job for each band to isolate failures
-        band: ${{ fromJson(env.BAND_LIST_JSON) }}
+        band: [goose, phish, wsp, billy, um]
       fail-fast: false
 
     env:
@@ -46,7 +46,8 @@ jobs:
       - name: Check if job should run
         id: check
         run: |
-          if [[ "${{ github.event_name }}" == "schedule" || "${{ inputs.band }}" == "all" || "${{ inputs.band }}" == "${{ matrix.band }}" ]]; then
+          BAND_INPUT="${{ github.event.inputs.band || 'all' }}"
+          if [[ "${{ github.event_name }}" == "schedule" || "$BAND_INPUT" == "all" || "$BAND_INPUT" == "${{ matrix.band }}" ]]; then
             echo "should_run=true" >> $GITHUB_OUTPUT
           else
             echo "should_run=false" >> $GITHUB_OUTPUT
@@ -183,7 +184,7 @@ jobs:
           echo "::endgroup::"
 
       - name: Run Backtest and Calculate Aggregate Accuracy
-        if: steps.check.outputs.should_run == 'true' && !inputs.skip_accuracy
+        if: steps.check.outputs.should_run == 'true' && (github.event.inputs.skip_accuracy != 'true')
         run: |
           source .venv/bin/activate
           echo "::group::Running backtest for ${{ matrix.band }}"
@@ -238,39 +239,54 @@ jobs:
           
           # Run data quality check using centralized config
           echo "### Data Quality Check" >> $GITHUB_STEP_SUMMARY
-          python -c "
-          import json, os, sys, pandas as pd
-          from datetime import date, timedelta
-          sys.path.insert(0, 'src')
-          from jambandnerd.db.connection import get_supabase_client
-          from jambandnerd.config import BAND_ID_COLUMNS
+          python - <<'PY' >> $GITHUB_STEP_SUMMARY
+import json
+import os
+import sys
+import pandas as pd
+from datetime import date, timedelta
 
-          client = get_supabase_client()
-          cutoff = (date.today() - timedelta(days=7)).isoformat()
+sys.path.insert(0, 'src')
+from jambandnerd.db.connection import get_supabase_client
+from jambandnerd.config import BAND_ID_COLUMNS
 
-          bands = json.loads(os.environ['BAND_LIST_JSON'])
-          for band in bands:
-              try:
-                  id_col = BAND_ID_COLUMNS.get(band, 'show_id')
-                  shows = pd.DataFrame(client.table(f'{band}_shows_raw').select('*').gte('show_date', cutoff).execute().data)
-                  setlists = pd.DataFrame(client.table(f'{band}_setlists_raw').select(id_col).execute().data)
-                  
-                  if not shows.empty:
-                      show_ids = set(shows[id_col].astype(str))
-                      setlist_ids = set(setlists[id_col].astype(str)) if not setlists.empty else set()
-                      missing = show_ids - setlist_ids
-                      
-                      print(f'**{band.upper()}**:')
-                      if missing:
-                          print(f'  - ⚠️ {len(missing)} recent shows missing setlist data')
-                      else:
-                          print(f'  - ✅ All recent shows have setlist data')
-                      print(f'  - Total recent shows: {len(show_ids)}')
-                      print()
-              except Exception as e:
-                  print(f'**{band.upper()}**: ❌ Error checking data: {str(e)}')
-                  print()
-          " >> $GITHUB_STEP_SUMMARY
+client = get_supabase_client()
+cutoff = (date.today() - timedelta(days=7)).isoformat()
+
+bands = json.loads(os.environ['BAND_LIST_JSON'])
+for band in bands:
+    try:
+        id_col = BAND_ID_COLUMNS.get(band, 'show_id')
+        shows = pd.DataFrame(
+            client.table(f'{band}_shows_raw')
+            .select('*')
+            .gte('show_date', cutoff)
+            .execute()
+            .data
+        )
+        setlists = pd.DataFrame(
+            client.table(f'{band}_setlists_raw')
+            .select(id_col)
+            .execute()
+            .data
+        )
+
+        if not shows.empty:
+            show_ids = set(shows[id_col].astype(str))
+            setlist_ids = set(setlists[id_col].astype(str)) if not setlists.empty else set()
+            missing = show_ids - setlist_ids
+
+            print(f'**{band.upper()}**:')
+            if missing:
+                print(f'  - ⚠️ {len(missing)} recent shows missing setlist data')
+            else:
+                print(f'  - ✅ All recent shows have setlist data')
+            print(f'  - Total recent shows: {len(show_ids)}')
+            print()
+    except Exception as e:
+        print(f'**{band.upper()}**: ❌ Error checking data: {str(e)}')
+        print()
+PY
           
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Next Steps:" >> $GITHUB_STEP_SUMMARY
@@ -280,94 +296,94 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Prediction Coverage" >> $GITHUB_STEP_SUMMARY
           python - <<'PY' >> $GITHUB_STEP_SUMMARY
-            import json
-            import os
-            from datetime import date
+import json
+import os
+from datetime import date
 
-            from jambandnerd.config import BAND_ID_COLUMNS
-            from jambandnerd.db.connection import get_supabase_client
+from jambandnerd.config import BAND_ID_COLUMNS
+from jambandnerd.db.connection import get_supabase_client
 
-            client = get_supabase_client()
-            today = date.today().isoformat()
-            bands = json.loads(os.environ["BAND_LIST_JSON"])
+client = get_supabase_client()
+today = date.today().isoformat()
+bands = json.loads(os.environ["BAND_LIST_JSON"])
 
-            print("| Band | Notebook Top-50 Hits | Songs Played | Reference Date |")
-            print("| --- | --- | --- | --- |")
+print("| Band | Notebook Top-50 Hits | Songs Played | Reference Date |")
+print("| --- | --- | --- | --- |")
 
-            for band in bands:
-                id_col = BAND_ID_COLUMNS.get(band, "show_id")
-                try:
-                    shows_resp = (
-                        client.table(f"{band}_shows_raw")
-                        .select(f"{id_col}, show_date")
-                        .lte("show_date", today)
-                        .order("show_date", desc=True)
-                        .limit(50)
-                        .execute()
-                    )
-                    latest_show = None
-                    for row in shows_resp.data or []:
-                        show_id = row.get(id_col)
-                        if show_id is None:
-                            continue
-                        setlist_check = (
-                            client.table(f"{band}_setlists_raw")
-                            .select(id_col)
-                            .eq(id_col, str(show_id))
-                            .limit(1)
-                            .execute()
-                        )
-                        if setlist_check.data:
-                            latest_show = row
-                            break
+for band in bands:
+    id_col = BAND_ID_COLUMNS.get(band, "show_id")
+    try:
+        shows_resp = (
+            client.table(f"{band}_shows_raw")
+            .select(f"{id_col}, show_date")
+            .lte("show_date", today)
+            .order("show_date", desc=True)
+            .limit(50)
+            .execute()
+        )
+        latest_show = None
+        for row in shows_resp.data or []:
+            show_id = row.get(id_col)
+            if show_id is None:
+                continue
+            setlist_check = (
+                client.table(f"{band}_setlists_raw")
+                .select(id_col)
+                .eq(id_col, str(show_id))
+                .limit(1)
+                .execute()
+            )
+            if setlist_check.data:
+                latest_show = row
+                break
 
-                    if not latest_show:
-                        print(f"| {band.upper()} | n/a | n/a | n/a |")
-                        continue
+        if not latest_show:
+            print(f"| {band.upper()} | n/a | n/a | n/a |")
+            continue
 
-                    show_id_value = str(latest_show.get(id_col))
-                    ref_date = latest_show.get("show_date", "n/a")
+        show_id_value = str(latest_show.get(id_col))
+        ref_date = latest_show.get("show_date", "n/a")
 
-                    setlist_resp = (
-                        client.table(f"{band}_setlists_raw")
-                        .select("song_name")
-                        .eq(id_col, show_id_value)
-                        .execute()
-                    )
-                    actual_songs = {
-                        str(row.get("song_name"))
-                        for row in (setlist_resp.data or [])
-                        if row.get("song_name")
-                    }
+        setlist_resp = (
+            client.table(f"{band}_setlists_raw")
+            .select("song_name")
+            .eq(id_col, show_id_value)
+            .execute()
+        )
+        actual_songs = {
+            str(row.get("song_name"))
+            for row in (setlist_resp.data or [])
+            if row.get("song_name")
+        }
 
-                    pred_resp = (
-                        client.table("predictions_notebook")
-                        .select("predictions")
-                        .eq("band", band)
-                        .eq("reference_date", ref_date)
-                        .order("predicted_at", desc=True)
-                        .limit(1)
-                        .execute()
-                    )
+        pred_resp = (
+            client.table("predictions_notebook")
+            .select("predictions")
+            .eq("band", band)
+            .eq("reference_date", ref_date)
+            .order("predicted_at", desc=True)
+            .limit(1)
+            .execute()
+        )
 
-                    if not pred_resp.data:
-                        print(f"| {band.upper()} | No predictions | {len(actual_songs)} | {ref_date} |")
-                        continue
+        if not pred_resp.data:
+            print(f"| {band.upper()} | No predictions | {len(actual_songs)} | {ref_date} |")
+            continue
 
-                    predictions_payload = pred_resp.data[0].get("predictions")
-                    if isinstance(predictions_payload, str):
-                        predictions = json.loads(predictions_payload)
-                    else:
-                        predictions = predictions_payload or []
+        predictions_payload = pred_resp.data[0].get("predictions")
+        if isinstance(predictions_payload, str):
+            predictions = json.loads(predictions_payload)
+        else:
+            predictions = predictions_payload or []
 
-                    top_hits = sum(
-                        1
-                        for entry in predictions[:50]
-                        if entry.get("song_name") in actual_songs
-                    )
-                    print(
-                        f"| {band.upper()} | {top_hits}/{len(actual_songs)} | {len(actual_songs)} | {ref_date} |"
-                    )
-                except Exception as exc:
-                    print(f"| {band.upper()} | Error: {exc} | n/a | n/a |")
-          PY
+        top_hits = sum(
+            1
+            for entry in predictions[:50]
+            if entry.get("song_name") in actual_songs
+        )
+        print(
+            f"| {band.upper()} | {top_hits}/{len(actual_songs)} | {len(actual_songs)} | {ref_date} |"
+        )
+    except Exception as exc:
+        print(f"| {band.upper()} | Error: {exc} | n/a | n/a |")
+PY
