@@ -279,7 +279,7 @@ jobs:
           echo "- Review any warnings above and re-run collection if needed." >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Prediction Coverage" >> $GITHUB_STEP_SUMMARY
-python - <<'PY' >> $GITHUB_STEP_SUMMARY
+          python - <<'PY' >> $GITHUB_STEP_SUMMARY
 import json
 import os
 from datetime import date
