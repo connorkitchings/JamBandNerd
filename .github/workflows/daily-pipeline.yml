@@ -67,15 +67,15 @@ jobs:
           MISSING=()
           
           # Check each secret by testing if it's empty
-          if [[ -z "${{ secrets.SUPABASE_URL }}" ]]; then
+          if [[ -z "$SUPABASE_URL" ]]; then
             MISSING+=("SUPABASE_URL")
           fi
           
-          if [[ -z "${{ secrets.SUPABASE_KEY }}" ]]; then
+          if [[ -z "$SUPABASE_KEY" ]]; then
             MISSING+=("SUPABASE_KEY")
           fi
           
-          if [[ -z "${{ secrets.PHISH_API_KEY }}" ]]; then
+          if [[ -z "$PHISH_API_KEY" ]]; then
             MISSING+=("PHISH_API_KEY")
           fi
           
@@ -147,62 +147,57 @@ jobs:
           source .venv/bin/activate
           echo "::group::Verifying data freshness for ${{ matrix.band }}"
           
-          # Check if we have recent setlist data using centralized config
-          python <<'EOF'
-import sys
-import os
-import pandas as pd
-from datetime import date, timedelta
-
-# Ensure we're importing from the correct path
-repo_root = os.environ.get('GITHUB_WORKSPACE', '.')
-sys.path.insert(0, os.path.join(repo_root, 'src'))
-
-from jambandnerd.db.connection import get_supabase_client
-from jambandnerd.config import BAND_ID_COLUMNS
-
-band = '${{ matrix.band }}'
-client = get_supabase_client()
-id_col = BAND_ID_COLUMNS.get(band, 'show_id')
-
-# Get shows from last 7 days
-cutoff = (date.today() - timedelta(days=7)).isoformat()
-shows_data = client.table(f'{band}_shows_raw').select('*').gte('show_date', cutoff).execute().data
-setlists_data = client.table(f'{band}_setlists_raw').select(id_col).execute().data
-
-shows = pd.DataFrame(shows_data) if shows_data else pd.DataFrame()
-setlists = pd.DataFrame(setlists_data) if setlists_data else pd.DataFrame()
-
-github_output = os.environ.get('GITHUB_OUTPUT')
-
-if not shows.empty:
-    show_ids = set(shows[id_col].astype(str))
-    setlist_ids = set(setlists[id_col].astype(str)) if not setlists.empty else set()
-    missing = show_ids - setlist_ids
-    
-    if missing:
-        print(f'::warning::WARNING: {len(missing)} recent shows missing setlist data for {band}')
-        print(f'WARNING: {len(missing)} recent shows missing setlist data')
-        for show_id in list(missing)[:5]:
-            show = shows[shows[id_col].astype(str) == show_id].iloc[0]
-            print(f"  - {show.get('show_date', 'Unknown date')} (ID: {show_id})")
-        if github_output:
-            with open(github_output, 'a') as f:
-                f.write(f'missing_data=true\n')
-                f.write(f'missing_count={len(missing)}\n')
-    else:
-        print(f'✅ All recent shows have setlist data for {band}')
-        if github_output:
-            with open(github_output, 'a') as f:
-                f.write(f'missing_data=false\n')
-                f.write(f'missing_count=0\n')
-else:
-    print(f'ℹ️ No recent shows found for {band} in the last 7 days')
-    if github_output:
-        with open(github_output, 'a') as f:
-            f.write(f'missing_data=false\n')
-            f.write(f'missing_count=0\n')
-EOF
+          python -c "
+          import sys, os, pandas as pd
+          from datetime import date, timedelta
+          
+          repo_root = os.environ.get('GITHUB_WORKSPACE', '.')
+          sys.path.insert(0, os.path.join(repo_root, 'src'))
+          
+          from jambandnerd.db.connection import get_supabase_client
+          from jambandnerd.config import BAND_ID_COLUMNS
+          
+          band = '${{ matrix.band }}'
+          client = get_supabase_client()
+          id_col = BAND_ID_COLUMNS.get(band, 'show_id')
+          
+          cutoff = (date.today() - timedelta(days=7)).isoformat()
+          shows_data = client.table(f'{band}_shows_raw').select('*').gte('show_date', cutoff).execute().data
+          setlists_data = client.table(f'{band}_setlists_raw').select(id_col).execute().data
+          
+          shows = pd.DataFrame(shows_data) if shows_data else pd.DataFrame()
+          setlists = pd.DataFrame(setlists_data) if setlists_data else pd.DataFrame()
+          
+          github_output = os.environ.get('GITHUB_OUTPUT')
+          
+          if not shows.empty:
+              show_ids = set(shows[id_col].astype(str))
+              setlist_ids = set(setlists[id_col].astype(str)) if not setlists.empty else set()
+              missing = show_ids - setlist_ids
+              
+              if missing:
+                  print(f'::warning::WARNING: {len(missing)} recent shows missing setlist data for {band}')
+                  print(f'WARNING: {len(missing)} recent shows missing setlist data')
+                  for show_id in list(missing)[:5]:
+                      show = shows[shows[id_col].astype(str) == show_id].iloc[0]
+                      print(f\"  - {show.get('show_date', 'Unknown date')} (ID: {show_id})\")
+                  if github_output:
+                      with open(github_output, 'a') as f:
+                          f.write('missing_data=true\n')
+                          f.write(f'missing_count={len(missing)}\n')
+              else:
+                  print(f'✅ All recent shows have setlist data for {band}')
+                  if github_output:
+                      with open(github_output, 'a') as f:
+                          f.write('missing_data=false\n')
+                          f.write('missing_count=0\n')
+          else:
+              print(f'ℹ️ No recent shows found for {band} in the last 7 days')
+              if github_output:
+                  with open(github_output, 'a') as f:
+                      f.write('missing_data=false\n')
+                      f.write('missing_count=0\n')
+          "
           
           echo "::endgroup::"
           
@@ -269,7 +264,7 @@ EOF
   pipeline-summary:
     name: Pipeline Summary
     needs: [daily-pipeline]
-    if: always() # This job runs even if the matrix jobs fail
+    if: always()
     runs-on: ubuntu-latest
     
     env:
@@ -289,185 +284,136 @@ EOF
         run: |
           pip install pandas supabase python-dotenv
           
-      - name: Generate pipeline summary
+      - name: Generate pipeline summary header
         run: |
           echo "## Daily Pipeline Summary - $(date)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           
-          # Check the overall result of the matrix job
           if [[ "${{ needs.daily-pipeline.result }}" == "success" ]]; then
             echo "✅ **All band pipelines completed successfully!**" >> $GITHUB_STEP_SUMMARY
           else
             echo "⚠️ **One or more band pipelines failed, were skipped, or were cancelled.**" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "**Individual Band Results:**" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
             echo "Please check the logs for the 'daily-pipeline' job matrix for details." >> $GITHUB_STEP_SUMMARY
           fi
           
           echo "" >> $GITHUB_STEP_SUMMARY
-          
-          # Run data quality check using centralized config
           echo "### Data Quality Check" >> $GITHUB_STEP_SUMMARY
-          python - <<'EOF' >> $GITHUB_STEP_SUMMARY
-import json
-import os
-import sys
-import pandas as pd
-from datetime import date, timedelta
-
-# Ensure we're importing from the correct path
-repo_root = os.environ.get('GITHUB_WORKSPACE', '.')
-sys.path.insert(0, os.path.join(repo_root, 'src'))
-
-from jambandnerd.db.connection import get_supabase_client
-from jambandnerd.config import BAND_ID_COLUMNS
-
-client = get_supabase_client()
-cutoff = (date.today() - timedelta(days=7)).isoformat()
-
-bands = json.loads(os.environ['BAND_LIST_JSON'])
-for band in bands:
-    try:
-        id_col = BAND_ID_COLUMNS.get(band, 'show_id')
-        shows_data = (
-            client.table(f'{band}_shows_raw')
-            .select('*')
-            .gte('show_date', cutoff)
-            .execute()
-            .data
-        )
-        setlists_data = (
-            client.table(f'{band}_setlists_raw')
-            .select(id_col)
-            .execute()
-            .data
-        )
-        
-        shows = pd.DataFrame(shows_data) if shows_data else pd.DataFrame()
-        setlists = pd.DataFrame(setlists_data) if setlists_data else pd.DataFrame()
-
-        if not shows.empty:
-            show_ids = set(shows[id_col].astype(str))
-            setlist_ids = set(setlists[id_col].astype(str)) if not setlists.empty else set()
-            missing = show_ids - setlist_ids
-
-            print(f'**{band.upper()}**:')
-            if missing:
-                print(f'  - ⚠️ {len(missing)} recent shows missing setlist data')
-            else:
-                print(f'  - ✅ All recent shows have setlist data')
-            print(f'  - Total recent shows: {len(show_ids)}')
-            print()
-        else:
-            print(f'**{band.upper()}**: ℹ️ No recent shows in last 7 days')
-            print()
-    except Exception as e:
-        print(f'**{band.upper()}**: ❌ Error checking data: {str(e)}')
-        print()
-EOF
           
+      - name: Run data quality check
+        run: |
+          python -c "
+          import json, os, sys, pandas as pd
+          from datetime import date, timedelta
+          
+          repo_root = os.environ.get('GITHUB_WORKSPACE', '.')
+          sys.path.insert(0, os.path.join(repo_root, 'src'))
+          
+          from jambandnerd.db.connection import get_supabase_client
+          from jambandnerd.config import BAND_ID_COLUMNS
+          
+          client = get_supabase_client()
+          cutoff = (date.today() - timedelta(days=7)).isoformat()
+          bands = json.loads(os.environ['BAND_LIST_JSON'])
+          
+          for band in bands:
+              try:
+                  id_col = BAND_ID_COLUMNS.get(band, 'show_id')
+                  shows_data = client.table(f'{band}_shows_raw').select('*').gte('show_date', cutoff).execute().data
+                  setlists_data = client.table(f'{band}_setlists_raw').select(id_col).execute().data
+                  
+                  shows = pd.DataFrame(shows_data) if shows_data else pd.DataFrame()
+                  setlists = pd.DataFrame(setlists_data) if setlists_data else pd.DataFrame()
+                  
+                  if not shows.empty:
+                      show_ids = set(shows[id_col].astype(str))
+                      setlist_ids = set(setlists[id_col].astype(str)) if not setlists.empty else set()
+                      missing = show_ids - setlist_ids
+                      
+                      print(f'**{band.upper()}**:')
+                      if missing:
+                          print(f'  - ⚠️ {len(missing)} recent shows missing setlist data')
+                      else:
+                          print(f'  - ✅ All recent shows have setlist data')
+                      print(f'  - Total recent shows: {len(show_ids)}')
+                      print()
+                  else:
+                      print(f'**{band.upper()}**: ℹ️ No recent shows in last 7 days')
+                      print()
+              except Exception as e:
+                  print(f'**{band.upper()}**: ❌ Error checking data: {str(e)}')
+                  print()
+          " >> $GITHUB_STEP_SUMMARY
+          
+      - name: Generate prediction coverage header
+        run: |
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Prediction Coverage" >> $GITHUB_STEP_SUMMARY
-          python - <<'EOF' >> $GITHUB_STEP_SUMMARY
-import json
-import os
-import sys
-from datetime import date
-
-# Ensure we're importing from the correct path
-repo_root = os.environ.get('GITHUB_WORKSPACE', '.')
-sys.path.insert(0, os.path.join(repo_root, 'src'))
-
-from jambandnerd.config import BAND_ID_COLUMNS
-from jambandnerd.db.connection import get_supabase_client
-
-client = get_supabase_client()
-today = date.today().isoformat()
-bands = json.loads(os.environ["BAND_LIST_JSON"])
-
-print("| Band | Notebook Top-50 Hits | Songs Played | Reference Date |")
-print("| --- | --- | --- | --- |")
-
-for band in bands:
-    id_col = BAND_ID_COLUMNS.get(band, "show_id")
-    try:
-        shows_resp = (
-            client.table(f"{band}_shows_raw")
-            .select(f"{id_col}, show_date")
-            .lte("show_date", today)
-            .order("show_date", desc=True)
-            .limit(50)
-            .execute()
-        )
-        
-        latest_show = None
-        for row in shows_resp.data or []:
-            show_id = row.get(id_col)
-            if show_id is None:
-                continue
-            setlist_check = (
-                client.table(f"{band}_setlists_raw")
-                .select(id_col)
-                .eq(id_col, str(show_id))
-                .limit(1)
-                .execute()
-            )
-            if setlist_check.data:
-                latest_show = row
-                break
-
-        if not latest_show:
-            print(f"| {band.upper()} | n/a | n/a | No completed shows |")
-            continue
-
-        show_id_value = str(latest_show.get(id_col))
-        ref_date = latest_show.get("show_date", "n/a")
-
-        setlist_resp = (
-            client.table(f"{band}_setlists_raw")
-            .select("song_name")
-            .eq(id_col, show_id_value)
-            .execute()
-        )
-        actual_songs = {
-            str(row.get("song_name"))
-            for row in (setlist_resp.data or [])
-            if row.get("song_name")
-        }
-
-        pred_resp = (
-            client.table("predictions_notebook")
-            .select("predictions")
-            .eq("band", band)
-            .eq("reference_date", ref_date)
-            .order("predicted_at", desc=True)
-            .limit(1)
-            .execute()
-        )
-
-        if not pred_resp.data:
-            print(f"| {band.upper()} | No predictions | {len(actual_songs)} | {ref_date} |")
-            continue
-
-        predictions_payload = pred_resp.data[0].get("predictions")
-        if isinstance(predictions_payload, str):
-            predictions = json.loads(predictions_payload)
-        else:
-            predictions = predictions_payload or []
-
-        top_hits = sum(
-            1
-            for entry in predictions[:50]
-            if entry.get("song_name") in actual_songs
-        )
-        print(
-            f"| {band.upper()} | {top_hits}/{len(actual_songs)} | {len(actual_songs)} | {ref_date} |"
-        )
-    except Exception as exc:
-        print(f"| {band.upper()} | Error: {exc} | n/a | n/a |")
-EOF
           
+      - name: Run prediction coverage check
+        run: |
+          python -c "
+          import json, os, sys
+          from datetime import date
+          
+          repo_root = os.environ.get('GITHUB_WORKSPACE', '.')
+          sys.path.insert(0, os.path.join(repo_root, 'src'))
+          
+          from jambandnerd.config import BAND_ID_COLUMNS
+          from jambandnerd.db.connection import get_supabase_client
+          
+          client = get_supabase_client()
+          today = date.today().isoformat()
+          bands = json.loads(os.environ['BAND_LIST_JSON'])
+          
+          print('| Band | Notebook Top-50 Hits | Songs Played | Reference Date |')
+          print('| --- | --- | --- | --- |')
+          
+          for band in bands:
+              id_col = BAND_ID_COLUMNS.get(band, 'show_id')
+              try:
+                  shows_resp = client.table(f'{band}_shows_raw').select(f'{id_col}, show_date').lte('show_date', today).order('show_date', desc=True).limit(50).execute()
+                  
+                  latest_show = None
+                  for row in shows_resp.data or []:
+                      show_id = row.get(id_col)
+                      if show_id is None:
+                          continue
+                      setlist_check = client.table(f'{band}_setlists_raw').select(id_col).eq(id_col, str(show_id)).limit(1).execute()
+                      if setlist_check.data:
+                          latest_show = row
+                          break
+                  
+                  if not latest_show:
+                      print(f'| {band.upper()} | n/a | n/a | No completed shows |')
+                      continue
+                  
+                  show_id_value = str(latest_show.get(id_col))
+                  ref_date = latest_show.get('show_date', 'n/a')
+                  
+                  setlist_resp = client.table(f'{band}_setlists_raw').select('song_name').eq(id_col, show_id_value).execute()
+                  actual_songs = {str(row.get('song_name')) for row in (setlist_resp.data or []) if row.get('song_name')}
+                  
+                  pred_resp = client.table('predictions_notebook').select('predictions').eq('band', band).eq('reference_date', ref_date).order('predicted_at', desc=True).limit(1).execute()
+                  
+                  if not pred_resp.data:
+                      print(f'| {band.upper()} | No predictions | {len(actual_songs)} | {ref_date} |')
+                      continue
+                  
+                  predictions_payload = pred_resp.data[0].get('predictions')
+                  if isinstance(predictions_payload, str):
+                      predictions = json.loads(predictions_payload)
+                  else:
+                      predictions = predictions_payload or []
+                  
+                  top_hits = sum(1 for entry in predictions[:50] if entry.get('song_name') in actual_songs)
+                  print(f'| {band.upper()} | {top_hits}/{len(actual_songs)} | {len(actual_songs)} | {ref_date} |')
+              except Exception as exc:
+                  print(f'| {band.upper()} | Error | n/a | n/a |')
+          " >> $GITHUB_STEP_SUMMARY
+          
+      - name: Add next steps
+        run: |
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Next Steps:" >> $GITHUB_STEP_SUMMARY
           echo "- Visit the [JamBandNerd web app](https://jambandnerd.streamlit.app/) to view updated predictions." >> $GITHUB_STEP_SUMMARY
