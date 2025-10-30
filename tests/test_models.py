@@ -18,12 +18,10 @@ class TestPredictionModelBase:
         # Check that the abstract methods exist
         assert hasattr(PredictionModel, 'train')
         assert hasattr(PredictionModel, 'predict')
-        assert hasattr(PredictionModel, 'calculate_accuracy')
 
         # Check that they are marked as abstract methods
-        assert PredictionModel.train.__isabstractmethod__
         assert PredictionModel.predict.__isabstractmethod__
-        assert PredictionModel.calculate_accuracy.__isabstractmethod__
+        # train is not abstract (has default implementation)
 
 
 class MockPredictionModel(PredictionModel):

@@ -13,7 +13,7 @@ from typing import Final
 TOP_K_VALUES: Final[list[int]] = [10, 25, 50]
 
 # Default number of recent shows to exclude songs from predictions
-EXCLUSION_WINDOW_DEFAULT: Final[int] = 3
+EXCLUSION_WINDOW_DEFAULT: Final[int]] = 3
 
 # Minimum number of plays required for a song to be considered by CK+ model
 MIN_PLAYS_THRESHOLD_DEFAULT: Final[int] = 5
@@ -24,6 +24,7 @@ CKPLUS_ALPHA_DEFAULT: Final[float] = 0.7
 # Retirement gap thresholds by band (shows without a play before considered "retired")
 RETIREMENT_GAPS: Final[dict[str, int]] = {
     "goose": 100,   # Smaller gap for a band with more regular rotation
+    "eggy": 120,    # Smaller catalog but still rotating regularly
     "phish": 150,   # Larger gap for a band with deeper catalog
     "wsp": 150,     # Similar to Phish
     "billy": 150,
@@ -50,11 +51,12 @@ DATE_FORMATS: Final[tuple[str, ...]] = (
 # ==================== Band-Specific Configuration ====================
 
 # Supported bands
-SUPPORTED_BANDS: Final[tuple[str, ...]] = ("goose", "phish", "wsp", "billy", "um")
+SUPPORTED_BANDS: Final[tuple[str, ...]] = ("goose", "eggy", "phish", "wsp", "billy", "um")
 
 # Band display names
 BAND_DISPLAY_NAMES: Final[dict[str, str]] = {
     "goose": "Goose",
+    "eggy": "Eggy",
     "phish": "Phish",
     "wsp": "Widespread Panic",
     "billy": "Billy Strings",
@@ -64,6 +66,7 @@ BAND_DISPLAY_NAMES: Final[dict[str, str]] = {
 # Primary key column names by band (for ID normalization)
 BAND_ID_COLUMNS: Final[dict[str, str]] = {
     "goose": "show_id",
+    "eggy": "show_id",
     "phish": "api_show_id",
     "wsp": "show_id",
     "billy": "show_id",
@@ -81,6 +84,7 @@ EXCLUDED_SONGS: Final[dict[str, list[str]]] = {
         "The Doors",
     ],  # WSP-specific exclusions
     "goose": [],
+    "eggy": [],
     "phish": [],
     "billy": [],
     "um": [],

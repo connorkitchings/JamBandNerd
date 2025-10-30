@@ -130,7 +130,7 @@ def main() -> None:
         "--band",
         type=str,
         required=True,
-        choices=["goose", "phish", "wsp", "billy", "um"],
+        choices=["goose", "eggy", "phish", "wsp", "billy", "um"],
         help="The band to process.",
     )
     parser.add_argument(

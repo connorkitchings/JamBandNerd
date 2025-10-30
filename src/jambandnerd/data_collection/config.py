@@ -13,13 +13,22 @@ COLLECTOR_CONFIGS = {
         rate_limit_window=60,
         user_agent="JamBandNerd/1.0 (Goose Data Collection)"
     ),
+    'eggy': CollectorConfig(
+        base_url="https://thecarton.net/api",
+        timeout=30,
+        max_retries=3,
+        backoff_factor=2.0,
+        rate_limit_calls=50,
+        rate_limit_window=60,
+        user_agent="JamBandNerd/1.0 (Eggy Data Collection)"
+    ),
 
     'phish': CollectorConfig(
         base_url="https://api.phish.net/v5",
         timeout=120,  # Phish API can be slow with large datasets
         max_retries=5,
         backoff_factor=3.0,  # More aggressive backoff for phish.net
-        rate_limit_calls=80,  # Respect 1000/day limit (about 42/hour)
+        rate_limit_calls=95,  # Increased from 80 to reduce wait time (still under 1000/day limit)
         rate_limit_window=60,
         user_agent="JamBandNerd/1.0 (Phish Data Collection)"
     )
@@ -50,7 +59,7 @@ COLLECTOR_CONFIGS = {
         rate_limit_calls=45,
         rate_limit_window=60,
         user_agent="JamBandNerd/1.0 (Umphrey's McGee Data Collection)"
-    )
+    ),
 }
 
 

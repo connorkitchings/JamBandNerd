@@ -32,6 +32,12 @@ class TestBandCollectorBase:
 class MockBandCollector(BandCollector):
     """Mock implementation of BandCollector for testing."""
 
+    def __init__(self):
+        # Create a minimal config for testing
+        from jambandnerd.data_collection.base import CollectorConfig
+        config = CollectorConfig(base_url="https://test.example.com")
+        super().__init__(config)
+
     def collect_shows(self, start_date: date, end_date: date):
         return [{"show_id": "test_show_1", "date": start_date.isoformat()}]
 
@@ -89,9 +95,21 @@ class TestMockBandCollector:
     def test_collect_venues(self):
         """Test the collect_venues method."""
         collector = MockBandCollector()
-        
+
         venues = collector.collect_venues()
-        
+
         assert len(venues) == 1
         assert venues[0]["venue_id"] == "test_venue_1"
         assert venues[0]["name"] == "Test Venue"
+
+        venues = collector.collect_venues()
+
+        assert len(venues) == 1
+        assert venues[0]["venue_id"] == "test_venue_1"
+        assert venues[0]["name"] == "Test Venue"
+
+
+        assert len(venues) == 1
+        assert venues[0]["venue_id"] == "test_venue_1"
+        assert venues[0]["name"] == "Test Venue"
+

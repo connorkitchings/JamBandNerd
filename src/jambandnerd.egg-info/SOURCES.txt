@@ -14,12 +14,17 @@ src/jambandnerd/data_collection/collect_data.py
 src/jambandnerd/data_collection/config.py
 src/jambandnerd/data_collection/test_enhanced_collectors.py
 src/jambandnerd/data_collection/billy/collector.py
+src/jambandnerd/data_collection/cosmic/__init__.py
+src/jambandnerd/data_collection/cosmic/collector.py
+src/jambandnerd/data_collection/eggy/__init__.py
+src/jambandnerd/data_collection/eggy/collector.py
 src/jambandnerd/data_collection/goose/__init__.py
 src/jambandnerd/data_collection/goose/collector.py
 src/jambandnerd/data_collection/phish/__init__.py
 src/jambandnerd/data_collection/phish/collector.py
 src/jambandnerd/data_collection/um/__init__.py
 src/jambandnerd/data_collection/um/collector.py
+src/jambandnerd/data_collection/um/upcoming.py
 src/jambandnerd/data_collection/wsp/__init__.py
 src/jambandnerd/data_collection/wsp/collector.py
 src/jambandnerd/data_collection/wsp/tourwrangler.py

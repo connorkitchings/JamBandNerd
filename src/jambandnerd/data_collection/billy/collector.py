@@ -86,6 +86,10 @@ class BillyCollector(BandCollector):
         """Scrape show listings from the bmfsdb setlists index with pagination awareness."""
         all_shows: List[Dict[str, Any]] = []
         start_date = start_date or date(1900, 1, 1)
+        if isinstance(start_date, str):
+            start_date = date.fromisoformat(start_date)
+        if isinstance(end_date, str):
+            end_date = date.fromisoformat(end_date)
 
         consecutive_empty = 0
         pages_fetched = 0
@@ -559,3 +563,7 @@ class BillyCollector(BandCollector):
         if match:
             return int(match.group(1))
         return 1
+        if match:
+            return int(match.group(1))
+        return 1
+

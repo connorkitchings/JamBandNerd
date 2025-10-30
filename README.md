@@ -46,6 +46,9 @@ uv run python scripts/run_optimized_pipeline.py --band all
 # Run the pipeline for a single band (e.g., Goose)
 uv run python scripts/run_optimized_pipeline.py --band goose
 
+# Run the pipeline for Eggy
+uv run python scripts/run_optimized_pipeline.py --band eggy
+
 # Skip accuracy calculations for a faster run
 uv run python scripts/run_optimized_pipeline.py --band all --skip-accuracy
 ```
@@ -56,14 +59,17 @@ While the optimized pipeline is recommended, you can also run individual compone
 
 ```bash
 # Generate predictions for a single band and model
-'uv run python scripts/generate_predictions.py --band phish --model ckplus'
+uv run python scripts/generate_predictions.py --band phish --model ckplus
 
 # Run a backtest to calculate per-show accuracy
-'uv run python scripts/run_backtest.py --band goose --model notebook --shows 50'
+uv run python scripts/run_backtest.py --band goose --model notebook --shows 50
+
+# Backfill Eggy raw tables without validation warnings
+uv run python scripts/run_eggy_collection.py --skip-validation
 
 # Convenience wrappers for Billy Strings predictions
-'uv run predict-billy -- --date 2025-10-24'
-'uv run predict-billy-ckplus -- --date 2025-10-24'
+uv run predict-billy -- --date 2025-10-24
+uv run predict-billy-ckplus -- --date 2025-10-24
 ```
 
 For detailed usage, please refer to the full documentation.
@@ -77,7 +83,7 @@ streamlit run src/jambandnerd/web/app.py
 
 The web interface provides:
 
-- **Multi-band selection**: Switch between Goose, Phish, Widespread Panic, and Billy Strings.
+- **Multi-band selection**: Switch between Goose, Eggy, Phish, Widespread Panic, Billy Strings, and Umphrey's McGee.
 - **Model comparison**: Toggle between Notebook and CK+ models.
 - **Live predictions**: View latest predictions with detailed metrics.
 - **Accuracy visualization**: Historical performance charts with configurable K values (K=10/25/50; selected K highlighted).
@@ -117,7 +123,7 @@ mkdocs serve
 
 **Modular Pipeline Design**: Data Sources → Raw Storage → In-Memory Transform → Models → Predictions → Web Interface
 
-**Supported Bands**: Goose (elgoose.net), Phish (phish.net), Widespread Panic (everydaycompanion.com), Billy Strings (bmfsdb.com), and Umphrey's McGee (allthings.umphreys.com).
+**Supported Bands**: Goose (elgoose.net), Eggy (thecarton.net), Phish (phish.net), Widespread Panic (everydaycompanion.com), Billy Strings (bmfsdb.com), and Umphrey's McGee (allthings.umphreys.com).
 
 **Key Components**:
 

@@ -25,7 +25,7 @@ def validate_predictions(bands: Iterable[str], max_age_hours: int) -> int:
 
     band_list = list(bands)
     if not band_list:
-        band_list = ["goose", "phish", "wsp", "billy", "um"]
+        band_list = ["goose", "eggy", "phish", "wsp", "billy", "um"]
     tables = {
         "predictions_notebook": "notebook_v1",
         "predictions_ckplus": "ckplus_v1",

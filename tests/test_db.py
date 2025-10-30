@@ -21,8 +21,8 @@ class TestSupabaseConnection:
         """Test validation fails when SUPABASE_KEY is missing."""
         monkeypatch.setenv("SUPABASE_URL", "https://test.supabase.co")
         monkeypatch.delenv("SUPABASE_KEY", raising=False)
-        
-        with pytest.raises(ValueError, match="Missing SUPABASE_KEY"):
+
+        with pytest.raises(ValueError, match="Missing SUPABASE_URL or SUPABASE_KEY"):
             validate_environment()
 
     def test_validate_environment_success(self, setup_test_env):

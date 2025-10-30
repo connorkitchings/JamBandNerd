@@ -9,7 +9,7 @@ sys.path.insert(0, project_root)
 from src.jambandnerd.db.operations import get_table_schema
 
 def main():
-    table_names = ["goose_songs_raw", "goose_shows_raw", "goose_venues_raw", "goose_setlists_raw"]
+    table_names = ["wsp_songs_raw", "wsp_shows_raw", "wsp_venues_raw", "wsp_setlists_raw"]
     schemas = {}
     for table in table_names:
         print(f"Fetching schema for {table}...")

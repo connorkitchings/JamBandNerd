@@ -24,7 +24,8 @@ dependencies = [
   "beautifulsoup4",
   "psycopg2-binary",
   "typer",
-  "tqdm"
+  "tqdm",
+  "pytest>=8.4.1",
 ]
 
 [project.optional-dependencies]
@@ -43,6 +44,7 @@ docs = [
 
 [project.scripts]
 collect-goose = "scripts.run_goose_collection:main"
+collect-eggy = "scripts.run_eggy_collection:main"
 collect-phish = "scripts.run_phish_collection:main"
 collect-billy = "scripts.run_billy_collection:main"
 collect-um = "scripts.run_um_collection:main"

@@ -8,6 +8,7 @@ beautifulsoup4
 psycopg2-binary
 typer
 tqdm
+pytest>=8.4.1
 
 [dev]
 ruff

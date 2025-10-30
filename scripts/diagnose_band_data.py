@@ -237,7 +237,7 @@ Examples:
     parser.add_argument(
         "--band",
         required=True,
-        choices=["goose", "phish", "wsp", "billy", "um"],
+        choices=["goose", "eggy", "phish", "wsp", "billy", "um"],
         help="Band to diagnose"
     )
     parser.add_argument(

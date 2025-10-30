@@ -11,7 +11,7 @@ uv pip install .
 streamlit run src/jambandnerd/web/app.py
 ```
 
-The Streamlit app supports the full JamBandNerd catalog: Goose, Phish, Widespread Panic, and Billy Strings. Use the band selector in the sidebar (or `?band=` query parameter) to pivot between them.
+The Streamlit app supports the full JamBandNerd catalog: Goose, Eggy, Phish, Widespread Panic, Billy Strings, and Umphrey's McGee. Use the band selector in the sidebar (or `?band=` query parameter) to pivot between them.
 
 For local secrets, create `.streamlit/secrets.toml`:
 
@@ -66,6 +66,7 @@ primaryColor = "#1f77b4"
 The app syncs selections to query parameters. You can link to a specific view:
 
 - `?band=goose&model=notebook&k=50`
+- `?band=eggy&model=ckplus&k=25`
 - `?band=phish&model=ckplus&k=25`
 - `?band=billy&model=notebook&k=10`
 

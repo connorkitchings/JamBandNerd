@@ -13,6 +13,7 @@ from typing import Dict, Any, List, Optional
 from datetime import datetime, date
 
 from .goose.collector import GooseCollector
+from .eggy.collector import EggyCollector
 from .phish.collector import PhishCollector
 
 # Set up logging
@@ -33,6 +34,7 @@ class CollectionManager:
     def __init__(self):
         self.collectors = {
             'goose': GooseCollector,
+            'eggy': EggyCollector,
             'phish': PhishCollector
         }
         self.results = {}
@@ -179,7 +181,7 @@ def main():
     parser.add_argument(
         '--bands', 
         nargs='+', 
-        choices=['goose', 'phish'], 
+        choices=['goose', 'eggy', 'phish'], 
         help='Bands to collect data from (default: all)',
         default=None
     )

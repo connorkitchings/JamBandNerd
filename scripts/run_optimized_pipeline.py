@@ -27,6 +27,7 @@ sys.path.insert(0, project_root)
 
 # Import the functions from the refactored scripts
 from scripts.run_goose_collection import run_goose_collection
+from scripts.run_eggy_collection import run_eggy_collection
 from scripts.run_phish_collection import run_phish_collection
 from scripts.run_wsp_collection import run_wsp_collection
 from scripts.run_billy_collection import run_billy_collection
@@ -96,6 +97,7 @@ def run_band_pipeline(band: str, skip_accuracy: bool = False) -> bool:
     collection_runners = {
 
         "goose": run_goose_collection,
+        "eggy": run_eggy_collection,
 
         "phish": run_phish_collection,
 
@@ -159,7 +161,7 @@ def main():
     )
     parser.add_argument(
         "--band",
-        choices=["goose", "phish", "wsp", "billy", "um", "all"],
+        choices=["goose", "eggy", "phish", "wsp", "billy", "um", "all"],
         default="all",
         help="Band to process (default: all)"
     )
@@ -173,7 +175,8 @@ def main():
     overall_start_time = time.time()
     log_with_timestamp("🚀 Starting JamBandNerd Pipeline Orchestrator")
 
-    bands_to_process = ["goose", "phish", "wsp", "billy", "um"] if args.band == "all" else [args.band]
+    all_bands = ["goose", "eggy", "phish", "wsp", "billy", "um"]
+    bands_to_process = all_bands if args.band == "all" else [args.band]
     results = {}
 
     for band in bands_to_process:

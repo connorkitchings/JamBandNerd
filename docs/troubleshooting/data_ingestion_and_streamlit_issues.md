@@ -322,7 +322,7 @@ def diagnose_band(band: str) -> dict:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Diagnose band data issues")
-    parser.add_argument("--band", required=True, choices=["goose", "phish", "wsp"])
+    parser.add_argument("--band", required=True, choices=["goose", "eggy", "phish", "wsp", "billy", "um"])
     args = parser.parse_args()
     
     results = diagnose_band(args.band)

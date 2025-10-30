@@ -24,6 +24,14 @@ from jambandnerd.config import (
 # Note: EXCLUDED_SHOW_DATES imported from config
 
 BAND_CONFIG = {
+    "eggy": {
+        "display_name": "Eggy",
+        "shows_table": "eggy_shows_raw",
+    },
+    "billy": {
+        "display_name": "Billy Strings",
+        "shows_table": "billy_shows_raw",
+    },
     "goose": {
         "display_name": "Goose",
         "shows_table": "goose_shows_raw",
@@ -36,7 +44,14 @@ BAND_CONFIG = {
         "display_name": "Widespread Panic",
         "shows_table": "wsp_shows_raw",
     },
+    "um": {
+        "display_name": "Umphrey's McGee",
+        "shows_table": "um_shows_raw",
+    },
 }
+
+ACTIVE_BANDS = [slug for slug in BAND_CONFIG.keys() if slug != "eggy"] or list(BAND_CONFIG.keys())
+ACTIVE_BAND_SET = set(ACTIVE_BANDS)
 
 MODEL_CONFIG = {
     "notebook": {
@@ -459,6 +474,8 @@ def get_initial_selection_from_url(default_band: str, default_model: str, defaul
         k_val = int(k_raw)
     except Exception:
         k_val = default_k
+    if band_val not in ACTIVE_BAND_SET:
+        band_val = default_band
     return {"band": band_val, "model": model_val, "k": k_val}
 
 
@@ -478,11 +495,14 @@ def display_sidebar(initial_band: Optional[str] = None, initial_model: Optional[
     """Render the sidebar and return selected options."""
     st.sidebar.title("JamBandNerd")
 
-    sorted_bands = sorted(BAND_CONFIG.items(), key=lambda item: item[1]["display_name"].lower())
+    sorted_bands = sorted(
+        ((slug, BAND_CONFIG[slug]) for slug in ACTIVE_BANDS),
+        key=lambda item: item[1]["display_name"].lower(),
+    )
     band_display_names = [config["display_name"] for _, config in sorted_bands]
     display_to_slug = {config["display_name"]: slug for slug, config in sorted_bands}
 
-    if initial_band in BAND_CONFIG:
+    if initial_band in ACTIVE_BAND_SET:
         initial_band_display = BAND_CONFIG[initial_band]["display_name"]  # type: ignore[index]
     else:
         initial_band_display = band_display_names[0]
@@ -993,7 +1013,7 @@ def main():
 
     # Read initial selection from URL with sensible defaults
     defaults = {
-        "band": next(iter(BAND_CONFIG.keys())),
+        "band": ACTIVE_BANDS[0],
         "model": next(iter(MODEL_CONFIG.keys())),
         "k": 50,
     }

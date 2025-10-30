@@ -56,7 +56,12 @@ def get_last_completed_show_date(band: str) -> str | None:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Get the date of the most recently completed show for a band.")
-    parser.add_argument("--band", required=True, choices=["goose", "phish", "wsp", "billy", "um"], help="The band's slug.")
+    parser.add_argument(
+        "--band",
+        required=True,
+        choices=["goose", "eggy", "phish", "wsp", "billy", "um"],
+        help="The band's slug.",
+    )
     args = parser.parse_args()
     last_date = get_last_completed_show_date(args.band)
     if last_date:
