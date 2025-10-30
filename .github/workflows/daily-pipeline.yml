@@ -304,7 +304,10 @@ jobs:
       - name: Run data quality check
         run: |
           python -c "
-          import json, os, sys, pandas as pd
+          import json
+          import os 
+          import sys 
+          import pandas as pd
           from datetime import date, timedelta
           
           repo_root = os.environ.get('GITHUB_WORKSPACE', '.')
@@ -419,6 +422,4 @@ jobs:
           echo "### Next Steps:" >> $GITHUB_STEP_SUMMARY
           echo "- Visit the [JamBandNerd web app](https://jambandnerd.streamlit.app/) to view updated predictions." >> $GITHUB_STEP_SUMMARY
           echo "- Check the Supabase dashboard for data validation." >> $GITHUB_STEP_SUMMARY
-          echo "- Review any warnings above and re-run collection if needed." >> $GITHUB_STEP_SUMMARY          echo "- Review any warnings above and re-run collection if needed." >> $GITHUB_STEP_SUMMARY
-          echo "- Review any warnings above and re-run collection if needed." >> $GITHUB_STEP_SUMMARY          echo "- Review any warnings above and re-run collection if needed." >> $GITHUB_STEP_SUMMARY
-
+          echo "- Review any warnings above and re-run collection if needed." >> $GITHUB_STEP_SUMMARY
