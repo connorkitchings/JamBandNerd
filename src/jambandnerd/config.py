@@ -13,7 +13,7 @@ from typing import Final
 TOP_K_VALUES: Final[list[int]] = [10, 25, 50]
 
 # Default number of recent shows to exclude songs from predictions
-EXCLUSION_WINDOW_DEFAULT: Final[int]] = 3
+EXCLUSION_WINDOW_DEFAULT: Final[int] = 3
 
 # Minimum number of plays required for a song to be considered by CK+ model
 MIN_PLAYS_THRESHOLD_DEFAULT: Final[int] = 5

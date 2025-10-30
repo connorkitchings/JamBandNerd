@@ -13,6 +13,7 @@ on:
         options:
           - all
           - billy
+          - eggy
           - goose
           - phish
           - um
@@ -25,7 +26,7 @@ on:
 
 env:
   # Single source of truth for band list
-  BAND_LIST_JSON: '["goose","phish","wsp","billy","um"]'
+  BAND_LIST_JSON: '["goose","eggy","phish","wsp","billy","um"]'
 
 jobs:
   daily-pipeline:
@@ -35,7 +36,7 @@ jobs:
     strategy:
       matrix:
         # Run a separate job for each band to isolate failures
-        band: [goose, phish, wsp, billy, um]
+        band: [goose, eggy, phish, wsp, billy, um]
       fail-fast: false
 
     env:
@@ -418,4 +419,6 @@ jobs:
           echo "### Next Steps:" >> $GITHUB_STEP_SUMMARY
           echo "- Visit the [JamBandNerd web app](https://jambandnerd.streamlit.app/) to view updated predictions." >> $GITHUB_STEP_SUMMARY
           echo "- Check the Supabase dashboard for data validation." >> $GITHUB_STEP_SUMMARY
-          echo "- Review any warnings above and re-run collection if needed." >> $GITHUB_STEP_SUMMARY
+          echo "- Review any warnings above and re-run collection if needed." >> $GITHUB_STEP_SUMMARY          echo "- Review any warnings above and re-run collection if needed." >> $GITHUB_STEP_SUMMARY
+          echo "- Review any warnings above and re-run collection if needed." >> $GITHUB_STEP_SUMMARY          echo "- Review any warnings above and re-run collection if needed." >> $GITHUB_STEP_SUMMARY
+

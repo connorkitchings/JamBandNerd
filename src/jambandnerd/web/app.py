@@ -50,7 +50,7 @@ BAND_CONFIG = {
     },
 }
 
-ACTIVE_BANDS = [slug for slug in BAND_CONFIG.keys() if slug != "eggy"] or list(BAND_CONFIG.keys())
+ACTIVE_BANDS = list(BAND_CONFIG.keys())
 ACTIVE_BAND_SET = set(ACTIVE_BANDS)
 
 MODEL_CONFIG = {
