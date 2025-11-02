@@ -188,4 +188,32 @@ def generate_model_data(
         reference_index=ref_index,
         recently_played_songs=recent_songs,
         diagnostics=diagnostics,
-)
+    )
+
+        master_feature_set=master_features,
+        reference_date=reference_date,
+        reference_index=ref_index,
+        recently_played_songs=recent_songs,
+        diagnostics=diagnostics,
+    )
+
+
+        reference_date=reference_date,
+        reference_index=ref_index,
+        recently_played_songs=recent_songs,
+        diagnostics=diagnostics,
+    )
+
+
+        reference_date=reference_date,
+        reference_index=ref_index,
+        recently_played_songs=recent_songs,
+        diagnostics=diagnostics,
+    )
+
+
+        reference_index=ref_index,
+        recently_played_songs=recent_songs,
+        diagnostics=diagnostics,
+    )    )
+

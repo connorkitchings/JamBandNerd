@@ -15,6 +15,11 @@ TOP_K_VALUES: Final[list[int]] = [10, 25, 50]
 # Default number of recent shows to exclude songs from predictions
 EXCLUSION_WINDOW_DEFAULT: Final[int] = 3
 
+# Band-specific exclusion windows (overrides default)
+BAND_EXCLUSION_WINDOWS: Final[dict[str, int]] = {
+    "um": 4,  # UM uses 4-show exclusion window instead of default 3
+}
+
 # Minimum number of plays required for a song to be considered by CK+ model
 MIN_PLAYS_THRESHOLD_DEFAULT: Final[int] = 5
 
@@ -138,3 +143,8 @@ MODEL_VERSIONS: Final[dict[str, str]] = {
     "notebook": "notebook_v1",
     "ckplus": "ckplus_v1"
 }
+MODEL_VERSIONS: Final[dict[str, str]] = {
+    "notebook": "notebook_v1",
+    "ckplus": "ckplus_v1"
+}
+

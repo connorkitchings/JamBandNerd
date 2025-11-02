@@ -25,6 +25,10 @@ class WSPCollector(BandCollector):
         config = get_collector_config('wsp')
         super().__init__(config)
         self.supabase_client = get_supabase_client()
+        self.session = requests.Session()
+        self.session.headers.update({
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36'
+        })
         logger.info(f"Initialized WSPCollector with rate limit: {config.rate_limit_calls}/{config.rate_limit_window}s")
 
     def _get_existing_show_urls(self) -> List[str]:
@@ -155,7 +159,7 @@ class WSPCollector(BandCollector):
 
         try:
             # Handle redirects properly and update source URL if needed
-            response = requests.get(show_url, timeout=30, allow_redirects=True)
+            response = self.session.get(show_url, timeout=30, allow_redirects=True)
             response.raise_for_status()
             
             # Update show_info with final URL if redirected
@@ -281,7 +285,7 @@ class WSPCollector(BandCollector):
             year_str = f"{year_2d:02d}"
             url = f"{self.BASE_URL}/asp/tour{year_str}.asp"
             try:
-                response = requests.get(url, timeout=30)
+                response = self.session.get(url, timeout=30)
                 response.raise_for_status()
                 soup = BeautifulSoup(response.content, 'html.parser')
                 
@@ -421,7 +425,7 @@ class WSPCollector(BandCollector):
         url = f"{self.BASE_URL}/asp/songcode.asp"
         logger.info(f"Scraping songs from {url}")
         try:
-            response = requests.get(url, timeout=30)
+            response = self.session.get(url, timeout=30)
             response.raise_for_status()
             soup = BeautifulSoup(response.content, 'html.parser')
             tables = soup.find_all("table")

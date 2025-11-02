@@ -76,7 +76,7 @@ def generate_predictions(band: str, model: str, date_str: str | None, exclusion_
     print(f"{log_prefix} Generating predictions for reference date: {reference_date.isoformat()}")
 
     model_data = generate_model_data(
-        shows_df, setlists_df, reference_date, exclusion_window=exclusion_window
+        shows_df, setlists_df, reference_date, exclusion_window=exclusion_window, band=band
     )
 
     # 2. Select and run model

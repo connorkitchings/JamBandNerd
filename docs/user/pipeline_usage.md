@@ -31,7 +31,7 @@ The primary and recommended way to run the data pipeline is with the `run_optimi
 To view the predictions and accuracy metrics, launch the interactive Streamlit web application:
 
 ```bash
-streamlit run src/jambandnerd/web/app.py
+uv run streamlit run src/jambandnerd/web/app.py
 ```
 
 ## Advanced Usage: Individual Scripts

@@ -108,12 +108,12 @@ For detailed usage, please refer to the full documentation.
 
 ```bash
 # Launch the interactive Streamlit web application
-streamlit run src/jambandnerd/web/app.py
+uv run streamlit run src/jambandnerd/web/app.py
 ```
 
 The web interface provides:
 
-- **Multi-band selection**: Switch between Goose, Eggy, Phish, Widespread Panic, Billy Strings, and Umphrey's McGee.
+- **Multi-band selection**: Switch between all dynamically discovered bands.
 - **Model comparison**: Toggle between Notebook and CK+ models.
 - **Live predictions**: View latest predictions with detailed metrics.
 - **Accuracy visualization**: Historical performance charts with configurable K values (K=10/25/50; selected K highlighted).
@@ -153,7 +153,7 @@ mkdocs serve
 
 **Modular Pipeline Design**: Data Sources → Raw Storage → In-Memory Transform → Models → Predictions → Web Interface
 
-**Supported Bands**: Goose (elgoose.net), Eggy (thecarton.net), Phish (phish.net), Widespread Panic (everydaycompanion.com), Billy Strings (bmfsdb.com), and Umphrey's McGee (allthings.umphreys.com).
+**Supported Bands**: The pipeline dynamically discovers supported bands by looking for `run_*_collection.py` scripts in the `scripts/` directory. To add a new band, simply create a new collection script following the existing pattern.
 
 **Key Components**:
 
@@ -173,8 +173,8 @@ The WSP data collector scrapes `everydaycompanion.com`. If a recent historical s
 The platform features comprehensive automation through GitHub Actions:
 
 - **Daily Pipeline**: Runs automatically at 3 PM ET every day.
-- **Multi-Strategy**: Choice between optimized single-script or parallel multi-step execution.
-- **Manual Triggers**: On-demand execution with band selection via GitHub UI (goose/phish/wsp/all).
+- **Dynamic Matrix**: The pipeline automatically discovers and runs for all supported bands.
+- **Manual Triggers**: On-demand execution with band selection via the GitHub UI.
 - **Error Resilience**: Parallel matrix execution with graceful failure handling.
 - **Secret Management**: Secure API key and database credential handling.
 

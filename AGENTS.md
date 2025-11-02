@@ -1,64 +1,187 @@
 # AI Agent Guidance for JamBandNerd
 
-This file provides general guidance for any AI agent working on the JamBandNerd repository.
+Purpose: Get any AI/automation agent productive in under a minute with minimal context load.
+Rule #1: Load only the files in the Boot Order first. Everything else is on-demand.
 
-## Project Overview
+## 30-Second Quick Ref
 
-JamBandNerd is a cloud-based data science platform for collecting, transforming, and predicting jam band setlists.
+* **First time?** Read sections 1 & 5 only
+* **Running pipeline:** `uv run python scripts/run_optimized_pipeline.py --band [band]`
+* **Stuck?** Check section 6 (Triage Matrix)
+* **Session Summary template:** docs/ai_sessions.md
+* **Permission model:** Agents can read files and suggest commands; user confirms execution
 
--   **Supported Bands**: Goose, Phish, Widespread Panic, Billy Strings, Umphrey's McGee.
--   **Architecture**: Data Sources → Raw Data (Supabase) → In-Memory Transform → Models → Predictions (Supabase) → Web Interface (Streamlit).
--   **Core Logic**: The main pipeline logic is in `scripts/run_optimized_pipeline.py`, which orchestrates calls to other consolidated scripts like `generate_predictions.py` and `run_backtest.py`.
+---
 
-## Key Files for Context
+## 1) Boot Order (read in this exact order)
 
-Before starting work, review the following files to understand the project:
+1. **pyproject.toml** — skim [project], [tool.*], and scripts.
+2. **README.md** — skim Quick Start and Usage.
+3. **docs/pipeline_usage.md** — read the canonical run commands.
+4. **docs/architecture.md** — skim the diagram/section headers for system map.
+5. **docs/ai_sessions.md** — (only if you're an AI session) skim the session template.
 
--   **`pyproject.toml`**: Defines project dependencies, scripts, and build configuration. Essential for understanding the `uv` setup.
--   **`README.md`**: High-level project overview, setup, and usage instructions.
--   **`docs/developer_guide/architecture.md`**: Detailed architecture overview.
--   **`src/jambandnerd/config.py`**: Centralized configuration for the project.
--   **`scripts/run_optimized_pipeline.py`**: The main pipeline orchestration script.
--   **`src/jambandnerd/models/`**: The prediction model implementations.
+**Do not pre-load other docs.** Open these only when needed:
 
-## Essential Commands
+* CI/CD: docs/github_actions.md
+* Web UI: docs/streamlit_deploy.md
+* Band-specific fallbacks/parsers: docs/tourwrangler_fallback.md
+* Roadmaps/decisions: docs/*.md (targeted sections only)
 
-### Environment Setup
+---
 
-```bash
-# Initial setup
-uv venv --python=3.12
-source .venv/bin/activate
-uv pip install .
+## 2) Roles & Handoffs (ultra-short)
+
+### Navigator (front door)
+
+Classify the request → write a 3–7 line plan → route to one specialist. Keep the plan and scope in the summary.
+
+**Scope:** Navigator handles queries answerable from Boot Order docs (e.g., "how do I run the pipeline?", "where's the config?"). Route only when specialized context (code inspection, API changes, metrics analysis) is needed.
+
+### Researcher
+
+Fetch only current, relevant info. Return a tight brief (bullets + links). Avoid long prose.
+
+### DataOps
+
+Env setup, data paths, secrets, Supabase, GitHub Actions diagnostics. Provide minimal repro steps.
+
+### Feature Engineer
+
+Edit/create features, guard against leakage, keep naming consistent. Provide a diff-style summary.
+
+### Modeler
+
+Train/evaluate, run small sweeps, compare against baselines. Return a compact metrics table.
+
+### Web/App
+
+Streamlit & user-facing tweaks. Optimize launch and state handling first.
+
+### Handoff Format
+
+```text
+[Agent] → [Next Agent]: Brief context (1 line) + artifact location + open question
+
+Example:
+Modeler → Feature Engineer: R² dropped 0.15 after adding venue_capacity.
+Check features/venue.py:45-67 for potential leakage.
 ```
-*Note: Ensure a `.env` file is present with `SUPABASE_URL` and `SUPABASE_KEY`.*
 
-### Running the Pipeline
+**Handoff rule:** Each agent updates the running Session Summary with: goal, constraints, commands run, artifacts, next step.
+
+**Escalation threshold:** If unsure after 2 attempts or investigation hits a dead end, hand off to appropriate specialist with full context.
+
+---
+
+## 3) Operating Loop (default)
+
+1. Confirm task & constraints (inputs, band(s), time budget).
+2. **Re-confirm** you've loaded Boot Order only (skip the rest).
+3. Propose a 3–7 line plan (Navigator).
+4. Run the smallest useful command (see Cheat-Sheet).
+5. Record minimal artifacts (paths, tables, metrics).
+6. Decide: done ↔ iterate ↔ escalate (different agent).
+7. Update Session Summary (what changed + next action).
+
+**Context budget:** keep ≤ ~2k tokens loaded; summarize aggressively; link to sources instead of pasting them.
+
+---
+
+## 4) Guardrails
+
+* **Single source of truth:** Use README.md and docs/pipeline_usage.md for how to run things; do not invent commands.
+* **Config, not hardcode:** Read from centralized config/env; avoid duplicating constants.
+* **Prefer consolidated scripts:** Only drop to band-specific or per-stage scripts when debugging.
+* **Minimal diffs:** When proposing changes, show a compact diff or a bulleted change-set, not full files.
+* **Repro first:** Any failure report must include exact command(s), directory, and environment notes.
+
+---
+
+## 5) Minimal Command Cheat-Sheet
+
+**End-to-end (all bands):**
 
 ```bash
-# Run the complete pipeline for all supported bands
 uv run python scripts/run_optimized_pipeline.py --band all
-
-# Run the pipeline for a single band
-uv run python scripts/run_optimized_pipeline.py --band goose
 ```
 
-### Development Commands
+**Single band quick test:**
 
 ```bash
-# Code quality
-ruff check src/
-black src/
-pytest tests/
+uv run python scripts/run_optimized_pipeline.py --band goose --skip-accuracy
+```
 
-# Web interface
+**Debug single stage for one band:**
+
+```bash
+uv run python -m jambandnerd.pipeline.stages.feature_engineering --band goose
+```
+
+**Web UI (local):**
+
+```bash
 streamlit run src/jambandnerd/web/app.py
 ```
 
-## Development Guidelines
+**Available bands:** `goose` | `eggy` | `phish` | `wsp` | `billy` | `um`
 
--   **Modularity**: The project is highly modular. Follow the existing patterns when adding new collectors, models, or scripts.
--   **Configuration over Code**: Use the centralized configuration in `src/jambandnerd/config.py`. Avoid hardcoding values.
--   **Consolidated Scripts**: The project uses a few powerful, parameterized scripts (e.g., `generate_predictions.py`). Prefer extending these scripts over creating new ones.
--   **Code Style**: Adhere to the project's code style (black, ruff).
--   **Testing**: Add tests for new functionality in the `tests/` directory.
+**Speed up dev loops:** Add `--skip-accuracy` to bypass accuracy checks
+
+---
+
+## 6) Triage Matrix (when something breaks)
+
+| Issue Type          | Route To                   | Notes                                   |
+| ------------------- | -------------------------- | --------------------------------------- |
+| Install/env errors  | DataOps                    | Include OS, Python version, exact error |
+| API/schema changes  | Researcher → DataOps       | If ingestion fix needed                 |
+| Metrics regressions | Modeler → Feature Engineer | For feature verification                |
+| UI/state issues     | Web/App                    | Include browser console errors          |
+| Cron/CI/CD failures | DataOps                    | Minimal logs + failing step only        |
+
+---
+
+## 7) Output Format (what each agent must leave behind)
+
+### Required Elements
+
+1. **1–3 bullets:** what changed, where it lives (path/table), and why.
+2. **Short code/command block:** exact steps to reproduce.
+3. **Tiny artifact table** (if applicable):
+
+```markdown
+| Metric | Before | After | Change |
+|--------|--------|-------|--------|
+| R²     | 0.847  | 0.823 | -0.024 |
+| Rows   | 1,243  | 1,243 | —      |
+```
+
+1. **Next step:** 1 line (do X / review Y / ship Z).
+
+---
+
+## 8) What NOT to load on startup
+
+* ❌ Entire docs/ folder, decision logs, or full PRDs
+* ❌ Long historical discussions, old experiment notebooks, or verbose run logs
+* ❌ Historical experiment results or archived metrics
+* ❌ Any file not listed in the Boot Order
+
+---
+
+## 9) Common Anti-Patterns (DON'T)
+
+* ❌ Loading all docs upfront "just in case"
+* ❌ Writing multi-file solutions without confirming scope
+* ❌ Proposing changes without running the current state first
+* ❌ Pasting full file contents instead of diffs
+* ❌ Inventing commands not documented in pipeline_usage.md
+* ❌ Continuing past 2 failed attempts without escalating
+
+---
+
+## Version
+
+Last updated: 2025-10-31
+Maintained by: JamBandNerd core team

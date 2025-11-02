@@ -1,23 +1,24 @@
 from __future__ import annotations
 
 import json
-from datetime import date, datetime, timezone
+
 # Where we need regex helpers
 import re
-from typing import Any, Dict, List, Optional, Tuple, Union
+from datetime import date, datetime, timezone
+from typing import Any, List, Optional
 
 import altair as alt
 import pandas as pd
 import streamlit as st
 from supabase import Client
 
-from jambandnerd.db.connection import get_supabase_client
 from jambandnerd.config import (
     BAND_ID_COLUMNS,
     EXCLUDED_SHOW_DATES,
     STREAMLIT_CACHE_TTL,
     STREAMLIT_CACHE_TTL_LONG,
 )
+from jambandnerd.db.connection import get_supabase_client
 
 # --- Configuration ---
 
@@ -128,7 +129,7 @@ def fetch_predictions(
     try:
         table_name = f"predictions_{model}"
         query = _db_client.table(table_name).select("*").eq("band", band)
-        
+
         # Apply exclusions - filter out empty/invalid strings to avoid database query errors
         valid_excluded_dates = {d for d in EXCLUDED_SHOW_DATES if d and d.strip()}
         for d in valid_excluded_dates:
@@ -197,7 +198,7 @@ def fetch_per_show_accuracy(
     """
     try:
         model_version = f"{model}_v1"
-        
+
         # Use simple query without complex filtering to avoid date parsing errors
         query = (
             _db_client.table("accuracy_per_show")
@@ -208,42 +209,41 @@ def fetch_per_show_accuracy(
 
         # Execute the query without date filtering first
         response = query.execute()
-        
+
         if not response.data:
             return pd.DataFrame()
-            
+
         # Process and filter the data in Python instead of at database level
         df = pd.DataFrame(response.data)
-        
+
         if 'show_date' in df.columns and not df.empty:
             original_count = len(df)
-            
+
             # Remove rows with invalid show_date values
             df = df.dropna(subset=['show_date'])
             df = df[df['show_date'].astype(str).str.strip() != '']
-            
+
             # Apply exclusions in Python
             valid_excluded_dates = {d for d in EXCLUDED_SHOW_DATES if d and d.strip()}
             if valid_excluded_dates:
                 df = df[~df['show_date'].isin(valid_excluded_dates)]
-            
+
             # Convert show_date to datetime for proper sorting
             df['_show_date_dt'] = pd.to_datetime(df['show_date'], errors='coerce')
             df = df.dropna(subset=['_show_date_dt'])  # Remove any that couldn't be parsed
-            
+
             # Sort and limit in Python
             df = df.sort_values('_show_date_dt', ascending=False).head(limit)
-            
+
             # Remove the temporary column
             df = df.drop(columns=['_show_date_dt'])
-            
+
             if len(df) < original_count:
-                filtered_count = original_count - len(df)
                 # Only show warning for debugging, not in production
                 # st.info(f"Processed {original_count} records, showing {len(df)} valid records")
-        
+                pass
         return df
-        
+
     except Exception as e:
         st.error(f"Failed to fetch per-show accuracy: {e}")
         # For debugging - show the specific error and parameters
@@ -261,15 +261,15 @@ def fetch_last_show_setlist(
     if band not in BAND_CONFIG:
         st.warning(f"Band '{band}' not found in configuration")
         return pd.DataFrame(), None
-    
+
     try:
         # Use centralized config for ID columns
         id_col = BAND_ID_COLUMNS.get(band, "show_id")
         pos_col = "position" if band == "phish" else "song_position"
-        
+
         setlist_table = f"{band}_setlists_raw"
         shows_table = f"{band}_shows_raw"
-        
+
         # Get the most recent show that has setlist data by joining shows and setlists
         today_iso = date.today().isoformat()
         recent_shows_resp = (
@@ -282,14 +282,14 @@ def fetch_last_show_setlist(
         )
         if not recent_shows_resp.data:
             return pd.DataFrame(), None
-        
+
         recent_shows = recent_shows_resp.data
         recent_ids = [str(r.get(id_col)) for r in recent_shows if r.get(id_col) is not None]
-        
+
         if not recent_ids:
             st.info(f"No recent shows found for {band}")
             return pd.DataFrame(), None
-            
+
         setlist_ids_resp = (
             _db_client.table(setlist_table)
             .select(id_col)
@@ -297,19 +297,18 @@ def fetch_last_show_setlist(
             .execute()
         )
         setlist_ids = {str(r.get(id_col)) for r in (setlist_ids_resp.data or []) if r.get(id_col) is not None}
-        
+
         candidates = [r for r in recent_shows if str(r.get(id_col)) in setlist_ids]
         if not candidates:
             st.info(f"No completed shows found in the last 50 {band} shows. They may all be upcoming.")
             return pd.DataFrame(), None
-            
+
         candidates_sorted = sorted(candidates, key=lambda x: str(x.get("show_date", "")), reverse=True)
         most_recent_show_id = str(candidates_sorted[0].get(id_col))
-        most_recent_show_date = candidates_sorted[0].get("show_date")
-        
+
         if not most_recent_show_id:
             return pd.DataFrame(), None
-        
+
         # Get full setlist for this show
         setlist_data = (
             _db_client.table(setlist_table)
@@ -330,12 +329,12 @@ def fetch_last_show_setlist(
             .limit(1)
             .execute()
         )
-        
+
         if show_query.data:
             show_details = show_query.data[0]
-            
+
         return setlist_df, show_details
-        
+
     except Exception as e:
         st.error(f"Failed to fetch last show setlist for {band}: {e}")
         import traceback
@@ -490,7 +489,6 @@ def sync_query_params(band: str, model: str, k: int) -> None:
 def supabase_client_cached() -> Client:
     return get_supabase_client()
 
-
 def display_sidebar(initial_band: Optional[str] = None, initial_model: Optional[str] = None, initial_k: Optional[int] = None) -> tuple[str, str, int]:
     """Render the sidebar and return selected options."""
     st.sidebar.title("JamBandNerd")
@@ -523,7 +521,7 @@ def display_sidebar(initial_band: Optional[str] = None, initial_model: Optional[
         model_index = model_display_names.index(initial_model_display)
     except ValueError:
         model_index = 0
-    selected_model_display = st.sidebar.selectbox("Select a Model", model_display_names, index=model_index)
+    selected_model_display = st.sidebar.radio("Select a Model", model_display_names, index=model_index)
     selected_model_slug = next(
         slug
         for slug, config in MODEL_CONFIG.items()
@@ -550,7 +548,6 @@ def display_sidebar(initial_band: Optional[str] = None, initial_model: Optional[
 
     return selected_band_slug, selected_model_slug, selected_k
 
-
 def format_predictions_df(df: pd.DataFrame, model: str) -> pd.DataFrame:
     """Format the prediction dataframe for display."""
     if df.empty or model not in MODEL_CONFIG:
@@ -568,47 +565,8 @@ def get_model_explanation(model_slug: str) -> str:
     # In a real-world scenario, this would read from the file system.
     # Here, we embed the content directly since we've already read it.
     explanations = {
-        "notebook": """# Notebook Model (Frequency-Based)
-
-### Overview
-
-This model is the baseline predictor, designed to be simple, transparent, and fast. It operates on the core assumption that songs played frequently in the recent past are more likely to be played again soon.
-
-### Logic & Features
-
-Given a reference show date (the show we are predicting for), the model performs the following steps:
-
-1.  **Define a 1-Year Window**: It looks at all shows that occurred in the 365 days immediately preceding the *last completed show*.
-2.  **Count Plays**: It counts how many times each song was played within that one-year window. This count (`plays_past_year`) is the primary ranking feature.
-3.  **Exclude Recent Songs**: To avoid predicting songs that were just played, it identifies all songs performed in the **last three completed shows** and removes them from the candidate list.
-4.  **Calculate Current Gap**: For each remaining song, it calculates the `current_gap`, which is the number of shows that have passed since the song was last played.
-5.  **Rank and Predict**: Songs are ranked primarily by `plays_past_year` (descending). Any ties are broken by `current_gap` (descending, so songs with a larger gap are ranked higher).
-
-The result is a list of songs that are both popular in the current rotation and not *too* recent, making them strong candidates for the next show.
-""",
-        "ckplus": """# CK+ Model (Gap-Based)
-
-### Overview
-
-The CK+ model is a gap-based statistical predictor that ranks songs by how "overdue" they are to be played. It complements the frequency-based Notebook model by focusing on historical performance gaps rather than recent play counts.
-
-### Logic & Features
-
-The model's core logic is based on analyzing the number of shows that typically pass between two performances of the same song.
-
-1.  **Define a 5-Year Window**: The model uses a five-year historical window to calculate long-term gap statistics for each song.
-2.  **Calculate Gap Statistics**: For each song, it computes:
-    *   `avg_gap`: The average number of shows between plays.
-    *   `std_gap`: The standard deviation of the gaps, measuring how consistent the song's rotation is.
-    *   `current_gap`: The number of shows that have passed since the song was last played.
-3.  **Calculate Core Ratios**:
-    *   `gap_ratio`: Calculated as `current_gap / avg_gap`. A ratio greater than 1.0 suggests a song is "overdue."
-    *   `gap_z_score`: Measures how many standard deviations the `current_gap` is from the `avg_gap`. A high positive Z-score indicates a statistically significant gap.
-4.  **Apply Filters**:
-    *   **Minimum Plays**: Songs with very few plays in the 5-year window are excluded.
-    *   **Retirement Heuristic**: Songs with an extremely large `current_gap` are assumed to be "retired" and are excluded. This threshold is configured on a per-band basis.
-5.  **Final Scoring & Ranking**: The final `ckplus_score` is a weighted blend of the `gap_ratio` and the `gap_z_score`, which is then scaled by a "reliability" term. This term gives less weight to songs with very few plays or a high standard deviation (erratic history), preventing them from being ranked too highly.
-"""
+        "notebook": "# Notebook Model (Frequency-Based)\n\n### Overview\n\nThis model is the baseline predictor, designed to be simple, transparent, and fast. It operates on the core assumption that songs played frequently in the recent past are more likely to be played again soon.\n\n### Logic & Features\n\nGiven a reference show date (the show we are predicting for), the model performs the following steps:\n\n1.  **Define a 1-Year Window**: It looks at all shows that occurred in the 365 days immediately preceding the *last completed show*.\n2.  **Count Plays**: It counts how many times each song was played within that one-year window. This count (`plays_past_year`) is the primary ranking feature.\n3.  **Exclude Recent Songs**: To avoid predicting songs that were just played, it identifies all songs performed in the **last three completed shows** and removes them from the candidate list.\n4.  **Calculate Current Gap**: For each remaining song, it calculates the `current_gap`, which is the number of shows that have passed since the song was last played.\n5.  **Rank and Predict**: Songs are ranked primarily by `plays_past_year` (descending). Any ties are broken by `current_gap` (descending, so songs with a larger gap are ranked higher).\n\nThe result is a list of songs that are both popular in the current rotation and not *too* recent, making them strong candidates for the next show.\n",
+        "ckplus": "# CK+ Model (Gap-Based)\n\n### Overview\n\nThe CK+ model is a gap-based statistical predictor that ranks songs by how \"overdue\" they are to be played. It complements the frequency-based Notebook model by focusing on historical performance gaps rather than recent play counts.\n\n### Logic & Features\n\nThe model's core logic is based on analyzing the number of shows that typically pass between two performances of the same song.\n\n1.  **Define a 5-Year Window**: The model uses a five-year historical window to calculate long-term gap statistics for each song.\n2.  **Calculate Gap Statistics**: For each song, it computes:\n    *   `avg_gap`: The average number of shows between plays.\n    *   `std_gap`: The standard deviation of the gaps, measuring how consistent the song's rotation is.\n    *   `current_gap`: The number of shows that have passed since the song was last played.\n3.  **Calculate Core Ratios**:\n    *   `gap_ratio`: Calculated as `current_gap / avg_gap`. A ratio greater than 1.0 suggests a song is \"overdue.\"\n    *   `gap_z_score`: Measures how many standard deviations the `current_gap` is from the `avg_gap`. A high positive Z-score indicates a statistically significant gap.\n4.  **Apply Filters**:\n    *   **Minimum Plays**: Songs with very few plays in the 5-year window are excluded.\n    *   **Retirement Heuristic**: Songs with an extremely large `current_gap` are assumed to be \"retired\" and are excluded. This threshold is configured on a per-band basis.\n5.  **Final Scoring & Ranking**: The final `ckplus_score` is a weighted blend of the `gap_ratio` and the `gap_z_score`, which is then scaled by a \"reliability\" term. This term gives less weight to songs with very few plays or a high standard deviation (erratic history), preventing them from being ranked too highly.\n"
     }
     return explanations.get(model_slug, "No explanation available for this model.")
 
@@ -617,11 +575,11 @@ def display_last_show_setlist(client: Client, band: str, model: str):
     """Display the last show's setlist with prediction highlights."""
     with st.spinner("Loading last show setlist..."):
         setlist_df, show_details = fetch_last_show_setlist(client, band)
-    
+
     if setlist_df.empty or show_details is None:
         st.warning("No recent setlist data available.")
         return
-    
+
     # Extract show information
     if band == "phish":
         show_date_key = "show_date"
@@ -629,268 +587,503 @@ def display_last_show_setlist(client: Client, band: str, model: str):
         show_date_key = "show_date"  # Goose shows table uses show_date (normalized from showdate)
     else:  # WSP
         show_date_key = "show_date"
-    
+
     show_date = show_details.get(show_date_key)
-    
+
     if show_date:
         formatted_date = pd.to_datetime(show_date).strftime("%m/%d/%Y")
     else:
         formatted_date = "Unknown Date"
-    
+
     # Get venue information
-    # Prefer normalized venue_name; fall back to legacy keys if present
     venue = show_details.get("venue_name") or show_details.get("venue") or show_details.get("venuename")
     if not venue:
         venue = "Unknown Venue"
     city = show_details.get("venue_city") or show_details.get("city") or ""
     state = show_details.get("venue_state") or show_details.get("state") or ""
-    
-    venue_info = venue
-    if city and state:
-        venue_info += f" • {city}, {state}"
-    
-    st.markdown(f"<h4 style='text-align: center;'>Last Show: {formatted_date} — {venue_info}</h4>", unsafe_allow_html=True)
-    
-    # Retrieve predictions for this specific show_date if available
-    predictions_df_for_show = pd.DataFrame()
-    if show_date:
-        predictions_df_for_show = fetch_predictions_for_date(client, band, model, str(pd.to_datetime(show_date).date()))
-    
-    # Fallback to latest predictions if historical not available
-    if predictions_df_for_show.empty:
-        latest_df, _, _ = fetch_predictions(client, band, model)
-        predictions_df_for_show = latest_df
-    
-    # Create prediction lookup for highlighting
-    prediction_ranks: dict[str, int] = {}
-    if not predictions_df_for_show.empty and 'song_name' in predictions_df_for_show.columns:
-        # Prefer explicit 'rank' if present; else use row order
-        use_rank_col = 'rank' in predictions_df_for_show.columns
-        for idx, row in predictions_df_for_show.iterrows():
-            normalized = _clean_song_name_for_display(str(row['song_name']), band).lower()
-            if not normalized:
-                continue
-            rank = int(row['rank']) if use_rank_col and pd.notna(row['rank']) else (idx + 1)
-            prediction_ranks[normalized] = rank
-    
-    # Group songs by set (handle missing set numbers)
-    if 'set_number' not in setlist_df.columns:
-        st.warning("Setlist missing 'set_number' column.")
-        return
-    
-    # For Phish, fill missing set numbers (encores) as 99 for consistent grouping
-    if band == "phish":
-        setlist_df['set_number'] = setlist_df['set_number'].apply(lambda v: 99 if (v is None or (isinstance(v, float) and pd.isna(v)) or (pd.isna(v))) else v)
-    
-    sets = setlist_df.groupby('set_number', dropna=True)
-    
-    # Create columns for sets with robust sorting across mixed types
-    def _set_order_key(v: Any) -> int:
-        s = str(v).strip().upper()
-        if s in {"E", "ENCORE", "99"}:
-            return 99
-        if s in {"0", "SOUNDCHECK"}:
-            return 0
-        try:
-            return int(float(s))
-        except Exception:
-            return 50
-    
-    set_numbers_raw = [k for k in sets.groups.keys()]
-    set_numbers = sorted(set_numbers_raw, key=_set_order_key)
-    
-    # Handle different numbers of sets dynamically
-    if len(set_numbers) == 1:
-        cols = [st.container()]
-    elif len(set_numbers) == 2:
-        cols = st.columns(2)
-    elif len(set_numbers) == 3:
-        cols = st.columns(3)
-    else:
-        # For 4+ sets, use 2 columns and stack sets
-        cols = st.columns(2)
-    
-    for i, set_num in enumerate(set_numbers):
-        col_idx = i if len(set_numbers) <= 3 else i % 2
-        col = cols[col_idx]
-        
-        # Defensive: some schemas use 'position' vs 'song_position'
-        set_data = sets.get_group(set_num)
-        if 'song_position' in set_data.columns:
-            set_data = set_data.sort_values('song_position')
-        elif 'position' in set_data.columns:
-            set_data = set_data.sort_values('position')
-        
-        # Format set header
-        set_num_str = str(set_num).upper()
-        if set_num_str in {'E', 'ENCORE'} or set_num in (99, '99'):
-            set_header = "**Encore**"
-        elif set_num_str == '0' or set_num in (0, '0'):
-            set_header = "**Soundcheck**"
-        else:
-            set_header = f"**Set {set_num}**"
-        
-        col.markdown(set_header)
-        
-        # Display songs with highlights
-        song_list = []
-        for _, song_row in set_data.iterrows():
-            song_name_clean = _clean_song_name_for_display(song_row['song_name'], band)
-            if not song_name_clean:
-                continue
-            lookup_key = song_name_clean.lower()
 
-            # Check if song was predicted
-            if lookup_key in prediction_ranks:
-                rank = prediction_ranks[lookup_key]
-                if rank <= 10:
-                    # Top 10: Green background
-                    song_display = f'<span style="background-color: #4CAF50; padding: 2px 4px; border-radius: 3px; color: white;"><strong>{song_name_clean}</strong> (#{rank})</span>'
-                elif rank <= 25:
-                    # Top 25: Gold background
-                    song_display = f'<span style="background-color: #FFD700; padding: 2px 4px; border-radius: 3px; color: black;"><strong>{song_name_clean}</strong> (#{rank})</span>'
-                elif rank <= 50:
-                    # Top 50: Light Grey background
-                    song_display = f'<span style="background-color: #D3D3D3; padding: 2px 4px; border-radius: 3px; color: black;">{song_name_clean} (#{rank})</span>'
+    # Fetch collection and prediction times for this specific show date
+    collection_time = fetch_last_collection_time(client, band) # This fetches the latest, not necessarily for this show
+    # To get prediction time for this show, we need to fetch predictions for this specific date
+    _, _, prediction_meta = fetch_predictions(client, band, model) # This fetches latest predictions
+    predicted_at_raw = prediction_meta.get("predicted_at")
+    predicted_at = pd.to_datetime(predicted_at_raw).floor("min") if predicted_at_raw else None
+    predicted_at_str = predicted_at.strftime("%Y-%m-%d %H:%M") if predicted_at else "unknown"
+
+    col1, col2 = st.columns([1, 2]) # Adjust column width as needed
+
+    with col1:
+        st.markdown(f"**Date:** {formatted_date}")
+        st.markdown(f"**Venue:** {venue}")
+        if city and state:
+            st.markdown(f"**Location:** {city}, {state}")
+        # Add collection and prediction times if available
+        if collection_time:
+            st.markdown(f"**Data Collected:** {pd.to_datetime(collection_time).strftime("%Y-%m-%d %H:%M")}")
+        if predicted_at_str != "unknown":
+            st.markdown(f"**Model Predicted:** {predicted_at_str}")
+
+    with col2:
+        # Retrieve predictions for this specific show_date if available
+        predictions_df_for_show = pd.DataFrame()
+        if show_date:
+            predictions_df_for_show = fetch_predictions_for_date(client, band, model, str(pd.to_datetime(show_date).date()))
+
+        # Fallback to latest predictions if historical not available
+        if predictions_df_for_show.empty:
+            latest_df, _, _ = fetch_predictions(client, band, model)
+            predictions_df_for_show = latest_df
+
+        # Create prediction lookup for highlighting
+        prediction_ranks: dict[str, int] = {}
+        if not predictions_df_for_show.empty and 'song_name' in predictions_df_for_show.columns:
+            # Prefer explicit 'rank' if present; else use row order
+            use_rank_col = 'rank' in predictions_df_for_show.columns
+            for idx, row in predictions_df_for_show.iterrows():
+                normalized = _clean_song_name_for_display(str(row['song_name']), band).lower()
+                if not normalized:
+                    continue
+                rank = int(row['rank']) if use_rank_col and pd.notna(row['rank']) else (idx + 1)
+                prediction_ranks[normalized] = rank
+
+        # Group songs by set (handle missing set numbers)
+        if 'set_number' not in setlist_df.columns:
+            st.warning("Setlist missing 'set_number' column.")
+            return
+
+        # For Phish, fill missing set numbers (encores) as 99 for consistent grouping
+        if band == "phish":
+            setlist_df['set_number'] = setlist_df['set_number'].apply(lambda v: 99 if (v is None or (isinstance(v, float) and pd.isna(v)) or (pd.isna(v))) else v)
+
+        sets = setlist_df.groupby('set_number', dropna=True)
+
+        # Create columns for sets with robust sorting across mixed types
+        def _set_order_key(v: Any) -> int:
+            s = str(v).strip().upper()
+            if s in {"E", "ENCORE", "99"}:
+                return 99
+            if s in {"0", "SOUNDCHECK"}:
+                return 0
+            try:
+                return int(float(s))
+            except Exception:
+                return 50
+
+        set_numbers_raw = [k for k in sets.groups.keys()]
+        set_numbers = sorted(set_numbers_raw, key=_set_order_key)
+
+        # Handle different numbers of sets dynamically
+        if len(set_numbers) == 1:
+            cols = [st.container()]
+        elif len(set_numbers) == 2:
+            cols = st.columns(2)
+        elif len(set_numbers) == 3:
+            cols = st.columns(3)
+        else:
+            # For 4+ sets, use 2 columns and stack sets
+            cols = st.columns(2)
+
+        for i, set_num in enumerate(set_numbers):
+            col_idx = i if len(set_numbers) <= 3 else i % 2
+            col = cols[col_idx]
+
+            # Defensive: some schemas use 'position' vs 'song_position'
+            set_data = sets.get_group(set_num)
+            if 'song_position' in set_data.columns:
+                set_data = set_data.sort_values('song_position')
+            elif 'position' in set_data.columns:
+                set_data = set_data.sort_values('position')
+
+            # Format set header
+            set_num_str = str(set_num).upper()
+            if set_num_str in {'E', 'ENCORE'} or set_num in (99, '99'):
+                set_header = "**Encore**"
+            elif set_num_str == '0' or set_num in (0, '0'):
+                set_header = "**Soundcheck**"
+            else:
+                set_header = f"**Set {set_num}**"
+
+            col.markdown(set_header)
+
+            # Display songs with highlights
+            song_list = []
+            for _, song_row in set_data.iterrows():
+                song_name_clean = _clean_song_name_for_display(song_row['song_name'], band)
+                if not song_name_clean:
+                    continue
+                lookup_key = song_name_clean.lower()
+
+                # Check if song was predicted
+                if lookup_key in prediction_ranks:
+                    rank = prediction_ranks[lookup_key]
+                    if rank <= 10:
+                        song_display = f'<span class="badge-top10"><strong>{song_name_clean}</strong> (#{rank})</span>'
+                    elif rank <= 25:
+                        song_display = f'<span class="badge-top25"><strong>{song_name_clean}</strong> (#{rank})</span>'
+                    elif rank <= 50:
+                        song_display = f'<span class="badge-top50">{song_name_clean} (#{rank})</span>'
+                    else:
+                        song_display = song_name_clean
                 else:
                     song_display = song_name_clean
-            else:
-                song_display = song_name_clean
-            
-            song_list.append(song_display)
-        
-        # Display songs in the set
-        songs_html = "<br>".join(song_list)
-        col.markdown(songs_html, unsafe_allow_html=True)
-        
-        if i < len(set_numbers) - 1:  # Don't add space after last set
-            col.markdown("")
-    
-    # Add legend
-    st.markdown("---")
-    legend_cols = st.columns(4)
-    with legend_cols[0]:
-        st.markdown('<span style="background-color: #4CAF50; padding: 2px 6px; border-radius: 3px; color: white;"><strong>Top 10</strong></span>', unsafe_allow_html=True)
-    with legend_cols[1]:
-        st.markdown('<span style="background-color: #FFD700; padding: 2px 6px; border-radius: 3px; color: black;"><strong>Top 25</strong></span>', unsafe_allow_html=True)
-    with legend_cols[2]:
-        st.markdown('<span style="background-color: #D3D3D3; padding: 2px 6px; border-radius: 3px; color: black;">Top 50</span>', unsafe_allow_html=True)
-    with legend_cols[3]:
-        total_predicted = 0
-        total_songs = 0
-        for name in setlist_df['song_name']:
-            cleaned = _clean_song_name_for_display(name, band)
-            if not cleaned:
-                continue
-            total_songs += 1
-            if cleaned.lower() in prediction_ranks:
-                total_predicted += 1
-        if total_songs == 0:
-            st.markdown("**0 songs predicted**")
-        else:
-            st.markdown(f"**{total_predicted}/{total_songs} songs predicted**")
+
+                song_list.append(song_display)
+
+            # Display songs in the set
+            songs_html = "<br>".join(song_list)
+            col.markdown(songs_html, unsafe_allow_html=True)
+
+            if i < len(set_numbers) - 1:  # Don't add space after last set
+                col.markdown("")
+
+                st.divider()
+
+                legend_cols = st.columns(4)
+
+                with legend_cols[0]:
+
+                    st.markdown('<span class="badge-top10">Top 10</span>', unsafe_allow_html=True)
+
+                with legend_cols[1]:
+
+                    st.markdown('<span class="badge-top25">Top 25</span>', unsafe_allow_html=True)
+
+                with legend_cols[2]:
+
+                    st.markdown('<span class="badge-top50">Top 50</span>', unsafe_allow_html=True)
+
+                with legend_cols[3]:
+
+                    total_predicted = 0
+
+                    total_songs = 0
+
+                    for name in setlist_df['song_name']:
+
+                        cleaned = _clean_song_name_for_display(name, band)
+
+                        if not cleaned:
+
+                            continue
+
+                        total_songs += 1
+
+                        if cleaned.lower() in prediction_ranks:
+
+                            total_predicted += 1
+
+                    if total_songs == 0:
+
+                        st.markdown("**0 songs predicted**")
+
+                    else:
+
+                        st.markdown(f"**{total_predicted}/{total_songs} songs predicted**")
 
 
 def display_predictions(client: Client, band: str, model: str):
+
+
     """Display the main predictions view."""
+
+
     with st.spinner("Loading predictions..."):
+
+
         predictions_df, ref_date, meta = fetch_predictions(client, band, model)
+
+
+
+
 
     model_display_name = MODEL_CONFIG.get(model, {}).get("display_name", model.title())
 
+
+
+
+
     if not predictions_df.empty:
+
+
         show_details = fetch_show_details_by_date(client, ref_date, band=band)
+
+
         show_date_obj: Optional[date] = None
+
+
         if ref_date:
+
+
             try:
+
+
                 show_date_obj = pd.to_datetime(ref_date).date()
+
+
             except Exception:
+
+
                 show_date_obj = None
 
+
+
+
+
         header_prefix = "Next Show"
+
+
         date_str = ""
+
+
         venue_bits: List[str] = []
 
+
+
+
+
         upcoming_details: Optional[dict] = None
+
+
         if band == "um":
+
+
             upcoming_details = fetch_um_upcoming_show(client)
+
+
         elif band == "wsp":
+
+
             upcoming_details = fetch_wsp_upcoming_show(client)
 
+
+
+
+
         if upcoming_details:
+
+
             start_str = (
+
+
                 upcoming_details.get("starts_at_local")
+
+
                 or upcoming_details.get("starts_at")
+
+
                 or upcoming_details.get("show_date")
+
+
             )
+
+
             try:
+
+
                 start_dt = pd.to_datetime(start_str).date() if start_str else None
+
+
             except Exception:
+
+
                 start_dt = None
+
+
             if start_dt:
+
+
                 date_str = start_dt.strftime("%m/%d/%Y")
+
+
             venue = upcoming_details.get("venue_name")
+
+
             city = upcoming_details.get("city") or upcoming_details.get("venue_city")
+
+
             region = upcoming_details.get("region") or upcoming_details.get("venue_state")
+
+
             country = upcoming_details.get("country") or upcoming_details.get("venue_country")
+
+
             if venue:
+
+
                 venue_bits.append(venue)
+
+
             location_parts = [part for part in [city, region] if part]
+
+
             if location_parts:
+
+
                 venue_bits.append(", ".join(location_parts))
+
+
             if country and country not in venue_bits:
+
+
                 venue_bits.append(country)
+
+
         else:
+
+
             if show_details:
+
+
                 venue = show_details.get("venue_name") or show_details.get("venue")
+
+
                 city = show_details.get("venue_city") or show_details.get("city")
+
+
                 state = show_details.get("venue_state") or show_details.get("state")
+
+
                 if venue:
+
+
                     venue_bits.append(venue)
+
+
                 if city and state:
+
+
                     venue_bits.append(f"{city}, {state}")
+
+
             today = date.today()
+
+
             if show_date_obj and show_date_obj < today:
+
+
                 header_prefix = "Most Recent Show"
+
+
             date_str = show_date_obj.strftime("%m/%d/%Y") if show_date_obj else ""
 
+
+
+
+
         left_header = f"{header_prefix}: {date_str}" if date_str else header_prefix
+
+
         if venue_bits:
-            left_header += f" — {' • '.join(venue_bits)}"
+
+
+            left_header += f" — {" • ".join(venue_bits)}"
+
+
         st.markdown(f"<h4 style='text-align: center;'>{left_header}</h4>", unsafe_allow_html=True)
 
-        st.markdown("---")
 
-        display_df = format_predictions_df(predictions_df.head(50), model)
 
-        st.dataframe(display_df, use_container_width=True, hide_index=True, height=700)
-        
+
+
+                        st.divider()
+
+
+
+
+
+                        display_df = format_predictions_df(predictions_df.head(50), model)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        st.dataframe(display_df, use_container_width=True, hide_index=True, height=450)
+
+
+
+
+
         predicted_at_raw = meta.get("predicted_at")
+
+
         predicted_at = pd.to_datetime(predicted_at_raw).floor("min") if predicted_at_raw else None
+
+
         predicted_at_str = predicted_at.strftime("%Y-%m-%d %H:%M") if predicted_at else "unknown"
+
+
         model_version = meta.get("model_version", "v1")
+
+
         st.markdown(
+
+
             f"<div style='text-align: center; color: gray;'>Model: {model_display_name} ({model_version}) · Predicted: {predicted_at_str}</div>",
+
+
             unsafe_allow_html=True,
+
+
         )
-        # Display last show setlist with prediction highlights
-        st.markdown("---")
-        st.markdown(
-            "<h3 style='text-align: center;'>Last Show Setlist</h3>",
-            unsafe_allow_html=True,
-        )
-        display_last_show_setlist(client, band, model)
+
+
+
+
+
+
+
 
     else:
+
+
         st.warning(
+
+
             "No predictions found for the selected model. Please run the prediction scripts first."
+
+
         )
+
+
+
 
 
 def display_historical_accuracy(client: Client, band: str, model: str, k: int):
+
+
     """Display the historical accuracy section and the model explanation."""
     model_display_name = MODEL_CONFIG.get(model, {}).get("display_name", model.title())
-    st.markdown("---")
+    st.divider()
     st.markdown(
         f"<h3 style='text-align: center;'>Historical Accuracy - {model_display_name}</h3>",
         unsafe_allow_html=True,
@@ -901,11 +1094,11 @@ def display_historical_accuracy(client: Client, band: str, model: str, k: int):
 
     if not accuracy_df.empty:
         num_shows = len(accuracy_df)
-        
+
         # --- Add Date Range Context ---
         min_date = pd.to_datetime(accuracy_df["show_date"].min()).strftime("%Y-%m-%d")
         max_date = pd.to_datetime(accuracy_df["show_date"].max()).strftime("%Y-%m-%d")
-        
+
         st.markdown(
             f"<p style='text-align: center; color: gray;'>Metrics based on the last {num_shows} completed shows (from {min_date} to {max_date}).</p>",
             unsafe_allow_html=True,
@@ -994,7 +1187,7 @@ def display_historical_accuracy(client: Client, band: str, model: str, k: int):
         )
 
     # --- Display Model Explanation ---
-    st.markdown("---")
+    st.divider()
     st.markdown(
         f"<h3 style='text-align: center;'>How This Model Works - {model_display_name}</h3>",
         unsafe_allow_html=True,
@@ -1003,13 +1196,107 @@ def display_historical_accuracy(client: Client, band: str, model: str, k: int):
     st.markdown(explanation_content, unsafe_allow_html=True)
 
 
-# --- Main App ---
+def display_band_comparison(client: Client, model: str, k: int):
+    """Display a comparison of model accuracy across all bands."""
+    st.markdown(f"<h3 style='text-align: center;'>Model Accuracy Comparison: {MODEL_CONFIG[model]['display_name']} (Top-{k})</h3>", unsafe_allow_html=True)
+
+    @st.cache_data(ttl=STREAMLIT_CACHE_TTL)
+    def fetch_all_bands_accuracy(_db_client: Client, model: str) -> pd.DataFrame:
+        try:
+            model_version = f"{model}_v1"
+            response = _db_client.table("accuracy_per_show").select("band, show_date, k10_recall, k25_recall, k50_recall").eq("model_version", model_version).execute()
+            return pd.DataFrame(response.data) if response.data else pd.DataFrame()
+        except Exception as e:
+            st.error(f"Failed to fetch accuracy data for all bands: {e}")
+            return pd.DataFrame()
+
+    accuracy_df = fetch_all_bands_accuracy(client, model)
+
+    if not accuracy_df.empty:
+        recall_col = f'k{k}_recall'
+        if recall_col not in accuracy_df.columns:
+            st.warning(f"Recall data for K={k} not available.")
+            return
+
+        # Calculate average recall per band
+        avg_recall_by_band = accuracy_df.groupby('band')[recall_col].mean().reset_index()
+        avg_recall_by_band = avg_recall_by_band.sort_values(by=recall_col, ascending=False)
+
+        chart = alt.Chart(avg_recall_by_band).mark_bar().encode(
+            x=alt.X('band:N', title='Band', sort='-y'),
+            y=alt.Y(f'{recall_col}:Q', title=f'Average Recall @ Top {k}', axis=alt.Axis(format='.0%')),
+            color=alt.Color('band:N', legend=None),
+            tooltip=[
+                alt.Tooltip('band:N', title='Band'),
+                alt.Tooltip(f'{recall_col}:Q', title='Avg. Recall', format='.1%')
+            ]
+        ).properties(
+            title=f"Average Top-{k} Recall by Band for {MODEL_CONFIG[model]['display_name']} Model"
+        )
+
+        st.altair_chart(chart, use_container_width=True)
+    else:
+        st.warning("No accuracy data available to compare bands.")
+
+st.divider()
 
 
 def main():
     """Main application entry point."""
     st.set_page_config(page_title="JamBandNerd", layout="wide")
     st.markdown("<h1 style='text-align: center;'>JamBandNerd</h1>", unsafe_allow_html=True)
+
+    st.markdown("""
+    <style>
+        :root {
+            --primary-color: #F63366; /* Streamlit's default primary color */
+            --success-color: #4CAF50; /* Green for Top 10 */
+            --warning-color: #FFD700; /* Gold for Top 25 */
+            --info-color: #D3D3D3;    /* Light Grey for Top 50 */
+            --background-color: #F0F2F6; /* Light grey for tab background */
+        }
+        .stTabs [data-baseweb="tab-list"] {
+            gap: 2px;
+            justify-content: space-around;
+        }
+        .stTabs [data-baseweb="tab"] {
+            height: 50px;
+            white-space: pre-wrap;
+            background-color: var(--background-color);
+            border-radius: 4px 4px 0px 0px;
+            gap: 1px;
+            padding-top: 10px;
+            padding-bottom: 10px;
+        }
+        .stTabs [aria-selected="true"] {
+            background-color: #FFFFFF;
+            color: var(--primary-color); /* Highlight selected tab with primary color */
+        }
+        button[data-baseweb="tab"] > div[data-testid="stMarkdownContainer"] > p {
+            font-size: 1.1rem;
+        }
+        /* Custom classes for badges */
+        .badge-top10 {
+            background-color: var(--success-color);
+            color: white;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-weight: bold;
+        }
+        .badge-top25 {
+            background-color: var(--warning-color);
+            color: black;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-weight: bold;
+        }
+        .badge-top50 {
+            background-color: var(--info-color);
+            color: black;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+    </style>""", unsafe_allow_html=True)
 
     # Read initial selection from URL with sensible defaults
     defaults = {
@@ -1025,20 +1312,38 @@ def main():
     )
     # Keep URL in sync with current selection
     sync_query_params(selected_band, selected_model, selected_k)
-    
+
     # Display centered band marker just under the title
     band_display_name = BAND_CONFIG.get(selected_band, {}).get("display_name", selected_band.title())
     st.markdown(
-        f"<h2 style='text-align: center; color: #666; margin-top: -10px; margin-bottom: 20px;'>{band_display_name}</h2>", 
+        f"<h2 style='text-align: center; color: #666; margin-top: -10px; margin-bottom: 20px;'>{band_display_name}</h2>",
         unsafe_allow_html=True
     )
 
     try:
         supabase_client = supabase_client_cached()
-        display_predictions(supabase_client, selected_band, selected_model)
-        display_historical_accuracy(
-            supabase_client, selected_band, selected_model, selected_k
-        )
+
+        # Use tabs for a cleaner layout
+        tab1, tab2, tab3, tab4 = st.tabs(["Predictions", "Last Show Analysis", "Model Performance", "Compare Bands"])
+
+        with tab1:
+            display_predictions(supabase_client, selected_band, selected_model)
+
+        with tab2:
+            st.markdown(
+                "<h3 style='text-align: center;'>Last Show Setlist</h3>",
+                unsafe_allow_html=True,
+            )
+            display_last_show_setlist(supabase_client, selected_band, selected_model)
+
+        with tab3:
+            display_historical_accuracy(
+                supabase_client, selected_band, selected_model, selected_k
+            )
+
+        with tab4:
+            display_band_comparison(supabase_client, selected_model, selected_k)
+
     except Exception as e:
         st.error(f"An error occurred: {e}")
 

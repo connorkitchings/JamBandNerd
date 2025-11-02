@@ -13,6 +13,11 @@ from typing import Any, Dict, List, Optional, Tuple
 import requests
 from bs4 import BeautifulSoup
 
+session = requests.Session()
+session.headers.update({
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36'
+})
+
 TW_SETLISTS_INDEX = "https://www.tourwrangler.com/artists/widespread-panic/setlists/"
 TW_SHOW_HREF_SUBSTR = "/artists/widespread-panic/shows/"
 
@@ -262,7 +267,7 @@ def find_show_on_index(target_date: date, city: Optional[str], state: Optional[s
     """Search the TourWrangler setlists index for a show matching the target date.
 
     Returns (url, text_block) if found, otherwise (None, None)."""
-    resp = requests.get(TW_SETLISTS_INDEX, timeout=30)
+    resp = session.get(TW_SETLISTS_INDEX, timeout=30)
     resp.raise_for_status()
     soup = BeautifulSoup(resp.content, "html.parser")
 
@@ -298,7 +303,7 @@ def find_show_on_index(target_date: date, city: Optional[str], state: Optional[s
 
 
 def parse_show_page(url: str, show_id: str) -> List[Dict[str, Any]]:
-    resp = requests.get(url, timeout=30)
+    resp = session.get(url, timeout=30)
     resp.raise_for_status()
     soup = BeautifulSoup(resp.content, "html.parser")
     page_text = soup.get_text("\n", strip=True)

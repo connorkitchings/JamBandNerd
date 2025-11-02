@@ -1,27 +1,60 @@
-# Gemini Guidance for JamBandNerd
+# Gemini CLI Guidance for JamBandNerd
 
-This file provides guidance for Gemini when working on the JamBandNerd repository.
+Purpose: Get Gemini (via CLI) productive in under a minute with minimal context load.
+Rule #1: Load only the files in the Boot Order first. Everything else is on-demand.
 
-## Project Overview
+## 30-Second Quick Ref
 
-JamBandNerd is a cloud-based data science platform for collecting, transforming, and predicting jam band setlists.
+* **First time?** Read sections 1 & 4 only
+* **Running pipeline:** `uv run python scripts/run_optimized_pipeline.py --band [band]`
+* **Stuck?** Check section 5 (Triage Matrix)
+* **CLI workflow:** Gemini suggests commands → user runs them → Gemini analyzes output
 
--   **Supported Bands**: Goose, Phish, Widespread Panic, Billy Strings, Umphrey's McGee.
--   **Architecture**: Data Sources → Raw Data (Supabase) → In-Memory Transform → Models → Predictions (Supabase) → Web Interface (Streamlit).
--   **Core Logic**: The main pipeline logic is in `scripts/run_optimized_pipeline.py`, which calls other consolidated scripts like `generate_predictions.py` and `run_backtest.py`.
+---
 
-## Key Files to Review
+## 1) Boot Order (read in this exact order)
 
--   **`pyproject.toml`**: Defines project dependencies, scripts, and build configuration. Essential for understanding the `uv` setup.
--   **`README.md`**: High-level project overview, setup, and usage.
--   **`docs/developer_guide/architecture.md`**: Detailed architecture overview.
--   **`src/jambandnerd/config.py`**: Centralized configuration for the project.
--   **`scripts/run_optimized_pipeline.py`**: The main pipeline orchestration script.
--   **`src/jambandnerd/models/`**: The prediction model implementations.
+1. **pyproject.toml** — skim [project], [tool.*], and scripts.
+2. **README.md** — skim Quick Start and Usage.
+3. **docs/pipeline_usage.md** — read the canonical run commands.
+4. **docs/architecture.md** — skim the diagram/section headers for system map.
 
-## Development Guidelines
+**Do not pre-load other docs.** Open these only when needed:
 
--   **Modularity**: Follow the existing modular design. New features should be implemented in a way that is extensible.
--   **Configuration**: Use the centralized configuration in `src/jambandnerd/config.py`. Do not hardcode values.
--   **Code Style**: Adhere to the project's code style (black, ruff). Run `ruff check src/` and `black src/` before committing.
--   **Testing**: Add tests for new functionality in the `tests/` directory.
+* CI/CD: docs/github_actions.md
+* Web UI: docs/streamlit_deploy.md
+* Band-specific fallbacks/parsers: docs/tourwrangler_fallback.md
+* Roadmaps/decisions: docs/*.md (targeted sections only)
+
+---
+
+## 2) CLI Operating Loop
+
+1. Confirm task & constraints (inputs, band(s), time budget).
+2. **Re-confirm** you've loaded Boot Order only (skip the rest).
+3. Propose a 3–5 line plan.
+4. **Suggest the smallest useful command** (see Cheat-Sheet).
+5. Wait for user to run command and paste output.
+6. Analyze output, record artifacts (paths, metrics).
+7. Decide: done ↔ iterate ↔ escalate.
+
+**Context budget:** keep ≤ ~2k tokens loaded; summarize aggressively; link to sources instead of pasting them.
+
+---
+
+## 3) Guardrails
+
+1. **Single source of truth:** Use README.md and docs/pipeline_usage.md for commands; do not invent.
+2. **Config, not hardcode:** Read from centralized config/env; avoid duplicating constants.
+3. **Prefer consolidated scripts:** Only drop to band-specific scripts when debugging.
+4. **Minimal diffs:** Show compact diffs or bulleted change-sets, not full files.
+5. **Repro first:** Any failure report must include exact command(s), directory, and environment.
+
+---
+
+## 4) Minimal Command Cheat-Sheet
+
+**End-to-end (all bands):**
+
+```bash
+uv run python scripts/run_optimized_pipeline.py --band all
