@@ -30,6 +30,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       bands: ${{ steps.get_bands.outputs.bands }}
+      bands_list: ${{ steps.get_bands.outputs.bands_list }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -38,7 +39,10 @@ jobs:
         with:
           python-version: '3.12'
       - id: get_bands
-        run: echo "bands=$(python scripts/get_all_bands.py)" >> $GITHUB_OUTPUT
+        run: |
+          BANDS_JSON=$(python scripts/get_all_bands.py)
+          echo "bands=$BANDS_JSON" >> $GITHUB_OUTPUT
+          echo "bands_list=$BANDS_JSON" >> $GITHUB_OUTPUT
 
   daily-pipeline:
     name: Daily Pipeline - ${{ matrix.band }}
@@ -191,7 +195,7 @@ jobs:
                   print(f'::warning::WARNING: {len(missing)} recent shows missing setlist data for {band}')
                   print(f'WARNING: {len(missing)} recent shows missing setlist data')
                   for show_id in list(missing)[:5]:
-                      show = shows[shows[id_id].astype(str) == show_id].iloc[0]
+                      show = shows[shows[id_col].astype(str) == show_id].iloc[0]
                       print(f\"  - {show.get('show_date', 'Unknown date')} (ID: {show_id})\")
                   if github_output:
                       with open(github_output, 'a') as f:
@@ -275,13 +279,14 @@ jobs:
 
   pipeline-summary:
     name: Pipeline Summary
-    needs: [daily-pipeline]
+    needs: [setup, daily-pipeline]
     if: always()
     runs-on: ubuntu-latest
     
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+      BAND_LIST_JSON: ${{ needs.setup.outputs.bands_list }}
     
     steps:
       - name: Checkout repository
@@ -433,5 +438,4 @@ jobs:
           echo "### Next Steps:" >> $GITHUB_STEP_SUMMARY
           echo "- Visit the [JamBandNerd web app](https://jambandnerd.streamlit.app/) to view updated predictions." >> $GITHUB_STEP_SUMMARY
           echo "- Check the Supabase dashboard for data validation." >> $GITHUB_STEP_SUMMARY
-          echo "- Review any warnings above and re-run collection if needed."
- >> $GITHUB_STEP_SUMMARY
+                    echo "- Review any warnings above and re-run collection if needed." >> $GITHUB_STEP_SUMMARY
