@@ -985,7 +985,7 @@ def display_predictions(client: Client, band: str, model: str):
 
 
 
-                        st.divider()
+        st.divider()
 
 
 
