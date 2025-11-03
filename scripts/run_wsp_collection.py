@@ -44,6 +44,7 @@ def _compute_source_hash(record: pd.Series) -> str:
 
 def run_wsp_collection(skip_existing_setlists: bool = True, year_start: int | None = None, year_end: int | None = None, skip_url_validation: bool = False, full_backfill: bool = False, skip_validation: bool = False) -> None:
     """Collect all WSP data and store it in Supabase raw tables."""
+    forbidden_error_encountered = False
     logging.info("Starting Widespread Panic data collection...")
     ensure_source_reachable("wsp")
     collector = WSPCollector()
@@ -203,6 +204,7 @@ def run_wsp_collection(skip_existing_setlists: bool = True, year_start: int | No
             except ImportError:
                 progress_bar = candidate_records
                 
+            nonlocal forbidden_error_encountered
             for i, rec in enumerate(progress_bar):
                 url = rec.get("source_url")
                 try:
@@ -210,7 +212,11 @@ def run_wsp_collection(skip_existing_setlists: bool = True, year_start: int | No
                     if r.status_code == 200:
                         filtered_records.append(rec)
                         successes += 1
-                except Exception:
+                    elif r.status_code == 403:
+                        logging.warning(f"HTTP error 403: Forbidden for URL {url}. Skipping this URL.")
+                        forbidden_error_encountered = True
+                except Exception as e:
+                    logging.warning(f"URL validation failed for {url} with error: {e}")
                     continue
                     
                 # Log progress periodically for users without tqdm
@@ -429,6 +435,10 @@ def run_wsp_collection(skip_existing_setlists: bool = True, year_start: int | No
         logging.warning(f"Could not log collection run ({exc}).")
 
     logging.info("Widespread Panic data collection finished.")
+
+    if forbidden_error_encountered:
+        logging.warning("Collection finished, but one or more URLs returned a 403 Forbidden error.")
+        sys.exit(1)
 
 
 if __name__ == "__main__":

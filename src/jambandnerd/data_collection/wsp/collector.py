@@ -18,6 +18,11 @@ from ...db.connection import get_supabase_client
 from ..base import BandCollector
 from ..config import get_collector_config
 
+from ..setlist_reviewer import review_setlist
+
+from .parser import parse_setlist_from_text, _validate_song_name
+from .session import create_enhanced_session, make_request
+
 logger = logging.getLogger(__name__)
 
 
@@ -29,285 +34,52 @@ class WSPCollector(BandCollector):
 
     def __init__(self):
         config = get_collector_config("wsp")
+
         super().__init__(config)
+
         self.supabase_client = get_supabase_client()
 
         # Enhanced session with proper headers and retry logic
-        self.session = self._create_enhanced_session()
 
-        # Rate limiting
-        self.rate_limit_delay = 1.5  # 1.5 seconds between requests
-        self.last_request_time = 0
+        self.session = create_enhanced_session()
 
-        logger.info(
-            f"Initialized WSPCollector with rate limit: {self.rate_limit_delay}s between requests"
-        )
-
-    def _create_enhanced_session(self) -> requests.Session:
-        """Create a requests session with browser-like headers and retry logic."""
-        session = requests.Session()
-
-        # Comprehensive browser-like headers to avoid 403 Forbidden
-        session.headers.update(
-            {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-                "Accept-Language": "en-US,en;q=0.9",
-                "Accept-Encoding": "gzip, deflate",
-                "Connection": "keep-alive",
-                "Upgrade-Insecure-Requests": "1",
-                "Sec-Fetch-Dest": "document",
-                "Sec-Fetch-Mode": "navigate",
-                "Sec-Fetch-Site": "none",
-                "Sec-Fetch-User": "?1",
-                "Cache-Control": "max-age=0",
-                "DNT": "1",
-                "Sec-CH-UA": '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
-                "Sec-CH-UA-Mobile": "?0",
-                "Sec-CH-UA-Platform": '"Windows"',
-            }
-        )
-
-        # Configure retry strategy with exponential backoff
-        retry_strategy = Retry(
-            total=3,
-            backoff_factor=2,  # Wait 1, 2, 4 seconds between retries
-            status_forcelist=[429, 500, 502, 503, 504],
-            allowed_methods=["HEAD", "GET", "OPTIONS"],
-        )
-
-        adapter = HTTPAdapter(
-            max_retries=retry_strategy, pool_connections=10, pool_maxsize=20
-        )
-        session.mount("http://", adapter)
-        session.mount("https://", adapter)
-
-        return session
-
-    def _enforce_rate_limit(self):
-        """Enforce rate limiting between requests."""
-        elapsed = time.time() - self.last_request_time
-        if elapsed < self.rate_limit_delay:
-            sleep_time = self.rate_limit_delay - elapsed
-            logger.debug(f"Rate limiting: sleeping for {sleep_time:.2f}s")
-            time.sleep(sleep_time)
-        self.last_request_time = time.time()
-
-    def _make_request(self, url: str, **kwargs) -> requests.Response:
-        """Make a GET request with rate limiting and error handling."""
-        self._enforce_rate_limit()
-
-        try:
-            logger.debug(f"Fetching: {url}")
-            response = self.session.get(url, timeout=30, **kwargs)
-            response.raise_for_status()
-            return response
-        except requests.exceptions.RequestException as e: # Catch base RequestException
-            if isinstance(e, requests.exceptions.HTTPError) and e.response and e.response.status_code == 403:
-                logger.error(
-                    f"403 Forbidden for {url} - site may be blocking scrapers despite headers"
-                )
-            elif isinstance(e, requests.exceptions.ConnectionError):
-                logger.error(f"Connection error for {url}: {e}")
-            # Add other specific exception handling if needed
-            raise # Re-raise the original exception
-
-    def _get_existing_show_urls(self) -> List[str]:
-        """Fetches all source_urls from the wsp_shows_raw table."""
-        try:
-            response = (
-                self.supabase_client.table("wsp_shows_raw")
-                .select("source_url")
-                .execute()
-            )
-            return [
-                item["source_url"] for item in response.data if item.get("source_url")
-            ]
-        except Exception as e:
-            logger.error(f"Could not fetch existing show URLs from Supabase: {e}")
-            return []
-
-    def _validate_song_name(self, song_name: str) -> bool:
-        """Validate that this looks like a real song name, not statistics or metadata."""
-        if not song_name or len(song_name.strip()) == 0:
-            return False
-
-        # Skip very long entries (likely statistics) - tightened threshold
-        if len(song_name) > 80:
-            logger.debug(
-                f"Rejecting long song name (>{len(song_name)} chars): {song_name[:50]}..."
-            )
-            return False
-
-        # Enhanced statistics detection - more comprehensive patterns
-        stats_indicators = [
-            "Song Stats",
-            "LTP Date",
-            "L3TP",
-            "#/10",
-            "#/100",
-            "#/Ever",
-            "StatsSong",
-            "Last Time Played",
-            "Average of last",
-            "LTPL3TP",
-            "DateLTP",
-            "LTP (Last Time Played)",
-            "Number of shows since",
-            "Number of times played",
-            "Total number of times",
-            "Average of last 3",
-            # Common contamination patterns from actual data
-            "ALONE 12/31/23",
-            "BEAR 03/24/24",
-            "APLANE 03/22/24",
-        ]
-
-        for indicator in stats_indicators:
-            if indicator in song_name:
-                logger.debug(f"Rejecting statistics entry: {song_name[:50]}...")
-                return False
-
-        # Reject entries that look like show headers or metadata
-        if song_name.startswith(
-            (
-                "01/",
-                "02/",
-                "03/",
-                "04/",
-                "05/",
-                "06/",
-                "07/",
-                "08/",
-                "09/",
-                "10/",
-                "11/",
-                "12/",
-            )
-        ):
-            if "Hard Rock Hotel" in song_name or "Casino" in song_name:
-                logger.debug(f"Rejecting show header: {song_name[:50]}...")
-                return False
-
-        # Reject entries with too many numbers/codes (likely statistics)
-        import re
-
-        if len(re.findall(r"\b\d+\b", song_name)) > 5:
-            logger.debug(f"Rejecting numeric data: {song_name[:50]}...")
-            return False
-
-        return True
-
-    def _parse_setlist_from_text(
-        self, soup: BeautifulSoup, show_id: str
-    ) -> List[Dict[str, Any]]:
-        """Parse setlist directly from text content, looking for 0:, 1:, 2:, E: patterns."""
-        setlist_data = []
-
-        # Get all text and look for setlist lines
-        page_text = soup.get_text()
-        lines = page_text.split("\n")
-
-        for line in lines:
-            line = line.strip()
-            if not line:
-                continue
-
-            # Look for set indicators: "0:" (soundcheck), "1:", "2:", "E:", etc.
-            if ":" in line and (
-                line.startswith("0:")
-                or line.startswith("1:")
-                or line.startswith("2:")
-                or line.startswith("3:")
-                or line.startswith("E:")
-                or line.startswith("Encore")
-            ):
-                # Extract set number
-                if line.startswith("E:") or line.startswith("Encore"):
-                    set_number = "E"
-                    songs_part = (
-                        line[2:].strip() if line.startswith("E:") else line[6:].strip()
-                    )
-                elif line.startswith("0:"):
-                    set_number = "0"  # Soundcheck
-                    songs_part = line[2:].strip()
-                else:
-                    set_number = line[0]
-                    songs_part = line[2:].strip()
-
-                # Parse individual songs
-                # Split by comma first, then handle segues (>)
-                song_parts = songs_part.split(",")
-
-                song_position = 1
-                for song_part in song_parts:
-                    song_part = song_part.strip()
-                    if not song_part:
-                        continue
-
-                    # Handle segues within a song part (e.g., "Song A > Song B")
-                    if ">" in song_part:
-                        segued_songs = song_part.split(">")
-                        for i, segued_song in enumerate(segued_songs):
-                            segued_song = segued_song.strip().rstrip("*").strip()
-                            if segued_song and self._validate_song_name(segued_song):
-                                setlist_data.append(
-                                    {
-                                        "show_id": show_id,
-                                        "set_number": set_number,
-                                        "song_position": song_position,
-                                        "song_name": segued_song,
-                                        "is_segue": i
-                                        < len(segued_songs)
-                                        - 1,  # All but last are segues
-                                        "song_notes": "",
-                                    }
-                                )
-                                song_position += 1
-                    else:
-                        # Regular song
-                        song_name = song_part.rstrip("*").strip()
-                        if self._validate_song_name(song_name):
-                            setlist_data.append(
-                                {
-                                    "show_id": show_id,
-                                    "set_number": set_number,
-                                    "song_position": song_position,
-                                    "song_name": song_name,
-                                    "is_segue": False,
-                                    "song_notes": "",
-                                }
-                            )
-                            song_position += 1
-
-        return setlist_data
+        logger.info(f"Initialized WSPCollector")
 
     def _scrape_single_setlist(self, show_info: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Scrapes the setlist for a single show with improved parsing and rate limiting."""
+
         show_url = show_info.get("source_url")
+
         show_id = show_info.get("show_id")
+
         if not show_url or not show_id:
             return []
 
         try:
             # Use enhanced request method with rate limiting
-            response = self._make_request(show_url, allow_redirects=True)
+
+            response = make_request(self.session, show_url, allow_redirects=True)
 
             # Update show_info with final URL if redirected
+
             final_url = response.url
+
             if final_url != show_url:
                 logger.debug(f"URL redirected: {show_url} -> {final_url}")
 
             soup = BeautifulSoup(response.content, "html.parser")
 
             # Try the new text-based parsing first
-            setlist_data = self._parse_setlist_from_text(soup, show_id)
+
+            setlist_data = parse_setlist_from_text(soup, show_id)
 
             if setlist_data:
                 # Validate the parsed data quality
+
                 valid_songs = [
-                    s for s in setlist_data if self._validate_song_name(s["song_name"])
+                    s for s in setlist_data if _validate_song_name(s["song_name"])
                 ]
+
                 contaminated_count = len(setlist_data) - len(valid_songs)
 
                 if contaminated_count > 0:
@@ -317,27 +89,35 @@ class WSPCollector(BandCollector):
 
                 if valid_songs:
                     return valid_songs
+
                 else:
                     logger.warning(
                         f"All songs filtered as contaminated for {show_url}, trying fallback parsing"
                     )
 
             # Fallback to old table-based parsing if text parsing fails
+
             logger.debug(f"Text parsing failed for {show_url}, trying table parsing")
+
             tables = soup.find_all("table")
 
             if len(tables) < 5:
                 return []
 
             # Look for the right table (one that contains setlist, not stats)
+
             setlist_table = None
+
             for i, table in enumerate(tables[4:8]):  # Check tables 4-7
                 table_text = table.get_text()
+
                 # Include Set 0 (soundcheck) in detection
+
                 if (
                     "0:" in table_text or "1:" in table_text or "2:" in table_text
                 ) and "Song Stats" not in table_text:
                     # Prioritize shorter tables (less likely to be contaminated with stats)
+
                     if not setlist_table or len(table_text) < len(
                         setlist_table.get_text()
                     ):
@@ -345,9 +125,11 @@ class WSPCollector(BandCollector):
 
             if not setlist_table:
                 logger.warning(f"Could not find setlist table for {show_url}")
+
                 return []
 
             setlist_df = pd.read_html(StringIO(str(setlist_table)))[0]
+
             if setlist_df.empty:
                 return []
 
@@ -356,32 +138,44 @@ class WSPCollector(BandCollector):
                 if setlist_df.shape[1] > 1
                 else ["song_name"]
             )
+
             setlist_df.dropna(subset=["song_name"], inplace=True)
 
             setlist_data = []
+
             current_set = "1"
+
             song_position = 1
+
             for _, row in setlist_df.iterrows():
                 song_name = row["song_name"]
 
                 # Skip invalid song names
-                if not self._validate_song_name(song_name):
+
+                if not _validate_song_name(song_name):
                     continue
 
                 if song_name.startswith("Set "):  # Detects Set 2, Set 3, etc.
                     current_set = song_name.split(" ")[1]
+
                     song_position = 1
+
                     continue
+
                 if song_name.startswith("Encore"):
                     current_set = "E"
+
                     song_position = 1
+
                     continue
 
                 is_segue = song_name.endswith(">")
+
                 if is_segue:
                     song_name = song_name[:-1].strip()
 
                 # Strip note indicators
+
                 song_name = song_name.rstrip("*").strip()
 
                 setlist_data.append(
@@ -394,11 +188,14 @@ class WSPCollector(BandCollector):
                         "song_notes": row.get("song_note_detail", ""),
                     }
                 )
+
                 song_position += 1
 
             return setlist_data
+
         except Exception as e:
             logger.error(f"Failed to scrape setlist for {show_url}: {e}")
+
             return []
 
     def collect_shows(
@@ -442,7 +239,7 @@ class WSPCollector(BandCollector):
             url = f"{self.BASE_URL}/asp/tour{year_str}.asp"
             try:
                 # Use enhanced request method with rate limiting
-                response = self._make_request(url)
+                response = make_request(self.session, url)
                 soup = BeautifulSoup(response.content, "html.parser")
 
                 # Define a filter function to find the correct table
@@ -617,6 +414,9 @@ class WSPCollector(BandCollector):
                     show_url = future_to_show[future].get("source_url", "unknown URL")
                     logger.error(f"Scraping {show_url} generated an exception: {exc}")
 
+        # Review and clean the setlist data before returning
+        all_setlists = review_setlist(all_setlists)
+
         logger.info(
             f"✅ {self.ARTIST_NAME}: Collected {len(all_setlists)} total setlist records."
         )
@@ -628,7 +428,7 @@ class WSPCollector(BandCollector):
         logger.info(f"Scraping songs from {url}")
         try:
             # Use enhanced request method with rate limiting
-            response = self._make_request(url)
+            response = make_request(self.session, url)
             soup = BeautifulSoup(response.content, "html.parser")
             tables = soup.find_all("table")
 
