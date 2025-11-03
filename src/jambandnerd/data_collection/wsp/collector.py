@@ -1,7 +1,6 @@
 """Data collector for Widespread Panic from everydaycompanion.com."""
 
 import logging
-import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime
 from io import StringIO
@@ -10,17 +9,13 @@ from typing import Any, Dict, List, Optional
 import pandas as pd
 import requests
 from bs4 import BeautifulSoup
-from requests.adapters import HTTPAdapter
 from tqdm import tqdm
-from urllib3.util.retry import Retry
 
 from ...db.connection import get_supabase_client
 from ..base import BandCollector
 from ..config import get_collector_config
-
 from ..setlist_reviewer import review_setlist
-
-from .parser import parse_setlist_from_text, _validate_song_name
+from .parser import _validate_song_name, parse_setlist_from_text
 from .session import create_enhanced_session, make_request
 
 logger = logging.getLogger(__name__)
@@ -43,159 +38,106 @@ class WSPCollector(BandCollector):
 
         self.session = create_enhanced_session()
 
-        logger.info(f"Initialized WSPCollector")
+        logger.info("Initialized WSPCollector")
 
     def _scrape_single_setlist(self, show_info: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """Scrapes the setlist for a single show with improved parsing and rate limiting."""
+        """Scrapes the setlist for a single show, skipping if it already exists."""
 
         show_url = show_info.get("source_url")
-
         show_id = show_info.get("show_id")
 
         if not show_url or not show_id:
             return []
 
+        # More efficient: check for existing setlist before making any web requests
         try:
-            # Use enhanced request method with rate limiting
+            response = (
+                self.supabase_client.table("wsp_setlists_raw")
+                .select("show_id")
+                .eq("show_id", show_id)
+                .limit(1)
+                .execute()
+            )
+            if response.data:
+                logger.info(f"Setlist for show_id {show_id} already exists. Skipping scrape.")
+                return []
+        except Exception as e:
+            logger.warning(
+                f"Could not check for existing setlist for show_id {show_id}: {e}"
+            )
 
+        try:
             response = make_request(self.session, show_url, allow_redirects=True)
-
-            # Update show_info with final URL if redirected
-
             final_url = response.url
-
             if final_url != show_url:
                 logger.debug(f"URL redirected: {show_url} -> {final_url}")
 
             soup = BeautifulSoup(response.content, "html.parser")
-
-            # Try the new text-based parsing first
-
             setlist_data = parse_setlist_from_text(soup, show_id)
 
             if setlist_data:
-                # Validate the parsed data quality
-
-                valid_songs = [
-                    s for s in setlist_data if _validate_song_name(s["song_name"])
-                ]
-
-                contaminated_count = len(setlist_data) - len(valid_songs)
-
-                if contaminated_count > 0:
-                    logger.warning(
-                        f"Filtered {contaminated_count} contaminated songs from {show_url}"
-                    )
-
-                if valid_songs:
-                    return valid_songs
-
-                else:
-                    logger.warning(
-                        f"All songs filtered as contaminated for {show_url}, trying fallback parsing"
-                    )
-
-            # Fallback to old table-based parsing if text parsing fails
+                valid_songs = [s for s in setlist_data if _validate_song_name(s["song_name"])]
+                if len(valid_songs) < len(setlist_data):
+                    logger.warning(f"Filtered {len(setlist_data) - len(valid_songs)} contaminated songs from {show_url}")
+                return valid_songs
 
             logger.debug(f"Text parsing failed for {show_url}, trying table parsing")
-
             tables = soup.find_all("table")
-
             if len(tables) < 5:
                 return []
 
-            # Look for the right table (one that contains setlist, not stats)
-
             setlist_table = None
-
-            for i, table in enumerate(tables[4:8]):  # Check tables 4-7
+            for table in tables[4:8]:
                 table_text = table.get_text()
-
-                # Include Set 0 (soundcheck) in detection
-
-                if (
-                    "0:" in table_text or "1:" in table_text or "2:" in table_text
-                ) and "Song Stats" not in table_text:
-                    # Prioritize shorter tables (less likely to be contaminated with stats)
-
-                    if not setlist_table or len(table_text) < len(
-                        setlist_table.get_text()
-                    ):
+                if ("0:" in table_text or "1:" in table_text or "2:" in table_text) and "Song Stats" not in table_text:
+                    if not setlist_table or len(table_text) < len(setlist_table.get_text()):
                         setlist_table = table
 
             if not setlist_table:
                 logger.warning(f"Could not find setlist table for {show_url}")
-
                 return []
 
             setlist_df = pd.read_html(StringIO(str(setlist_table)))[0]
-
             if setlist_df.empty:
                 return []
 
-            setlist_df.columns = (
-                ["song_name", "song_note_detail"]
-                if setlist_df.shape[1] > 1
-                else ["song_name"]
-            )
-
+            setlist_df.columns = ["song_name", "song_note_detail"] if setlist_df.shape[1] > 1 else ["song_name"]
             setlist_df.dropna(subset=["song_name"], inplace=True)
 
             setlist_data = []
-
             current_set = "1"
-
             song_position = 1
-
             for _, row in setlist_df.iterrows():
                 song_name = row["song_name"]
-
-                # Skip invalid song names
-
                 if not _validate_song_name(song_name):
                     continue
 
-                if song_name.startswith("Set "):  # Detects Set 2, Set 3, etc.
+                if song_name.startswith("Set "):
                     current_set = song_name.split(" ")[1]
-
                     song_position = 1
-
                     continue
-
                 if song_name.startswith("Encore"):
                     current_set = "E"
-
                     song_position = 1
-
                     continue
 
                 is_segue = song_name.endswith(">")
-
                 if is_segue:
                     song_name = song_name[:-1].strip()
-
-                # Strip note indicators
-
                 song_name = song_name.rstrip("*").strip()
 
-                setlist_data.append(
-                    {
-                        "show_id": show_id,
-                        "set_number": current_set,
-                        "song_position": song_position,
-                        "song_name": song_name,
-                        "is_segue": is_segue,
-                        "song_notes": row.get("song_note_detail", ""),
-                    }
-                )
-
+                setlist_data.append({
+                    "show_id": show_id,
+                    "set_number": current_set,
+                    "song_position": song_position,
+                    "song_name": song_name,
+                    "is_segue": is_segue,
+                    "song_notes": row.get("song_note_detail", ""),
+                })
                 song_position += 1
-
             return setlist_data
-
         except Exception as e:
             logger.error(f"Failed to scrape setlist for {show_url}: {e}")
-
             return []
 
     def collect_shows(
@@ -228,7 +170,7 @@ class WSPCollector(BandCollector):
             years_to_scrape = list(range(86, 100)) + list(
                 range(0, current_year_2_digit + 1)
             )
-            logger.info(f"No date range specified, collecting all historical shows")
+            logger.info("No date range specified, collecting all historical shows")
 
         iterable = tqdm(
             years_to_scrape, desc=f"Collecting {self.ARTIST_NAME} shows", unit="year"
