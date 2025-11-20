@@ -1,6 +1,7 @@
 """This module contains functions for creating and managing HTTP sessions."""
 
 import logging
+import random
 import time
 
 import requests
@@ -20,7 +21,7 @@ def create_enhanced_session() -> requests.Session:
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
             "Accept-Language": "en-US,en;q=0.9",
-            "Accept-Encoding": "gzip, deflate",
+            "Accept-Encoding": "gzip, deflate, br",
             "Connection": "keep-alive",
             "Upgrade-Insecure-Requests": "1",
             "Sec-Fetch-Dest": "document",
@@ -28,19 +29,21 @@ def create_enhanced_session() -> requests.Session:
             "Sec-Fetch-Site": "none",
             "Sec-Fetch-User": "?1",
             "Cache-Control": "max-age=0",
+            "Pragma": "no-cache",
             "DNT": "1",
+            "Sec-GPC": "1",
             "Sec-CH-UA": '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"',
             "Sec-CH-UA-Mobile": "?0",
             "Sec-CH-UA-Platform": '"Windows"',
-            "Referer": "http://www.everydaycompanion.com/",
+            "Referer": "https://www.everydaycompanion.com/",
         }
     )
 
     # Configure retry strategy with exponential backoff
     retry_strategy = Retry(
         total=3,
-        backoff_factor=2,  # Wait 1, 2, 4 seconds between retries
-        status_forcelist=[429, 500, 502, 503, 504],
+        backoff_factor=3,  # Wait 1, 3, 9 seconds between retries
+        status_forcelist=[403, 429, 500, 502, 503, 504],
         allowed_methods=["HEAD", "GET", "OPTIONS"],
     )
 
@@ -54,15 +57,17 @@ def create_enhanced_session() -> requests.Session:
 
 
 last_request_time = 0
-rate_limit_delay = 1.5  # 1.5 seconds between requests
+rate_limit_delay = 2.0  # Base delay between requests (will add random variation)
 
 
 def enforce_rate_limit():
-    """Enforce rate limiting between requests."""
+    """Enforce rate limiting between requests with random variation."""
     global last_request_time
     elapsed = time.time() - last_request_time
-    if elapsed < rate_limit_delay:
-        sleep_time = rate_limit_delay - elapsed
+    # Add random variation (±0.5s) to make requests less predictable
+    delay_with_jitter = rate_limit_delay + random.uniform(-0.5, 0.5)
+    if elapsed < delay_with_jitter:
+        sleep_time = delay_with_jitter - elapsed
         logger.debug(f"Rate limiting: sleeping for {sleep_time:.2f}s")
         time.sleep(sleep_time)
     last_request_time = time.time()

@@ -25,7 +25,7 @@ class WSPCollector(BandCollector):
     """Collects WSP data by scraping everydaycompanion.com with enhanced session management."""
 
     ARTIST_NAME = "Widespread Panic"
-    BASE_URL = "http://www.everydaycompanion.com"
+    BASE_URL = "https://www.everydaycompanion.com"
 
     def __init__(self):
         config = get_collector_config("wsp")
@@ -59,7 +59,9 @@ class WSPCollector(BandCollector):
                 .execute()
             )
             if response.data:
-                logger.info(f"Setlist for show_id {show_id} already exists. Skipping scrape.")
+                logger.info(
+                    f"Setlist for show_id {show_id} already exists. Skipping scrape."
+                )
                 return []
         except Exception as e:
             logger.warning(
@@ -76,9 +78,13 @@ class WSPCollector(BandCollector):
             setlist_data = parse_setlist_from_text(soup, show_id)
 
             if setlist_data:
-                valid_songs = [s for s in setlist_data if _validate_song_name(s["song_name"])]
+                valid_songs = [
+                    s for s in setlist_data if _validate_song_name(s["song_name"])
+                ]
                 if len(valid_songs) < len(setlist_data):
-                    logger.warning(f"Filtered {len(setlist_data) - len(valid_songs)} contaminated songs from {show_url}")
+                    logger.warning(
+                        f"Filtered {len(setlist_data) - len(valid_songs)} contaminated songs from {show_url}"
+                    )
                 return valid_songs
 
             logger.debug(f"Text parsing failed for {show_url}, trying table parsing")
@@ -89,8 +95,12 @@ class WSPCollector(BandCollector):
             setlist_table = None
             for table in tables[4:8]:
                 table_text = table.get_text()
-                if ("0:" in table_text or "1:" in table_text or "2:" in table_text) and "Song Stats" not in table_text:
-                    if not setlist_table or len(table_text) < len(setlist_table.get_text()):
+                if (
+                    "0:" in table_text or "1:" in table_text or "2:" in table_text
+                ) and "Song Stats" not in table_text:
+                    if not setlist_table or len(table_text) < len(
+                        setlist_table.get_text()
+                    ):
                         setlist_table = table
 
             if not setlist_table:
@@ -101,7 +111,11 @@ class WSPCollector(BandCollector):
             if setlist_df.empty:
                 return []
 
-            setlist_df.columns = ["song_name", "song_note_detail"] if setlist_df.shape[1] > 1 else ["song_name"]
+            setlist_df.columns = (
+                ["song_name", "song_note_detail"]
+                if setlist_df.shape[1] > 1
+                else ["song_name"]
+            )
             setlist_df.dropna(subset=["song_name"], inplace=True)
 
             setlist_data = []
@@ -126,14 +140,16 @@ class WSPCollector(BandCollector):
                     song_name = song_name[:-1].strip()
                 song_name = song_name.rstrip("*").strip()
 
-                setlist_data.append({
-                    "show_id": show_id,
-                    "set_number": current_set,
-                    "song_position": song_position,
-                    "song_name": song_name,
-                    "is_segue": is_segue,
-                    "song_notes": row.get("song_note_detail", ""),
-                })
+                setlist_data.append(
+                    {
+                        "show_id": show_id,
+                        "set_number": current_set,
+                        "song_position": song_position,
+                        "song_name": song_name,
+                        "is_segue": is_segue,
+                        "song_notes": row.get("song_note_detail", ""),
+                    }
+                )
                 song_position += 1
             return setlist_data
         except Exception as e:
@@ -336,8 +352,8 @@ class WSPCollector(BandCollector):
             return []
 
         all_setlists = []
-        # Reduced max_workers to be more respectful to the server
-        with ThreadPoolExecutor(max_workers=3) as executor:
+        # Reduced to 1 worker to avoid rate limiting and bot detection
+        with ThreadPoolExecutor(max_workers=1) as executor:
             future_to_show = {
                 executor.submit(self._scrape_single_setlist, show): show
                 for show in shows_to_process
