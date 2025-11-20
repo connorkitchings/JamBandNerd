@@ -112,7 +112,8 @@ jobs:
         if: steps.check.outputs.should_run == 'true'
         run: |
           curl -LsSf https://astral.sh/uv/install.sh | sh
-          export PATH="$HOME/.cargo/bin:$PATH"
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
           uv venv
           source .venv/bin/activate
@@ -159,6 +160,8 @@ jobs:
       - name: Verify Data Freshness
         if: steps.check.outputs.should_run == 'true'
         id: data_check
+        env:
+          BAND: ${{ matrix.band }}
         run: |
           source .venv/bin/activate
           echo "::group::Verifying data freshness for ${{ matrix.band }}"
@@ -173,25 +176,32 @@ jobs:
           from jambandnerd.db.connection import get_supabase_client
           from jambandnerd.config import BAND_ID_COLUMNS
           
+          client = get_supabase_client()
+          band = os.environ['BAND']
+          cutoff = (date.today() - timedelta(days=7)).isoformat()
+          id_col = BAND_ID_COLUMNS.get(band, 'show_id')
+          
           shows_data = client.table(f'{band}_shows_raw').select('*').gte('show_date', cutoff).lte('show_date', date.today().isoformat()).execute().data
-          setlists_data = client.table(f'{band}_setlists_raw').select(id_col).execute().data
           
           shows = pd.DataFrame(shows_data) if shows_data else pd.DataFrame()
-          setlists = pd.DataFrame(setlists_data) if setlists_data else pd.DataFrame()
           
           github_output = os.environ.get('GITHUB_OUTPUT')
           
           if not shows.empty:
-              show_ids = set(shows[id_col].astype(str))
+              show_ids = list(set(shows[id_col].astype(str)))
+              # Fetch only setlists for these specific shows to avoid row limits
+              setlists_data = client.table(f'{band}_setlists_raw').select(id_col).in_(id_col, show_ids).execute().data
+              setlists = pd.DataFrame(setlists_data) if setlists_data else pd.DataFrame()
+              
               setlist_ids = set(setlists[id_col].astype(str)) if not setlists.empty else set()
-              missing = show_ids - setlist_ids
+              missing = set(show_ids) - setlist_ids
               
               if missing:
                   print(f'::warning::WARNING: {len(missing)} recent shows missing setlist data for {band}')
                   print(f'WARNING: {len(missing)} recent shows missing setlist data')
                   for show_id in list(missing)[:5]:
                       show = shows[shows[id_col].astype(str) == show_id].iloc[0]
-                      print(f\"  - {show.get('show_date', 'Unknown date')} (ID: {show_id})\")
+                      print(f"  - {show.get('show_date', 'Unknown date')} (ID: {show_id})")
                   if github_output:
                       with open(github_output, 'a') as f:
                           f.write('missing_data=true\n')
