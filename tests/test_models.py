@@ -38,7 +38,7 @@ class MockPredictionModel(PredictionModel):
         """Mock prediction method."""
         if not self.trained:
             raise RuntimeError("Model must be trained before making predictions")
-        
+
         return [
             {"song": "Test Song 1", "probability": 0.6},
             {"song": "Test Song 2", "probability": 0.4}
@@ -66,15 +66,15 @@ class TestMockPredictionModel:
         """Test the train method."""
         model = MockPredictionModel()
         mock_data = {"shows": [], "setlists": []}
-        
+
         model.train(mock_data)
-        
+
         assert model.trained
 
     def test_predict_without_training(self):
         """Test that prediction fails without training."""
         model = MockPredictionModel()
-        
+
         with pytest.raises(RuntimeError, match="Model must be trained"):
             model.predict([], {})
 
@@ -82,9 +82,9 @@ class TestMockPredictionModel:
         """Test the predict method after training."""
         model = MockPredictionModel()
         model.train({})
-        
+
         predictions = model.predict(["Current Song"], {"venue": "Test Venue"})
-        
+
         assert len(predictions) == 2
         assert predictions[0]["song"] == "Test Song 1"
         assert predictions[0]["probability"] == 0.6
@@ -99,9 +99,9 @@ class TestMockPredictionModel:
             {"song": "Song B", "probability": 0.3}
         ]
         mock_actual = ["Song A", "Song C"]
-        
+
         accuracy = model.calculate_accuracy(mock_predictions, mock_actual)
-        
+
         assert accuracy["top_1_accuracy"] == 0.75
         assert accuracy["top_3_accuracy"] == 0.90
         assert accuracy["mean_reciprocal_rank"] == 0.82

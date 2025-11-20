@@ -3,7 +3,6 @@ WSP utility functions for logging, directory management, and time formatting.
 """
 
 import json
-import logging
 from datetime import datetime
 from pathlib import Path
 

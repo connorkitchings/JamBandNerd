@@ -4,9 +4,9 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional, Set
 
 import pandas as pd
-from supabase import Client
 
 from .connection import get_supabase_client
+
 
 def fetch_existing_ids(
     table_name: str, id_column: str, since: Optional[str] = None, date_column: str = "created_at"
@@ -27,9 +27,9 @@ def fetch_existing_ids(
     query = client.table(table_name).select(id_column)
     if since:
         query = query.gte(date_column, since)
-    
+
     response = query.execute()
-    
+
     if response.data:
         return {item[id_column] for item in response.data}
     return set()
@@ -45,7 +45,7 @@ def bulk_insert_dataframe(table_name: str, df: pd.DataFrame, chunk_size: int = 5
     """
     client = get_supabase_client()
     records = df.to_dict(orient='records')
-    
+
     for i in range(0, len(records), chunk_size):
         chunk = records[i:i + chunk_size]
         client.table(table_name).insert(chunk).execute()

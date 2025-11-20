@@ -15,14 +15,13 @@ Usage:
   uv run python scripts/tw_fallback_test.py --dates 2025-10-03 2025-10-04
 """
 
-import os
-import sys
 import argparse
 import hashlib
 import json
+import os
 import re
+import sys
 from collections import defaultdict
-from datetime import date
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -33,10 +32,15 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, project_root)
 
 # Local imports
+from src.jambandnerd.data_collection.wsp.tourwrangler import (
+    fetch_setlist_from_tourwrangler,
+)
 from src.jambandnerd.db.connection import get_supabase_client
 from src.jambandnerd.db.operations import get_table_schema, upsert_dataframe
-from src.jambandnerd.db.validation import coerce_df_types, validate_dataframe_against_table
-from src.jambandnerd.data_collection.wsp.tourwrangler import fetch_setlist_from_tourwrangler
+from src.jambandnerd.db.validation import (
+    coerce_df_types,
+    validate_dataframe_against_table,
+)
 
 
 def compute_source_hash_row(rec: dict) -> str:

@@ -6,8 +6,8 @@ the `wsp_songs_raw`, `wsp_shows_raw`, and `wsp_setlists_raw` tables.
 """
 
 import logging
-import sys
 import os
+import sys
 from datetime import datetime
 
 # Add the project root to the Python path

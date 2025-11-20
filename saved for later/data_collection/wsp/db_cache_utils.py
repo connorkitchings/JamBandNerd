@@ -9,9 +9,8 @@ import logging
 from datetime import datetime, timedelta
 from typing import Any, Optional
 
-from postgrest import APIError
-
 from jambandnerd.db.supabase_client import create_supabase_client
+from postgrest import APIError
 
 
 class WSPDatabaseCache:

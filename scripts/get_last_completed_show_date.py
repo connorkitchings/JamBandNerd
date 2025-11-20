@@ -3,9 +3,11 @@
 Efficiently determines the date of the most recently completed show for a given band.
 """
 from __future__ import annotations
+
 import argparse
-import sys
 import os
+import sys
+
 import pandas as pd
 
 # Add project root to path
@@ -13,6 +15,7 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, project_root)
 
 from src.jambandnerd.db.connection import get_supabase_client
+
 
 def get_last_completed_show_date(band: str) -> str | None:
     client = get_supabase_client()
@@ -27,7 +30,7 @@ def get_last_completed_show_date(band: str) -> str | None:
         if not recent_shows_resp.data:
             print(f"Warning: No shows found for band '{band}'.", file=sys.stderr)
             return None
-        
+
         recent_shows = pd.DataFrame(recent_shows_resp.data)
         recent_show_ids = recent_shows[id_col].astype(str).tolist()
 
@@ -36,7 +39,7 @@ def get_last_completed_show_date(band: str) -> str | None:
         if not setlists_resp.data:
             print(f"Warning: No setlists found for the last 100 shows of band '{band}'.", file=sys.stderr)
             return None
-            
+
         completed_recent_show_ids = {str(row[id_col]) for row in setlists_resp.data if row.get(id_col)}
 
         if not completed_recent_show_ids:

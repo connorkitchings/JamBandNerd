@@ -7,8 +7,8 @@ from __future__ import annotations
 
 import os
 import sys
+
 import pandas as pd
-from datetime import datetime
 
 # Add the project root to the Python path
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -27,11 +27,11 @@ def test_validation_warnings():
     print("VALIDATION WARNING TEST")
     print("=" * 70)
     print()
-    
+
     # Test 1: Create a DataFrame with type mismatches
     print("Test 1: Type Mismatches")
     print("-" * 70)
-    
+
     test_df = pd.DataFrame({
         "show_id": ["test_001"],
         "show_date": ["2024-01-15"],  # This should be a date
@@ -44,19 +44,19 @@ def test_validation_warnings():
         "created_at": ["2024-01-15T12:00:00"],
         "updated_at": ["2024-01-15T12:00:00"],
     })
-    
+
     schema = get_table_schema("goose_shows_raw")
     if schema:
         print(f"Schema retrieved for goose_shows_raw with {len(schema)} columns")
-        
+
         # Coerce types
         coerced_df = coerce_df_types(test_df, schema)
         print(f"DataFrame coerced: {coerced_df.dtypes.to_dict()}")
         print()
-        
+
         # Validate
         report = validate_dataframe_against_table(coerced_df, "goose_shows_raw", schema)
-        
+
         if not report.is_valid:
             print("⚠️  Validation warnings for goose_shows_raw:")
             if report.missing_columns:
@@ -73,24 +73,24 @@ def test_validation_warnings():
             print("✅ No validation issues (data is valid)")
     else:
         print("❌ Could not retrieve schema for goose_shows_raw")
-    
+
     print()
     print("=" * 70)
-    
+
     # Test 2: Create a DataFrame with missing required columns
     print("Test 2: Missing Required Columns")
     print("-" * 70)
-    
+
     incomplete_df = pd.DataFrame({
         "show_id": ["test_002"],
         "show_date": ["2024-01-15"],
         # Missing other required fields
     })
-    
+
     if schema:
         coerced_df = coerce_df_types(incomplete_df, schema)
         report = validate_dataframe_against_table(coerced_df, "goose_shows_raw", schema)
-        
+
         if not report.is_valid:
             print("⚠️  Validation warnings for goose_shows_raw:")
             if report.missing_columns:
@@ -103,14 +103,14 @@ def test_validation_warnings():
             print("✅ Validation warnings displayed correctly!")
         else:
             print("✅ No validation issues")
-    
+
     print()
     print("=" * 70)
-    
+
     # Test 3: Verify warning-only behavior (should not raise exception)
     print("Test 3: Warning-Only Behavior")
     print("-" * 70)
-    
+
     try:
         # This should not raise an exception even with validation issues
         bad_df = pd.DataFrame({
@@ -125,13 +125,13 @@ def test_validation_warnings():
             "created_at": [None],
             "updated_at": [None],
         })
-        
+
         if schema:
             coerced_df = coerce_df_types(bad_df, schema)
             report = validate_dataframe_against_table(coerced_df, "goose_shows_raw", schema)
-            
+
             print(f"Validation completed without exception: is_valid={report.is_valid}")
-            
+
             if not report.is_valid:
                 print("⚠️  Validation warnings for goose_shows_raw:")
                 if report.missing_columns:
@@ -140,12 +140,12 @@ def test_validation_warnings():
                     print(f"    Type mismatches: {len(report.type_mismatches)} columns")
                 if report.nullable_violations:
                     print(f"    Nullable violations: {report.nullable_violations}")
-            
+
             print()
             print("✅ Validation is warning-only (no exception raised)!")
     except Exception as e:
         print(f"❌ Unexpected exception raised: {e}")
-    
+
     print()
     print("=" * 70)
     print("VALIDATION WARNING TEST COMPLETE")

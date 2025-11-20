@@ -9,13 +9,13 @@ existence checks in loaders, and update-mode filters recent shows (last 90 days)
 from datetime import datetime, timedelta
 
 import pandas as pd
-
-from jambandnerd.data_collection.base import ScrapingBasedDataCollector
 from jambandnerd.data_collection.wsp.loaders import (
     load_setlist_data,
     scrape_wsp_shows,
     scrape_wsp_songs,
 )
+
+from jambandnerd.data_collection.base import ScrapingBasedDataCollector
 
 
 class WSPDataCollector(ScrapingBasedDataCollector):

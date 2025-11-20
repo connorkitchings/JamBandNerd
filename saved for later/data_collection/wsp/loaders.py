@@ -12,9 +12,8 @@ from io import StringIO
 import pandas as pd
 import requests
 from bs4 import BeautifulSoup
-from tqdm import tqdm
-
 from jambandnerd.db.supabase_client import create_supabase_client
+from tqdm import tqdm
 
 supabase = create_supabase_client()
 

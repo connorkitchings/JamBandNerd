@@ -73,6 +73,7 @@ graph TD
 
 - **Purpose**: User interface for prediction exploration
 - **Framework**: Streamlit for rapid development and deployment.
+- **Structure**: Modular design with separate components for sidebar, tabs, and data handling (`src/jambandnerd/web/`).
 - **Data**: Direct Supabase queries for real-time data.
 
 #### Orchestration Layer

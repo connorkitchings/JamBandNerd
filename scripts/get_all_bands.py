@@ -2,6 +2,7 @@ import json
 import os
 import re
 
+
 def get_bands():
     """
     Scans the 'scripts' directory for 'run_*_collection.py' files

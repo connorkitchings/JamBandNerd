@@ -1,7 +1,7 @@
 """Data collector for Goose from elgoose.net API."""
 import logging
-from typing import List, Dict, Any, Optional
 from datetime import date
+from typing import Any, Dict, List, Optional
 
 from ..base import BandCollector
 from ..config import get_collector_config

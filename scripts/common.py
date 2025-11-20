@@ -3,14 +3,15 @@ from __future__ import annotations
 
 import sys
 from datetime import date, datetime
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Dict, Iterable, List, Optional, Tuple
 
 import pandas as pd
 import requests
 
+from src.jambandnerd.data_collection.config import get_collector_config
+
 # Local imports
 from src.jambandnerd.db.connection import get_supabase_client
-from src.jambandnerd.data_collection.config import get_collector_config
 
 
 def ensure_source_reachable(band: str, *, timeout: int = 15) -> None:
@@ -152,7 +153,7 @@ def fetch_table(table_name: str, chunk_size: int = 10000) -> List[Dict]:
     client = get_supabase_client()
     all_data = []
     offset = 0
-    
+
     try:
         # Correctly pass count as a keyword argument
         count_response = client.table(table_name).select("*", count="exact").limit(0).execute()
@@ -167,7 +168,7 @@ def fetch_table(table_name: str, chunk_size: int = 10000) -> List[Dict]:
         try:
             print(f"Fetching rows from offset {offset}...")
             response = client.table(table_name).select("*").range(offset, offset + chunk_size - 1).execute()
-            
+
             if not response.data:
                 print("Received no more data. Ending fetch.")
                 break
@@ -188,7 +189,7 @@ def fetch_table(table_name: str, chunk_size: int = 10000) -> List[Dict]:
         except Exception as e:
             print(f"An error occurred during fetch: {e}")
             break
-            
+
     print(f"Fetched a total of {len(all_data)} records from {table_name}.")
     return all_data
 

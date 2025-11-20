@@ -15,29 +15,29 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import sys
 import os
+import sys
 import time
-from datetime import datetime
 import traceback
+from datetime import datetime
 
 # Add project root to path
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, project_root)
 
 # Import the functions from the refactored scripts
-from scripts.run_goose_collection import run_goose_collection
-from scripts.run_eggy_collection import run_eggy_collection
-from scripts.run_phish_collection import run_phish_collection
-from scripts.run_wsp_collection import run_wsp_collection
-from scripts.run_billy_collection import run_billy_collection
-from scripts.run_um_collection import run_um_collection
+import logging
+
 from scripts.generate_predictions import generate_predictions
 from scripts.run_backtest import run_backtest
+from scripts.run_billy_collection import run_billy_collection
+from scripts.run_eggy_collection import run_eggy_collection
+from scripts.run_goose_collection import run_goose_collection
+from scripts.run_phish_collection import run_phish_collection
+from scripts.run_um_collection import run_um_collection
+from scripts.run_wsp_collection import run_wsp_collection
 from scripts.save_aggregate_accuracy import save_aggregate_accuracy
 from scripts.validate_prediction_tables import validate_predictions
-
-import logging
 
 # Suppress noisy httpx logs
 logging.getLogger("httpx").setLevel(logging.WARNING)

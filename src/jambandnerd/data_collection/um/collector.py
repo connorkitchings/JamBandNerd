@@ -6,11 +6,11 @@ import logging
 import re
 from dataclasses import dataclass
 from datetime import date, datetime
+from io import StringIO
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 from urllib.parse import urljoin
 
 import pandas as pd
-from io import StringIO
 from bs4 import BeautifulSoup, NavigableString, Tag
 from requests import RequestException
 

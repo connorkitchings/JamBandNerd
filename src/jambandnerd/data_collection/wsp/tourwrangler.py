@@ -7,7 +7,7 @@ is missing recent historical show setlists.
 from __future__ import annotations
 
 import re
-from datetime import date, datetime
+from datetime import date
 from typing import Any, Dict, List, Optional, Tuple
 
 import requests

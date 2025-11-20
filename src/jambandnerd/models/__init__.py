@@ -15,10 +15,10 @@ Core components:
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from .accuracy import TopKMetrics, aggregate_metrics, compute_per_show_metrics
     from .base import PredictionModel, PredictionResult
-    from .accuracy import TopKMetrics, compute_per_show_metrics, aggregate_metrics
+    from .ckplus.model import CKPlusPrediction, CKPlusPredictor
     from .notebook.model import NotebookPredictor, RankedPrediction
-    from .ckplus.model import CKPlusPredictor, CKPlusPrediction
 
 __all__ = [
     "PredictionModel",
@@ -27,7 +27,7 @@ __all__ = [
     "compute_per_show_metrics",
     "aggregate_metrics",
     "NotebookPredictor",
-    "RankedPrediction", 
+    "RankedPrediction",
     "CKPlusPredictor",
     "CKPlusPrediction",
     "base",

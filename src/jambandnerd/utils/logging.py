@@ -39,31 +39,31 @@ def setup_logging(
     # Get the root logger
     root_logger = logging.getLogger()
     root_logger.setLevel(level)
-    
+
     # Remove existing handlers to avoid duplicates
     root_logger.handlers.clear()
-    
+
     # Choose format
     log_format = DETAILED_LOG_FORMAT if detailed else DEFAULT_LOG_FORMAT
     formatter = logging.Formatter(log_format, datefmt=DATE_FORMAT)
-    
+
     # Console handler
     if console:
         console_handler = logging.StreamHandler(sys.stdout)
         console_handler.setLevel(level)
         console_handler.setFormatter(formatter)
         root_logger.addHandler(console_handler)
-    
+
     # File handler
     if log_file:
         log_path = Path(log_file)
         log_path.parent.mkdir(parents=True, exist_ok=True)
-        
+
         file_handler = logging.FileHandler(log_path, mode='a', encoding='utf-8')
         file_handler.setLevel(level)
         file_handler.setFormatter(formatter)
         root_logger.addHandler(file_handler)
-    
+
     # Set levels for noisy third-party libraries
     logging.getLogger("urllib3").setLevel(logging.WARNING)
     logging.getLogger("requests").setLevel(logging.WARNING)
@@ -127,7 +127,7 @@ class PipelineLogger:
         ...     pl.step("Fetching setlists")
         ...     # do work
     """
-    
+
     def __init__(self, logger: logging.Logger, operation: str, context: str = ""):
         """Initialize pipeline logger.
         
@@ -141,12 +141,12 @@ class PipelineLogger:
         self.context = f" [{context}]" if context else ""
         self.current_step: Optional[str] = None
         self.step_count = 0
-        
+
     def __enter__(self) -> PipelineLogger:
         """Start the pipeline operation."""
         self.logger.info(f"🚀 Starting: {self.operation}{self.context}")
         return self
-    
+
     def __exit__(self, exc_type, exc_val, exc_tb) -> bool:
         """Complete the pipeline operation."""
         if exc_type is None:
@@ -157,7 +157,7 @@ class PipelineLogger:
                 f"❌ Failed: {self.operation}{self.context} - {exc_type.__name__}: {exc_val}"
             )
             return False  # Re-raise the exception
-    
+
     def step(self, description: str) -> None:
         """Log a pipeline step.
         
@@ -167,7 +167,7 @@ class PipelineLogger:
         self.step_count += 1
         self.current_step = description
         self.logger.info(f"  Step {self.step_count}: {description}")
-    
+
     def progress(self, message: str) -> None:
         """Log progress within the current step.
         
@@ -175,7 +175,7 @@ class PipelineLogger:
             message: Progress message
         """
         self.logger.debug(f"    → {message}")
-    
+
     def warning(self, message: str) -> None:
         """Log a warning without failing the pipeline.
         

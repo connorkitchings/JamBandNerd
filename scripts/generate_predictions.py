@@ -17,8 +17,8 @@ import argparse
 import json
 import os
 import sys
-from datetime import datetime, timezone, date
-from typing import Any, Dict, List, Union
+from datetime import date, datetime, timezone
+from typing import Any, List
 
 import numpy as np
 import pandas as pd

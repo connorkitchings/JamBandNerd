@@ -103,18 +103,18 @@ def save_aggregate_accuracy(band: str, model: str, shows: int) -> None:
     }
     table_name = table_mapping.get(model, f"accuracy_{model}")
     print(f"{log_prefix} Saving aggregate accuracy summary to {table_name}...")
-    
+
     try:
         client.table(table_name).upsert(
             record, on_conflict="band,model_version,window_start,window_end"
         ).execute()
         print(f"{log_prefix} Successfully saved aggregate accuracy.")
-        
+
         # Print summary for verification
         print(f"{log_prefix} Summary: {record['num_shows']} shows from {record['window_start']} to {record['window_end']}")
         for k in [10, 25, 50]:
             print(f"{log_prefix} K={k}: hit_rate={record[f'k{k}_hit_rate']:.3f} precision={record[f'k{k}_precision']:.3f} recall={record[f'k{k}_recall']:.3f}")
-            
+
     except Exception as e:
         print(f"{log_prefix} Error saving to {table_name}: {e}")
         print(f"{log_prefix} Record data: {record}")

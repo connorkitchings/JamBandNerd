@@ -8,23 +8,33 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
+import sys
 from datetime import datetime
 from typing import Any, Dict, Iterable, List, Optional
 
 import pandas as pd
-import sys
-import os
 
 # Add the project root to the Python path
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, project_root)
 
-from src.jambandnerd.data_collection.goose.collector import GooseCollector  # noqa: E402
-from src.jambandnerd.db.operations import upsert_dataframe, get_table_schema  # noqa: E402
-from src.jambandnerd.db.connection import get_supabase_client  # noqa: E402
-from src.jambandnerd.db.validation import validate_dataframe_against_table, coerce_df_types # noqa: E402
-from scripts.common import ensure_source_reachable, assert_required_columns  # noqa: E402
 import argparse
+
+from scripts.common import (  # noqa: E402
+    assert_required_columns,
+    ensure_source_reachable,
+)
+from src.jambandnerd.data_collection.goose.collector import GooseCollector  # noqa: E402
+from src.jambandnerd.db.connection import get_supabase_client  # noqa: E402
+from src.jambandnerd.db.operations import (  # noqa: E402
+    get_table_schema,
+    upsert_dataframe,
+)
+from src.jambandnerd.db.validation import (  # noqa: E402
+    coerce_df_types,
+    validate_dataframe_against_table,
+)
 
 
 def _compute_source_hash(record: Dict[str, Any]) -> str:
@@ -186,7 +196,7 @@ def run_goose_collection(skip_validation: bool = False) -> None:
             df_to_upsert = coerced_df
         else:
             df_to_upsert = df
-        
+
         try:
             upsert_dataframe(table_name=table_name, df=df_to_upsert, conflict_columns=conflict_cols)
             print(f"Upserted data into {table_name}.")

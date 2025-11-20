@@ -8,10 +8,10 @@ calculations, and reliability scaling.
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .model import CKPlusPredictor, CKPlusPrediction
+    from .model import CKPlusPrediction, CKPlusPredictor
 
 __all__ = [
-    "CKPlusPredictor", 
+    "CKPlusPredictor",
     "CKPlusPrediction",
     "model",
 ]

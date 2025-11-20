@@ -22,15 +22,24 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
-from scripts.common import ensure_source_reachable, assert_required_columns  # type: ignore  # noqa: E402
+from scripts.common import (  # type: ignore  # noqa: E402
+    assert_required_columns,
+    ensure_source_reachable,
+)
 from src.jambandnerd.data_collection.um.collector import UmCollector  # noqa: E402
 from src.jambandnerd.data_collection.um.upcoming import (  # noqa: E402
     UpcomingShowsError,
     collect_upcoming_shows,
 )
 from src.jambandnerd.db.connection import get_supabase_client  # noqa: E402
-from src.jambandnerd.db.operations import get_table_schema, upsert_dataframe  # noqa: E402
-from src.jambandnerd.db.validation import coerce_df_types, validate_dataframe_against_table  # noqa: E402
+from src.jambandnerd.db.operations import (  # noqa: E402
+    get_table_schema,
+    upsert_dataframe,
+)
+from src.jambandnerd.db.validation import (  # noqa: E402
+    coerce_df_types,
+    validate_dataframe_against_table,
+)
 
 
 def _hash_row(record: Dict[str, Any]) -> str:

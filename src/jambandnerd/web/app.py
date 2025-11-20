@@ -3,7 +3,11 @@ from __future__ import annotations
 import streamlit as st
 
 from jambandnerd.db.connection import get_supabase_client
-from jambandnerd.web.components.sidebar import display_sidebar, get_initial_selection_from_url, sync_query_params
+from jambandnerd.web.components.sidebar import (
+    display_sidebar,
+    get_initial_selection_from_url,
+    sync_query_params,
+)
 from jambandnerd.web.components.tabs.compare import display_band_comparison
 from jambandnerd.web.components.tabs.last_show import display_last_show_setlist
 from jambandnerd.web.components.tabs.performance import display_historical_accuracy

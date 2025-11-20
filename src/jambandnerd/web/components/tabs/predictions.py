@@ -7,7 +7,12 @@ import pandas as pd
 import streamlit as st
 from supabase import Client
 
-from jambandnerd.web.data import fetch_predictions, fetch_show_details_by_date, fetch_um_upcoming_show, fetch_wsp_upcoming_show
+from jambandnerd.web.data import (
+    fetch_predictions,
+    fetch_show_details_by_date,
+    fetch_um_upcoming_show,
+    fetch_wsp_upcoming_show,
+)
 
 # This is a temporary solution. In the future, this should be moved to a more centralized location.
 MODEL_CONFIG = {

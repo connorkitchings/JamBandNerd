@@ -7,8 +7,8 @@ by strictly adhering to a `reference_date` cutoff.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date, datetime, timedelta
-from typing import Any, Dict, List, Optional, Tuple, Union
+from datetime import date, datetime
+from typing import Dict, List, Optional, Tuple
 
 import pandas as pd
 
@@ -167,7 +167,10 @@ def generate_model_data(
 
     # Get band-specific exclusion window if band is provided
     if band:
-        from src.jambandnerd.config import BAND_EXCLUSION_WINDOWS, EXCLUSION_WINDOW_DEFAULT
+        from src.jambandnerd.config import (
+            BAND_EXCLUSION_WINDOWS,
+            EXCLUSION_WINDOW_DEFAULT,
+        )
         exclusion_window = BAND_EXCLUSION_WINDOWS.get(band, EXCLUSION_WINDOW_DEFAULT)
 
     historical_plays, master_features, ref_index, recent_songs = _compute_base_features(

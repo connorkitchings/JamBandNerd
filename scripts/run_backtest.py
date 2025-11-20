@@ -130,16 +130,16 @@ def run_backtest(
             model_data = generate_model_data(
                 shows_df, sets_df, prediction_date, exclusion_window=exclusion_window
             )
-            
+
             if model == "notebook":
                 preds, _ = predictor.predict(model_data=model_data, top_k=50)
             else:
                 preds = predictor.predict(model_data=model_data, top_k=50)
-                
+
             if not preds:
                 print(f"{log_prefix} No predictions generated for {ref_date}, skipping")
                 continue
-                
+
             pred_songs = [p.song_name for p in preds]
         except (ValueError, AttributeError, KeyError, TypeError) as e:
             print(f"{log_prefix} Error generating predictions for {ref_date}: {e}")
@@ -155,7 +155,7 @@ def run_backtest(
             # If show_id is non-numeric (e.g., date strings), hash it to an integer
             import hashlib
             show_id_int = int(hashlib.md5(show_id.encode()).hexdigest()[:8], 16)
-        
+
         show_metrics = {
             "band": band,
             "model_version": model_version,

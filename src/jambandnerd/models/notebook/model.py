@@ -1,10 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date, timedelta
-from typing import List, Dict, Any
-
-import pandas as pd
+from datetime import timedelta
+from typing import Any, Dict, List
 
 from src.jambandnerd.models.base import PredictionModel
 from src.jambandnerd.transformations.gaps import ModelData

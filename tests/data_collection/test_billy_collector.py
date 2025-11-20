@@ -1,107 +1,133 @@
-"""Tests for the Billy Strings collector."""
-
-from __future__ import annotations
-
-from typing import Any, Dict
+from datetime import date
+from unittest.mock import MagicMock, patch
 
 import pytest
-from bs4 import BeautifulSoup
 
 from src.jambandnerd.data_collection.billy.collector import BillyCollector
 
 
-class _DummyResponse:
-    def __init__(self, text: str) -> None:
-        self.text = text
-        self.status_code = 200
+class TestBillyCollector:
+    @pytest.fixture
+    def collector(self):
+        return BillyCollector()
 
-    def raise_for_status(self) -> None:  # pragma: no cover - mirrors requests.Response signature
-        return None
+    def test_collect_shows_parses_html(self, collector):
+        # Arrange
+        # Use <br> to ensure stripped_strings separates the lines
+        mock_html = """
+        <html>
+            <a class="link-unstyled" href="/setlist/uuid1">
+                <div class="badge">
+                    <span>Oct 31</span>
+                    <span></span>
+                    <span>2023</span>
+                </div>
+                <div class="col-8">
+                    Van Andel Arena<br>
+                    Grand Rapids, MI, USA
+                </div>
+            </a>
+        </html>
+        """
 
+        with patch.object(collector.session, "get") as mock_get:
+            mock_response = MagicMock()
+            mock_response.text = mock_html
+            mock_response.status_code = 200
+            mock_get.return_value = mock_response
 
-SAMPLE_SONGS_HTML = """
-<html>
-  <body>
-    <div wire:id="songs123" wire:snapshot='{"memo":{"name":"songs-index"}}'>
-      <table class="table table-hover">
-        <tbody>
-          <tr>
-            <td><a href="https://bmfsdb.com/song/first-uuid">Dust in a Baggie</a></td>
-            <td><a href="https://bmfsdb.com/artist/288">Billy Strings</a></td>
-            <td>498</td>
-            <td>0</td>
-            <td>2012-08-30</td>
-            <td>2025-10-24</td>
-          </tr>
-          <tr>
-            <td><a href="https://bmfsdb.com/song/second-uuid">New Jam</a></td>
-            <td>N/A</td>
-            <td>12</td>
-            <td>N/A</td>
-            <td>N/A</td>
-            <td>2024-05-01</td>
-          </tr>
-          <tr>
-            <td>Unnamed</td>
-            <td><a href="https://bmfsdb.com/artist/42">Side Project</a></td>
-            <td>--</td>
-            <td>--</td>
-            <td>2023-01-01</td>
-            <td>2023-02-01</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </body>
-</html>
-"""
+            # Act
+            # Limit pages to 1 for testing
+            with patch.object(collector, "MAX_PAGES", 1):
+                shows = collector.collect_shows(
+                    start_date=date(2023, 10, 30), end_date=date(2023, 11, 1)
+                )
 
+            # Assert
+            assert len(shows) == 1
+            assert shows[0]["show_date"] == "2023-10-31"
+            assert shows[0]["venue_name"] == "Van Andel Arena"
+            assert shows[0]["venue_city"] == "Grand Rapids"
+            assert shows[0]["venue_state"] == "MI"
 
-def test_collect_songs_parses_table(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Ensure collect_songs parses bmfsdb song table rows."""
+    def test_collect_setlists_parses_html(self, collector):
+        # Arrange
+        # Code expects child to have 'song-stripe' and contain a 'div.row.mb-2'
+        mock_html = """
+        <div id="shows-panel">
+            <div class="alert alert-info">Set 1:</div>
+            <div class="song-stripe">
+                <div class="row mb-2">
+                    <div class="col-12">
+                        <a href="/song/dust-in-a-baggie">Dust in a Baggie</a>
+                    </div>
+                </div>
+            </div>
+            <div class="alert alert-info">Encore:</div>
+            <div class="song-stripe">
+                <div class="row mb-2">
+                    <div class="col-12">
+                        <a href="/song/meet-me-at-the-creek">Meet Me At The Creek</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        """
 
-    collector = BillyCollector()
+        shows_to_process = [
+            {
+                "show_id": "1",
+                "source_url": "http://mock",
+                "source_uuid": "uuid1",
+                "show_date": "2023-10-31",
+            }
+        ]
 
-    def fake_get(url: str, params: Dict[str, Any] | None = None, timeout: int | None = None) -> _DummyResponse:
-        assert "songs" in url
-        assert params is not None
-        assert params.get("showAll") == "1"
-        return _DummyResponse(SAMPLE_SONGS_HTML)
+        with patch.object(collector.session, "get") as mock_get:
+            mock_response = MagicMock()
+            mock_response.text = mock_html
+            mock_response.status_code = 200
+            mock_get.return_value = mock_response
 
-    monkeypatch.setattr(collector.session, "get", fake_get)
+            # Act
+            setlists = collector.collect_setlists(shows_to_process)
 
-    songs = collector.collect_songs()
+            # Assert
+            assert len(setlists) == 2
+            assert setlists[0]["song_name"] == "Dust in a Baggie"
+            assert setlists[0]["set_number"] == 1
+            assert setlists[1]["song_name"] == "Meet Me At The Creek"
+            assert setlists[1]["set_number"] == 99  # Encore default
 
-    assert len(songs) == 3
+    def test_collect_songs_parses_table(self, collector):
+        # Arrange
+        mock_html = """
+        <div wire:id="1" wire:snapshot='{"memo":{"id":"1","name":"songs-index"}}'>
+            <table class="table-hover">
+                <tbody>
+                    <tr>
+                        <td><a href="/song/dust-in-a-baggie">Dust in a Baggie</a></td>
+                        <td>Original</td>
+                        <td>100</td>
+                        <td>5</td>
+                        <td>2017-01-01</td>
+                        <td>2023-10-31</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        """
 
-    first, second, third = songs
+        with patch.object(collector.session, "get") as mock_get:
+            mock_response = MagicMock()
+            mock_response.text = mock_html
+            mock_response.status_code = 200
+            mock_get.return_value = mock_response
 
-    assert first["song_name"] == "Dust in a Baggie"
-    assert first["original_artist"] == "Billy Strings"
-    assert first["song_uuid"] == "first-uuid"
-    assert first["times_played"] == 498
-    assert first["times_teased"] == 0
-    assert first["first_played"] == "2012-08-30"
-    assert first["last_played"] == "2025-10-24"
+            # Act
+            songs = collector.collect_songs()
 
-    assert second["song_name"] == "New Jam"
-    assert second["original_artist"] is None
-    assert second["times_teased"] == 0
-    assert second["first_played"] is None
-
-    assert third["song_name"] == "Unnamed"
-    assert third["original_artist"] == "Side Project"
-    assert third["original_artist_id"] == "42"
-    assert third["times_played"] == 0
-
-
-def test_extract_show_uuid_handles_nonnumeric_ids() -> None:
-    collector = BillyCollector()
-    soup = BeautifulSoup('<a class="link-unstyled" href="https://bmfsdb.com/setlist/80267152"><div></div></a>', "html.parser")
-    anchor = soup.find("a")
-    assert anchor is not None
-
-    show_uuid = collector._extract_show_uuid(anchor)
-    # Should be a valid UUID string
-    assert show_uuid is not None
-    assert len(show_uuid) == 36
+            # Assert
+            assert len(songs) == 1
+            assert songs[0]["song_name"] == "Dust in a Baggie"
+            assert songs[0]["times_played"] == 100

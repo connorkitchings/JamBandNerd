@@ -1,8 +1,9 @@
 """Handles Supabase connection."""
 import os
 from typing import Optional
-from supabase import create_client, Client
+
 from dotenv import load_dotenv
+from supabase import Client, create_client
 
 # Safe optional import for Streamlit secrets
 try:
@@ -48,7 +49,7 @@ def get_supabase_client() -> Client:
             raise ValueError("SUPABASE_URL and SUPABASE_KEY must be set in Streamlit secrets or the environment.")
 
         _supabase_client = create_client(supabase_url, supabase_key)
-    
+
     return _supabase_client
 
 def validate_environment() -> None:

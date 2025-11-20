@@ -21,13 +21,13 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .base import BandCollector, CollectorConfig
-    from .goose.collector import GooseCollector
-    from .eggy.collector import EggyCollector
-    from .phish.collector import PhishCollector
-    from .wsp.collector import WSPCollector
     from .billy.collector import BillyCollector
-    from .um.collector import UmCollector
     from .cosmic.collector import CosmicCollector
+    from .eggy.collector import EggyCollector
+    from .goose.collector import GooseCollector
+    from .phish.collector import PhishCollector
+    from .um.collector import UmCollector
+    from .wsp.collector import WSPCollector
 
 __all__ = [
     "BandCollector",

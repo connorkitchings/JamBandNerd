@@ -13,12 +13,13 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from supabase import Client
+
     from .connection import get_supabase_client, validate_environment
     from .operations import (
-        fetch_existing_ids,
         bulk_insert_dataframe,
-        upsert_dataframe,
+        fetch_existing_ids,
         get_table_schema,
+        upsert_dataframe,
     )
     from .validation import (
         TypeMismatch,

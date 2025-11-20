@@ -5,9 +5,7 @@ import argparse
 import hashlib
 import sys
 from pathlib import Path
-from typing import List, Dict
-
-import pandas as pd
+from typing import Dict, List
 
 # Add project root to path to allow src imports
 project_root = Path(__file__).resolve().parent.parent

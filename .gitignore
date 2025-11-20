@@ -24,3 +24,9 @@ dist/
 
 # Python build artifacts
 *.egg-info
+
+# Pytest cache
+.pytest_cache   
+
+# Ruff cache
+.ruff_cache

@@ -173,12 +173,7 @@ jobs:
           from jambandnerd.db.connection import get_supabase_client
           from jambandnerd.config import BAND_ID_COLUMNS
           
-          band = '${{ matrix.band }}'
-          client = get_supabase_client()
-          id_col = BAND_ID_COLUMNS.get(band, 'show_id')
-          
-          cutoff = (date.today() - timedelta(days=7)).isoformat()
-          shows_data = client.table(f'{band}_shows_raw').select('*').gte('show_date', cutoff).execute().data
+          shows_data = client.table(f'{band}_shows_raw').select('*').gte('show_date', cutoff).lte('show_date', date.today().isoformat()).execute().data
           setlists_data = client.table(f'{band}_setlists_raw').select(id_col).execute().data
           
           shows = pd.DataFrame(shows_data) if shows_data else pd.DataFrame()

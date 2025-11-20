@@ -46,10 +46,10 @@ def collect_shows(
         years_to_scrape = list(range(86, 100)) + list(
             range(0, current_year_2_digit + 1)
         )
-        logger.info(f"No date range specified, collecting all historical shows")
+        logger.info("No date range specified, collecting all historical shows")
 
     iterable = tqdm(
-        years_to_scrape, desc=f"Collecting Widespread Panic shows", unit="year"
+        years_to_scrape, desc="Collecting Widespread Panic shows", unit="year"
     )
 
     for year_2d in iterable:

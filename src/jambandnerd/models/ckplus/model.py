@@ -1,14 +1,15 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date, timedelta
-from typing import List, Dict, Any
+from datetime import timedelta
+from typing import Any, Dict, List
 
 import numpy as np
 import pandas as pd
 
-from ..base import PredictionModel
 from src.jambandnerd.transformations.gaps import ModelData
+
+from ..base import PredictionModel
 
 
 @dataclass
@@ -42,7 +43,7 @@ class CKPlusPredictor(PredictionModel):
             raise ValueError(f"alpha must be between 0 and 1, got {alpha}")
         if min_plays_threshold < 1:
             raise ValueError(f"min_plays_threshold must be at least 1, got {min_plays_threshold}")
-            
+
         self.band = band
         self.alpha = float(alpha)
         self.min_plays_threshold = int(min_plays_threshold)
@@ -55,30 +56,30 @@ class CKPlusPredictor(PredictionModel):
             # Reliability term R
             times_played = int(row.get("times_played", 0) or 0)
             std_gap = float(row.get("std_gap", 0.0) or 0.0)
-            
+
             # Guard against division by zero
             min_thr = max(1, self.min_plays_threshold)
             reliability = min(1.0, times_played / min_thr) * (1.0 / (1.0 + max(0.0, std_gap)))
-            
+
             # Base overdue signal S
             gap_ratio = row.get("gap_ratio", float("nan"))
             gap_z = float(row.get("gap_z_score", 0.0) or 0.0)
-            
+
             s_components = []
             # Only include gap_ratio if it's finite and positive
             if pd.notna(gap_ratio) and np.isfinite(gap_ratio) and gap_ratio > 0:
                 s_components.append(self.alpha * float(gap_ratio))
-            
+
             # Include z-score component (clamped to reasonable range)
             gap_z_clamped = max(0.0, min(10.0, gap_z))  # Cap at 10 standard deviations
             s_components.append((1.0 - self.alpha) * gap_z_clamped)
-            
+
             s = sum(s_components)
             score = float(s * reliability)
-            
+
             # Return finite score or 0.0 if non-finite
             return score if np.isfinite(score) else 0.0
-            
+
         except (ValueError, TypeError, ZeroDivisionError) as e:
             # Log the error and return 0 score for this song
             print(f"Warning: Error calculating score for song {row.get('song_name', 'unknown')}: {e}")

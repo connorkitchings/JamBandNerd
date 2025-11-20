@@ -64,7 +64,7 @@ class BillyCollector(BandCollector):
             parsed = self._parse_show_card(link)
             if not parsed:
                 continue
-            
+
             show_date, venue_data = parsed
             show_uuid = self._extract_show_uuid(link)
 
@@ -126,7 +126,7 @@ class BillyCollector(BandCollector):
             if show_uuid and show_date:
                 if (show_uuid, show_date) not in unique_shows:
                     unique_shows[(show_uuid, show_date)] = show
-        
+
         filtered_shows = []
         for show in unique_shows.values():
             show_dt = datetime.fromisoformat(show["show_date"]).date()
@@ -139,11 +139,11 @@ class BillyCollector(BandCollector):
             len(filtered_shows),
             pages_fetched or max(len(filtered_shows) // 10, 1),
         )
-        
+
         # Collect and add upcoming shows
         upcoming_cutoff = date.today()
         upcoming_shows = self._collect_upcoming_shows(min_date=end_date or start_date or upcoming_cutoff)
-        
+
         # Add upcoming shows, avoiding duplicates
         seen_uuids = {s["source_uuid"] for s in filtered_shows}
         for show in upcoming_shows:

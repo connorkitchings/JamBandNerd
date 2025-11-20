@@ -8,26 +8,29 @@ in the future.
 
 from __future__ import annotations
 
-import sys
 import os
+import sys
+
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, project_root)
 
 import argparse
 import hashlib
 import json
-from datetime import date, datetime, timedelta, timezone
 import os
+from datetime import date, datetime, timedelta, timezone
 from typing import Any, Dict, Iterable, List, Optional
 
 import pandas as pd
 
+from scripts.common import assert_required_columns, ensure_source_reachable, fetch_table
 from src.jambandnerd.data_collection.billy.collector import BillyCollector
 from src.jambandnerd.db.connection import get_supabase_client
 from src.jambandnerd.db.operations import get_table_schema, upsert_dataframe
-from src.jambandnerd.db.validation import coerce_df_types, validate_dataframe_against_table
-
-from scripts.common import fetch_table, ensure_source_reachable, assert_required_columns
+from src.jambandnerd.db.validation import (
+    coerce_df_types,
+    validate_dataframe_against_table,
+)
 
 
 def _hash_row(record: Dict[str, Any]) -> str:

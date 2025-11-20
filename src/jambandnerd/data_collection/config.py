@@ -78,5 +78,5 @@ def get_collector_config(band: str) -> CollectorConfig:
     if band not in COLLECTOR_CONFIGS:
         supported = ', '.join(COLLECTOR_CONFIGS.keys())
         raise ValueError(f"Unsupported band '{band}'. Supported bands: {supported}")
-    
+
     return COLLECTOR_CONFIGS[band]

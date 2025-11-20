@@ -20,10 +20,16 @@ import pandas as pd
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, project_root)
 
-from scripts.common import assert_required_columns, ensure_source_reachable  # noqa: E402
+from scripts.common import (  # noqa: E402
+    assert_required_columns,
+    ensure_source_reachable,
+)
 from src.jambandnerd.data_collection.eggy.collector import EggyCollector  # noqa: E402
 from src.jambandnerd.db.connection import get_supabase_client  # noqa: E402
-from src.jambandnerd.db.operations import get_table_schema, upsert_dataframe  # noqa: E402
+from src.jambandnerd.db.operations import (  # noqa: E402
+    get_table_schema,
+    upsert_dataframe,
+)
 from src.jambandnerd.db.validation import (  # noqa: E402
     coerce_df_types,
     validate_dataframe_against_table,

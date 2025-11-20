@@ -1,14 +1,15 @@
 
 import argparse
-from datetime import datetime
 import os
 import sys
+from datetime import datetime
 
 # Add project root to path
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, project_root)
 
 from src.jambandnerd.db.connection import get_supabase_client
+
 
 def delete_setlist_data(band: str, date_str: str):
     """
@@ -22,7 +23,7 @@ def delete_setlist_data(band: str, date_str: str):
         # Validate date format
         datetime.strptime(date_str, "%Y-%m-%d")
     except ValueError:
-        print(f"Error: Invalid date format. Please use YYYY-MM-DD.")
+        print("Error: Invalid date format. Please use YYYY-MM-DD.")
         return
 
     client = get_supabase_client()

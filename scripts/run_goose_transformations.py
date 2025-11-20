@@ -6,12 +6,11 @@ It prints a concise preview for validation.
 """
 from __future__ import annotations
 
-from datetime import date
+import os
+import sys
 from typing import Any, Dict, List
 
 import pandas as pd
-import sys
-import os
 
 # Add the project root to the Python path (align with collection script pattern)
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -19,7 +18,6 @@ sys.path.insert(0, project_root)
 
 from src.jambandnerd.db.connection import get_supabase_client  # noqa: E402
 from src.jambandnerd.transformations.gaps import (  # noqa: E402
-    compute_show_index,
     aggregate_past_year_for_notebook,
 )
 

@@ -1,8 +1,8 @@
 """Data collector for Phish from phish.net API."""
-import os
 import logging
-from typing import List, Dict, Any, Optional
+import os
 from datetime import date
+from typing import Any, Dict, List, Optional
 
 from ..base import BandCollector
 from ..config import get_collector_config
@@ -17,19 +17,19 @@ class PhishCollector(BandCollector):
     def __init__(self):
         config = get_collector_config('phish')
         super().__init__(config)
-        
+
         # Phish.net requires an API key
         self.api_key = os.getenv("PHISH_API_KEY")
         if not self.api_key:
             raise ValueError("PHISH_API_KEY environment variable not set.")
-        
+
         logger.info(f"Initialized PhishCollector with rate limit: {config.rate_limit_calls}/{config.rate_limit_window}s")
 
     def _fetch_phish_endpoint(self, endpoint: str) -> List[Dict[str, Any]]:
         """Phish-specific endpoint fetcher that adds API key to requests."""
         # Add .json suffix and API key parameter for phish.net
         full_endpoint = f"{endpoint}.json?apikey={self.api_key}"
-        
+
         try:
             response_data = self._fetch_from_endpoint(full_endpoint)
             # Phish.net API wraps data in a 'data' field
@@ -99,6 +99,6 @@ class PhishCollector(BandCollector):
                 # Rate limiting is now handled by the base class
             except Exception as e:
                 logger.error(f"Failed to fetch setlist for show_id {show_id}: {e}")
-        
+
         logger.info(f"✅ {self.ARTIST_NAME}: Collected {len(all_setlists)} total setlist records.")
         return all_setlists

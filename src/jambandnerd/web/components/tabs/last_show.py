@@ -7,7 +7,12 @@ import pandas as pd
 import streamlit as st
 from supabase import Client
 
-from jambandnerd.web.data import fetch_last_show_setlist, fetch_predictions_for_date, fetch_predictions, fetch_last_collection_time
+from jambandnerd.web.data import (
+    fetch_last_collection_time,
+    fetch_last_show_setlist,
+    fetch_predictions,
+    fetch_predictions_for_date,
+)
 
 # This is a temporary solution. In the future, this should be moved to a more centralized location.
 WSP_ARTIST_MARKERS = {
@@ -86,7 +91,7 @@ def display_last_show_setlist(client: Client, band: str, model: str):
 
     st.divider()
 
-    
+
 
     # Fetch collection and prediction times for this specific show date
     collection_time = fetch_last_collection_time(client, band) # This fetches the latest, not necessarily for this show
@@ -96,7 +101,7 @@ def display_last_show_setlist(client: Client, band: str, model: str):
     predicted_at = pd.to_datetime(predicted_at_raw).floor("min") if predicted_at_raw else None
     predicted_at_str = predicted_at.strftime("%Y-%m-%d %H:%M") if predicted_at else "unknown"
 
-    
+
 
         # Retrieve predictions for this specific show_date if available
     predictions_df_for_show = pd.DataFrame()

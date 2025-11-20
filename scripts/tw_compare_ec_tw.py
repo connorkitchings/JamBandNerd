@@ -11,23 +11,21 @@ Usage:
 This script does not write to the database; it only reads and prints a summary.
 """
 
-import os
-import sys
 import argparse
 import json
+import os
 import re
+import sys
 from collections import defaultdict
 from pathlib import Path
 from typing import Any, Dict, List
-
-import pandas as pd
 
 # Ensure project root on path (like other scripts)
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, project_root)
 
-from src.jambandnerd.db.connection import get_supabase_client
 from src.jambandnerd.data_collection.wsp.tourwrangler import parse_show_page
+from src.jambandnerd.db.connection import get_supabase_client
 
 
 def normalize_name(s: str | None) -> str:

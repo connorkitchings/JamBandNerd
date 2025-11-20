@@ -21,6 +21,7 @@ import pandas as pd
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, project_root)
 
+from scripts.common import assert_required_columns, ensure_source_reachable
 from src.jambandnerd.data_collection.phish.collector import PhishCollector
 from src.jambandnerd.db.connection import get_supabase_client
 from src.jambandnerd.db.operations import get_table_schema, upsert_dataframe
@@ -28,7 +29,6 @@ from src.jambandnerd.db.validation import (
     coerce_df_types,
     validate_dataframe_against_table,
 )
-from scripts.common import ensure_source_reachable, assert_required_columns
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"

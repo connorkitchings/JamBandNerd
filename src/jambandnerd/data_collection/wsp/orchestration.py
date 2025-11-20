@@ -6,14 +6,21 @@ WSP data from various sources.
 
 import logging
 import os
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timedelta
 
 import pandas as pd
 
-from jambandnerd.db.operations import upsert_dataframe, get_table_schema
 from jambandnerd.db.connection import get_supabase_client
-from scripts.common import fetch_table, ensure_source_reachable, assert_required_columns
+from jambandnerd.db.operations import get_table_schema, upsert_dataframe
+from scripts.common import assert_required_columns, ensure_source_reachable, fetch_table
+
 from .collector import WSPCollector
+from .normalizer import (
+    normalize_setlists,
+    normalize_shows,
+    normalize_songs,
+    normalize_venues,
+)
 from .tourwrangler import fetch_setlist_from_tourwrangler
 
 logging.basicConfig(
@@ -37,17 +44,11 @@ def process_wsp_data(
     logging.info("--- Starting WSP Song Collection ---")
     songs_data = collector.collect_songs()
     if songs_data:
-        songs_df = pd.DataFrame(songs_data)
-        songs_df.rename(columns={"code": "song_code", "aka": "aka"}, inplace=True)
-        for date_col in ["first_played", "last_played"]:
-            if date_col in songs_df.columns:
-                songs_df[date_col] = pd.to_datetime(songs_df[date_col], errors='coerce').dt.date
-                songs_df[date_col] = songs_df[date_col].apply(lambda d: d.isoformat() if pd.notnull(d) else None)
-        songs_df = songs_df.where(pd.notnull(songs_df), None)
+        songs_df = normalize_songs(songs_data)
         upsert_dataframe(
             table_name="wsp_songs_raw",
             df=songs_df,
-            conflict_columns=["song_name"],
+            conflict_columns=["api_song_id"],
         )
         logging.info(f"Upserted {len(songs_df)} songs into wsp_songs_raw.")
     logging.info("--- Finished WSP Song Collection ---")
@@ -59,18 +60,29 @@ def process_wsp_data(
         end_date=datetime(year_end, 12, 31).date() if year_end else None,
     )
     if shows_data:
-        shows_df = pd.DataFrame(shows_data)
-        shows_df["show_date"] = pd.to_datetime(shows_df["show_date"], errors='coerce').dt.date
-        shows_df["show_date"] = shows_df["show_date"].apply(lambda d: d.isoformat() if pd.notnull(d) else None)
+        shows_df = normalize_shows(shows_data)
         upsert_dataframe(
             table_name="wsp_shows_raw",
             df=shows_df,
-            conflict_columns=["source_url"],
+            conflict_columns=["show_id"],
         )
         logging.info(f"Upserted {len(shows_df)} shows into wsp_shows_raw.")
     logging.info("--- Finished WSP Show Collection ---")
 
-    # 3. Fetch shows from DB for the specified year range
+    # 3. Collect and Upsert Venues
+    logging.info("--- Starting WSP Venue Collection ---")
+    venues_data = collector.collect_venues()
+    if venues_data:
+        venues_df = normalize_venues(venues_data)
+        upsert_dataframe(
+            table_name="wsp_venues_raw",
+            df=venues_df,
+            conflict_columns=["venue_id"],
+        )
+        logging.info(f"Upserted {len(venues_df)} venues into wsp_venues_raw.")
+    logging.info("--- Finished WSP Venue Collection ---")
+
+    # 4. Fetch shows from DB for the specified year range
     if not full_backfill:
         if year_start and year_end:
             logging.info(f"Fetching shows from database for years {year_start}-{year_end}...")
@@ -87,7 +99,7 @@ def process_wsp_data(
         logging.error("Could not retrieve shows from database. Aborting setlist collection.")
         return
 
-    # 4. Check for existing setlists to avoid re-scraping
+    # 5. Check for existing setlists to avoid re-scraping
     if skip_existing_setlists:
         try:
             existing_ids = {record["show_id"] for record in client.table("wsp_setlists_raw").select("show_id").in_("show_id", shows_to_process_df["show_id"].tolist()).execute().data}
@@ -95,7 +107,7 @@ def process_wsp_data(
         except Exception as e:
             logging.warning(f"Could not check existing setlists: {e}. Proceeding with all shows.")
 
-    # 5. Collect and Upsert Setlists
+    # 6. Collect and Upsert Setlists
     if not shows_to_process_df.empty:
         records_for_scrape = shows_to_process_df.to_dict("records")
         logging.info(
@@ -103,10 +115,7 @@ def process_wsp_data(
         )
         setlists_data = collector.collect_setlists(records_for_scrape)
         if setlists_data:
-            setlists_df = pd.DataFrame(setlists_data)
-            timestamp = datetime.now(timezone.utc).isoformat()
-            setlists_df["created_at"] = timestamp
-            setlists_df["updated_at"] = timestamp
+            setlists_df = normalize_setlists(setlists_data)
             upsert_dataframe(
                 table_name="wsp_setlists_raw",
                 df=setlists_df,
@@ -118,7 +127,7 @@ def process_wsp_data(
         else:
             logging.info("No new shows require setlist scraping.")
 
-    # 6. Promote EC over TW for recent shows
+    # 7. Promote EC over TW for recent shows
     try:
         today = date.today()
         window_days = int(os.environ.get("WSP_BACKUP_WINDOW_DAYS", "3"))

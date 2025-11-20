@@ -1,7 +1,8 @@
 """Tests for data collection modules."""
 
-import pytest
 from datetime import date
+
+import pytest
 
 from jambandnerd.data_collection.base import BandCollector
 
@@ -64,9 +65,9 @@ class TestMockBandCollector:
         collector = MockBandCollector()
         start_date = date(2025, 1, 1)
         end_date = date(2025, 1, 31)
-        
+
         shows = collector.collect_shows(start_date, end_date)
-        
+
         assert len(shows) == 1
         assert shows[0]["show_id"] == "test_show_1"
         assert shows[0]["date"] == "2025-01-01"
@@ -75,9 +76,9 @@ class TestMockBandCollector:
         """Test the collect_setlists method."""
         collector = MockBandCollector()
         show_ids = ["test_show_1"]
-        
+
         setlists = collector.collect_setlists(show_ids)
-        
+
         assert len(setlists) == 1
         assert setlists[0]["show_id"] == "test_show_1"
         assert setlists[0]["song"] == "Test Song"
@@ -85,9 +86,9 @@ class TestMockBandCollector:
     def test_collect_songs(self):
         """Test the collect_songs method."""
         collector = MockBandCollector()
-        
+
         songs = collector.collect_songs()
-        
+
         assert len(songs) == 1
         assert songs[0]["song_id"] == "test_song_1"
         assert songs[0]["name"] == "Test Song"
