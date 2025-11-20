@@ -173,10 +173,15 @@ jobs:
           repo_root = os.environ.get('GITHUB_WORKSPACE', '.')
           sys.path.insert(0, os.path.join(repo_root, 'src'))
           
-          from jambandnerd.db.connection import get_supabase_client
-          from jambandnerd.config import BAND_ID_COLUMNS
+          try:
+              from jambandnerd.db.connection import get_supabase_client
+              from jambandnerd.config import BAND_ID_COLUMNS
+              
+              client = get_supabase_client()
+          except Exception as e:
+              print(f'::error::Failed to initialize Supabase client: {e}')
+              sys.exit(1)
           
-          client = get_supabase_client()
           band = os.environ['BAND']
           cutoff = (date.today() - timedelta(days=7)).isoformat()
           id_col = BAND_ID_COLUMNS.get(band, 'show_id')
