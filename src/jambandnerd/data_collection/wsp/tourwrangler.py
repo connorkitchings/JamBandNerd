@@ -4,6 +4,7 @@ This module provides helper functions to discover and parse Widespread Panic
 setlists from TourWrangler to be used as a fallback when Everyday Companion
 is missing recent historical show setlists.
 """
+
 from __future__ import annotations
 
 import re
@@ -14,9 +15,11 @@ import requests
 from bs4 import BeautifulSoup
 
 session = requests.Session()
-session.headers.update({
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36'
-})
+session.headers.update(
+    {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
+    }
+)
 
 TW_SETLISTS_INDEX = "https://www.tourwrangler.com/artists/widespread-panic/setlists/"
 TW_SHOW_HREF_SUBSTR = "/artists/widespread-panic/shows/"
@@ -38,7 +41,15 @@ ARTIST_MARKERS = {
     "murray mclauchlan",
     "the jimi hendrix experience",
     "traditional",
+    "j.j. cale",
+    "sonny boy williamson",
+    "tom waits",
+    "tom petty",
+    "neil young",
+    "jerry joseph",
+    "van morrison",
 }
+
 
 # Build a regex replacer for artist markers that does not rely on \b at the end of punctuation
 def _strip_artist_markers(s: str) -> str:
@@ -49,6 +60,7 @@ def _strip_artist_markers(s: str) -> str:
     # Also handle 'Widespread Panic' capitalized variants
     out = re.sub(r"\s*,\s*Widespread\s+Panic", "", out, flags=re.IGNORECASE)
     return out
+
 
 # Segment terminators that indicate end of useful setlist content
 STOP_WORDS = [
@@ -104,7 +116,9 @@ def _normalize_token(s: str) -> str:
     return re.sub(r"[^a-z0-9]", "", s.lower())
 
 
-def _slug_matches_city_state(slug: str, city: Optional[str], state: Optional[str]) -> bool:
+def _slug_matches_city_state(
+    slug: str, city: Optional[str], state: Optional[str]
+) -> bool:
     if not city and not state:
         return True
     slug_norm = _normalize_token(slug)
@@ -114,6 +128,7 @@ def _slug_matches_city_state(slug: str, city: Optional[str], state: Optional[str
     if state:
         ok = ok and (_normalize_token(state) in slug_norm)
     return ok
+
 
 def _normalize_song_name(song_name: str) -> str:
     """Apply specific normalizations to song names."""
@@ -147,6 +162,7 @@ def _clean_song_text(text: str) -> str:
     text = re.sub(r"\s+", " ", text)
     return text.strip()
 
+
 def _split_segue(song_chunk: str) -> List[Tuple[str, bool]]:
     """Split a song chunk on '>' segues and mark is_segue for all but the last."""
     parts = [p.strip() for p in song_chunk.split(">") if p.strip()]
@@ -154,6 +170,7 @@ def _split_segue(song_chunk: str) -> List[Tuple[str, bool]]:
     for i, p in enumerate(parts):
         out.append((_clean_song_text(p.rstrip("*")), i < len(parts) - 1))
     return out
+
 
 def _parse_sets_from_text(block_text: str, show_id: str) -> List[Dict[str, Any]]:
     """Parse a text block that includes 'Set 1', 'Set 2', 'Encore' sections.
@@ -170,7 +187,10 @@ def _parse_sets_from_text(block_text: str, show_id: str) -> List[Dict[str, Any]]
     segments: List[Tuple[str, str]] = []  # (set_key, content)
 
     # Use regex to find headers and their spans across entire page
-    pattern = re.compile(r"(Set\s*([0-9]+)|Encore)\s*:?(.*?)(?=(Set\s*[0-9]+|Encore|$))", re.IGNORECASE | re.DOTALL)
+    pattern = re.compile(
+        r"(Set\s*([0-9]+)|Encore)\s*:?(.*?)(?=(Set\s*[0-9]+|Encore|$))",
+        re.IGNORECASE | re.DOTALL,
+    )
     for m in pattern.finditer(text):
         header = m.group(1)
         content = m.group(3).strip()
@@ -212,7 +232,10 @@ def _parse_sets_from_text(block_text: str, show_id: str) -> List[Dict[str, Any]]
         if re.fullmatch(r"[12][0-9]{3}", tl):
             return True
         # month day ordinal
-        if re.fullmatch(r"(january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{1,2}(st|nd|rd|th)?", tl):
+        if re.fullmatch(
+            r"(january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{1,2}(st|nd|rd|th)?",
+            tl,
+        ):
             return True
         # punctuation-only or dash
         if re.fullmatch(r"[-—–]+", tl):
@@ -229,6 +252,27 @@ def _parse_sets_from_text(block_text: str, show_id: str) -> List[Dict[str, Any]]
         # explicit artist-credit spillover that should not persist as songs
         if tl in ARTIST_MARKERS:
             return True
+
+        # Detect artist names: tokens with "&" or "and" often indicate artist credits
+        # e.g., "Neil Young & Crazy Horse", "Simon and Garfunkel"
+        if " & " in t or " and " in tl:
+            return True
+
+        # Detect full names (First Last or First Middle Last) that are likely artists
+        # Pattern: 2-3 capitalized words, each starting with capital letter
+        words = t.split()
+        if 2 <= len(words) <= 3:
+            # Check if all words are capitalized (title case) - typical for artist names
+            if all(
+                word[0].isupper() and word[1:].islower()
+                for word in words
+                if len(word) > 0
+            ):
+                # Additional check: if it contains common artist name patterns
+                # like initials (J.J., B.B.) or common first names
+                if any("." in word for word in words):  # Has initials like "J.J."
+                    return True
+
         return False
 
     rows: List[Dict[str, Any]] = []
@@ -236,7 +280,12 @@ def _parse_sets_from_text(block_text: str, show_id: str) -> List[Dict[str, Any]]
         # Split on commas and newlines first
         raw_pieces = [p.strip() for p in re.split(r",|\n", content) if p.strip()]
         # If still single blob with many ' > ', keep as one piece to split by segue
-        pieces = raw_pieces if not (len(raw_pieces) == 1 and ">" in raw_pieces[0]) else [raw_pieces[0]]
+        pieces = (
+            raw_pieces
+            if not (len(raw_pieces) == 1 and ">" in raw_pieces[0])
+            else [raw_pieces[0]]
+        )
+
         song_pos = 1
         for piece in pieces:
             # split on segues
@@ -248,22 +297,26 @@ def _parse_sets_from_text(block_text: str, show_id: str) -> List[Dict[str, Any]]
                 token = _remove_parenthesized_text(token)
                 token = _clean_song_text(token)
                 cleaned = _normalize_song_name(token.strip())
-                # Drop non-song tokens
+                # Drop non-song tokens (now includes artist name detection)
                 if looks_like_non_song(cleaned):
                     continue
-                rows.append({
-                    "show_id": show_id,
-                    "set_number": set_key,
-                    "song_position": song_pos,
-                    "song_name": cleaned,
-                    "is_segue": is_segue,
-                    "song_notes": "",
-                })
+                rows.append(
+                    {
+                        "show_id": show_id,
+                        "set_number": set_key,
+                        "song_position": song_pos,
+                        "song_name": cleaned,
+                        "is_segue": is_segue,
+                        "song_notes": "",
+                    }
+                )
                 song_pos += 1
     return rows
 
 
-def find_show_on_index(target_date: date, city: Optional[str], state: Optional[str]) -> Tuple[Optional[str], Optional[str]]:
+def find_show_on_index(
+    target_date: date, city: Optional[str], state: Optional[str]
+) -> Tuple[Optional[str], Optional[str]]:
     """Search the TourWrangler setlists index for a show matching the target date.
 
     Returns (url, text_block) if found, otherwise (None, None)."""
@@ -308,6 +361,7 @@ def parse_show_page(url: str, show_id: str) -> List[Dict[str, Any]]:
     soup = BeautifulSoup(resp.content, "html.parser")
     page_text = soup.get_text("\n", strip=True)
     return _parse_sets_from_text(page_text, show_id)
+
 
 def fetch_setlist_from_tourwrangler(
     show_date: date,

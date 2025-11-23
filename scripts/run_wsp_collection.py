@@ -36,12 +36,21 @@ def run_wsp_collection(
             f"Defaulting to show collection for years: {year_start}-{year_end}"
         )
 
-    process_wsp_data(
-        skip_existing_setlists=skip_existing_setlists,
-        year_start=year_start,
-        year_end=year_end,
-        full_backfill=full_backfill,
-    )
+    try:
+        process_wsp_data(
+            skip_existing_setlists=skip_existing_setlists,
+            year_start=year_start,
+            year_end=year_end,
+            full_backfill=full_backfill,
+        )
+        logging.info("✅ WSP collection completed successfully")
+    except RuntimeError as e:
+        logging.error(f"❌ WSP collection failed: {e}")
+        sys.exit(1)
+    except Exception as e:
+        logging.error(f"❌ Unexpected error during WSP collection: {e}")
+        logging.exception("Full traceback:")
+        sys.exit(1)
 
 
 if __name__ == "__main__":

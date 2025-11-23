@@ -21,6 +21,7 @@ from .normalizer import (
     normalize_songs,
     normalize_venues,
 )
+from .status import CollectionStatus
 from .tourwrangler import fetch_setlist_from_tourwrangler
 
 logging.basicConfig(
@@ -37,7 +38,10 @@ def process_wsp_data(
     """Collect all WSP data and store it in Supabase raw tables."""
     logging.info("Starting Widespread Panic data collection...")
     ensure_source_reachable("wsp")
-    collector = WSPCollector()
+
+    # Create status tracker to monitor collection success/failure
+    status = CollectionStatus()
+    collector = WSPCollector(status=status)
     client = get_supabase_client()
 
     # 1. Collect and Upsert Songs
@@ -51,6 +55,7 @@ def process_wsp_data(
             conflict_columns=["api_song_id"],
         )
         logging.info(f"Upserted {len(songs_df)} songs into wsp_songs_raw.")
+    status.songs_collected = len(songs_data)
     logging.info("--- Finished WSP Song Collection ---")
 
     # 2. Collect and Upsert Shows
@@ -67,6 +72,7 @@ def process_wsp_data(
             conflict_columns=["show_id"],
         )
         logging.info(f"Upserted {len(shows_df)} shows into wsp_shows_raw.")
+    status.shows_collected = len(shows_data)
     logging.info("--- Finished WSP Show Collection ---")
 
     # 3. Collect and Upsert Venues
@@ -85,8 +91,16 @@ def process_wsp_data(
     # 4. Fetch shows from DB for the specified year range
     if not full_backfill:
         if year_start and year_end:
-            logging.info(f"Fetching shows from database for years {year_start}-{year_end}...")
-            shows_response = client.table("wsp_shows_raw").select("*").gte("show_date", f"{year_start}-01-01").lte("show_date", f"{year_end}-12-31").execute()
+            logging.info(
+                f"Fetching shows from database for years {year_start}-{year_end}..."
+            )
+            shows_response = (
+                client.table("wsp_shows_raw")
+                .select("*")
+                .gte("show_date", f"{year_start}-01-01")
+                .lte("show_date", f"{year_end}-12-31")
+                .execute()
+            )
             shows_to_process_df = pd.DataFrame(shows_response.data)
         else:
             logging.info("Fetching all shows from database...")
@@ -96,16 +110,29 @@ def process_wsp_data(
         shows_to_process_df = pd.DataFrame(fetch_table("wsp_shows_raw"))
 
     if shows_to_process_df.empty:
-        logging.error("Could not retrieve shows from database. Aborting setlist collection.")
+        logging.error(
+            "Could not retrieve shows from database. Aborting setlist collection."
+        )
         return
 
     # 5. Check for existing setlists to avoid re-scraping
     if skip_existing_setlists:
         try:
-            existing_ids = {record["show_id"] for record in client.table("wsp_setlists_raw").select("show_id").in_("show_id", shows_to_process_df["show_id"].tolist()).execute().data}
-            shows_to_process_df = shows_to_process_df[~shows_to_process_df["show_id"].isin(existing_ids)]
+            existing_ids = {
+                record["show_id"]
+                for record in client.table("wsp_setlists_raw")
+                .select("show_id")
+                .in_("show_id", shows_to_process_df["show_id"].tolist())
+                .execute()
+                .data
+            }
+            shows_to_process_df = shows_to_process_df[
+                ~shows_to_process_df["show_id"].isin(existing_ids)
+            ]
         except Exception as e:
-            logging.warning(f"Could not check existing setlists: {e}. Proceeding with all shows.")
+            logging.warning(
+                f"Could not check existing setlists: {e}. Proceeding with all shows."
+            )
 
     # 6. Collect and Upsert Setlists
     if not shows_to_process_df.empty:
@@ -124,6 +151,7 @@ def process_wsp_data(
             logging.info(
                 f"Upserted {len(setlists_df)} setlist records into wsp_setlists_raw."
             )
+            status.setlists_collected = len(setlists_df)
         else:
             logging.info("No new shows require setlist scraping.")
 
@@ -274,4 +302,17 @@ def process_wsp_data(
     except Exception as exc:
         logging.warning(f"Could not log collection run ({exc}).")
 
+    # Evaluate collection status and fail if critical errors occurred
+    if status.should_fail():
+        error_summary = status.get_failure_summary()
+        logging.error(error_summary)
+        raise RuntimeError(
+            "WSP collection failed: upstream returned errors and no data was collected. "
+            "This likely indicates the site is blocking requests (403 Forbidden). "
+            "Check logs above for details."
+        )
+
+    # Log success summary
+    success_summary = status.get_success_summary()
+    logging.info(success_summary)
     logging.info("Widespread Panic data collection finished.")

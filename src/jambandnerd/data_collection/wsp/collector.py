@@ -17,6 +17,7 @@ from ..config import get_collector_config
 from ..setlist_reviewer import review_setlist
 from .parser import _validate_song_name, parse_setlist_from_text
 from .session import create_enhanced_session, make_request
+from .status import CollectionStatus
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +28,7 @@ class WSPCollector(BandCollector):
     ARTIST_NAME = "Widespread Panic"
     BASE_URL = "https://www.everydaycompanion.com"
 
-    def __init__(self):
+    def __init__(self, status: Optional[CollectionStatus] = None):
         config = get_collector_config("wsp")
 
         super().__init__(config)
@@ -37,6 +38,9 @@ class WSPCollector(BandCollector):
         # Enhanced session with proper headers and retry logic
 
         self.session = create_enhanced_session()
+
+        # Status tracking for error handling and exit code determination
+        self.status = status if status is not None else CollectionStatus()
 
         logger.info("Initialized WSPCollector")
 
@@ -152,6 +156,15 @@ class WSPCollector(BandCollector):
                 )
                 song_position += 1
             return setlist_data
+        except requests.exceptions.HTTPError as e:
+            if e.response and e.response.status_code == 403:
+                self.status.record_403_error(f"setlist {show_url}")
+                logger.error(f"Failed to scrape setlist for {show_url}: {e}")
+            else:
+                status_code = e.response.status_code if e.response else "unknown"
+                self.status.record_http_error(f"setlist {show_url}", status_code)
+                logger.error(f"Failed to scrape setlist for {show_url}: {e}")
+            return []
         except Exception as e:
             logger.error(f"Failed to scrape setlist for {show_url}: {e}")
             return []
@@ -328,17 +341,20 @@ class WSPCollector(BandCollector):
                         )
                         continue
 
-            except requests.RequestException as e:
-                if (
-                    hasattr(e, "response")
-                    and e.response
-                    and e.response.status_code == 404
-                ):
+            except requests.exceptions.HTTPError as e:
+                if e.response and e.response.status_code == 404:
                     logger.info(
                         f"No tour page found for year {year_str} (404), skipping."
                     )
-                else:
+                elif e.response and e.response.status_code == 403:
+                    self.status.record_403_error(f"tour page {url}")
                     logger.error(f"Failed to fetch or parse year {year_str}: {e}")
+                else:
+                    status_code = e.response.status_code if e.response else "unknown"
+                    self.status.record_http_error(f"tour page {url}", status_code)
+                    logger.error(f"Failed to fetch or parse year {year_str}: {e}")
+            except requests.RequestException as e:
+                logger.error(f"Failed to fetch or parse year {year_str}: {e}")
 
         logger.info(f"✅ {self.ARTIST_NAME}: Collected {len(shows)} show URLs.")
         return shows
@@ -420,6 +436,15 @@ class WSPCollector(BandCollector):
             # Explicit type conversion to satisfy type checker
             return [dict(row) for row in songs_df.to_dict("records")]  # type: ignore[misc]
 
+        except requests.exceptions.HTTPError as e:
+            if e.response and e.response.status_code == 403:
+                self.status.record_403_error(f"songs page {url}")
+                logger.error(f"Failed to scrape songs: {e}")
+            else:
+                status_code = e.response.status_code if e.response else "unknown"
+                self.status.record_http_error(f"songs page {url}", status_code)
+                logger.error(f"Failed to scrape songs: {e}")
+            return []
         except Exception as e:
             logger.error(f"Failed to scrape songs: {e}")
             return []
