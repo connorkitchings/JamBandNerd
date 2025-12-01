@@ -80,6 +80,23 @@ class WSPCollector(BandCollector):
 
             soup = BeautifulSoup(response.content, "html.parser")
             setlist_data = parse_setlist_from_text(soup, show_id)
+        except requests.exceptions.HTTPError as e:
+            if e.response and e.response.status_code == 403:
+                self.status.record_403_error(show_url)
+                logger.warning(
+                    f"403 Forbidden for {show_url}. Skipping EC scrape for this show. "
+                    f"(Total 403s: {self.status.http_403_errors})"
+                )
+                return []  # Skip this show, TourWrangler fallback will handle it
+            else:
+                self.status.record_http_error(show_url, e.response.status_code if e.response else 0)
+                raise
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Failed to scrape setlist for {show_url}: {e}")
+            raise
+
+        # Continue with normal parsing if no exception
+        try:
 
             if setlist_data:
                 valid_songs = [
@@ -156,17 +173,8 @@ class WSPCollector(BandCollector):
                 )
                 song_position += 1
             return setlist_data
-        except requests.exceptions.HTTPError as e:
-            if e.response and e.response.status_code == 403:
-                self.status.record_403_error(f"setlist {show_url}")
-                logger.error(f"Failed to scrape setlist for {show_url}: {e}")
-            else:
-                status_code = e.response.status_code if e.response else "unknown"
-                self.status.record_http_error(f"setlist {show_url}", status_code)
-                logger.error(f"Failed to scrape setlist for {show_url}: {e}")
-            return []
         except Exception as e:
-            logger.error(f"Failed to scrape setlist for {show_url}: {e}")
+            logger.error(f"Failed to parse setlist table for {show_url}: {e}")
             return []
 
     def collect_shows(

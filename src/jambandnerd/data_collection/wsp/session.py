@@ -40,10 +40,12 @@ def create_enhanced_session() -> requests.Session:
     )
 
     # Configure retry strategy with exponential backoff
+    # NOTE: 403 is NOT included - it's an access denial, not a transient error
+    # Including 403 causes "too many 403 error responses" errors in urllib3
     retry_strategy = Retry(
         total=3,
         backoff_factor=3,  # Wait 1, 3, 9 seconds between retries
-        status_forcelist=[403, 429, 500, 502, 503, 504],
+        status_forcelist=[429, 500, 502, 503, 504],
         allowed_methods=["HEAD", "GET", "OPTIONS"],
     )
 
@@ -57,18 +59,25 @@ def create_enhanced_session() -> requests.Session:
 
 
 last_request_time = 0
-rate_limit_delay = 2.0  # Base delay between requests (will add random variation)
+
+# Detect if running in GitHub Actions and use more conservative rate limiting
+# GitHub Actions IPs may be more aggressively rate-limited by websites
+import os
+IS_GITHUB_ACTIONS = os.getenv("GITHUB_ACTIONS") == "true"
+rate_limit_delay = 6.0 if IS_GITHUB_ACTIONS else 2.0  # Base delay between requests
 
 
 def enforce_rate_limit():
     """Enforce rate limiting between requests with random variation."""
     global last_request_time
     elapsed = time.time() - last_request_time
-    # Add random variation (±0.5s) to make requests less predictable
-    delay_with_jitter = rate_limit_delay + random.uniform(-0.5, 0.5)
+    # Add random variation to make requests less predictable
+    # Use larger jitter in CI to appear more human-like
+    jitter_range = 2.0 if IS_GITHUB_ACTIONS else 0.5
+    delay_with_jitter = rate_limit_delay + random.uniform(0, jitter_range)
     if elapsed < delay_with_jitter:
         sleep_time = delay_with_jitter - elapsed
-        logger.debug(f"Rate limiting: sleeping for {sleep_time:.2f}s")
+        logger.debug(f"Rate limiting: sleeping for {sleep_time:.2f}s (CI={IS_GITHUB_ACTIONS})")
         time.sleep(sleep_time)
     last_request_time = time.time()
 
