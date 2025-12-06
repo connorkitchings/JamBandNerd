@@ -456,11 +456,12 @@ class WSPCollector(BandCollector):
                     f"403 Forbidden for {url}. Proceeding without song data. "
                     f"(Total 403s: {self.status.http_403_errors})"
                 )
+                return []
             else:
                 status_code = e.response.status_code if e.response else "unknown"
                 self.status.record_http_error(f"songs page {url}", status_code)
-                logger.error(f"Failed to scrape songs: {e}")
-            return []
+                logger.error(f"HTTP {status_code} error scraping songs from {url}: {e}")
+                return []
         except Exception as e:
             logger.error(f"Failed to scrape songs: {e}")
             return []
