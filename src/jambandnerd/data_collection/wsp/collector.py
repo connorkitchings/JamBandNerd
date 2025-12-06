@@ -90,10 +90,11 @@ class WSPCollector(BandCollector):
                 return []  # Skip this show, TourWrangler fallback will handle it
             else:
                 self.status.record_http_error(show_url, e.response.status_code if e.response else 0)
-                raise
+                logger.error(f"HTTP {e.response.status_code if e.response else 'unknown'} error for {show_url}: {e}")
+                return []  # Don't raise, return empty to continue processing other shows
         except requests.exceptions.RequestException as e:
             logger.error(f"Failed to scrape setlist for {show_url}: {e}")
-            raise
+            return []  # Don't raise, return empty to continue processing other shows
 
         # Continue with normal parsing if no exception
         try:
@@ -397,7 +398,8 @@ class WSPCollector(BandCollector):
                         all_setlists.extend(setlist_data)
                 except Exception as exc:
                     show_url = future_to_show[future].get("source_url", "unknown URL")
-                    logger.error(f"Scraping {show_url} generated an exception: {exc}")
+                    # This should rarely trigger now that _scrape_single_setlist handles errors internally
+                    logger.warning(f"Unexpected exception scraping {show_url}: {exc}")
 
         # Review and clean the setlist data before returning
         all_setlists = review_setlist(all_setlists)
