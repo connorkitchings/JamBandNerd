@@ -96,17 +96,33 @@ None. All changes were straightforward implementations of the documented fix pla
   - ✅ `src/jambandnerd/data_collection/wsp/collector.py`
   - ✅ `src/jambandnerd/data_collection/wsp/status.py`
 
+## Follow-Up Fix (Same Session)
+
+After the initial commit (`0d52b87`), the GitHub Actions run at 14:50 UTC still showed 403 errors being logged as "HTTP 0" with ERROR level. Root cause identified:
+
+**Problem:** The `_scrape_single_setlist` method was raising exceptions after recording 403 errors. These exceptions were caught by the ThreadPoolExecutor wrapper (lines 399-402), which logged them as generic errors, bypassing the proper 403 tracking.
+
+**Solution (Commit `37e7fa6`):**
+- Changed `_scrape_single_setlist` to return empty list instead of raising exceptions
+- This allows 403s to be properly recorded via `status.record_403_error()` without being re-caught
+- Updated ThreadPoolExecutor wrapper to use WARNING level (should rarely trigger now)
+
 ## Updated Documents
 
 ### Modified:
 - `src/jambandnerd/data_collection/wsp/songs.py`
 - `src/jambandnerd/data_collection/wsp/shows.py`
-- `src/jambandnerd/data_collection/wsp/collector.py`
-- `src/jambandnerd/data_collection/wsp/status.py`
+- `src/jambandnerd/data_collection/wsp/collector.py` (updated twice - commits `0d52b87` and `37e7fa6`)
+- `src/jambandnerd/data_collection/wsp/status.py` (already uncommented in previous commit)
 - `CLAUDE.md`
 
 ### Created:
 - `docs/logs/2025-12-06/01_fix_github_actions_wsp_403.md` (this file)
+
+## Git History
+
+1. **Commit `0d52b87`:** Initial 403 handling improvements (songs.py, shows.py, collector.py, CLAUDE.md)
+2. **Commit `37e7fa6`:** Critical fix for setlist scraping exception handling
 
 ## References
 
