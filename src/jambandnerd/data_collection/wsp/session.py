@@ -168,11 +168,16 @@ def make_playwright_request(url: str) -> requests.Response:
     try:
         logger.debug(f"Fetching with Playwright: {url}")
 
-        # Navigate to the URL with extended timeout - wait for network to be idle
-        response = page.goto(url, wait_until='networkidle', timeout=30000)
+        # Navigate to the URL with extended timeout
+        # Use 'load' instead of 'networkidle' - some pages never fully idle
+        # Increase timeout to 60s to handle slow CI network
+        response = page.goto(url, wait_until='load', timeout=60000)
 
         if response is None:
             raise requests.exceptions.RequestException(f"Failed to load {url}")
+
+        # Wait a moment for any dynamic content to load
+        page.wait_for_timeout(1000)
 
         # Check for HTTP errors
         status_code = response.status
