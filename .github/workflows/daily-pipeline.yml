@@ -119,6 +119,12 @@ jobs:
           source .venv/bin/activate
           uv pip install .
 
+      - name: Install Playwright Browsers
+        if: steps.check.outputs.should_run == 'true'
+        run: |
+          source .venv/bin/activate
+          playwright install --with-deps chromium
+
       - name: Run Data Collection
         if: steps.check.outputs.should_run == 'true'
         run: |

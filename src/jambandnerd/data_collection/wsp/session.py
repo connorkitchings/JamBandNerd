@@ -1,14 +1,20 @@
 """This module contains functions for creating and managing HTTP sessions."""
 
 import logging
+import os
 import random
 import time
+from typing import Optional
 
 import requests
+from playwright.sync_api import sync_playwright, Browser, BrowserContext, Page
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 logger = logging.getLogger(__name__)
+
+# Detect if running in GitHub Actions
+IS_GITHUB_ACTIONS = os.getenv("GITHUB_ACTIONS") == "true"
 
 
 def create_enhanced_session() -> requests.Session:
@@ -60,11 +66,12 @@ def create_enhanced_session() -> requests.Session:
 
 last_request_time = 0
 
-# Detect if running in GitHub Actions and use more conservative rate limiting
-# GitHub Actions IPs may be more aggressively rate-limited by websites
-import os
-IS_GITHUB_ACTIONS = os.getenv("GITHUB_ACTIONS") == "true"
+# Use more conservative rate limiting in GitHub Actions
 rate_limit_delay = 6.0 if IS_GITHUB_ACTIONS else 2.0  # Base delay between requests
+
+# Global Playwright browser instance for reuse across requests
+_playwright_browser: Optional[Browser] = None
+_playwright_context: Optional[BrowserContext] = None
 
 
 def enforce_rate_limit():
@@ -83,24 +90,141 @@ def enforce_rate_limit():
 
 
 def make_request(session: requests.Session, url: str, **kwargs) -> requests.Response:
-    """Make a GET request with rate limiting and error handling."""
+    """Make a GET request with rate limiting and error handling.
+
+    In GitHub Actions, automatically uses Playwright headless browser to bypass bot detection.
+    In local environments, uses standard requests library.
+    """
+    if IS_GITHUB_ACTIONS:
+        # Use Playwright in CI to bypass bot detection
+        return make_playwright_request(url)
+    else:
+        # Use standard requests locally
+        enforce_rate_limit()
+
+        try:
+            logger.debug(f"Fetching: {url}")
+            response = session.get(url, timeout=30, **kwargs)
+            response.raise_for_status()
+            return response
+        except requests.exceptions.RequestException as e:  # Catch base RequestException
+            if (
+                isinstance(e, requests.exceptions.HTTPError)
+                and e.response
+                and e.response.status_code == 403
+            ):
+                logger.error(
+                    f"403 Forbidden for {url} - site may be blocking scrapers despite headers"
+                )
+            elif isinstance(e, requests.exceptions.ConnectionError):
+                logger.error(f"Connection error for {url}: {e}")
+            # Add other specific exception handling if needed
+            raise  # Re-raise the original exception
+
+
+def _get_playwright_browser() -> Browser:
+    """Get or create a persistent Playwright browser instance."""
+    global _playwright_browser, _playwright_context
+
+    if _playwright_browser is None:
+        logger.info("Initializing Playwright browser for GitHub Actions environment")
+        playwright = sync_playwright().start()
+        _playwright_browser = playwright.chromium.launch(
+            headless=True,
+            args=[
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage',
+                '--disable-blink-features=AutomationControlled',
+            ]
+        )
+        _playwright_context = _playwright_browser.new_context(
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+            viewport={'width': 1920, 'height': 1080},
+            locale='en-US',
+            timezone_id='America/New_York',
+        )
+        # Mask automation indicators
+        _playwright_context.add_init_script("""
+            Object.defineProperty(navigator, 'webdriver', {
+                get: () => undefined
+            });
+        """)
+
+    return _playwright_browser
+
+
+def make_playwright_request(url: str) -> requests.Response:
+    """Make a request using Playwright headless browser.
+
+    This bypasses bot detection by using a real browser instance.
+    Returns a requests.Response-compatible object for backward compatibility.
+    """
     enforce_rate_limit()
 
+    browser = _get_playwright_browser()
+    page: Page = _playwright_context.new_page()
+
     try:
-        logger.debug(f"Fetching: {url}")
-        response = session.get(url, timeout=30, **kwargs)
-        response.raise_for_status()
-        return response
-    except requests.exceptions.RequestException as e:  # Catch base RequestException
-        if (
-            isinstance(e, requests.exceptions.HTTPError)
-            and e.response
-            and e.response.status_code == 403
-        ):
-            logger.error(
-                f"403 Forbidden for {url} - site may be blocking scrapers despite headers"
-            )
-        elif isinstance(e, requests.exceptions.ConnectionError):
-            logger.error(f"Connection error for {url}: {e}")
-        # Add other specific exception handling if needed
-        raise  # Re-raise the original exception
+        logger.debug(f"Fetching with Playwright: {url}")
+
+        # Navigate to the URL with extended timeout - wait for network to be idle
+        response = page.goto(url, wait_until='networkidle', timeout=30000)
+
+        if response is None:
+            raise requests.exceptions.RequestException(f"Failed to load {url}")
+
+        # Check for HTTP errors
+        status_code = response.status
+        if status_code >= 400:
+            # Wait a bit before getting content to ensure page is stable
+            page.wait_for_timeout(500)
+
+            # Create a mock response object for error handling
+            mock_response = requests.Response()
+            mock_response.status_code = status_code
+            mock_response.url = url
+            mock_response._content = page.content().encode('utf-8')
+
+            if status_code == 403:
+                logger.error(f"403 Forbidden for {url} even with Playwright browser")
+
+            # Raise HTTPError for consistency with requests library
+            error = requests.exceptions.HTTPError(f"{status_code} Error: {response.status_text} for url: {url}")
+            error.response = mock_response
+            raise error
+
+        # Get page content
+        content = page.content()
+
+        # Create a mock Response object compatible with requests library
+        mock_response = requests.Response()
+        mock_response.status_code = status_code
+        mock_response._content = content.encode('utf-8')
+        mock_response.url = url
+        mock_response.headers = dict(response.headers)
+        mock_response.encoding = 'utf-8'
+
+        logger.debug(f"Successfully fetched {url} with Playwright (status: {status_code})")
+        return mock_response
+
+    except Exception as e:
+        logger.error(f"Playwright request failed for {url}: {e}")
+        raise
+    finally:
+        # Close the page to free resources
+        page.close()
+
+
+def cleanup_playwright():
+    """Clean up Playwright browser instance. Call this at the end of collection."""
+    global _playwright_browser, _playwright_context
+
+    if _playwright_context is not None:
+        _playwright_context.close()
+        _playwright_context = None
+
+    if _playwright_browser is not None:
+        _playwright_browser.close()
+        _playwright_browser = None
+        logger.info("Playwright browser cleaned up")

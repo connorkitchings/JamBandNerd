@@ -16,7 +16,7 @@ from ..base import BandCollector
 from ..config import get_collector_config
 from ..setlist_reviewer import review_setlist
 from .parser import _validate_song_name, parse_setlist_from_text
-from .session import create_enhanced_session, make_request
+from .session import create_enhanced_session, make_request, cleanup_playwright
 from .status import CollectionStatus
 
 logger = logging.getLogger(__name__)
@@ -476,6 +476,8 @@ class WSPCollector(BandCollector):
         return []
 
     def __del__(self):
-        """Cleanup session on deletion."""
+        """Cleanup session and Playwright browser on deletion."""
         if hasattr(self, "session"):
             self.session.close()
+        # Clean up Playwright browser if it was used (in GitHub Actions)
+        cleanup_playwright()
