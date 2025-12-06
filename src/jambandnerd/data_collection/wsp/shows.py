@@ -2,13 +2,16 @@
 
 import logging
 from datetime import datetime
-from typing import Any, Dict, List, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
 import requests
 from bs4 import BeautifulSoup
 from tqdm import tqdm
 
 from .session import make_request
+
+if TYPE_CHECKING:
+    from .status import CollectionStatus
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +21,7 @@ def collect_shows(
     base_url: str,
     start_date: Union[datetime.date, None] = None,
     end_date: Union[datetime.date, None] = None,
+    status: Optional["CollectionStatus"] = None,
 ) -> List[Dict[str, Any]]:
     """Collects show data by scraping the tour pages (tourYY.asp) with rate limiting."""
     shows = []
@@ -188,17 +192,26 @@ def collect_shows(
                     )
                     continue
 
-        except requests.RequestException as e:
-            if (
-                hasattr(e, "response")
-                and e.response
-                and e.response.status_code == 404
-            ):
+        except requests.exceptions.HTTPError as e:
+            if e.response and e.response.status_code == 404:
                 logger.info(
                     f"No tour page found for year {year_str} (404), skipping."
                 )
+            elif e.response and e.response.status_code == 403:
+                if status:
+                    status.record_403_error(url)
+                logger.warning(
+                    f"403 Forbidden for {url}. Skipping year {year_str}. "
+                    f"(Total 403s: {status.http_403_errors if status else 'N/A'})"
+                )
             else:
+                if status:
+                    status.record_http_error(
+                        url, e.response.status_code if e.response else 0
+                    )
                 logger.error(f"Failed to fetch or parse year {year_str}: {e}")
+        except requests.RequestException as e:
+            logger.error(f"Failed to fetch or parse year {year_str}: {e}")
 
     logger.info(f"✅ Widespread Panic: Collected {len(shows)} show URLs.")
     return shows

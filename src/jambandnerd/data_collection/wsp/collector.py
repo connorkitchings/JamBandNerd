@@ -356,7 +356,10 @@ class WSPCollector(BandCollector):
                     )
                 elif e.response and e.response.status_code == 403:
                     self.status.record_403_error(f"tour page {url}")
-                    logger.error(f"Failed to fetch or parse year {year_str}: {e}")
+                    logger.warning(
+                        f"403 Forbidden for {url}. Skipping year {year_str}. "
+                        f"(Total 403s: {self.status.http_403_errors})"
+                    )
                 else:
                     status_code = e.response.status_code if e.response else "unknown"
                     self.status.record_http_error(f"tour page {url}", status_code)
@@ -447,7 +450,10 @@ class WSPCollector(BandCollector):
         except requests.exceptions.HTTPError as e:
             if e.response and e.response.status_code == 403:
                 self.status.record_403_error(f"songs page {url}")
-                logger.error(f"Failed to scrape songs: {e}")
+                logger.warning(
+                    f"403 Forbidden for {url}. Proceeding without song data. "
+                    f"(Total 403s: {self.status.http_403_errors})"
+                )
             else:
                 status_code = e.response.status_code if e.response else "unknown"
                 self.status.record_http_error(f"songs page {url}", status_code)

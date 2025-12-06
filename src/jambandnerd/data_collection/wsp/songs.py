@@ -2,7 +2,7 @@
 
 import logging
 from io import StringIO
-from typing import Any, Dict, List
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 import pandas as pd
 import requests
@@ -10,10 +10,17 @@ from bs4 import BeautifulSoup
 
 from .session import make_request
 
+if TYPE_CHECKING:
+    from .status import CollectionStatus
+
 logger = logging.getLogger(__name__)
 
 
-def collect_songs(session: requests.Session, base_url: str) -> List[Dict[str, Any]]:
+def collect_songs(
+    session: requests.Session,
+    base_url: str,
+    status: Optional["CollectionStatus"] = None,
+) -> List[Dict[str, Any]]:
     """Collects song data by scraping the song catalog page with rate limiting."""
     url = f"{base_url}/asp/songcode.asp"
     logger.info(f"Scraping songs from {url}")
@@ -53,6 +60,22 @@ def collect_songs(session: requests.Session, base_url: str) -> List[Dict[str, An
         # Explicit type conversion to satisfy type checker
         return [dict(row) for row in songs_df.to_dict("records")]  # type: ignore[misc]
 
+    except requests.exceptions.HTTPError as e:
+        if e.response and e.response.status_code == 403:
+            if status:
+                status.record_403_error(url)
+            logger.warning(
+                f"403 Forbidden for {url}. Proceeding without song data. "
+                f"(Total 403s: {status.http_403_errors if status else 'N/A'})"
+            )
+            return []
+        else:
+            if status:
+                status.record_http_error(
+                    url, e.response.status_code if e.response else 0
+                )
+            logger.error(f"Failed to scrape songs: {e}")
+            return []
     except Exception as e:
         logger.error(f"Failed to scrape songs: {e}")
         return []
