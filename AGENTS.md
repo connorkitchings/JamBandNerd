@@ -95,6 +95,9 @@ Check features/venue.py:45-67 for potential leakage.
 * **Prefer consolidated scripts:** Only drop to band-specific or per-stage scripts when debugging.
 * **Minimal diffs:** When proposing changes, show a compact diff or a bulleted change-set, not full files.
 * **Repro first:** Any failure report must include exact command(s), directory, and environment notes.
+* **Data leakage prevention:** All features MUST respect `reference_date` cutoff. Never include data after `reference_date` in training features (see `src/jambandnerd/transformations/gaps.py`).
+* **In-memory transforms:** Do not create intermediate Supabase tables. Use `ModelData` container for all transformations.
+* **Band-agnostic core:** Keep band-specific logic in collectors only (`src/jambandnerd/data_collection/{band}/`). Transformations and models work across all bands.
 
 ---
 
@@ -124,21 +127,49 @@ uv run python -m jambandnerd.pipeline.stages.feature_engineering --band goose
 streamlit run src/jambandnerd/web/app.py
 ```
 
-**Available bands:** `goose` | `eggy` | `phish` | `wsp` | `billy` | `um`
+**Available bands:** `billy` | `cosmic` | `eggy` | `goose` | `phish` | `um` | `wsp`
 
 **Speed up dev loops:** Add `--skip-accuracy` to bypass accuracy checks
+
+**Individual operations:**
+
+```bash
+# Generate predictions for specific band/model
+uv run python scripts/generate_predictions.py --band goose --model notebook
+
+# Run backtest (accuracy evaluation)
+uv run python scripts/run_backtest.py --band goose --model notebook --shows 50
+
+# Diagnose data issues
+uv run python scripts/diagnose_band_data.py --band goose
+
+# Verify data freshness
+uv run python scripts/verify_data_freshness.py --band goose
+```
+
+**Testing:**
+
+```bash
+pytest tests/                    # Run all tests
+pytest tests/test_models.py      # Specific test file
+ruff check src/                  # Lint
+black src/                       # Format
+```
 
 ---
 
 ## 6) Triage Matrix (when something breaks)
 
-| Issue Type          | Route To                   | Notes                                   |
-| ------------------- | -------------------------- | --------------------------------------- |
-| Install/env errors  | DataOps                    | Include OS, Python version, exact error |
-| API/schema changes  | Researcher → DataOps       | If ingestion fix needed                 |
-| Metrics regressions | Modeler → Feature Engineer | For feature verification                |
-| UI/state issues     | Web/App                    | Include browser console errors          |
-| Cron/CI/CD failures | DataOps                    | Minimal logs + failing step only        |
+| Issue Type | Route To | First Diagnostic | Common Fix |
+|------------|----------|------------------|------------|
+| Install/env errors | DataOps | Python 3.12? UV installed? | `uv venv --python=3.12 && uv pip install .` |
+| API/schema changes | Researcher → DataOps | Check `base.py` retry logic? | Update collector rate limits/headers |
+| Collection failures | DataOps | API keys in .env? | Verify `SUPABASE_URL`, `SUPABASE_KEY`, `PHISH_API_KEY` |
+| Prediction errors | Feature Engineer | Raw tables populated? | Run `diagnose_band_data.py --band {band}` |
+| Data leakage suspected | Feature Engineer | `reference_date` filtering? | Verify `transformations/gaps.py` date cutoff |
+| Metrics regressions | Modeler → Feature Engineer | Recent feature changes? | Run backtest: `run_backtest.py --shows 10` |
+| UI/state issues | Web/App | Supabase connection? | Check browser console, `verify_data_freshness.py` |
+| Cron/CI/CD failures | DataOps | Secrets configured? | Check `.github/workflows/daily-pipeline.yml` |
 
 ---
 
@@ -172,6 +203,7 @@ streamlit run src/jambandnerd/web/app.py
 
 ## 9) Common Anti-Patterns (DON'T)
 
+**Process anti-patterns:**
 * ❌ Loading all docs upfront "just in case"
 * ❌ Writing multi-file solutions without confirming scope
 * ❌ Proposing changes without running the current state first
@@ -179,9 +211,40 @@ streamlit run src/jambandnerd/web/app.py
 * ❌ Inventing commands not documented in pipeline_usage.md
 * ❌ Continuing past 2 failed attempts without escalating
 
+**Technical anti-patterns:**
+* ❌ Adding features to `transformations/gaps.py` without respecting `reference_date`
+* ❌ Creating new intermediate Supabase tables (use in-memory transforms)
+* ❌ Hardcoding band names (use `get_all_bands.py` for discovery)
+* ❌ Adding band-specific logic to transformation pipeline
+* ❌ Skipping backtests after model changes
+* ❌ Modifying raw table schemas without updating all band collectors
+
+---
+
+## 10) Quick Architecture Context (load only if modifying core)
+
+**Data Flow:**
+```
+Band Sources → Collection (API/Scrape) → Raw Storage (Supabase) →
+In-Memory Transform → Models (Notebook/CK+) → Predictions (Supabase) → Web UI
+```
+
+**Key modules:**
+* `src/jambandnerd/data_collection/` - Band-specific collectors inheriting from `BaseCollector`
+* `src/jambandnerd/transformations/gaps.py` - `generate_model_data()` produces `ModelData` container
+* `src/jambandnerd/models/` - `PredictionModel` base class, `notebook/` and `ckplus/` implementations
+* `src/jambandnerd/db/` - Supabase connection (`connection.py`), operations (`operations.py`)
+* `scripts/` - Entry points: `run_optimized_pipeline.py`, `generate_predictions.py`, `run_backtest.py`
+
+**Critical patterns:**
+* `ModelData` container: `historical_plays`, `master_feature_set`, `reference_date`, `reference_index`
+* Raw tables: `{band}_shows_raw`, `{band}_setlists_raw` (standardized schemas)
+* Prediction tables: Cross-band unified `predictions`, `backtest_accuracy`
+* WSP special: Scrapes everydaycompanion.com with TourWrangler.com fallback
+
 ---
 
 ## Version
 
-Last updated: 2025-10-31
+Last updated: 2025-12-01
 Maintained by: JamBandNerd core team
