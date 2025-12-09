@@ -29,4 +29,4 @@ dist/
 .pytest_cache   
 
 # Ruff cache
-.ruff_cache
+.ruff_cache.DS_Store

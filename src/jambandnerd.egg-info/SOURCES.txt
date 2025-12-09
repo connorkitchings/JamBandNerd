@@ -26,13 +26,14 @@ src/jambandnerd/data_collection/phish/collector.py
 src/jambandnerd/data_collection/um/__init__.py
 src/jambandnerd/data_collection/um/collector.py
 src/jambandnerd/data_collection/um/upcoming.py
-src/jambandnerd/data_collection/wsp/__init__.py
 src/jambandnerd/data_collection/wsp/collector.py
+src/jambandnerd/data_collection/wsp/normalizer.py
 src/jambandnerd/data_collection/wsp/orchestration.py
 src/jambandnerd/data_collection/wsp/parser.py
 src/jambandnerd/data_collection/wsp/session.py
 src/jambandnerd/data_collection/wsp/shows.py
 src/jambandnerd/data_collection/wsp/songs.py
+src/jambandnerd/data_collection/wsp/status.py
 src/jambandnerd/data_collection/wsp/tourwrangler.py
 src/jambandnerd/db/__init__.py
 src/jambandnerd/db/connection.py

@@ -17,6 +17,7 @@ Requires-Dist: psycopg2-binary
 Requires-Dist: typer
 Requires-Dist: tqdm
 Requires-Dist: pytest>=8.4.1
+Requires-Dist: playwright>=1.40.0
 Provides-Extra: dev
 Requires-Dist: ruff; extra == "dev"
 Requires-Dist: black; extra == "dev"
