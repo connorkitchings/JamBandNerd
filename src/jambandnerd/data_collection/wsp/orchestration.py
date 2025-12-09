@@ -205,6 +205,40 @@ def process_wsp_data(
         logging.warning(f"EC-over-TW promotion step encountered an error: {exc}")
 
     # 7. TourWrangler fallback for missing recent historical setlists
+    tourwrangler_fallback(client)
+
+    # 8. Log collection run
+    try:
+        client.table("collection_runs").insert({"band": "wsp"}).execute()
+        logging.info("Logged collection run.")
+    except Exception as exc:
+        logging.warning(f"Could not log collection run ({exc}).")
+
+    # Evaluate collection status and fail if critical errors occurred
+    if status.should_fail():
+        error_summary = status.get_failure_summary()
+        logging.error(error_summary)
+        raise RuntimeError(
+            "WSP collection failed: upstream returned errors and no data was collected. "
+            "This likely indicates the site is blocking requests (403 Forbidden). "
+            "Check logs above for details."
+        )
+
+    # Log success summary
+    success_summary = status.get_success_summary()
+    logging.info(success_summary)
+    logging.info("Widespread Panic data collection finished.")
+
+
+def tourwrangler_fallback(client) -> None:
+    """Fetch missing recent historical setlists from TourWrangler.
+
+    This function checks for shows in the configured backup window that are missing
+    setlist data and attempts to fetch them from TourWrangler as a fallback source.
+
+    Args:
+        client: Supabase client instance.
+    """
     try:
         today = date.today()
         window_days = int(os.environ.get("WSP_BACKUP_WINDOW_DAYS", "3"))
@@ -294,25 +328,3 @@ def process_wsp_data(
                 )
     except Exception as exc:
         logging.warning(f"TourWrangler fallback step encountered an error: {exc}")
-
-    # 8. Log collection run
-    try:
-        client.table("collection_runs").insert({"band": "wsp"}).execute()
-        logging.info("Logged collection run.")
-    except Exception as exc:
-        logging.warning(f"Could not log collection run ({exc}).")
-
-    # Evaluate collection status and fail if critical errors occurred
-    if status.should_fail():
-        error_summary = status.get_failure_summary()
-        logging.error(error_summary)
-        raise RuntimeError(
-            "WSP collection failed: upstream returned errors and no data was collected. "
-            "This likely indicates the site is blocking requests (403 Forbidden). "
-            "Check logs above for details."
-        )
-
-    # Log success summary
-    success_summary = status.get_success_summary()
-    logging.info(success_summary)
-    logging.info("Widespread Panic data collection finished.")
