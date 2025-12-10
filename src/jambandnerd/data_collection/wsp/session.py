@@ -16,6 +16,48 @@ logger = logging.getLogger(__name__)
 # Detect if running in GitHub Actions
 IS_GITHUB_ACTIONS = os.getenv("GITHUB_ACTIONS") == "true"
 
+# EverydayCompanion.com uses Windows-1252 encoding (common for older ASP sites)
+EC_ENCODING = "windows-1252"
+
+
+def decode_ec_response(response: requests.Response) -> str:
+    """Decode response from EverydayCompanion with correct encoding.
+
+    EverydayCompanion.com uses Windows-1252 encoding, but may return gzip-compressed content.
+    The requests library auto-decompresses via response.text, but may misdetect encoding.
+    We force it to use Windows-1252 for correct character handling.
+    """
+    # Set encoding before accessing .text to force Windows-1252 decoding
+    response.encoding = EC_ENCODING
+    return response.text
+
+
+def make_simple_request(
+    session: requests.Session, url: str, **kwargs
+) -> requests.Response:
+    """Make a simple GET request without rate limiting.
+
+    Use for index/tour pages that don't need aggressive rate limiting.
+    Individual setlist pages should still use make_request().
+    """
+    try:
+        logger.debug(f"Fetching (no rate limit): {url}")
+        response = session.get(url, timeout=30, **kwargs)
+        response.raise_for_status()
+        return response
+    except requests.exceptions.RequestException as e:
+        if (
+            isinstance(e, requests.exceptions.HTTPError)
+            and e.response
+            and e.response.status_code == 403
+        ):
+            logger.error(
+                f"403 Forbidden for {url} - site may be blocking scrapers despite headers"
+            )
+        elif isinstance(e, requests.exceptions.ConnectionError):
+            logger.error(f"Connection error for {url}: {e}")
+        raise
+
 
 def create_enhanced_session() -> requests.Session:
     """Create a requests session with browser-like headers and retry logic."""
@@ -27,7 +69,7 @@ def create_enhanced_session() -> requests.Session:
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
             "Accept-Language": "en-US,en;q=0.9",
-            "Accept-Encoding": "gzip, deflate, br",
+            # NOTE: Don't set Accept-Encoding manually - let requests handle it automatically
             "Connection": "keep-alive",
             "Upgrade-Insecure-Requests": "1",
             "Sec-Fetch-Dest": "document",
@@ -84,7 +126,9 @@ def enforce_rate_limit():
     delay_with_jitter = rate_limit_delay + random.uniform(0, jitter_range)
     if elapsed < delay_with_jitter:
         sleep_time = delay_with_jitter - elapsed
-        logger.debug(f"Rate limiting: sleeping for {sleep_time:.2f}s (CI={IS_GITHUB_ACTIONS})")
+        logger.debug(
+            f"Rate limiting: sleeping for {sleep_time:.2f}s (CI={IS_GITHUB_ACTIONS})"
+        )
         time.sleep(sleep_time)
     last_request_time = time.time()
 
@@ -132,17 +176,17 @@ def _get_playwright_browser() -> Browser:
         _playwright_browser = playwright.chromium.launch(
             headless=True,
             args=[
-                '--no-sandbox',
-                '--disable-setuid-sandbox',
-                '--disable-dev-shm-usage',
-                '--disable-blink-features=AutomationControlled',
-            ]
+                "--no-sandbox",
+                "--disable-setuid-sandbox",
+                "--disable-dev-shm-usage",
+                "--disable-blink-features=AutomationControlled",
+            ],
         )
         _playwright_context = _playwright_browser.new_context(
             user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-            viewport={'width': 1920, 'height': 1080},
-            locale='en-US',
-            timezone_id='America/New_York',
+            viewport={"width": 1920, "height": 1080},
+            locale="en-US",
+            timezone_id="America/New_York",
         )
         # Mask automation indicators
         _playwright_context.add_init_script("""
@@ -171,7 +215,7 @@ def make_playwright_request(url: str) -> requests.Response:
         # Navigate to the URL with extended timeout
         # Use 'load' instead of 'networkidle' - some pages never fully idle
         # Increase timeout to 60s to handle slow CI network
-        response = page.goto(url, wait_until='load', timeout=60000)
+        response = page.goto(url, wait_until="load", timeout=60000)
 
         if response is None:
             raise requests.exceptions.RequestException(f"Failed to load {url}")
@@ -189,13 +233,15 @@ def make_playwright_request(url: str) -> requests.Response:
             mock_response = requests.Response()
             mock_response.status_code = status_code
             mock_response.url = url
-            mock_response._content = page.content().encode('utf-8')
+            mock_response._content = page.content().encode("utf-8")
 
             if status_code == 403:
                 logger.error(f"403 Forbidden for {url} even with Playwright browser")
 
             # Raise HTTPError for consistency with requests library
-            error = requests.exceptions.HTTPError(f"{status_code} Error: {response.status_text} for url: {url}")
+            error = requests.exceptions.HTTPError(
+                f"{status_code} Error: {response.status_text} for url: {url}"
+            )
             error.response = mock_response
             raise error
 
@@ -205,12 +251,14 @@ def make_playwright_request(url: str) -> requests.Response:
         # Create a mock Response object compatible with requests library
         mock_response = requests.Response()
         mock_response.status_code = status_code
-        mock_response._content = content.encode('utf-8')
+        mock_response._content = content.encode("utf-8")
         mock_response.url = url
         mock_response.headers = dict(response.headers)
-        mock_response.encoding = 'utf-8'
+        mock_response.encoding = "utf-8"
 
-        logger.debug(f"Successfully fetched {url} with Playwright (status: {status_code})")
+        logger.debug(
+            f"Successfully fetched {url} with Playwright (status: {status_code})"
+        )
         return mock_response
 
     except Exception as e:

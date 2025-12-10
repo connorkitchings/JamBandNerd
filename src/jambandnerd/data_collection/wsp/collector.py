@@ -16,7 +16,13 @@ from ..base import BandCollector
 from ..config import get_collector_config
 from ..setlist_reviewer import review_setlist
 from .parser import _validate_song_name, parse_setlist_from_text
-from .session import create_enhanced_session, make_request, cleanup_playwright
+from .session import (
+    create_enhanced_session,
+    make_request,
+    make_simple_request,
+    decode_ec_response,
+    cleanup_playwright,
+)
 from .status import CollectionStatus
 
 logger = logging.getLogger(__name__)
@@ -78,7 +84,7 @@ class WSPCollector(BandCollector):
             if final_url != show_url:
                 logger.debug(f"URL redirected: {show_url} -> {final_url}")
 
-            soup = BeautifulSoup(response.content, "html.parser")
+            soup = BeautifulSoup(decode_ec_response(response), "html.parser")
             setlist_data = parse_setlist_from_text(soup, show_id)
         except requests.exceptions.HTTPError as e:
             if e.response and e.response.status_code == 403:
@@ -89,8 +95,12 @@ class WSPCollector(BandCollector):
                 )
                 return []  # Skip this show, TourWrangler fallback will handle it
             else:
-                self.status.record_http_error(show_url, e.response.status_code if e.response else 0)
-                logger.error(f"HTTP {e.response.status_code if e.response else 'unknown'} error for {show_url}: {e}")
+                self.status.record_http_error(
+                    show_url, e.response.status_code if e.response else 0
+                )
+                logger.error(
+                    f"HTTP {e.response.status_code if e.response else 'unknown'} error for {show_url}: {e}"
+                )
                 return []  # Don't raise, return empty to continue processing other shows
         except requests.exceptions.RequestException as e:
             logger.error(f"Failed to scrape setlist for {show_url}: {e}")
@@ -98,7 +108,6 @@ class WSPCollector(BandCollector):
 
         # Continue with normal parsing if no exception
         try:
-
             if setlist_data:
                 valid_songs = [
                     s for s in setlist_data if _validate_song_name(s["song_name"])
@@ -218,9 +227,9 @@ class WSPCollector(BandCollector):
             year_str = f"{year_2d:02d}"
             url = f"{self.BASE_URL}/asp/tour{year_str}.asp"
             try:
-                # Use enhanced request method with rate limiting
-                response = make_request(self.session, url)
-                soup = BeautifulSoup(response.content, "html.parser")
+                # Use simple request for tour pages (no rate limiting needed for index pages)
+                response = make_simple_request(self.session, url)
+                soup = BeautifulSoup(decode_ec_response(response), "html.parser")
 
                 # Define a filter function to find the correct table
                 def find_show_table(tag):

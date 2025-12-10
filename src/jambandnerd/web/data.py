@@ -158,27 +158,29 @@ def fetch_per_show_accuracy(
         # Process and filter the data in Python instead of at database level
         df = pd.DataFrame(response.data)
 
-        if 'show_date' in df.columns and not df.empty:
+        if "show_date" in df.columns and not df.empty:
             original_count = len(df)
 
             # Remove rows with invalid show_date values
-            df = df.dropna(subset=['show_date'])
-            df = df[df['show_date'].astype(str).str.strip() != '']
+            df = df.dropna(subset=["show_date"])
+            df = df[df["show_date"].astype(str).str.strip() != ""]
 
             # Apply exclusions in Python
             valid_excluded_dates = {d for d in EXCLUDED_SHOW_DATES if d and d.strip()}
             if valid_excluded_dates:
-                df = df[~df['show_date'].isin(valid_excluded_dates)]
+                df = df[~df["show_date"].isin(valid_excluded_dates)]
 
             # Convert show_date to datetime for proper sorting
-            df['_show_date_dt'] = pd.to_datetime(df['show_date'], errors='coerce')
-            df = df.dropna(subset=['_show_date_dt'])  # Remove any that couldn't be parsed
+            df["_show_date_dt"] = pd.to_datetime(df["show_date"], errors="coerce")
+            df = df.dropna(
+                subset=["_show_date_dt"]
+            )  # Remove any that couldn't be parsed
 
             # Sort and limit in Python
-            df = df.sort_values('_show_date_dt', ascending=False).head(limit)
+            df = df.sort_values("_show_date_dt", ascending=False).head(limit)
 
             # Remove the temporary column
-            df = df.drop(columns=['_show_date_dt'])
+            df = df.drop(columns=["_show_date_dt"])
 
             if len(df) < original_count:
                 # Only show warning for debugging, not in production
@@ -190,6 +192,7 @@ def fetch_per_show_accuracy(
         st.error(f"Failed to fetch per-show accuracy: {e}")
         # For debugging - show the specific error and parameters
         import traceback
+
         st.error(f"Error details: band={band}, model={model}, model_version={model}_v1")
         st.error(f"Traceback: {traceback.format_exc()}")
         return pd.DataFrame()
@@ -226,7 +229,9 @@ def fetch_last_show_setlist(
             return pd.DataFrame(), None
 
         recent_shows = recent_shows_resp.data
-        recent_ids = [str(r.get(id_col)) for r in recent_shows if r.get(id_col) is not None]
+        recent_ids = [
+            str(r.get(id_col)) for r in recent_shows if r.get(id_col) is not None
+        ]
 
         if not recent_ids:
             st.info(f"No recent shows found for {band}")
@@ -238,14 +243,22 @@ def fetch_last_show_setlist(
             .in_(id_col, recent_ids)
             .execute()
         )
-        setlist_ids = {str(r.get(id_col)) for r in (setlist_ids_resp.data or []) if r.get(id_col) is not None}
+        setlist_ids = {
+            str(r.get(id_col))
+            for r in (setlist_ids_resp.data or [])
+            if r.get(id_col) is not None
+        }
 
         candidates = [r for r in recent_shows if str(r.get(id_col)) in setlist_ids]
         if not candidates:
-            st.info(f"No completed shows found in the last 50 {band} shows. They may all be upcoming.")
+            st.info(
+                f"No completed shows found in the last 50 {band} shows. They may all be upcoming."
+            )
             return pd.DataFrame(), None
 
-        candidates_sorted = sorted(candidates, key=lambda x: str(x.get("show_date", "")), reverse=True)
+        candidates_sorted = sorted(
+            candidates, key=lambda x: str(x.get("show_date", "")), reverse=True
+        )
         most_recent_show_id = str(candidates_sorted[0].get(id_col))
 
         if not most_recent_show_id:
@@ -261,6 +274,13 @@ def fetch_last_show_setlist(
             .execute()
         )
         setlist_df = pd.DataFrame(setlist_data.data)
+
+        # Deduplicate setlist data at the source
+        # Some database entries may have duplicate rows due to data collection issues
+        if not setlist_df.empty:
+            dedup_cols = ["set_number", pos_col]
+            if all(col in setlist_df.columns for col in dedup_cols):
+                setlist_df = setlist_df.drop_duplicates(subset=dedup_cols, keep="first")
 
         # Get show details
         show_details = None
@@ -280,6 +300,7 @@ def fetch_last_show_setlist(
     except Exception as e:
         st.error(f"Failed to fetch last show setlist for {band}: {e}")
         import traceback
+
         with st.expander("Show error details"):
             st.code(traceback.format_exc())
         return pd.DataFrame(), None

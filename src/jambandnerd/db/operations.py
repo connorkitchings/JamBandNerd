@@ -1,4 +1,5 @@
 """Provides high-level database operations."""
+
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional, Set
@@ -9,7 +10,10 @@ from .connection import get_supabase_client
 
 
 def fetch_existing_ids(
-    table_name: str, id_column: str, since: Optional[str] = None, date_column: str = "created_at"
+    table_name: str,
+    id_column: str,
+    since: Optional[str] = None,
+    date_column: str = "created_at",
 ) -> Set[Any]:
     """
     Fetches existing IDs from a table to prevent duplicate entries.
@@ -34,7 +38,10 @@ def fetch_existing_ids(
         return {item[id_column] for item in response.data}
     return set()
 
-def bulk_insert_dataframe(table_name: str, df: pd.DataFrame, chunk_size: int = 500) -> None:
+
+def bulk_insert_dataframe(
+    table_name: str, df: pd.DataFrame, chunk_size: int = 500
+) -> None:
     """
     Inserts a DataFrame into a Supabase table in chunks.
 
@@ -44,13 +51,19 @@ def bulk_insert_dataframe(table_name: str, df: pd.DataFrame, chunk_size: int = 5
         chunk_size: The number of rows to insert per chunk.
     """
     client = get_supabase_client()
-    records = df.to_dict(orient='records')
+    records = df.to_dict(orient="records")
 
     for i in range(0, len(records), chunk_size):
-        chunk = records[i:i + chunk_size]
+        chunk = records[i : i + chunk_size]
         client.table(table_name).insert(chunk).execute()
 
-def upsert_dataframe(table_name: str, df: pd.DataFrame, conflict_columns: List[str], chunk_size: int = 500) -> None:
+
+def upsert_dataframe(
+    table_name: str,
+    df: pd.DataFrame,
+    conflict_columns: List[str],
+    chunk_size: int = 500,
+) -> None:
     """
     Upserts a DataFrame into a Supabase table in chunks.
 
@@ -61,11 +74,21 @@ def upsert_dataframe(table_name: str, df: pd.DataFrame, conflict_columns: List[s
         chunk_size: The number of rows to upsert per chunk.
     """
     client = get_supabase_client()
-    records = df.to_dict(orient='records')
+    records = df.to_dict(orient="records")
+
+    # Remove created_at/updated_at if None to valid DB defaults/preservation
+    for r in records:
+        if "created_at" in r and pd.isna(r["created_at"]):
+            del r["created_at"]
+        if "updated_at" in r and pd.isna(r["updated_at"]):
+            del r["updated_at"]
 
     for i in range(0, len(records), chunk_size):
-        chunk = records[i:i + chunk_size]
-        client.table(table_name).upsert(chunk, on_conflict=','.join(conflict_columns)).execute()
+        chunk = records[i : i + chunk_size]
+        client.table(table_name).upsert(
+            chunk, on_conflict=",".join(conflict_columns)
+        ).execute()
+
 
 def get_table_schema(table_name: str) -> List[Dict[str, Any]]:
     """
@@ -85,7 +108,9 @@ def get_table_schema(table_name: str) -> List[Dict[str, Any]]:
     """
     client = get_supabase_client()
     try:
-        response = client.rpc("get_table_schema", {"p_table_name": table_name}).execute()
+        response = client.rpc(
+            "get_table_schema", {"p_table_name": table_name}
+        ).execute()
         return response.data or []
     except Exception:
         # RPC not available or other error; let validation layer use local expectations

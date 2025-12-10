@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import hashlib
@@ -38,9 +37,9 @@ def normalize_songs(raw: Iterable[Dict[str, Any]]) -> pd.DataFrame:
             "api_song_id": api_song_id,
             "song_name": item.get("name"),
             "first_played": None,  # Not in API
-            "last_played": None,   # Not in API
-            "times_played": 0,     # Not in API
-            "average_length_seconds": None, # Not in API
+            "last_played": None,  # Not in API
+            "times_played": 0,  # Not in API
+            "average_length_seconds": None,  # Not in API
             "source_hash": _compute_source_hash(item),
             "created_at": item.get("created_at"),
             "updated_at": item.get("updated_at"),
@@ -50,25 +49,47 @@ def normalize_songs(raw: Iterable[Dict[str, Any]]) -> pd.DataFrame:
 
 
 def normalize_shows(raw: Iterable[Dict[str, Any]]) -> pd.DataFrame:
-    """Normalize shows to `wsp_shows_raw` schema."""
+    """Normalize shows to `wsp_shows_raw` schema.
+
+    Supports two formats:
+    1. TourWrangler API: {show_id, showdate, name, city, state, ...}
+    2. EC Collector: {show_date, venue_name, city, state, source_url}
+    """
     normalized: List[Dict[str, Any]] = []
     for item in raw:
+        # Try to get show_id, or derive from source_url if not present
         show_id = item.get("show_id")
         if not show_id:
-            continue
+            # EC collector doesn't set show_id, derive from source_url
+            # URL format: .../setlists/20251101a.asp -> extract date-based ID
+            source_url = item.get("source_url", "")
+            if "setlists/" in source_url:
+                # Extract filename: 20251101a.asp
+                filename = source_url.split("/")[-1].replace(".asp", "")
+                # Use filename as temp ID (will get real ID from DB on upsert)
+                show_id = filename
+            else:
+                # No way to identify this show, skip it
+                continue
+
+        # Support both API format (showdate, name) and EC format (show_date, venue_name)
+        show_date_raw = item.get("show_date") or item.get("showdate")
+        venue_name = item.get("venue_name") or item.get("name")
+        city = item.get("city")
+        state = item.get("state")
+
         record = {
             "show_id": str(show_id),
-            "show_date": _parse_date(item.get("showdate")),
-            "venue_name": item.get("name"),
-            "venue_city": item.get("city"),
-            "venue_state": item.get("state"),
-            "venue_country": item.get("country"),
-            "tour_name": item.get("tourname"),
+            "show_date": _parse_date(show_date_raw)
+            if show_date_raw and not show_date_raw.count("-") == 2
+            else show_date_raw,
+            "venue_name": venue_name,
+            "city": city,
+            "state": state,
+            "show_notes": item.get("show_notes"),
+            "source_url": item.get("source_url"),
             "source_hash": _compute_source_hash(item),
-            "created_at": item.get("created_at"),
-            "updated_at": item.get("updated_at"),
         }
-        print(f"Record before appending: {record}")
         normalized.append(record)
     return pd.DataFrame(normalized)
 
@@ -90,7 +111,7 @@ def normalize_venues(raw: Iterable[Dict[str, Any]]) -> pd.DataFrame:
             "capacity": int(item.get("capacity") or 0),
             "slug": item.get("slug"),
             "source_hash": _compute_source_hash(item),
-            "created_at": item.get("created_at"), # Not in API, will be None
+            "created_at": item.get("created_at"),  # Not in API, will be None
         }
         normalized.append(record)
     return pd.DataFrame(normalized)
@@ -101,14 +122,29 @@ def normalize_setlists(raw: Iterable[Dict[str, Any]]) -> pd.DataFrame:
     normalized: List[Dict[str, Any]] = []
     for item in raw:
         show_id = item.get("show_id")
-        set_number = item.get("setnumber")
-        song_position = item.get("position")
-        song_name = item.get("songname")
-        if not (show_id and set_number is not None and song_position is not None and song_name):
+        # Support both API format (setnumber) and EC format (set_number)
+        set_number = (
+            item.get("setnumber")
+            if item.get("setnumber") is not None
+            else item.get("set_number")
+        )
+        song_position = (
+            item.get("position")
+            if item.get("position") is not None
+            else item.get("song_position")
+        )
+        song_name = item.get("songname") or item.get("song_name")
+
+        if not (
+            show_id
+            and set_number is not None
+            and song_position is not None
+            and song_name
+        ):
             continue
         settype = item.get("settype") or ""
         is_encore = settype.lower() == "encore"
-        if str(set_number).lower().startswith('e'):
+        if str(set_number).lower().startswith("e"):
             set_num = 99
         else:
             try:
@@ -120,11 +156,12 @@ def normalize_setlists(raw: Iterable[Dict[str, Any]]) -> pd.DataFrame:
             "set_number": set_num,
             "song_position": int(song_position),
             "song_name": song_name,
-            "encore": is_encore,
-            "notes": item.get("footnote"),
+            # Database doesn't have 'encore' column (derived from set_number)
+            "is_segue": item.get("is_segue", False),
+            "song_notes": item.get("footnote") or item.get("song_notes"),
             "source_hash": _compute_source_hash(item),
-            "created_at": item.get("created_at"), # Not in API, will be None
-            "updated_at": item.get("updated_at"), # Not in API, will be None
+            "created_at": item.get("created_at"),  # Not in API, will be None
+            "updated_at": item.get("updated_at"),  # Not in API, will be None
         }
         normalized.append(record)
     return pd.DataFrame(normalized)

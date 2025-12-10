@@ -64,6 +64,66 @@ def process_wsp_data(
         start_date=datetime(year_start, 1, 1).date() if year_start else None,
         end_date=datetime(year_end, 12, 31).date() if year_end else None,
     )
+
+    # Assign integer show_ids consistently
+    # Assign integer show_ids consistently
+    if shows_data:
+        # Get DB client to check for existing shows and max ID
+        # client is already initialized above
+
+        # 1. Get max show_id
+        try:
+            max_id_resp = (
+                client.table("wsp_shows_raw")
+                .select("show_id")
+                .order("show_id", desc=True)
+                .limit(1)
+                .execute()
+            )
+            next_id = (max_id_resp.data[0]["show_id"] + 1) if max_id_resp.data else 1
+        except Exception as e:
+            logging.warning(f"Could not fetch max show_id: {e}. Defaulting to 1.")
+            next_id = 1
+
+        # 2. Get existing shows for lookup (to avoid duplicates)
+        existing_map = {}
+        if year_start:
+            try:
+                # Fetch simplified list of shows for the relevant years
+                start_iso = f"{year_start}-01-01"
+                end_iso = f"{year_end}-12-31" if year_end else f"{year_start}-12-31"
+
+                # Fetch in chunks if needed, but for one year 1000 limit is fine
+                exist_resp = (
+                    client.table("wsp_shows_raw")
+                    .select("show_id, show_date, venue_name")
+                    .gte("show_date", start_iso)
+                    .lte("show_date", end_iso)
+                    .execute()
+                )
+                for s in exist_resp.data:
+                    # Key by date + venue (first 10 chars of venue to be safe against slight variations)
+                    key = (s["show_date"], (s.get("venue_name") or "")[:15])
+                    existing_map[key] = s["show_id"]
+            except Exception as e:
+                logging.warning(f"Could not fetch existing shows: {e}")
+
+        # 3. Assign IDs
+        for show in shows_data:
+            if "show_id" not in show:
+                # Try to find existing
+                s_date = show.get("show_date")
+                s_venue = (show.get("venue_name") or "")[:15]
+                base_key = (s_date, s_venue)
+
+                if base_key in existing_map:
+                    show["show_id"] = existing_map[base_key]
+                else:
+                    show["show_id"] = next_id
+                    next_id += 1
+                    # Add to map so duplicates within this batch get same ID
+                    existing_map[base_key] = show["show_id"]
+
     if shows_data:
         shows_df = normalize_shows(shows_data)
         upsert_dataframe(

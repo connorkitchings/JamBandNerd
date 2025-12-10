@@ -22,11 +22,12 @@ WSP_ARTIST_MARKERS = {
     "the doors",
 }
 
+
 def _clean_song_name_for_display(name: str, band: str) -> str:
     """Normalize song names for display/highlighting, stripping unwanted artist credits."""
     if not isinstance(name, str):
         return ""
-    cleaned = name.rstrip('>').rstrip('*').strip()
+    cleaned = name.rstrip(">").rstrip("*").strip()
     if not cleaned:
         return ""
     lowered = cleaned.lower()
@@ -55,7 +56,9 @@ def display_last_show_setlist(client: Client, band: str, model: str):
     if band == "phish":
         show_date_key = "show_date"
     elif band == "goose":
-        show_date_key = "show_date"  # Goose shows table uses show_date (normalized from showdate)
+        show_date_key = (
+            "show_date"  # Goose shows table uses show_date (normalized from showdate)
+        )
     else:  # WSP
         show_date_key = "show_date"
 
@@ -67,7 +70,11 @@ def display_last_show_setlist(client: Client, band: str, model: str):
         formatted_date = "Unknown Date"
 
     # Get venue information
-    venue = show_details.get("venue_name") or show_details.get("venue") or show_details.get("venuename")
+    venue = (
+        show_details.get("venue_name")
+        or show_details.get("venue")
+        or show_details.get("venuename")
+    )
     if not venue:
         venue = "Unknown Venue"
     city = show_details.get("venue_city") or show_details.get("city") or ""
@@ -87,26 +94,35 @@ def display_last_show_setlist(client: Client, band: str, model: str):
         header_parts.append(state)
 
     prominent_header = " • ".join(header_parts)
-    st.markdown(f"<h4 style='text-align: center;'>{prominent_header}</h4>", unsafe_allow_html=True)
+    st.markdown(
+        f"<h4 style='text-align: center;'>{prominent_header}</h4>",
+        unsafe_allow_html=True,
+    )
 
     st.divider()
 
-
-
     # Fetch collection and prediction times for this specific show date
-    collection_time = fetch_last_collection_time(client, band) # This fetches the latest, not necessarily for this show
+    collection_time = fetch_last_collection_time(
+        client, band
+    )  # This fetches the latest, not necessarily for this show
     # To get prediction time for this show, we need to fetch predictions for this specific date
-    _, _, prediction_meta = fetch_predictions(client, band, model) # This fetches latest predictions
+    _, _, prediction_meta = fetch_predictions(
+        client, band, model
+    )  # This fetches latest predictions
     predicted_at_raw = prediction_meta.get("predicted_at")
-    predicted_at = pd.to_datetime(predicted_at_raw).floor("min") if predicted_at_raw else None
-    predicted_at_str = predicted_at.strftime("%Y-%m-%d %H:%M") if predicted_at else "unknown"
+    predicted_at = (
+        pd.to_datetime(predicted_at_raw).floor("min") if predicted_at_raw else None
+    )
+    predicted_at_str = (
+        predicted_at.strftime("%Y-%m-%d %H:%M") if predicted_at else "unknown"
+    )
 
-
-
-        # Retrieve predictions for this specific show_date if available
+    # Retrieve predictions for this specific show_date if available
     predictions_df_for_show = pd.DataFrame()
     if show_date:
-        predictions_df_for_show = fetch_predictions_for_date(client, band, model, str(pd.to_datetime(show_date).date()))
+        predictions_df_for_show = fetch_predictions_for_date(
+            client, band, model, str(pd.to_datetime(show_date).date())
+        )
 
     # Fallback to latest predictions if historical not available
     if predictions_df_for_show.empty:
@@ -115,26 +131,46 @@ def display_last_show_setlist(client: Client, band: str, model: str):
 
     # Create prediction lookup for highlighting
     prediction_ranks: dict[str, int] = {}
-    if not predictions_df_for_show.empty and 'song_name' in predictions_df_for_show.columns:
+    if (
+        not predictions_df_for_show.empty
+        and "song_name" in predictions_df_for_show.columns
+    ):
         # Prefer explicit 'rank' if present; else use row order
-        use_rank_col = 'rank' in predictions_df_for_show.columns
+        use_rank_col = "rank" in predictions_df_for_show.columns
         for idx, row in predictions_df_for_show.iterrows():
-            normalized = _clean_song_name_for_display(str(row['song_name']), band).lower()
+            normalized = _clean_song_name_for_display(
+                str(row["song_name"]), band
+            ).lower()
             if not normalized:
                 continue
-            rank = int(row['rank']) if use_rank_col and pd.notna(row['rank']) else (idx + 1)
+            rank = (
+                int(row["rank"])
+                if use_rank_col and pd.notna(row["rank"])
+                else (idx + 1)
+            )
             prediction_ranks[normalized] = rank
 
     # Group songs by set (handle missing set numbers)
-    if 'set_number' not in setlist_df.columns:
+    if "set_number" not in setlist_df.columns:
         st.warning("Setlist missing 'set_number' column.")
         return
 
     # For Phish, fill missing set numbers (encores) as 99 for consistent grouping
     if band == "phish":
-        setlist_df['set_number'] = setlist_df['set_number'].apply(lambda v: 99 if (v is None or (isinstance(v, float) and pd.isna(v)) or (pd.isna(v))) else v)
+        setlist_df["set_number"] = setlist_df["set_number"].apply(
+            lambda v: 99
+            if (v is None or (isinstance(v, float) and pd.isna(v)) or (pd.isna(v)))
+            else v
+        )
 
-    sets = setlist_df.groupby('set_number', dropna=True)
+    # Deduplicate setlist entries to prevent display issues
+    # Keep the first occurrence based on set_number and song_position
+    pos_col = "song_position" if "song_position" in setlist_df.columns else "position"
+    dedup_cols = ["set_number", pos_col]
+    if all(col in setlist_df.columns for col in dedup_cols):
+        setlist_df = setlist_df.drop_duplicates(subset=dedup_cols, keep="first")
+
+    sets = setlist_df.groupby("set_number", dropna=True)
 
     # Create columns for sets with robust sorting across mixed types
     def _set_order_key(v: Any) -> int:
@@ -168,16 +204,16 @@ def display_last_show_setlist(client: Client, band: str, model: str):
 
         # Defensive: some schemas use 'position' vs 'song_position'
         set_data = sets.get_group(set_num)
-        if 'song_position' in set_data.columns:
-            set_data = set_data.sort_values('song_position')
-        elif 'position' in set_data.columns:
-            set_data = set_data.sort_values('position')
+        if "song_position" in set_data.columns:
+            set_data = set_data.sort_values("song_position")
+        elif "position" in set_data.columns:
+            set_data = set_data.sort_values("position")
 
         # Format set header
         set_num_str = str(set_num).upper()
-        if set_num_str in {'E', 'ENCORE'} or set_num in (99, '99'):
+        if set_num_str in {"E", "ENCORE"} or set_num in (99, "99"):
             set_header = "**Encore**"
-        elif set_num_str == '0' or set_num in (0, '0'):
+        elif set_num_str == "0" or set_num in (0, "0"):
             set_header = "**Soundcheck**"
         else:
             set_header = f"**Set {set_num}**"
@@ -187,7 +223,7 @@ def display_last_show_setlist(client: Client, band: str, model: str):
         # Display songs with highlights
         song_list = []
         for _, song_row in set_data.iterrows():
-            song_name_clean = _clean_song_name_for_display(song_row['song_name'], band)
+            song_name_clean = _clean_song_name_for_display(song_row["song_name"], band)
             if not song_name_clean:
                 continue
             lookup_key = song_name_clean.lower()
@@ -200,7 +236,9 @@ def display_last_show_setlist(client: Client, band: str, model: str):
                 elif rank <= 25:
                     song_display = f'<span class="badge-top25"><strong>{song_name_clean}</strong> (#{rank})</span>'
                 elif rank <= 50:
-                    song_display = f'<span class="badge-top50">{song_name_clean} (#{rank})</span>'
+                    song_display = (
+                        f'<span class="badge-top50">{song_name_clean} (#{rank})</span>'
+                    )
                 else:
                     song_display = song_name_clean
             else:
@@ -217,51 +255,98 @@ def display_last_show_setlist(client: Client, band: str, model: str):
     legend_cols = st.columns(4)
 
     with legend_cols[0]:
-
         st.markdown('<span class="badge-top10">Top 10</span>', unsafe_allow_html=True)
 
     with legend_cols[1]:
-
         st.markdown('<span class="badge-top25">Top 25</span>', unsafe_allow_html=True)
 
     with legend_cols[2]:
-
         st.markdown('<span class="badge-top50">Top 50</span>', unsafe_allow_html=True)
 
     with legend_cols[3]:
-
         total_predicted = 0
 
         total_songs = 0
 
-        for name in setlist_df['song_name']:
-
+        for name in setlist_df["song_name"]:
             cleaned = _clean_song_name_for_display(name, band)
 
             if not cleaned:
-
                 continue
 
             total_songs += 1
 
             if cleaned.lower() in prediction_ranks:
-
                 total_predicted += 1
 
         if total_songs == 0:
-
             st.markdown("**0 songs predicted**")
 
         else:
-
             st.markdown(f"**{total_predicted}/{total_songs} songs predicted**")
+
+    # Prediction Breakdown and Surprise Songs Sections
+    st.divider()
+
+    # Calculate hits by tier
+    top10_hits = 0
+    top25_hits = 0
+    top50_hits = 0
+    surprise_songs = []
+
+    for _, row in setlist_df.iterrows():
+        cleaned = _clean_song_name_for_display(row["song_name"], band)
+        if not cleaned:
+            continue
+        lookup_key = cleaned.lower()
+
+        if lookup_key in prediction_ranks:
+            rank = prediction_ranks[lookup_key]
+            if rank <= 10:
+                top10_hits += 1
+            elif rank <= 25:
+                top25_hits += 1
+            elif rank <= 50:
+                top50_hits += 1
+        else:
+            # Song was played but not in Top 50 predictions
+            surprise_songs.append(cleaned)
+
+    # Display Prediction Breakdown
+    col1_breakdown, col2_breakdown = st.columns(2)
+
+    with col1_breakdown:
+        st.markdown("### Prediction Breakdown")
+        breakdown_data = {
+            "Tier": ["Top 10", "Top 25", "Top 50", "Total"],
+            "Hits": [top10_hits, top25_hits, top50_hits, total_predicted],
+        }
+        breakdown_df = pd.DataFrame(breakdown_data)
+        st.dataframe(breakdown_df, hide_index=True, use_container_width=True)
+
+    with col2_breakdown:
+        st.markdown("### Surprise Songs")
+        if surprise_songs:
+            # Display surprise songs as a bullet list
+            surprises_html = "\u003cbr\u003e".join(
+                [f"• {song}" for song in surprise_songs]
+            )
+            st.markdown(surprises_html, unsafe_allow_html=True)
+        else:
+            st.markdown("_No surprises - all songs were in the Top 50 predictions!_")
 
     # Display collection and prediction times below the setlist
     st.divider()
     col1_meta, col2_meta = st.columns(2)
     with col1_meta:
         if collection_time:
-            st.markdown(f"<div style='text-align: center; color: gray; font-size: 0.9em;'>Data Collected: {pd.to_datetime(collection_time).strftime("%Y-%m-%d %H:%M")}</div>", unsafe_allow_html=True)
+            st.markdown(
+                f"<div style='text-align: center; color: gray; font-size: 0.9em;'>Data Collected: {pd.to_datetime(collection_time).strftime('%Y-%m-%d %H:%M')}</div>",
+                unsafe_allow_html=True,
+            )
     with col2_meta:
         if predicted_at_str != "unknown":
-            st.markdown(f"<div style='text-align: center; color: gray; font-size: 0.9em;'>Model Predicted: {predicted_at_str}</div>", unsafe_allow_html=True)
+            st.markdown(
+                f"<div style='text-align: center; color: gray; font-size: 0.9em;'>Model Predicted: {predicted_at_str}</div>",
+                unsafe_allow_html=True,
+            )
