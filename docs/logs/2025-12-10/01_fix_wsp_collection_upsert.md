@@ -67,3 +67,10 @@ After closing the session, we identified that the **GitHub Actions pipeline fail
 - **Root Cause:** In CI environments, `WSPCollector` uses Playwright to bypass bot detection. Playwright returns a mock `requests.Response` object with `utf-8` encoded content. Our previous fix (Step 2 above) blindly forced `response.encoding = "windows-1252"`, which caused the UTF-8 content to be re-decoded incorrectly (Mojibake), corrupting the HTML.
 - **Fix:** Updated `decode_ec_response` in `session.py` to check for `response.encoding == "utf-8"` (set by Playwright) and return the text as-is in that case.
 - **Verification:** Verified code logic. User instructed to re-run pipeline.
+
+### UPDATE 2: 403 Forbidden & Threading Issues in CI
+
+A second attempt revealed two more CI-specific issues:
+
+- **403 Forbidden on Show Collection:** `make_simple_request` (used for tour pages) was using standard `requests`, which got blocked. Fixed by using Playwright for these requests in CI (`session.py`).
+- **Greenlet/Threading Error:** `Cannot switch to a different thread`. Caused by `WSPCollector` using `ThreadPoolExecutor`, which tried to access the main-thread-bound Playwright object from worker threads. Fixed by forcing sequential execution in CI (`collector.py`).

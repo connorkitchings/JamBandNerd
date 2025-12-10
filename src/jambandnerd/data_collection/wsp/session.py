@@ -44,6 +44,9 @@ def make_simple_request(
     Use for index/tour pages that don't need aggressive rate limiting.
     Individual setlist pages should still use make_request().
     """
+    if IS_GITHUB_ACTIONS:
+        return make_playwright_request(url)
+
     try:
         logger.debug(f"Fetching (no rate limit): {url}")
         response = session.get(url, timeout=30, **kwargs)

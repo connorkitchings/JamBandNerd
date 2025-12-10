@@ -22,6 +22,7 @@ from .session import (
     make_simple_request,
     decode_ec_response,
     cleanup_playwright,
+    IS_GITHUB_ACTIONS,
 )
 from .status import CollectionStatus
 
@@ -389,26 +390,47 @@ class WSPCollector(BandCollector):
             return []
 
         all_setlists = []
-        # Reduced to 1 worker to avoid rate limiting and bot detection
-        with ThreadPoolExecutor(max_workers=1) as executor:
-            future_to_show = {
-                executor.submit(self._scrape_single_setlist, show): show
-                for show in shows_to_process
-            }
-            iterable = tqdm(
-                future_to_show,
-                total=len(shows_to_process),
-                desc=f"Collecting {self.ARTIST_NAME} setlists",
+        if IS_GITHUB_ACTIONS:
+            logger.info(
+                "Running sequential setlist collection for CI (Playwright compatibility)"
             )
-            for future in iterable:
+            iterable = tqdm(
+                shows_to_process,
+                desc=f"Collecting {self.ARTIST_NAME} setlists (Sequential)",
+            )
+            for show in iterable:
                 try:
-                    setlist_data = future.result()
+                    setlist_data = self._scrape_single_setlist(show)
                     if setlist_data:
                         all_setlists.extend(setlist_data)
                 except Exception as exc:
-                    show_url = future_to_show[future].get("source_url", "unknown URL")
-                    # This should rarely trigger now that _scrape_single_setlist handles errors internally
+                    show_url = show.get("source_url", "unknown URL")
                     logger.warning(f"Unexpected exception scraping {show_url}: {exc}")
+        else:
+            # Reduced to 1 worker to avoid rate limiting and bot detection
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                future_to_show = {
+                    executor.submit(self._scrape_single_setlist, show): show
+                    for show in shows_to_process
+                }
+                iterable = tqdm(
+                    future_to_show,
+                    total=len(shows_to_process),
+                    desc=f"Collecting {self.ARTIST_NAME} setlists",
+                )
+                for future in iterable:
+                    try:
+                        setlist_data = future.result()
+                        if setlist_data:
+                            all_setlists.extend(setlist_data)
+                    except Exception as exc:
+                        show_url = future_to_show[future].get(
+                            "source_url", "unknown URL"
+                        )
+                        # This should rarely trigger now that _scrape_single_setlist handles errors internally
+                        logger.warning(
+                            f"Unexpected exception scraping {show_url}: {exc}"
+                        )
 
         # Review and clean the setlist data before returning
         all_setlists = review_setlist(all_setlists)
