@@ -80,3 +80,10 @@ A second attempt revealed two more CI-specific issues:
 The "Round 2" fix used Headless Chrome, which **still received 403 Forbidden errors** for tour pages.
 
 - **Strategy Change:** Switched `session.py` and GitHub Actions workflow to use **Headless Firefox** instead of Chromium. Firefox often successfully bypasses anti-bot protections that target headless Chrome signatures.
+
+### UPDATE 4: UA/Browser Mismatch (Attempt 3 Failed)
+
+Attempt 3 (Firefox) also failed with 403s.
+
+- **Root Cause:** We switched to Firefox but **left the User-Agent as Chrome**. This mismatch (Firefox browser engine + Chrome UA) is a huge red flag for WAFs.
+- **Fix:** Updated `session.py` to use a genuine Firefox User-Agent string and inject standard headers (`Referer`, `Accept`, etc.) into the Playwright context to mimic a real user session.
