@@ -178,16 +178,15 @@ def _get_playwright_browser() -> Browser:
     global _playwright_browser, _playwright_context
 
     if _playwright_browser is None:
-        logger.info("Initializing Playwright browser for GitHub Actions environment")
+        logger.info(
+            "Initializing Playwright browser (Firefox) for GitHub Actions environment"
+        )
         playwright = sync_playwright().start()
-        _playwright_browser = playwright.chromium.launch(
+        # Use Firefox instead of Chromium as it often bypasses Cloudflare/WAF checks better in headless mode
+        _playwright_browser = playwright.firefox.launch(
             headless=True,
-            args=[
-                "--no-sandbox",
-                "--disable-setuid-sandbox",
-                "--disable-dev-shm-usage",
-                "--disable-blink-features=AutomationControlled",
-            ],
+            # Firefox doesn't use the same args as Chrome, fewer needed
+            args=[],
         )
         _playwright_context = _playwright_browser.new_context(
             user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",

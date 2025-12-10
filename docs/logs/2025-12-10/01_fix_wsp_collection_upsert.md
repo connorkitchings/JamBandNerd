@@ -74,3 +74,9 @@ A second attempt revealed two more CI-specific issues:
 
 - **403 Forbidden on Show Collection:** `make_simple_request` (used for tour pages) was using standard `requests`, which got blocked. Fixed by using Playwright for these requests in CI (`session.py`).
 - **Greenlet/Threading Error:** `Cannot switch to a different thread`. Caused by `WSPCollector` using `ThreadPoolExecutor`, which tried to access the main-thread-bound Playwright object from worker threads. Fixed by forcing sequential execution in CI (`collector.py`).
+
+### UPDATE 3: Persistent 403s (Switching to Firefox)
+
+The "Round 2" fix used Headless Chrome, which **still received 403 Forbidden errors** for tour pages.
+
+- **Strategy Change:** Switched `session.py` and GitHub Actions workflow to use **Headless Firefox** instead of Chromium. Firefox often successfully bypasses anti-bot protections that target headless Chrome signatures.
