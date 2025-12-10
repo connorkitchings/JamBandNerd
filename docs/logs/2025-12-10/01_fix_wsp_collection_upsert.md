@@ -59,3 +59,11 @@ Fix invalid input syntax error and missing data issues in WSP Show upsert proces
 - `src/jambandnerd/web/components/tabs/last_show.py`
 - `src/jambandnerd/web/components/tabs/performance.py`
 - `tests/web/test_data_quality.py`
+
+## 🚨 Post-Closure Update (CI Pipeline Fix)
+
+After closing the session, we identified that the **GitHub Actions pipeline failed** to collect setlists, despite the local fix working.
+
+- **Root Cause:** In CI environments, `WSPCollector` uses Playwright to bypass bot detection. Playwright returns a mock `requests.Response` object with `utf-8` encoded content. Our previous fix (Step 2 above) blindly forced `response.encoding = "windows-1252"`, which caused the UTF-8 content to be re-decoded incorrectly (Mojibake), corrupting the HTML.
+- **Fix:** Updated `decode_ec_response` in `session.py` to check for `response.encoding == "utf-8"` (set by Playwright) and return the text as-is in that case.
+- **Verification:** Verified code logic. User instructed to re-run pipeline.

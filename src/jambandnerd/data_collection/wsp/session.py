@@ -27,6 +27,10 @@ def decode_ec_response(response: requests.Response) -> str:
     The requests library auto-decompresses via response.text, but may misdetect encoding.
     We force it to use Windows-1252 for correct character handling.
     """
+    # If the response is already UTF-8 (e.g., from Playwright mock), respect it
+    if response.encoding == "utf-8":
+        return response.text
+
     # Set encoding before accessing .text to force Windows-1252 decoding
     response.encoding = EC_ENCODING
     return response.text
@@ -206,7 +210,7 @@ def make_playwright_request(url: str) -> requests.Response:
     """
     enforce_rate_limit()
 
-    browser = _get_playwright_browser()
+    _get_playwright_browser()
     page: Page = _playwright_context.new_page()
 
     try:
