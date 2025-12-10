@@ -38,16 +38,25 @@ Fix invalid input syntax error and missing data issues in WSP Show upsert proces
 - **Issue:** Model Performance tooltips showed -1 day offset.
 - **Fix:** Added explicit string formatting for dates in Altair charts.
 
+### 5. Fixed CI Pipeline Failures (403s & Threading)
+
+- **Issue:** GitHub Actions pipeline failed due to:
+  1.  **403 Forbidden:** TourWrangler/scraper blocked Headless Chrome (even with Playwright).
+  2.  **Threading Error:** `ThreadPoolExecutor` clashed with Playwright (not thread-safe).
+  3.  **User-Agent Mismatch:** Chrome UA on Firefox browser triggered WAFs.
+- **Fix:**
+  - **Browser:** Switched to **Headless Firefox** in `session.py`.
+  - **Identity:** Aligned User-Agent and injected standard headers (`Referer`, etc.).
+  - **Concurrency:** Implemented sequential execution for setlist collection in CI environments (`collector.py`).
+
 ## 🚧 Blockers Encountered
 
 - **Schema Mismatch:** The Normalizer (built for TourWrangler) and Collector (EC scraper) had completely different key names (`setnumber` vs `set_number`, etc.), causing silent data drops.
-- **UnboundLocalError:** Minor scope issue in orchestration script during rapid iteration (fixed).
+- **CI-Specific WAFs:** Aggressive blocking of Headless Chrome required switching to Firefox and fine-tuning headers.
 
 ## 🔄 Session Handoff & Next Steps
 
-**Immediate Next Task:** verify the GitHub Actions "Daily Pipeline" run.
-
-- **Note:** We deleted the Nov 23, 2025 show from the DB to verify that the pipeline correctly re-collects it.
+**Immediate Next Task:** Monitor the next scheduled Daily Pipeline run to ensure long-term stability.
 
 **Updated Documents:**
 
@@ -59,31 +68,4 @@ Fix invalid input syntax error and missing data issues in WSP Show upsert proces
 - `src/jambandnerd/web/components/tabs/last_show.py`
 - `src/jambandnerd/web/components/tabs/performance.py`
 - `tests/web/test_data_quality.py`
-
-## 🚨 Post-Closure Update (CI Pipeline Fix)
-
-After closing the session, we identified that the **GitHub Actions pipeline failed** to collect setlists, despite the local fix working.
-
-- **Root Cause:** In CI environments, `WSPCollector` uses Playwright to bypass bot detection. Playwright returns a mock `requests.Response` object with `utf-8` encoded content. Our previous fix (Step 2 above) blindly forced `response.encoding = "windows-1252"`, which caused the UTF-8 content to be re-decoded incorrectly (Mojibake), corrupting the HTML.
-- **Fix:** Updated `decode_ec_response` in `session.py` to check for `response.encoding == "utf-8"` (set by Playwright) and return the text as-is in that case.
-- **Verification:** Verified code logic. User instructed to re-run pipeline.
-
-### UPDATE 2: 403 Forbidden & Threading Issues in CI
-
-A second attempt revealed two more CI-specific issues:
-
-- **403 Forbidden on Show Collection:** `make_simple_request` (used for tour pages) was using standard `requests`, which got blocked. Fixed by using Playwright for these requests in CI (`session.py`).
-- **Greenlet/Threading Error:** `Cannot switch to a different thread`. Caused by `WSPCollector` using `ThreadPoolExecutor`, which tried to access the main-thread-bound Playwright object from worker threads. Fixed by forcing sequential execution in CI (`collector.py`).
-
-### UPDATE 3: Persistent 403s (Switching to Firefox)
-
-The "Round 2" fix used Headless Chrome, which **still received 403 Forbidden errors** for tour pages.
-
-- **Strategy Change:** Switched `session.py` and GitHub Actions workflow to use **Headless Firefox** instead of Chromium. Firefox often successfully bypasses anti-bot protections that target headless Chrome signatures.
-
-### UPDATE 4: UA/Browser Mismatch (Attempt 3 Failed)
-
-Attempt 3 (Firefox) also failed with 403s.
-
-- **Root Cause:** We switched to Firefox but **left the User-Agent as Chrome**. This mismatch (Firefox browser engine + Chrome UA) is a huge red flag for WAFs.
-- **Fix:** Updated `session.py` to use a genuine Firefox User-Agent string and inject standard headers (`Referer`, `Accept`, etc.) into the Playwright context to mimic a real user session.
+- `.github/workflows/daily-pipeline.yml`
