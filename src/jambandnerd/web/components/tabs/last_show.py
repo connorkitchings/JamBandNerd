@@ -252,88 +252,78 @@ def display_last_show_setlist(client: Client, band: str, model: str):
 
     st.divider()
 
-    legend_cols = st.columns(4)
-
-    with legend_cols[0]:
-        st.markdown('<span class="badge-top10">Top 10</span>', unsafe_allow_html=True)
-
-    with legend_cols[1]:
-        st.markdown('<span class="badge-top25">Top 25</span>', unsafe_allow_html=True)
-
-    with legend_cols[2]:
-        st.markdown('<span class="badge-top50">Top 50</span>', unsafe_allow_html=True)
-
-    with legend_cols[3]:
-        total_predicted = 0
-
-        total_songs = 0
-
-        for name in setlist_df["song_name"]:
-            cleaned = _clean_song_name_for_display(name, band)
-
-            if not cleaned:
-                continue
-
-            total_songs += 1
-
-            if cleaned.lower() in prediction_ranks:
-                total_predicted += 1
-
-        if total_songs == 0:
-            st.markdown("**0 songs predicted**")
-
-        else:
-            st.markdown(f"**{total_predicted}/{total_songs} songs predicted**")
-
-    # Prediction Breakdown and Surprise Songs Sections
-    st.divider()
-
-    # Calculate hits by tier
+    # --- Prediction Performance & Surprise Songs ---
+    total_songs = 0
+    total_predicted = 0
     top10_hits = 0
     top25_hits = 0
     top50_hits = 0
     surprise_songs = []
+    actual_song_names = set()
 
-    for _, row in setlist_df.iterrows():
-        cleaned = _clean_song_name_for_display(row["song_name"], band)
-        if not cleaned:
+    # Consolidate analysis into a single loop over unique songs played
+    unique_song_names = setlist_df["song_name"].dropna()
+    for song_name in unique_song_names:
+        cleaned = _clean_song_name_for_display(song_name, band)
+        if not cleaned or cleaned.lower() in actual_song_names:
             continue
+
+        actual_song_names.add(cleaned.lower())
+        total_songs += 1
         lookup_key = cleaned.lower()
 
         if lookup_key in prediction_ranks:
+            total_predicted += 1
             rank = prediction_ranks[lookup_key]
             if rank <= 10:
                 top10_hits += 1
-            elif rank <= 25:
+            if rank <= 25:
                 top25_hits += 1
-            elif rank <= 50:
+            if rank <= 50:
                 top50_hits += 1
         else:
-            # Song was played but not in Top 50 predictions
             surprise_songs.append(cleaned)
+
+    # --- Display Metrics ---
+    legend_cols = st.columns(4)
+    with legend_cols[0]:
+        st.markdown('<span class="badge-top10">Top 10</span>', unsafe_allow_html=True)
+    with legend_cols[1]:
+        st.markdown('<span class="badge-top25">Top 25</span>', unsafe_allow_html=True)
+    with legend_cols[2]:
+        st.markdown('<span class="badge-top50">Top 50</span>', unsafe_allow_html=True)
+    with legend_cols[3]:
+        if total_songs == 0:
+            st.markdown("**0/0 songs predicted**")
+        else:
+            st.markdown(f"**{total_predicted}/{total_songs} songs predicted**")
+
+    st.divider()
 
     # Display Prediction Breakdown
     col1_breakdown, col2_breakdown = st.columns(2)
-
     with col1_breakdown:
-        st.markdown("### Prediction Breakdown")
+        st.markdown("##### Prediction Breakdown")
         breakdown_data = {
-            "Tier": ["Top 10", "Top 25", "Top 50", "Total"],
-            "Hits": [top10_hits, top25_hits, top50_hits, total_predicted],
+            "Tier": ["Top 10", "Top 25", "Top 50"],
+            "Hits": [top10_hits, top25_hits, top50_hits],
         }
         breakdown_df = pd.DataFrame(breakdown_data)
-        st.dataframe(breakdown_df, hide_index=True, use_container_width=True)
+        st.dataframe(
+            breakdown_df.style.format({"Hits": "{}"}),
+            hide_index=True,
+            use_container_width=True,
+        )
 
     with col2_breakdown:
-        st.markdown("### Surprise Songs")
+        st.markdown("##### Surprise Songs")
         if surprise_songs:
-            # Display surprise songs as a bullet list
-            surprises_html = "\u003cbr\u003e".join(
-                [f"• {song}" for song in surprise_songs]
+            # Display surprise songs as a bulleted list, sorted alphabetically
+            st.markdown(
+                "\n".join([f"- {s}" for s in sorted(surprise_songs)]),
             )
-            st.markdown(surprises_html, unsafe_allow_html=True)
         else:
-            st.markdown("_No surprises - all songs were in the Top 50 predictions!_")
+            st.info("No surprises! All songs played were in the Top 50 predictions.")
 
     # Display collection and prediction times below the setlist
     st.divider()

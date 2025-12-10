@@ -395,6 +395,69 @@ jobs:
         run: |
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Next Steps:" >> $GITHUB_STEP_SUMMARY
-          echo "- Visit the [JamBandNerd web app](https://jambandnerd.streamlit.app/) to view updated predictions." >> $GITHUB_STEP_SUMMARY
-          echo "- Check the Supabase dashboard for data validation." >> $GITHUB_STEP_SUMMARY
-                    echo "- Review any warnings above and re-run collection if needed." >> $GITHUB_STEP_SUMMARY
+                    echo "- Visit the [JamBandNerd web app](https://jambandnerd.streamlit.app/) to view updated predictions." >> $GITHUB_STEP_SUMMARY
+                    echo "- Check the Supabase dashboard for data validation." >> $GITHUB_STEP_SUMMARY
+                              echo "- Review any warnings above and re-run collection if needed." >> $GITHUB_STEP_SUMMARY
+          
+            notify-discord:
+              name: Notify Discord
+              needs: [daily-pipeline]
+              runs-on: ubuntu-latest
+              if: always() && github.event_name == 'schedule' # Only notify on scheduled runs
+          
+              steps:
+                - name: Send Discord Notification
+                  env:
+                    DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+                    PIPELINE_STATUS: ${{ needs.daily-pipeline.result }}
+                  run: |
+                    if [[ -z "$DISCORD_WEBHOOK_URL" ]]; then
+                      echo "::warning::DISCORD_WEBHOOK_URL secret not set. Skipping notification."
+                      exit 0
+                    fi
+          
+                    if [[ "$PIPELINE_STATUS" == "success" ]]; then
+                      STATUS_MESSAGE="✅ Success"
+                      COLOR=3066993 # Green
+                    elif [[ "$PIPELINE_STATUS" == "failure" ]]; then
+                      STATUS_MESSAGE="❌ Failure"
+                      COLOR=15158332 # Red
+                    else
+                      STATUS_MESSAGE="⚠️ Canceled or Skipped"
+                      COLOR=16776960 # Yellow
+                    fi
+          
+                    REPO_URL="${{ github.server_url }}/${{ github.repository }}"
+                    RUN_URL="$REPO_URL/actions/runs/${{ github.run_id }}"
+                    
+                    # Construct the JSON payload
+                    PAYLOAD=$(cat <<EOF
+                    {
+                      "embeds": [{
+                        "title": "JamBandNerd Daily Pipeline",
+                        "description": "The daily data pipeline has finished running.",
+                        "url": "$RUN_URL",
+                        "color": $COLOR,
+                        "fields": [
+                          {
+                            "name": "Status",
+                            "value": "$STATUS_MESSAGE",
+                            "inline": true
+                          },
+                          {
+                            "name": "Trigger",
+                            "value": "${{ github.event_name }}",
+                            "inline": true
+                          }
+                        ],
+                        "footer": {
+                          "text": "Repository: ${{ github.repository }}"
+                        },
+                        "timestamp": "$(date -u +'%Y-%m-%dT%H:%M:%S.000Z')"
+                      }]
+                    }
+                    EOF
+                    )
+          
+                    curl -X POST -H "Content-Type: application/json" -d "$PAYLOAD" "$DISCORD_WEBHOOK_URL"
+          

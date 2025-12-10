@@ -56,6 +56,10 @@ graph TD
 - **Purpose**: Ingest raw data from external sources
 - **Components**: Band-specific collectors with unified interface. The design allows for easy addition of new bands by implementing new collector modules.
 - **Output**: Raw data tables in Supabase (`{band}_*_raw`)
+- **WSP Collector**: The collector for Widespread Panic (`everydaycompanion.com`) is a special case. To bypass sophisticated bot detection and IP blocking (especially in a CI/CD environment like GitHub Actions), the collector uses a browser automation strategy:
+  - **In CI/CD**: It uses **Playwright** with a headless **Firefox** browser to simulate a real user, executing JavaScript and handling complex site interactions.
+  - **Locally**: It defaults to the standard `requests` library for efficiency.
+  - This dual approach ensures both robust data collection in automated environments and fast, simple execution for local development.
 
 #### Transformation Layer
 
