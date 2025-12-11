@@ -37,9 +37,9 @@ MODEL_CONFIG = {
 }
 
 
-def display_band_comparison(client: Client, model: str, k: int):
+def display_band_leaderboard(client: Client, model: str, k: int):
     """Display a comparison of model accuracy across all bands."""
-    st.markdown(f"<h3 style='text-align: center;'>Model Accuracy Comparison: {MODEL_CONFIG[model]['display_name']} (Top-{k})</h3>", unsafe_allow_html=True)
+    st.markdown(f"<h3 style='text-align: center;'>{MODEL_CONFIG[model]['display_name']} Model: Top-{k} Accuracy Leaderboard</h3>", unsafe_allow_html=True)
 
     @st.cache_data(ttl=STREAMLIT_CACHE_TTL)
     def fetch_all_bands_accuracy(_db_client: Client, model: str) -> pd.DataFrame:
@@ -51,7 +51,8 @@ def display_band_comparison(client: Client, model: str, k: int):
             st.error(f"Failed to fetch accuracy data for all bands: {e}")
             return pd.DataFrame()
 
-    accuracy_df = fetch_all_bands_accuracy(client, model)
+    with st.spinner("Loading band leaderboard..."):
+        accuracy_df = fetch_all_bands_accuracy(client, model)
 
     if not accuracy_df.empty:
         recall_col = f'k{k}_recall'
@@ -59,20 +60,24 @@ def display_band_comparison(client: Client, model: str, k: int):
             st.warning(f"Recall data for K={k} not available.")
             return
 
-        # Calculate average recall per band
-        avg_recall_by_band = accuracy_df.groupby('band')[recall_col].mean().reset_index()
-        avg_recall_by_band = avg_recall_by_band.sort_values(by=recall_col, ascending=False)
+        # Calculate average recall and number of shows per band
+        avg_recall_by_band = accuracy_df.groupby('band').agg(
+            avg_recall=(recall_col, 'mean'),
+            num_shows=('show_date', 'nunique')
+        ).reset_index()
+        avg_recall_by_band = avg_recall_by_band.sort_values(by='avg_recall', ascending=False)
 
         chart = alt.Chart(avg_recall_by_band).mark_bar().encode(
             x=alt.X('band:N', title='Band', sort='-y'),
-            y=alt.Y(f'{recall_col}:Q', title=f'Average Recall @ Top {k}', axis=alt.Axis(format='.0%')),
+            y=alt.Y('avg_recall:Q', title=f'Average Recall @ Top {k}', axis=alt.Axis(format='.0%')),
             color=alt.Color('band:N', legend=None),
             tooltip=[
                 alt.Tooltip('band:N', title='Band'),
-                alt.Tooltip(f'{recall_col}:Q', title='Avg. Recall', format='.1%')
+                alt.Tooltip('avg_recall:Q', title='Avg. Recall', format='.1%'),
+                alt.Tooltip('num_shows:Q', title='# of Shows')
             ]
         ).properties(
-            title=f"Average Top-{k} Recall by Band for {MODEL_CONFIG[model]['display_name']} Model"
+            title=f"Average Top-{k} Recall by Band"
         )
 
         st.altair_chart(chart, use_container_width=True)

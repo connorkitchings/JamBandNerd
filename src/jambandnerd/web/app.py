@@ -1,125 +1,122 @@
 from __future__ import annotations
 
+import logging
+from pathlib import Path
+
 import streamlit as st
 
 from jambandnerd.db.connection import get_supabase_client
+from jambandnerd.web import theme
 from jambandnerd.web.components.sidebar import (
     display_sidebar,
     get_initial_selection_from_url,
     sync_query_params,
 )
-from jambandnerd.web.components.tabs.compare import display_band_comparison
+from jambandnerd.web.components.tabs.about import display_about
 from jambandnerd.web.components.tabs.last_show import display_last_show_setlist
 from jambandnerd.web.components.tabs.performance import display_historical_accuracy
 from jambandnerd.web.components.tabs.predictions import display_predictions
-from jambandnerd.web.config import ACTIVE_BANDS, BAND_CONFIG, MODEL_CONFIG
 
 
-def main():
-    """Main application entry point."""
-    st.set_page_config(page_title="JamBandNerd", layout="wide")
-    st.markdown("<h1 style='text-align: center;'>JamBandNerd</h1>", unsafe_allow_html=True)
+def _configure_logging() -> None:
+    """Configure basic logging to a local .tmp file, creating the directory if needed."""
+    root_dir = Path(__file__).resolve().parents[3]
+    log_dir = root_dir / ".tmp"
+    log_dir.mkdir(exist_ok=True)
+    logging.basicConfig(filename=log_dir / "app.log", level=logging.INFO)
 
-    st.markdown("""
-    <style>
-        :root {
-            --primary-color: #F63366; /* Streamlit's default primary color */
-            --success-color: #4CAF50; /* Green for Top 10 */
-            --warning-color: #FFD700; /* Gold for Top 25 */
-            --info-color: #D3D3D3;    /* Light Grey for Top 50 */
-            --background-color: #F0F2F6; /* Light grey for tab background */
-        }
-        .stTabs [data-baseweb="tab-list"] {
-            gap: 2px;
-            justify-content: space-around;
-        }
-        .stTabs [data-baseweb="tab"] {
-            height: 50px;
-            white-space: pre-wrap;
-            background-color: var(--background-color);
-            border-radius: 4px 4px 0px 0px;
-            gap: 1px;
-            padding-top: 10px;
-            padding-bottom: 10px;
-        }
-        .stTabs [aria-selected="true"] {
-            background-color: #FFFFFF;
-            color: var(--primary-color); /* Highlight selected tab with primary color */
-        }
-        button[data-baseweb="tab"] > div[data-testid="stMarkdownContainer"] > p {
-            font-size: 1.1rem;
-        }
-        /* Custom classes for badges */
-        .badge-top10 {
-            background-color: var(--success-color);
-            color: white;
-            padding: 2px 4px;
-            border-radius: 3px;
-            font-weight: bold;
-        }
-        .badge-top25 {
-            background-color: var(--warning-color);
-            color: black;
-            padding: 2px 4px;
-            border-radius: 3px;
-            font-weight: bold;
-        }
-        .badge-top50 {
-            background-color: var(--info-color);
-            color: black;
-            padding: 2px 4px;
-            border-radius: 3px;
-        }
-    </style>""", unsafe_allow_html=True)
 
-    # Read initial selection from URL with sensible defaults
-    defaults = {
-        "band": ACTIVE_BANDS[0],
-        "model": next(iter(MODEL_CONFIG.keys())),
-        "k": 50,
-    }
-    initial = get_initial_selection_from_url(defaults["band"], defaults["model"], defaults["k"])
-    selected_band, selected_model, selected_k = display_sidebar(
-        initial_band=initial["band"],
-        initial_model=initial["model"],
-        initial_k=initial["k"],
+def apply_theme() -> None:
+    """Inject CSS variables and shared styles for the app."""
+    css_path = Path(__file__).resolve().parent / "style.css"
+    try:
+        css = css_path.read_text()
+    except FileNotFoundError:
+        css = ""
+
+    style_vars = "\n".join(
+        [
+            ":root {",
+            f"  --primary-color: {theme.PRIMARY_COLOR};",
+            f"  --success-color: {theme.SUCCESS_COLOR};",
+            f"  --warning-color: {theme.WARNING_COLOR};",
+            f"  --info-color: {theme.INFO_COLOR};",
+            f"  --background-color: {theme.BACKGROUND_COLOR};",
+            f"  --surface-color: {theme.SURFACE_COLOR};",
+            f"  --border-color: {theme.BORDER_COLOR};",
+            f"  --text-color: {theme.TEXT_COLOR};",
+            f"  --text-muted: {theme.TEXT_MUTED};",
+            f"  --white: {theme.WHITE};",
+            f"  --black: {theme.BLACK};",
+            f"  --gray: {theme.GRAY};",
+            "}",
+        ]
     )
-    # Keep URL in sync with current selection
+
+    st.markdown(f"<style>\n{style_vars}\n{css}\n</style>", unsafe_allow_html=True)
+
+
+def main() -> None:
+    """Main application entry point."""
+    _configure_logging()
+    st.set_page_config(page_title="JamBandNerd", layout="wide")
+    apply_theme()
+    st.markdown(
+        "<h1 style='text-align: center;'>JamBandNerd</h1>", unsafe_allow_html=True
+    )
+
+    defaults = {"band": "goose", "model": "notebook", "k": 50}
+
+    # Initialize session state from URL params on first load only
+    if "initialized" not in st.session_state:
+        initial_selection = get_initial_selection_from_url(
+            default_band=defaults["band"],
+            default_model=defaults["model"],
+            default_k=defaults["k"],
+        )
+        st.session_state.current_band = initial_selection["band"]
+        st.session_state.current_model = initial_selection["model"]
+        st.session_state.current_k = initial_selection["k"]
+        st.session_state.initialized = True
+
+    # Use session state as source of truth
+    selected_band, selected_model, selected_k = display_sidebar(
+        initial_band=st.session_state.current_band,
+        initial_model=st.session_state.current_model,
+        initial_k=st.session_state.current_k,
+    )
+
+    # Update session state if selection changed
+    st.session_state.current_band = selected_band
+    st.session_state.current_model = selected_model
+    st.session_state.current_k = selected_k
+
+    # Sync to URL for sharing (non-blocking)
     sync_query_params(selected_band, selected_model, selected_k)
 
-    # Display centered band marker just under the title
-    band_display_name = BAND_CONFIG.get(selected_band, {}).get("display_name", selected_band.title())
-    st.markdown(
-        f"<h2 style='text-align: center; color: #666; margin-top: -10px; margin-bottom: 20px;'>{band_display_name}</h2>",
-        unsafe_allow_html=True
+    supabase_client = get_supabase_client()
+
+    tab1, tab2, tab3, tab4 = st.tabs(
+        ["Predictions", "Last Show Analysis", "Model Performance", "About"]
     )
 
-    try:
-        supabase_client = get_supabase_client()
+    with tab1:
+        display_predictions(supabase_client, selected_band, selected_model)
 
-        # Use tabs for a cleaner layout
-        tab1, tab2, tab3, tab4 = st.tabs(["Predictions", "Last Show Analysis", "Model Performance", "Compare Bands"])
+    with tab2:
+        st.markdown(
+            "<h3 style='text-align: center;'>Last Show Setlist</h3>",
+            unsafe_allow_html=True,
+        )
+        display_last_show_setlist(supabase_client, selected_band, selected_model)
 
-        with tab1:
-            display_predictions(supabase_client, selected_band, selected_model)
+    with tab3:
+        display_historical_accuracy(
+            supabase_client, selected_band, selected_model, selected_k
+        )
 
-        with tab2:
-            st.markdown(
-                "<h3 style='text-align: center;'>Last Show Setlist</h3>",
-                unsafe_allow_html=True,
-            )
-            display_last_show_setlist(supabase_client, selected_band, selected_model)
-
-        with tab3:
-            display_historical_accuracy(
-                supabase_client, selected_band, selected_model, selected_k
-            )
-
-        with tab4:
-            display_band_comparison(supabase_client, selected_model, selected_k)
-
-    except Exception as e:
-        st.error(f"An error occurred: {e}")
+    with tab4:
+        display_about(selected_model)
 
 
 if __name__ == "__main__":

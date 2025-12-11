@@ -43,14 +43,48 @@ MODEL_CONFIG = {
     },
 }
 
+
+def _render_hero(header: str, model_display_name: str, predicted_at_str: str) -> None:
+    """Render the top hero card with quick context."""
+    st.markdown(
+        f"""
+        <div class="jbn-card jbn-hero">
+            <div class="jbn-hero__title">Predictions</div>
+            <div class="jbn-hero__headline">{header}</div>
+            <div class="jbn-hero__meta">
+                <span class="jbn-pill jbn-pill--primary">Model: {model_display_name}</span>
+                <span class="jbn-pill jbn-pill--muted">Predicted: {predicted_at_str}</span>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 def format_predictions_df(df: pd.DataFrame, model: str) -> pd.DataFrame:
     """Format the prediction dataframe for display."""
     if df.empty or model not in MODEL_CONFIG:
         return pd.DataFrame()
 
+    df = df.copy()
+    # Hide very recent songs (gap <=3) from display, but keep in stored data
+    if "current_gap" in df.columns:
+        try:
+            df = df[df["current_gap"] > 3]
+        except Exception:
+            pass
+    if "rank" in df.columns:
+        df = df.reset_index(drop=True)
+        df["rank"] = df.index + 1
+
     config = MODEL_CONFIG[model]
     cols_to_display = [col for col in config["columns"] if col in df.columns]
     display_df = df[cols_to_display]
+    if "LTP" in display_df.columns:
+        try:
+            display_df["LTP"] = pd.to_datetime(display_df["LTP"]).dt.strftime("%m/%d/%Y")
+        except Exception:
+            pass
     return display_df.rename(columns=config["columns"])
 
 
@@ -120,21 +154,21 @@ def display_predictions(client: Client, band: str, model: str):
 
         left_header = f"{header_prefix}: {date_str}" if date_str else header_prefix
         if venue_bits:
-            left_header += f" — {" • ".join(venue_bits)}"
-        st.markdown(f"<h4 style='text-align: center;'>{left_header}</h4>", unsafe_allow_html=True)
-
-        st.divider()
+            left_header += f" — {' • '.join(venue_bits)}"
 
         display_df = format_predictions_df(predictions_df.head(50), model)
-
-        st.dataframe(display_df, use_container_width=True, hide_index=True, height=900)
 
         predicted_at_raw = meta.get("predicted_at")
         predicted_at = pd.to_datetime(predicted_at_raw).floor("min") if predicted_at_raw else None
         predicted_at_str = predicted_at.strftime("%Y-%m-%d %H:%M") if predicted_at else "unknown"
         model_version = meta.get("model_version", "v1")
+        header_text = left_header or model_display_name
+
+        _render_hero(header_text, f"{model_display_name} ({model_version})", predicted_at_str)
+
+        st.dataframe(display_df, use_container_width=True, hide_index=True, height=650)
         st.markdown(
-            f"<div style='text-align: center; color: gray;'>Model: {model_display_name} ({model_version}) · Predicted: {predicted_at_str}</div>",
+            f"<div style='text-align:center; color: var(--text-muted); font-size: 0.9rem; margin-top: 6px;'>Reference date: {ref_date or 'unknown'}</div>",
             unsafe_allow_html=True,
         )
 

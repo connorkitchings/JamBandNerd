@@ -6,6 +6,7 @@ import streamlit as st
 from supabase import Client
 
 from jambandnerd.web.data import fetch_per_show_accuracy
+from jambandnerd.web.theme import CHART_FOCUS_COLOR, CHART_SECONDARY_COLOR
 
 # This is a temporary solution. In the future, this should be moved to a more centralized location.
 MODEL_CONFIG = {
@@ -49,12 +50,120 @@ def get_model_explanation(model_slug: str) -> str:
     return explanations.get(model_slug, "No explanation available for this model.")
 
 
+def prepare_chart_data(accuracy_df: pd.DataFrame, k: int) -> pd.DataFrame:
+    """Transform the accuracy data into a long-form DataFrame for charting."""
+    recall_cols = [c for c in ["k10_recall", "k25_recall", "k50_recall"] if c in accuracy_df.columns]
+    if not recall_cols:
+        return pd.DataFrame()
+
+    base_df = accuracy_df.sort_values("show_date", ascending=False).reset_index(drop=True)
+    base_df["show_num"] = range(1, len(base_df) + 1)
+    ks = [10, 25, 50]
+    long_rows = []
+    for idx, row in base_df.iterrows():
+        for kk in ks:
+            rc = f"k{kk}_recall"
+            mc = f"k{kk}_matches"
+            if rc in base_df.columns:
+                long_rows.append({
+                    "show_num": idx + 1,
+                    "show_date": row.get("show_date"),
+                    "venue_name": row.get("venue_name"),
+                    "k": kk,
+                    "recall": row.get(rc),
+                    "matches": row.get(mc) if mc in base_df.columns else None,
+                    "is_focus": kk == k,
+                })
+    
+    if not long_rows:
+        return pd.DataFrame()
+
+    long_df = pd.DataFrame(long_rows)
+    if "show_date" in long_df.columns:
+        long_df["show_date_display"] = pd.to_datetime(long_df["show_date"]).dt.strftime("%Y-%m-%d")
+    
+    return long_df
+
+def create_accuracy_chart(long_df: pd.DataFrame, k: int) -> alt.Chart:
+    """Create the historical accuracy chart using Altair."""
+    return (
+        alt.Chart(long_df)
+        .mark_line(point=True)
+        .encode(
+            x=alt.X(
+                "show_num:Q",
+                title="Show # (Most Recent First)",
+                scale=alt.Scale(reverse=True),
+            ),
+            y=alt.Y(
+                "recall:Q",
+                title=f"Recall @ Top {k}",
+                scale=alt.Scale(domain=[0, 1]),
+                axis=alt.Axis(format="%"),
+            ),
+            detail="k:N",
+            color=alt.condition(
+                "datum.is_focus == true",
+                alt.value(CHART_FOCUS_COLOR),
+                alt.value(CHART_SECONDARY_COLOR),
+            ),
+            opacity=alt.condition(
+                "datum.is_focus == true", alt.value(1.0), alt.value(0.35)
+            ),
+            tooltip=[
+                alt.Tooltip("show_date_display:N", title="Show Date"),
+                alt.Tooltip("venue_name:N", title="Venue"),
+                alt.Tooltip("k:N", title="K"),
+                alt.Tooltip("recall:Q", title="Recall", format=".1%"),
+                alt.Tooltip("matches:Q", title="Matches"),
+            ],
+        )
+        .interactive()
+        .properties(background="transparent", height=360)
+        .configure_view(strokeOpacity=0)
+        .configure_axis(
+            labelColor="#374151",
+            titleColor="#111827",
+            gridColor="#E5E7EB",
+            tickColor="#E5E7EB",
+        )
+    )
+
+def display_summary_metrics(accuracy_df: pd.DataFrame):
+    """Display the summary metrics for recall at different K values."""
+    def fmt(val: float | None) -> str:
+        return f"{val:.1%}" if val is not None else "N/A"
+
+    vals = {}
+    for k in [10, 25, 50]:
+        col = f"k{k}_recall"
+        vals[k] = accuracy_df[col].mean() if col in accuracy_df.columns else None
+
+    st.markdown(
+        f"""
+        <div class="jbn-metric-chips">
+            <div class="jbn-metric-chip jbn-metric-chip--10">
+                <div class="jbn-metric-chip__label" style="text-align:center;">Recall @ Top 10</div>
+                <div class="jbn-metric-chip__value" style="text-align:center;">{fmt(vals[10])}</div>
+            </div>
+            <div class="jbn-metric-chip jbn-metric-chip--25">
+                <div class="jbn-metric-chip__label" style="text-align:center;">Recall @ Top 25</div>
+                <div class="jbn-metric-chip__value" style="text-align:center;">{fmt(vals[25])}</div>
+            </div>
+            <div class="jbn-metric-chip jbn-metric-chip--50">
+                <div class="jbn-metric-chip__label" style="text-align:center;">Recall @ Top 50</div>
+                <div class="jbn-metric-chip__value" style="text-align:center;">{fmt(vals[50])}</div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
 def display_historical_accuracy(client: Client, band: str, model: str, k: int):
     """Display the historical accuracy section and the model explanation."""
     model_display_name = MODEL_CONFIG.get(model, {}).get("display_name", model.title())
-    st.divider()
     st.markdown(
-        f"<h3 style='text-align: center;'>Historical Accuracy - {model_display_name}</h3>",
+        f"<h3 style='text-align:center; margin-bottom:0.4rem;'>Historical Accuracy — {model_display_name}</h3>",
         unsafe_allow_html=True,
     )
 
@@ -63,119 +172,26 @@ def display_historical_accuracy(client: Client, band: str, model: str, k: int):
 
     if not accuracy_df.empty:
         num_shows = len(accuracy_df)
+        min_date = pd.to_datetime(accuracy_df["show_date"].min()).strftime("%m/%d/%Y")
+        max_date = pd.to_datetime(accuracy_df["show_date"].max()).strftime("%m/%d/%Y")
 
-        # --- Add Date Range Context ---
-        min_date = pd.to_datetime(accuracy_df["show_date"].min()).strftime("%Y-%m-%d")
-        max_date = pd.to_datetime(accuracy_df["show_date"].max()).strftime("%Y-%m-%d")
-
+        display_summary_metrics(accuracy_df)
         st.markdown(
-            f"<p style='text-align: center; color: gray;'>Metrics based on the last {num_shows} completed shows (from {min_date} to {max_date}).</p>",
+            f"<div style='text-align:center; color: var(--text-muted); margin: 6px 0 10px;'>Metrics based on the last {num_shows} completed shows ({min_date} to {max_date}).</div>",
             unsafe_allow_html=True,
         )
 
-        # Aggregate metrics for all K values
-        ks = [10, 25, 50]
-        cols_recall = st.columns(len(ks))
-        for i, val in enumerate(ks):
-            recall_col = f"k{val}_recall"
-            avg_recall = (
-                accuracy_df[recall_col].mean()
-                if recall_col in accuracy_df.columns
-                else None
+        long_df = prepare_chart_data(accuracy_df, k)
+        if not long_df.empty:
+            chart = create_accuracy_chart(long_df, k)
+            st.altair_chart(chart, use_container_width=True)
+            st.markdown(
+                f"<div style='font-size:0.9em; color: var(--text-muted); text-align:center; margin-top:8px;'>Use the sidebar to change the focus K. Other Ks are shown in grey.</div>",
+                unsafe_allow_html=True,
             )
-            cols_recall[i].metric(
-                f"Recall @ Top {val}",
-                f"{avg_recall:.1%}" if avg_recall is not None else "N/A",
-            )
-
-        # Chart for all Ks, highlight selected K and grey out others
-        recall_cols = [
-            c
-            for c in ["k10_recall", "k25_recall", "k50_recall"]
-            if c in accuracy_df.columns
-        ]
-        if recall_cols:
-            base_df = accuracy_df.sort_values("show_date", ascending=False).reset_index(
-                drop=True
-            )
-            base_df["show_num"] = range(1, len(base_df) + 1)
-            ks = [10, 25, 50]
-            long_rows = []
-            for idx, row in base_df.iterrows():
-                for kk in ks:
-                    rc = f"k{kk}_recall"
-                    mc = f"k{kk}_matches"
-                    if rc in base_df.columns:
-                        long_rows.append(
-                            {
-                                "show_num": idx + 1,
-                                "show_date": row.get("show_date"),
-                                "k": kk,
-                                "recall": row.get(rc),
-                                "matches": row.get(mc)
-                                if mc in base_df.columns
-                                else None,
-                                "is_focus": kk == k,
-                            }
-                        )
-            if long_rows:
-                long_df = pd.DataFrame(long_rows)
-                # Convert show_date to string format to avoid timezone-related off-by-one issues
-                # The :T temporal type causes Altair to apply timezone conversion
-                if "show_date" in long_df.columns:
-                    long_df["show_date_display"] = pd.to_datetime(
-                        long_df["show_date"]
-                    ).dt.strftime("%Y-%m-%d")
-                line = (
-                    alt.Chart(long_df)
-                    .mark_line(point=True)
-                    .encode(
-                        x=alt.X(
-                            "show_num:Q",
-                            title="Show # (Most Recent First)",
-                            scale=alt.Scale(reverse=True),
-                        ),
-                        y=alt.Y(
-                            "recall:Q",
-                            title=f"Recall @ Top {k}",
-                            scale=alt.Scale(domain=[0, 1]),
-                            axis=alt.Axis(format="%"),
-                        ),
-                        detail="k:N",
-                        color=alt.condition(
-                            "datum.is_focus == true",
-                            alt.value("#1f77b4"),
-                            alt.value("#CCCCCC"),
-                        ),
-                        opacity=alt.condition(
-                            "datum.is_focus == true", alt.value(1.0), alt.value(0.35)
-                        ),
-                        tooltip=[
-                            alt.Tooltip("show_date_display:N", title="Show Date"),
-                            alt.Tooltip("k:N", title="K"),
-                            alt.Tooltip("recall:Q", title="Recall", format=".1%"),
-                            alt.Tooltip("matches:Q", title="Matches"),
-                        ],
-                    )
-                    .interactive()
-                )
-                st.altair_chart(line, use_container_width=True)
-                st.markdown(
-                    "<div style='font-size:0.9em; color: gray; text-align:center; margin-top:8px;'>Use the sidebar to change the focus K. Other Ks are shown in grey.</div>",
-                    unsafe_allow_html=True,
-                )
         else:
             st.warning(f"No accuracy data available for K={k}.")
     else:
         st.warning(
             "No per-show accuracy data found. Please run the backtesting scripts."
         )
-
-    # --- Display Model Explanation ---
-    st.divider()
-    st.markdown(
-        f"<h3 style='text-align: center;'>How This Model Works - {model_display_name}</h3>",
-        unsafe_allow_html=True,
-    )
-    explanation_content = get_model_explanation(model)
-    st.markdown(explanation_content, unsafe_allow_html=True)

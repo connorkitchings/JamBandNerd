@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import re
-from typing import Any
+from typing import Any, Dict
 
 import pandas as pd
 import streamlit as st
 from supabase import Client
 
+from jambandnerd.config import BAND_ID_COLUMNS
 from jambandnerd.web.data import (
     fetch_last_collection_time,
     fetch_last_show_setlist,
@@ -14,7 +15,9 @@ from jambandnerd.web.data import (
     fetch_predictions_for_date,
 )
 
-# This is a temporary solution. In the future, this should be moved to a more centralized location.
+# Temporary in-file configuration until centralized
+MODEL_DISPLAY = {"notebook": "Notebook", "ckplus": "CK+"}
+
 WSP_ARTIST_MARKERS = {
     "david bromberg band",
     "new riders of the purple sage",
@@ -38,54 +41,59 @@ def _clean_song_name_for_display(name: str, band: str) -> str:
             pattern = re.compile(rf"\s*,\s*{re.escape(marker)}\s*$", re.IGNORECASE)
             cleaned = pattern.sub("", cleaned)
     cleaned = cleaned.strip()
-    if not cleaned:
-        return ""
     return cleaned
 
 
-def display_last_show_setlist(client: Client, band: str, model: str):
-    """Display the last show's setlist with prediction highlights."""
-    with st.spinner("Loading last show setlist..."):
-        setlist_df, show_details = fetch_last_show_setlist(client, band)
+@st.cache_data(ttl=300)  # Cache for 5 minutes
+def get_last_show_data(_client: Client, band: str, model: str) -> dict[str, Any]:
+    """Fetch all necessary data for the last show analysis from Supabase."""
+    setlist_df, show_details = fetch_last_show_setlist(_client, band)
 
     if setlist_df.empty or show_details is None:
-        st.warning("No recent setlist data available.")
-        return
+        return {"setlist": pd.DataFrame(), "show_details": None}
 
-    # Extract show information
-    if band == "phish":
-        show_date_key = "show_date"
-    elif band == "goose":
-        show_date_key = (
-            "show_date"  # Goose shows table uses show_date (normalized from showdate)
-        )
-    else:  # WSP
-        show_date_key = "show_date"
+    show_date = show_details.get("show_date")
 
-    show_date = show_details.get(show_date_key)
-
+    predictions_df = pd.DataFrame()
     if show_date:
-        formatted_date = pd.to_datetime(show_date).strftime("%m/%d/%Y")
-    else:
-        formatted_date = "Unknown Date"
+        predictions_df = fetch_predictions_for_date(
+            _client, band, model, str(pd.to_datetime(show_date).date())
+        )
+    if predictions_df.empty:
+        latest_df, _, _ = fetch_predictions(_client, band, model)
+        predictions_df = latest_df
 
-    # Get venue information
+    collection_time = fetch_last_collection_time(_client, band)
+    _, _, prediction_meta = fetch_predictions(_client, band, model)
+    predicted_at_raw = prediction_meta.get("predicted_at")
+
+    return {
+        "setlist": setlist_df,
+        "show_details": show_details,
+        "predictions": predictions_df,
+        "collection_time": collection_time,
+        "predicted_at": predicted_at_raw,
+        "show_date": show_date,
+    }
+
+
+def _format_show_header(show_details: dict[str, Any]) -> str:
+    """Compose a concise show header (date • venue • city)."""
+    show_date = show_details.get("show_date")
+    formatted_date = (
+        pd.to_datetime(show_date).strftime("%m/%d/%Y") if show_date else "Unknown Date"
+    )
+
     venue = (
         show_details.get("venue_name")
         or show_details.get("venue")
         or show_details.get("venuename")
+        or "Unknown Venue"
     )
-    if not venue:
-        venue = "Unknown Venue"
     city = show_details.get("venue_city") or show_details.get("city") or ""
     state = show_details.get("venue_state") or show_details.get("state") or ""
 
-    # Construct the prominent header
-    header_parts = []
-    if formatted_date != "Unknown Date":
-        header_parts.append(formatted_date)
-    if venue != "Unknown Venue":
-        header_parts.append(venue)
+    header_parts = [formatted_date, venue]
     if city and state:
         header_parts.append(f"{city}, {state}")
     elif city:
@@ -93,182 +101,50 @@ def display_last_show_setlist(client: Client, band: str, model: str):
     elif state:
         header_parts.append(state)
 
-    prominent_header = " • ".join(header_parts)
-    st.markdown(
-        f"<h4 style='text-align: center;'>{prominent_header}</h4>",
-        unsafe_allow_html=True,
-    )
+    return " • ".join([part for part in header_parts if part])
 
-    st.divider()
 
-    # Fetch collection and prediction times for this specific show date
-    collection_time = fetch_last_collection_time(
-        client, band
-    )  # This fetches the latest, not necessarily for this show
-    # To get prediction time for this show, we need to fetch predictions for this specific date
-    _, _, prediction_meta = fetch_predictions(
-        client, band, model
-    )  # This fetches latest predictions
-    predicted_at_raw = prediction_meta.get("predicted_at")
-    predicted_at = (
-        pd.to_datetime(predicted_at_raw).floor("min") if predicted_at_raw else None
-    )
-    predicted_at_str = (
-        predicted_at.strftime("%Y-%m-%d %H:%M") if predicted_at else "unknown"
-    )
+def _build_prediction_lookup(predictions_df: pd.DataFrame, band: str) -> dict[str, int]:
+    """Map song name (normalized) to rank for quick lookup."""
+    lookup: Dict[str, int] = {}
+    if predictions_df.empty or "song_name" not in predictions_df.columns:
+        return lookup
 
-    # Retrieve predictions for this specific show_date if available
-    predictions_df_for_show = pd.DataFrame()
-    if show_date:
-        predictions_df_for_show = fetch_predictions_for_date(
-            client, band, model, str(pd.to_datetime(show_date).date())
-        )
+    use_rank_col = "rank" in predictions_df.columns
+    for idx, row in predictions_df.iterrows():
+        normalized = _clean_song_name_for_display(str(row["song_name"]), band).lower()
+        if not normalized:
+            continue
+        rank = int(row["rank"]) if use_rank_col and pd.notna(row["rank"]) else (idx + 1)
+        lookup[normalized] = rank
+    return lookup
 
-    # Fallback to latest predictions if historical not available
-    if predictions_df_for_show.empty:
-        latest_df, _, _ = fetch_predictions(client, band, model)
-        predictions_df_for_show = latest_df
 
-    # Create prediction lookup for highlighting
-    prediction_ranks: dict[str, int] = {}
-    if (
-        not predictions_df_for_show.empty
-        and "song_name" in predictions_df_for_show.columns
-    ):
-        # Prefer explicit 'rank' if present; else use row order
-        use_rank_col = "rank" in predictions_df_for_show.columns
-        for idx, row in predictions_df_for_show.iterrows():
-            normalized = _clean_song_name_for_display(
-                str(row["song_name"]), band
-            ).lower()
-            if not normalized:
-                continue
-            rank = (
-                int(row["rank"])
-                if use_rank_col and pd.notna(row["rank"])
-                else (idx + 1)
-            )
-            prediction_ranks[normalized] = rank
-
-    # Group songs by set (handle missing set numbers)
-    if "set_number" not in setlist_df.columns:
-        st.warning("Setlist missing 'set_number' column.")
-        return
-
-    # For Phish, fill missing set numbers (encores) as 99 for consistent grouping
-    if band == "phish":
-        setlist_df["set_number"] = setlist_df["set_number"].apply(
-            lambda v: 99
-            if (v is None or (isinstance(v, float) and pd.isna(v)) or (pd.isna(v)))
-            else v
-        )
-
-    # Deduplicate setlist entries to prevent display issues
-    # Keep the first occurrence based on set_number and song_position
-    pos_col = "song_position" if "song_position" in setlist_df.columns else "position"
-    dedup_cols = ["set_number", pos_col]
-    if all(col in setlist_df.columns for col in dedup_cols):
-        setlist_df = setlist_df.drop_duplicates(subset=dedup_cols, keep="first")
-
-    sets = setlist_df.groupby("set_number", dropna=True)
-
-    # Create columns for sets with robust sorting across mixed types
-    def _set_order_key(v: Any) -> int:
-        s = str(v).strip().upper()
-        if s in {"E", "ENCORE", "99"}:
-            return 99
-        if s in {"0", "SOUNDCHECK"}:
-            return 0
-        try:
-            return int(float(s))
-        except Exception:
-            return 50
-
-    set_numbers_raw = [k for k in sets.groups.keys()]
-    set_numbers = sorted(set_numbers_raw, key=_set_order_key)
-
-    # Handle different numbers of sets dynamically
-    if len(set_numbers) == 1:
-        cols = [st.container()]
-    elif len(set_numbers) == 2:
-        cols = st.columns(2)
-    elif len(set_numbers) == 3:
-        cols = st.columns(3)
-    else:
-        # For 4+ sets, use 2 columns and stack sets
-        cols = st.columns(2)
-
-    for i, set_num in enumerate(set_numbers):
-        col_idx = i if len(set_numbers) <= 3 else i % 2
-        col = cols[col_idx]
-
-        # Defensive: some schemas use 'position' vs 'song_position'
-        set_data = sets.get_group(set_num)
-        if "song_position" in set_data.columns:
-            set_data = set_data.sort_values("song_position")
-        elif "position" in set_data.columns:
-            set_data = set_data.sort_values("position")
-
-        # Format set header
-        set_num_str = str(set_num).upper()
-        if set_num_str in {"E", "ENCORE"} or set_num in (99, "99"):
-            set_header = "**Encore**"
-        elif set_num_str == "0" or set_num in (0, "0"):
-            set_header = "**Soundcheck**"
-        else:
-            set_header = f"**Set {set_num}**"
-
-        col.markdown(set_header)
-
-        # Display songs with highlights
-        song_list = []
-        for _, song_row in set_data.iterrows():
-            song_name_clean = _clean_song_name_for_display(song_row["song_name"], band)
-            if not song_name_clean:
-                continue
-            lookup_key = song_name_clean.lower()
-
-            # Check if song was predicted
-            if lookup_key in prediction_ranks:
-                rank = prediction_ranks[lookup_key]
-                if rank <= 10:
-                    song_display = f'<span class="badge-top10"><strong>{song_name_clean}</strong> (#{rank})</span>'
-                elif rank <= 25:
-                    song_display = f'<span class="badge-top25"><strong>{song_name_clean}</strong> (#{rank})</span>'
-                elif rank <= 50:
-                    song_display = (
-                        f'<span class="badge-top50">{song_name_clean} (#{rank})</span>'
-                    )
-                else:
-                    song_display = song_name_clean
-            else:
-                song_display = song_name_clean
-
-            song_list.append(song_display)
-
-        # Display songs in the set
-        songs_html = "<br>".join(song_list)
-        col.markdown(songs_html, unsafe_allow_html=True)
-
-    st.divider()
-
-    # --- Prediction Performance & Surprise Songs ---
+def _compute_summary(
+    setlist_df: pd.DataFrame,
+    prediction_ranks: dict[str, int],
+    prediction_gaps: dict[str, float],
+    prior_song_history: set[str],
+    band: str,
+) -> dict[str, Any]:
+    """Compute hit metrics and bustouts/debuts with band-specific gap thresholds."""
+    bustout_thresholds = {"phish": 50, "um": 50, "wsp": 50}
+    threshold = bustout_thresholds.get(band, 25)
     total_songs = 0
     total_predicted = 0
     top10_hits = 0
     top25_hits = 0
     top50_hits = 0
-    surprise_songs = []
-    actual_song_names = set()
+    bustouts: list[str] = []
+    debuts: list[str] = []
+    seen = set()
 
-    # Consolidate analysis into a single loop over unique songs played
     unique_song_names = setlist_df["song_name"].dropna()
     for song_name in unique_song_names:
         cleaned = _clean_song_name_for_display(song_name, band)
-        if not cleaned or cleaned.lower() in actual_song_names:
+        if not cleaned or cleaned.lower() in seen:
             continue
-
-        actual_song_names.add(cleaned.lower())
+        seen.add(cleaned.lower())
         total_songs += 1
         lookup_key = cleaned.lower()
 
@@ -281,62 +157,323 @@ def display_last_show_setlist(client: Client, band: str, model: str):
                 top25_hits += 1
             if rank <= 50:
                 top50_hits += 1
-        else:
-            surprise_songs.append(cleaned)
 
-    # --- Display Metrics ---
-    legend_cols = st.columns(4)
-    with legend_cols[0]:
-        st.markdown('<span class="badge-top10">Top 10</span>', unsafe_allow_html=True)
-    with legend_cols[1]:
-        st.markdown('<span class="badge-top25">Top 25</span>', unsafe_allow_html=True)
-    with legend_cols[2]:
-        st.markdown('<span class="badge-top50">Top 50</span>', unsafe_allow_html=True)
-    with legend_cols[3]:
-        if total_songs == 0:
-            st.markdown("**0/0 songs predicted**")
-        else:
-            st.markdown(f"**{total_predicted}/{total_songs} songs predicted**")
+        gap = prediction_gaps.get(lookup_key)
+        if lookup_key not in prior_song_history:
+            debuts.append(cleaned)
+        elif (
+            gap is not None and gap >= threshold and lookup_key not in prediction_ranks
+        ):
+            bustouts.append(cleaned)
 
-    st.divider()
+    result = {
+        "total_songs": total_songs,
+        "predicted": total_predicted,
+        "top10": top10_hits,
+        "top25": top25_hits,
+        "top50": top50_hits,
+        "bustouts": sorted(set(bustouts)),
+        "bustout_threshold": threshold,
+        "debuts": sorted(set(debuts)),
+    }
 
-    # Display Prediction Breakdown
-    col1_breakdown, col2_breakdown = st.columns(2)
-    with col1_breakdown:
-        st.markdown("##### Prediction Breakdown")
-        breakdown_data = {
-            "Tier": ["Top 10", "Top 25", "Top 50"],
-            "Hits": [top10_hits, top25_hits, top50_hits],
-        }
-        breakdown_df = pd.DataFrame(breakdown_data)
-        st.dataframe(
-            breakdown_df.style.format({"Hits": "{}"}),
-            hide_index=True,
-            use_container_width=True,
+    return result
+
+
+def _render_hero(
+    header: str, model_display: str, predicted_at_str: str, collection_time: str
+) -> None:
+    """Render the top hero card for last show context."""
+    st.markdown(
+        f"""
+        <div class="jbn-card jbn-hero">
+            <div class="jbn-hero__title">Last Show</div>
+            <div class="jbn-hero__headline">{header}</div>
+            <div class="jbn-hero__meta">
+                <span class="jbn-pill jbn-pill--primary">Model: {model_display}</span>
+                <span class="jbn-pill jbn-pill--muted">Predicted: {predicted_at_str}</span>
+                <span class="jbn-pill">Collected: {collection_time}</span>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def _render_summary_cards(stats: dict[str, Any]) -> None:
+    """Show quick-hit metrics for the last show."""
+    items = [
+        ("Songs Predicted", f"{stats['predicted']}/{stats['total_songs']}"),
+        ("Top-10 Hits", f"{stats['top10']}"),
+        ("Top-25 Hits", f"{stats['top25']}"),
+        ("Top-50 Hits", f"{stats['top50']}"),
+    ]
+    if stats.get("bustouts"):
+        items.append(
+            (
+                f"Bustouts ({stats['bustout_threshold']}+ shows)",
+                f"{len(stats['bustouts'])}",
+            )
+        )
+    if stats.get("debuts"):
+        items.append(("Debuts", f"{len(stats['debuts'])}"))
+
+    cards_html = "".join(
+        f"<div class='jbn-metric'><div class='jbn-metric__label'>{label}</div><div class='jbn-metric__value'>{value}</div></div>"
+        for label, value in items
+    )
+    container_html = (
+        f"<div class='jbn-card'><div class='jbn-grid-3'>{cards_html}</div></div>"
+    )
+    st.markdown(container_html, unsafe_allow_html=True)
+
+
+def _render_setlist(
+    setlist_df: pd.DataFrame,
+    prediction_ranks: dict[str, int],
+    prediction_gaps: dict[str, float],
+    band: str,
+    debuts: set[str],
+    bustouts: set[str],
+) -> None:
+    """Render the setlist grouped by set with prediction badges."""
+    if "set_number" not in setlist_df.columns:
+        st.warning("Setlist missing 'set_number' column.")
+        return
+
+    pos_col = "song_position" if "song_position" in setlist_df.columns else "position"
+    if all(col in setlist_df.columns for col in ["set_number", pos_col]):
+        setlist_df = setlist_df.drop_duplicates(
+            subset=["set_number", pos_col], keep="first"
         )
 
-    with col2_breakdown:
-        st.markdown("##### Surprise Songs")
-        if surprise_songs:
-            # Display surprise songs as a bulleted list, sorted alphabetically
-            st.markdown(
-                "\n".join([f"- {s}" for s in sorted(surprise_songs)]),
-            )
-        else:
-            st.info("No surprises! All songs played were in the Top 50 predictions.")
+    sets = setlist_df.groupby("set_number", dropna=True)
 
-    # Display collection and prediction times below the setlist
-    st.divider()
-    col1_meta, col2_meta = st.columns(2)
-    with col1_meta:
-        if collection_time:
-            st.markdown(
-                f"<div style='text-align: center; color: gray; font-size: 0.9em;'>Data Collected: {pd.to_datetime(collection_time).strftime('%Y-%m-%d %H:%M')}</div>",
-                unsafe_allow_html=True,
+    def _set_order_key(v: Any) -> int:
+        s = str(v).strip().upper()
+        if s in {"E", "ENCORE", "99"}:
+            return 99
+        if s in {"0", "SOUNDCHECK"}:
+            return 0
+        try:
+            return int(float(s))
+        except Exception:
+            return 50
+
+    set_numbers = sorted(sets.groups.keys(), key=_set_order_key)
+    main_sections = []
+    encore_sections = []
+    for set_num in set_numbers:
+        set_data = sets.get_group(set_num).sort_values(pos_col)
+        set_num_str = str(set_num).upper()
+        if set_num_str in {"E", "ENCORE", "99"}:
+            set_header = "Encore"
+        elif set_num_str == "0":
+            set_header = "Soundcheck"
+        else:
+            set_header = f"Set {set_num}"
+
+        songs_html = []
+        seen_in_set = set()
+        for _, song_row in set_data.iterrows():
+            song_name_clean = _clean_song_name_for_display(song_row["song_name"], band)
+            if not song_name_clean:
+                continue
+            key = song_name_clean.lower()
+            if key in seen_in_set:
+                continue
+            seen_in_set.add(key)
+            rank = prediction_ranks.get(song_name_clean.lower())
+            badges = []
+            if key in debuts:
+                badges.append('<span class="badge-debut">Debut</span>')
+            gap_val = prediction_gaps.get(key)
+            if gap_val is not None and key in bustouts and key not in prediction_ranks:
+                badges.append('<span class="badge-bustout">Bustout</span>')
+            if rank is not None:
+                if rank <= 10:
+                    badges.append(f'<span class="badge-top10">Top 10 • #{rank}</span>')
+                elif rank <= 25:
+                    badges.append(f'<span class="badge-top25">Top 25 • #{rank}</span>')
+                elif rank <= 50:
+                    badges.append(f'<span class="badge-top50">Top 50 • #{rank}</span>')
+            badge_html = " " + " ".join(badges) if badges else ""
+            songs_html.append(
+                f"<div class='jbn-set__song'><span>{song_name_clean}</span>{badge_html}</div>"
             )
-    with col2_meta:
-        if predicted_at_str != "unknown":
-            st.markdown(
-                f"<div style='text-align: center; color: gray; font-size: 0.9em;'>Model Predicted: {predicted_at_str}</div>",
-                unsafe_allow_html=True,
+
+        section_html = f"<div class='jbn-set'><div class='jbn-set__title'>{set_header}</div><div class='jbn-set__songs'>{''.join(songs_html) if songs_html else '<em>No songs found</em>'}</div></div>"
+        if set_header == "Encore":
+            encore_sections.append(section_html)
+        else:
+            main_sections.append(section_html)
+
+    inner_sections: list[str] = []
+    if main_sections:
+        inner_sections.append(
+            f"<div class='jbn-setlist-row'>{''.join(main_sections)}</div>"
+        )
+    if encore_sections:
+        inner_sections.append(
+            f"<div class='jbn-setlist-row jbn-encore'>{''.join(encore_sections)}</div>"
+        )
+
+    if inner_sections:
+        st.markdown(
+            f"<div class='jbn-card jbn-setlist'>{''.join(inner_sections)}</div>",
+            unsafe_allow_html=True,
+        )
+
+
+def _chunked(iterable, size: int):
+    """Yield successive chunks from iterable."""
+    for i in range(0, len(iterable), size):
+        yield iterable[i : i + size]
+
+
+@st.cache_data(ttl=3600)  # Cache for 1 hour
+def _get_prior_song_history(
+    _client: Client, band: str, show_date: str | None
+) -> set[str]:
+    """Fetch songs played before the given show date for debut detection."""
+    if not show_date:
+        return set()
+
+    # Normalize to date-only format to avoid timestamp comparison issues
+    try:
+        show_date_normalized = str(pd.to_datetime(show_date).date())
+    except Exception:
+        show_date_normalized = show_date
+
+    id_col = BAND_ID_COLUMNS.get(band, "show_id")
+    shows_table = f"{band}_shows_raw"
+    setlists_table = f"{band}_setlists_raw"
+
+    prior_ids: set[str] = set()
+    page = 0
+    page_size = 1000
+    while True:
+        try:
+            resp = (
+                _client.table(shows_table)
+                .select(f"{id_col}, show_date")
+                .lt("show_date", show_date_normalized)
+                .range(page * page_size, page * page_size + page_size - 1)
+                .execute()
             )
+        except Exception:
+            break
+        data = resp.data or []
+        for row in data:
+            sid = row.get(id_col)
+            if sid is not None:
+                prior_ids.add(str(sid))
+        if len(data) < page_size:
+            break
+        page += 1
+
+    if not prior_ids:
+        return set()
+
+    songs: set[str] = set()
+
+    # Try using the id_col as the setlist foreign key; fall back to show_id if missing
+    setlist_id_cols = [id_col, "show_id"] if id_col != "show_id" else ["show_id"]
+    for setlist_id_col in setlist_id_cols:
+        try:
+            for chunk in _chunked(list(prior_ids), 500):
+                resp = (
+                    _client.table(setlists_table)
+                    .select(f"song_name, {setlist_id_col}")
+                    .in_(setlist_id_col, chunk)
+                    .execute()
+                )
+                for row in resp.data or []:
+                    sid = row.get(setlist_id_col)
+                    if sid is None or str(sid) not in prior_ids:
+                        continue
+                    cleaned = _clean_song_name_for_display(row.get("song_name"), band)
+                    if cleaned:
+                        songs.add(cleaned.lower())
+            if songs:
+                break
+        except Exception:
+            continue
+
+    return songs
+
+
+def display_last_show_setlist(client: Client, band: str, model: str) -> None:
+    """Display the last show's setlist with prediction highlights and metrics."""
+    with st.spinner("Loading last show setlist..."):
+        data = get_last_show_data(client, band, model)
+
+    setlist_df = data["setlist"]
+    show_details = data["show_details"]
+
+    if setlist_df.empty or show_details is None:
+        st.warning("No recent setlist data available.")
+        return
+
+    header_text = _format_show_header(show_details)
+    predictions_df = data["predictions"]
+    predictions_df = predictions_df.copy()
+    if not predictions_df.empty and "current_gap" in predictions_df.columns:
+        try:
+            predictions_df = predictions_df[predictions_df["current_gap"] > 3]
+        except Exception:
+            pass
+    if "rank" in predictions_df.columns:
+        predictions_df = predictions_df.reset_index(drop=True)
+        predictions_df["rank"] = predictions_df.index + 1
+
+    prediction_ranks = _build_prediction_lookup(predictions_df, band)
+
+    # Build gap lookup from ORIGINAL predictions (before filtering) for bustout detection
+    # We need ALL gaps, not just those with gap > 3, to detect bustouts correctly
+    original_predictions = data["predictions"]
+    prediction_gaps = {}
+    if not original_predictions.empty and "current_gap" in original_predictions.columns:
+        for _, row in original_predictions.iterrows():
+            name = _clean_song_name_for_display(
+                str(row.get("song_name", "")), band
+            ).lower()
+            if not name:
+                continue
+            gap_val = row.get("current_gap")
+            try:
+                gap = float(gap_val)
+            except Exception:
+                continue
+            prediction_gaps[name] = gap
+
+    prior_history = _get_prior_song_history(client, band, data.get("show_date"))
+    stats = _compute_summary(
+        setlist_df, prediction_ranks, prediction_gaps, prior_history, band
+    )
+
+    predicted_at_raw = data.get("predicted_at")
+    predicted_at = (
+        pd.to_datetime(predicted_at_raw).floor("min") if predicted_at_raw else None
+    )
+    predicted_at_str = (
+        predicted_at.strftime("%Y-%m-%d %H:%M") if predicted_at else "unknown"
+    )
+    collection_time = data.get("collection_time")
+    collection_str = (
+        pd.to_datetime(collection_time).strftime("%Y-%m-%d %H:%M")
+        if collection_time
+        else "unknown"
+    )
+    model_display = MODEL_DISPLAY.get(model, model.title())
+
+    _render_hero(header_text, model_display, predicted_at_str, collection_str)
+    _render_summary_cards(stats)
+    _render_setlist(
+        setlist_df,
+        prediction_ranks,
+        prediction_gaps,
+        band,
+        debuts={name.lower() for name in stats["debuts"]},
+        bustouts={name.lower() for name in stats["bustouts"]},
+    )

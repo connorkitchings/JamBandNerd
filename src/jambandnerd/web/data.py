@@ -199,6 +199,73 @@ def fetch_per_show_accuracy(
 
 
 @st.cache_data(ttl=STREAMLIT_CACHE_TTL_LONG)
+def fetch_setlist_for_date(
+    _db_client: Client, band: str, show_date: str
+) -> tuple[pd.DataFrame, dict | None]:
+    """Fetch the setlist for a specific show date."""
+    if band not in BAND_CONFIG:
+        st.warning(f"Band '{band}' not found in configuration")
+        return pd.DataFrame(), None
+
+    try:
+        id_col = BAND_ID_COLUMNS.get(band, "show_id")
+        pos_col = "position" if band == "phish" else "song_position"
+        setlist_table = f"{band}_setlists_raw"
+        shows_table = f"{band}_shows_raw"
+
+        # Get the show ID for the given date
+        show_resp = (
+            _db_client.table(shows_table)
+            .select(id_col)
+            .eq("show_date", show_date)
+            .limit(1)
+            .execute()
+        )
+        if not show_resp.data:
+            return pd.DataFrame(), None
+        
+        show_id = show_resp.data[0].get(id_col)
+
+        if not show_id:
+            return pd.DataFrame(), None
+
+        # Get full setlist for this show
+        setlist_data = (
+            _db_client.table(setlist_table)
+            .select(f"set_number, {pos_col}, song_name")
+            .eq(id_col, show_id)
+            .order("set_number")
+            .order(pos_col)
+            .execute()
+        )
+        setlist_df = pd.DataFrame(setlist_data.data)
+
+        # Deduplicate setlist data at the source
+        if not setlist_df.empty:
+            dedup_cols = ["set_number", pos_col]
+            if all(col in setlist_df.columns for col in dedup_cols):
+                setlist_df = setlist_df.drop_duplicates(subset=dedup_cols, keep="first")
+
+        # Get show details
+        show_details = None
+        show_query = (
+            _db_client.table(shows_table)
+            .select("*")
+            .eq(id_col, show_id)
+            .limit(1)
+            .execute()
+        )
+
+        if show_query.data:
+            show_details = show_query.data[0]
+
+        return setlist_df, show_details
+
+    except Exception as e:
+        st.error(f"Failed to fetch setlist for {band} on {show_date}: {e}")
+        return pd.DataFrame(), None
+
+@st.cache_data(ttl=STREAMLIT_CACHE_TTL_LONG)
 def fetch_last_show_setlist(
     _db_client: Client, band: str
 ) -> tuple[pd.DataFrame, dict | None]:

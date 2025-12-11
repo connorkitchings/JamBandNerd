@@ -76,7 +76,7 @@ def _clean_song_name_for_display(name: str, band: str) -> str:
     """Normalize song names for display/highlighting, stripping unwanted artist credits."""
     if not isinstance(name, str):
         return ""
-    cleaned = name.rstrip('>').rstrip('*').strip()
+    cleaned = name.rstrip(">").rstrip("*").strip()
     if not cleaned:
         return ""
     lowered = cleaned.lower()
@@ -92,15 +92,29 @@ def _clean_song_name_for_display(name: str, band: str) -> str:
     return cleaned
 
 
-def get_initial_selection_from_url(default_band: str, default_model: str, default_k: int) -> dict:
+def get_initial_selection_from_url(
+    default_band: str, default_model: str, default_k: int
+) -> dict:
     try:
         qp = dict(st.query_params)
     except Exception:
         qp = st.experimental_get_query_params()
-    band_val = qp.get("band", [default_band])[0] if isinstance(qp.get("band"), list) else qp.get("band", default_band)
-    model_val = qp.get("model", [default_model])[0] if isinstance(qp.get("model"), list) else qp.get("model", default_model)
+    band_val = (
+        qp.get("band", [default_band])[0]
+        if isinstance(qp.get("band"), list)
+        else qp.get("band", default_band)
+    )
+    model_val = (
+        qp.get("model", [default_model])[0]
+        if isinstance(qp.get("model"), list)
+        else qp.get("model", default_model)
+    )
     try:
-        k_raw = qp.get("k", [str(default_k)])[0] if isinstance(qp.get("k"), list) else qp.get("k", str(default_k))
+        k_raw = (
+            qp.get("k", [str(default_k)])[0]
+            if isinstance(qp.get("k"), list)
+            else qp.get("k", str(default_k))
+        )
         k_val = int(k_raw)
     except Exception:
         k_val = default_k
@@ -116,7 +130,11 @@ def sync_query_params(band: str, model: str, k: int) -> None:
         st.experimental_set_query_params(band=band, model=model, k=str(k))
 
 
-def display_sidebar(initial_band: Optional[str] = None, initial_model: Optional[str] = None, initial_k: Optional[int] = None) -> tuple[str, str, int]:
+def display_sidebar(
+    initial_band: Optional[str] = None,
+    initial_model: Optional[str] = None,
+    initial_k: Optional[int] = None,
+) -> tuple[str, str, int]:
     """Render the sidebar and return selected options."""
     st.sidebar.title("JamBandNerd")
 
@@ -127,28 +145,43 @@ def display_sidebar(initial_band: Optional[str] = None, initial_model: Optional[
     band_display_names = [config["display_name"] for _, config in sorted_bands]
     display_to_slug = {config["display_name"]: slug for slug, config in sorted_bands}
 
-    if initial_band in ACTIVE_BAND_SET:
-        initial_band_display = BAND_CONFIG[initial_band]["display_name"]  # type: ignore[index]
+    # Only set index on first load, then let widget maintain its own state
+    if "band_selector" not in st.session_state:
+        # First load: use initial_band to set index
+        if initial_band in ACTIVE_BAND_SET:
+            initial_band_display = BAND_CONFIG[initial_band]["display_name"]  # type: ignore[index]
+        else:
+            initial_band_display = band_display_names[0]
+        try:
+            band_index = band_display_names.index(initial_band_display)
+        except ValueError:
+            band_index = 0
     else:
-        initial_band_display = band_display_names[0]
-    try:
-        band_index = band_display_names.index(initial_band_display)
-    except ValueError:
-        band_index = 0
+        # After first load: don't override widget state, use current widget value
+        band_index = band_display_names.index(st.session_state.band_selector)
 
-    selected_band_display = st.sidebar.selectbox("Select a Band", band_display_names, index=band_index)
+    selected_band_display = st.sidebar.selectbox(
+        "Select a Band", band_display_names, index=band_index, key="band_selector"
+    )
     selected_band_slug = display_to_slug[selected_band_display]
 
+    # Same logic for model
     model_display_names = [config["display_name"] for config in MODEL_CONFIG.values()]
-    if initial_model in MODEL_CONFIG:
-        initial_model_display = MODEL_CONFIG[initial_model]["display_name"]  # type: ignore[index]
+    if "model_selector" not in st.session_state:
+        if initial_model in MODEL_CONFIG:
+            initial_model_display = MODEL_CONFIG[initial_model]["display_name"]  # type: ignore[index]
+        else:
+            initial_model_display = model_display_names[0]
+        try:
+            model_index = model_display_names.index(initial_model_display)
+        except ValueError:
+            model_index = 0
     else:
-        initial_model_display = model_display_names[0]
-    try:
-        model_index = model_display_names.index(initial_model_display)
-    except ValueError:
-        model_index = 0
-    selected_model_display = st.sidebar.radio("Select a Model", model_display_names, index=model_index)
+        model_index = model_display_names.index(st.session_state.model_selector)
+
+    selected_model_display = st.sidebar.radio(
+        "Select a Model", model_display_names, index=model_index, key="model_selector"
+    )
     selected_model_slug = next(
         slug
         for slug, config in MODEL_CONFIG.items()
@@ -156,18 +189,26 @@ def display_sidebar(initial_band: Optional[str] = None, initial_model: Optional[
     )
 
     # Compact model explanation with tooltip-like hint
-    st.sidebar.caption(f"{selected_model_display}: {MODEL_CONFIG[selected_model_slug]['explanation']}")
+    st.sidebar.caption(
+        f"{selected_model_display}: {MODEL_CONFIG[selected_model_slug]['explanation']}"
+    )
 
+    # Same logic for k
     k_options = [10, 25, 50]
-    if initial_k in k_options:
-        k_index = k_options.index(initial_k)  # type: ignore[arg-type]
+    if "k_selector" not in st.session_state:
+        if initial_k in k_options:
+            k_index = k_options.index(initial_k)  # type: ignore[arg-type]
+        else:
+            k_index = 2
     else:
-        k_index = 2
+        k_index = k_options.index(st.session_state.k_selector)
+
     selected_k = st.sidebar.selectbox(
         "K for Accuracy (Top-K)",
         k_options,
         index=k_index,
         help="Number of top-ranked songs considered for the recall metric.",
+        key="k_selector",
     )
     st.sidebar.caption(
         "Top-K: Of the songs actually played, the fraction that appear in the Top-K predictions."

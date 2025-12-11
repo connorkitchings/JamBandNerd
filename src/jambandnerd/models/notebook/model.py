@@ -44,10 +44,16 @@ class NotebookPredictor(PredictionModel):
         # Count unique shows per song to avoid counting reprises/encores as separate plays
         plays_in_window = plays[plays["show_date"] >= window_start]
         # Use nunique on show_index (or show_id) to count distinct shows where the song was played
-        plays_past_year_count = plays_in_window.groupby("song_name")["show_index"].nunique().rename("plays_past_year")
+        plays_past_year_count = (
+            plays_in_window.groupby("song_name")["show_index"]
+            .nunique()
+            .rename("plays_past_year")
+        )
 
         # 3. Filter candidates to songs played in the window
-        song_candidates = features.merge(plays_past_year_count, on="song_name", how="inner").copy()
+        song_candidates = features.merge(
+            plays_past_year_count, on="song_name", how="inner"
+        ).copy()
 
         if song_candidates.empty:
             return [], model_data.diagnostics
@@ -57,12 +63,14 @@ class NotebookPredictor(PredictionModel):
             model_data.reference_index - song_candidates["last_played_index"]
         )
 
-        # 5. Apply final exclusions – ensure songs played within the last three shows are removed
-        # recently_played_songs already contains the last three shows by default; keep the guard anyway.
+        # 5. Exclude recently played songs (from last N shows based on exclusion window)
+        recently_played_set = set(model_data.recently_played_songs)
         song_candidates = song_candidates[
-            (song_candidates["current_gap"] > 3)
-            & (~song_candidates["song_name"].isin(model_data.recently_played_songs))
+            ~song_candidates["song_name"].isin(recently_played_set)
         ]
+
+        if song_candidates.empty:
+            return [], model_data.diagnostics
 
         # 6. Rank and Predict
         ranked = song_candidates.sort_values(
@@ -94,8 +102,9 @@ class NotebookPredictor(PredictionModel):
         print("NotebookModel does not require explicit training.")
         pass
 
-    def calculate_accuracy(self, predictions, actual_songs, *args, **kwargs) -> Dict[str, Any]:
+    def calculate_accuracy(
+        self, predictions, actual_songs, *args, **kwargs
+    ) -> Dict[str, Any]:
         """Placeholder for calculate_accuracy method."""
         print("Accuracy calculation not implemented for this model.")
         return {}
-
