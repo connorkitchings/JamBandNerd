@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-import re
 from typing import Optional
 
 import streamlit as st
+
+from jambandnerd.web.components.common import clean_song_name_for_display
 
 # This is a temporary solution. In the future, this should be moved to a more centralized location.
 BAND_CONFIG = {
@@ -64,32 +65,10 @@ MODEL_CONFIG = {
     },
 }
 
-WSP_ARTIST_MARKERS = {
-    "david bromberg band",
-    "new riders of the purple sage",
-    "j.j. cale",
-    "the doors",
-}
 
-
+# Forward the function for backward compatibility if needed, though direct import is preferred
 def _clean_song_name_for_display(name: str, band: str) -> str:
-    """Normalize song names for display/highlighting, stripping unwanted artist credits."""
-    if not isinstance(name, str):
-        return ""
-    cleaned = name.rstrip(">").rstrip("*").strip()
-    if not cleaned:
-        return ""
-    lowered = cleaned.lower()
-    if band == "wsp":
-        if lowered in WSP_ARTIST_MARKERS:
-            return ""
-        for marker in WSP_ARTIST_MARKERS:
-            pattern = re.compile(rf"\s*,\s*{re.escape(marker)}\s*$", re.IGNORECASE)
-            cleaned = pattern.sub("", cleaned)
-    cleaned = cleaned.strip()
-    if not cleaned:
-        return ""
-    return cleaned
+    return clean_song_name_for_display(name, band)
 
 
 def get_initial_selection_from_url(

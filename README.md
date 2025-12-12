@@ -86,6 +86,7 @@ The web interface provides:
 - **Multi-band selection**: Switch between all dynamically discovered bands.
 - **Model comparison**: Toggle between Notebook and CK+ models.
 - **Live predictions**: View latest predictions with detailed metrics.
+- **Historical Explorer**: Browse past shows to view predictions vs. actual setlists for specific dates.
 - **Accuracy visualization**: Historical performance charts with configurable K values (K=10/25/50; selected K highlighted).
 - **Show details**: Prominent Next Show header with venue, plus model and prediction timestamp.
 

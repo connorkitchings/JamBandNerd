@@ -13,6 +13,7 @@ from jambandnerd.web.components.sidebar import (
     sync_query_params,
 )
 from jambandnerd.web.components.tabs.about import display_about
+from jambandnerd.web.components.tabs.explorer import display_historical_explorer
 from jambandnerd.web.components.tabs.last_show import display_last_show_setlist
 from jambandnerd.web.components.tabs.performance import display_historical_accuracy
 from jambandnerd.web.components.tabs.predictions import display_predictions
@@ -96,8 +97,14 @@ def main() -> None:
 
     supabase_client = get_supabase_client()
 
-    tab1, tab2, tab3, tab4 = st.tabs(
-        ["Predictions", "Last Show Analysis", "Model Performance", "About"]
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(
+        [
+            "Predictions",
+            "Last Show Analysis",
+            "Historical Explorer",
+            "Model Performance",
+            "About",
+        ]
     )
 
     with tab1:
@@ -111,11 +118,14 @@ def main() -> None:
         display_last_show_setlist(supabase_client, selected_band, selected_model)
 
     with tab3:
+        display_historical_explorer(supabase_client, selected_band, selected_model)
+
+    with tab4:
         display_historical_accuracy(
             supabase_client, selected_band, selected_model, selected_k
         )
 
-    with tab4:
+    with tab5:
         display_about(selected_model)
 
 

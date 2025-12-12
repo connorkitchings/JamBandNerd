@@ -11,62 +11,62 @@ class TestCleanSongNameForDisplay:
 
     def test_strips_trailing_markers(self):
         """Verify trailing > and * are removed."""
-        from jambandnerd.web.components.tabs.last_show import (
-            _clean_song_name_for_display,
+        from jambandnerd.web.components.common import (
+            clean_song_name_for_display,
         )
 
-        assert _clean_song_name_for_display("Disco>", "wsp") == "Disco"
+        assert clean_song_name_for_display("Disco>", "wsp") == "Disco"
         assert (
-            _clean_song_name_for_display("Space Wrangler*", "wsp") == "Space Wrangler"
+            clean_song_name_for_display("Space Wrangler*", "wsp") == "Space Wrangler"
         )
         # Note: function strips right-to-left sequentially, so *> gets both stripped
         # but >* only strips the * leaving the >
-        assert _clean_song_name_for_display("Chilly Water*>", "wsp") == "Chilly Water"
+        assert clean_song_name_for_display("Chilly Water*>", "wsp") == "Chilly Water"
 
     def test_removes_wsp_artist_markers(self):
         """Verify WSP artist credits are stripped."""
-        from jambandnerd.web.components.tabs.last_show import (
-            _clean_song_name_for_display,
+        from jambandnerd.web.components.common import (
+            clean_song_name_for_display,
         )
 
-        result = _clean_song_name_for_display("Tall Boy, David Bromberg Band", "wsp")
+        result = clean_song_name_for_display("Tall Boy, David Bromberg Band", "wsp")
         assert result == "Tall Boy"
 
     def test_artist_marker_removal_case_insensitive(self):
         """Artist marker removal should be case insensitive."""
-        from jambandnerd.web.components.tabs.last_show import (
-            _clean_song_name_for_display,
+        from jambandnerd.web.components.common import (
+            clean_song_name_for_display,
         )
 
-        result = _clean_song_name_for_display("Song, THE DOORS", "wsp")
+        result = clean_song_name_for_display("Song, THE DOORS", "wsp")
         assert result == "Song"
 
     def test_non_wsp_bands_keep_markers(self):
         """Non-WSP bands should not have artist markers stripped."""
-        from jambandnerd.web.components.tabs.last_show import (
-            _clean_song_name_for_display,
+        from jambandnerd.web.components.common import (
+            clean_song_name_for_display,
         )
 
-        result = _clean_song_name_for_display("Song, The Doors", "phish")
+        result = clean_song_name_for_display("Song, The Doors", "phish")
         assert result == "Song, The Doors"
 
     def test_handles_empty_string(self):
         """Empty strings should return empty."""
-        from jambandnerd.web.components.tabs.last_show import (
-            _clean_song_name_for_display,
+        from jambandnerd.web.components.common import (
+            clean_song_name_for_display,
         )
 
-        assert _clean_song_name_for_display("", "wsp") == ""
-        assert _clean_song_name_for_display("   ", "wsp") == ""
+        assert clean_song_name_for_display("", "wsp") == ""
+        assert clean_song_name_for_display("   ", "wsp") == ""
 
     def test_handles_non_string(self):
         """Non-string input should return empty."""
-        from jambandnerd.web.components.tabs.last_show import (
-            _clean_song_name_for_display,
+        from jambandnerd.web.components.common import (
+            clean_song_name_for_display,
         )
 
-        assert _clean_song_name_for_display(None, "wsp") == ""
-        assert _clean_song_name_for_display(123, "wsp") == ""
+        assert clean_song_name_for_display(None, "wsp") == ""
+        assert clean_song_name_for_display(123, "wsp") == ""
 
 
 class TestSetNumberOrdering:
@@ -139,14 +139,14 @@ class TestHitCounting:
         self, sample_setlist_df, sample_predictions_notebook
     ):
         """Verify hit counting matches predictions to setlist."""
-        from jambandnerd.web.components.tabs.last_show import (
-            _clean_song_name_for_display,
+        from jambandnerd.web.components.common import (
+            clean_song_name_for_display,
         )
 
         # Build prediction lookup
         prediction_ranks = {}
         for idx, row in sample_predictions_notebook.iterrows():
-            normalized = _clean_song_name_for_display(
+            normalized = clean_song_name_for_display(
                 str(row["song_name"]), "wsp"
             ).lower()
             if normalized:
@@ -156,7 +156,7 @@ class TestHitCounting:
         total_predicted = 0
         total_songs = 0
         for name in sample_setlist_df["song_name"]:
-            cleaned = _clean_song_name_for_display(name, "wsp")
+            cleaned = clean_song_name_for_display(name, "wsp")
             if not cleaned:
                 continue
             total_songs += 1

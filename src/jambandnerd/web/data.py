@@ -43,6 +43,34 @@ BAND_CONFIG = {
 }
 
 
+@st.cache_data(ttl=STREAMLIT_CACHE_TTL_LONG)
+def fetch_available_prediction_dates(_db_client: Client, band: str, model: str) -> list[str]:
+    """Fetch all dates that have predictions for a band, sorted descending."""
+    if band not in BAND_CONFIG:
+        return []
+    try:
+        table_name = f"predictions_{model}"
+        # We query the predictions table directly for reference_dates
+        # This ensures we only show dates where we actually have a prediction
+        resp = (
+            _db_client.table(table_name)
+            .select("reference_date")
+            .eq("band", band)
+            .order("reference_date", desc=True)
+            .execute()
+        )
+        # Deduplicate dates (though they should be unique per band/model/date ideally, 
+        # unless there are multiple runs, but we only care about distinct dates here)
+        dates = sorted(
+            list({r["reference_date"] for r in (resp.data or []) if r.get("reference_date")}),
+            reverse=True
+        )
+        return dates
+    except Exception as e:
+        st.error(f"Failed to fetch prediction dates for {band}: {e}")
+        return []
+
+
 @st.cache_data(ttl=STREAMLIT_CACHE_TTL)
 def fetch_wsp_upcoming_show(_db_client: Client) -> dict | None:
     """Fetch the next upcoming WSP show from the manual upcoming table."""
@@ -102,7 +130,7 @@ def fetch_predictions(
 @st.cache_data(ttl=STREAMLIT_CACHE_TTL)
 def fetch_predictions_for_date(
     _db_client: Client, band: str, model: str, reference_date: str
-) -> pd.DataFrame:
+) -> tuple[pd.DataFrame, dict | None]:
     """Fetch predictions for a specific band/model/reference_date from unified table."""
     try:
         table_name = f"predictions_{model}"
@@ -115,7 +143,7 @@ def fetch_predictions_for_date(
         )
         resp = query.execute()
         if not resp.data:
-            return pd.DataFrame()
+            return pd.DataFrame(), None
         row = resp.data[0]
         predictions_json = row.get("predictions")
         if isinstance(predictions_json, str):
@@ -126,9 +154,9 @@ def fetch_predictions_for_date(
         # Normalize columns for consistent downstream use
         if "last_played_date" in df.columns and "LTP" not in df.columns:
             df.rename(columns={"last_played_date": "LTP"}, inplace=True)
-        return df
+        return df, row
     except Exception:
-        return pd.DataFrame()
+        return pd.DataFrame(), None
 
 
 @st.cache_data(ttl=STREAMLIT_CACHE_TTL)
