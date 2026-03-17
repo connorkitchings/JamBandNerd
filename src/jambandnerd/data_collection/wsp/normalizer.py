@@ -57,20 +57,9 @@ def normalize_shows(raw: Iterable[Dict[str, Any]]) -> pd.DataFrame:
     """
     normalized: List[Dict[str, Any]] = []
     for item in raw:
-        # Try to get show_id, or derive from source_url if not present
         show_id = item.get("show_id")
-        if not show_id:
-            # EC collector doesn't set show_id, derive from source_url
-            # URL format: .../setlists/20251101a.asp -> extract date-based ID
-            source_url = item.get("source_url", "")
-            if "setlists/" in source_url:
-                # Extract filename: 20251101a.asp
-                filename = source_url.split("/")[-1].replace(".asp", "")
-                # Use filename as temp ID (will get real ID from DB on upsert)
-                show_id = filename
-            else:
-                # No way to identify this show, skip it
-                continue
+        if show_id in (None, ""):
+            continue
 
         # Support both API format (showdate, name) and EC format (show_date, venue_name)
         show_date_raw = item.get("show_date") or item.get("showdate")
@@ -142,8 +131,12 @@ def normalize_setlists(raw: Iterable[Dict[str, Any]]) -> pd.DataFrame:
             and song_name
         ):
             continue
-        settype = item.get("settype") or ""
-        is_encore = settype.lower() == "encore"
+        try:
+            song_position_int = int(song_position)
+        except (ValueError, TypeError):
+            continue
+        if song_position_int <= 0:
+            continue
         if str(set_number).lower().startswith("e"):
             set_num = 99
         else:
@@ -154,7 +147,7 @@ def normalize_setlists(raw: Iterable[Dict[str, Any]]) -> pd.DataFrame:
         record = {
             "show_id": str(show_id),
             "set_number": set_num,
-            "song_position": int(song_position),
+            "song_position": song_position_int,
             "song_name": song_name,
             # Database doesn't have 'encore' column (derived from set_number)
             "is_segue": item.get("is_segue", False),

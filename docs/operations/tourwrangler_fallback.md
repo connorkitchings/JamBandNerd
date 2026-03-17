@@ -42,6 +42,13 @@ ALTER TABLE public.wsp_setlists_raw ADD COLUMN IF NOT EXISTS source text;
 Safety net without `source` column:
 - The collection script performs a structural cleanup for recent shows by removing any rows not present in EC (by set_number + song_position). This is less precise than using the `source` column and is intended as a stopgap.
 
+## EC Show Identity
+
+- For `wsp_shows_raw`, the canonical Everyday Companion identity is `source_url`.
+- The collector now reuses `show_id` by exact `source_url` match before falling back to `(show_date, normalized venue_name)`.
+- Venue labels can drift on EC, so `show_date + venue_name` is only a secondary reconciliation key.
+- If WSP collection fails on a duplicate `source_url`, treat it as a show-identity regression in the EC reconciliation path rather than a generic upsert problem.
+
 ## Operational Tips
 
 - To extend the detection window, set `WSP_BACKUP_WINDOW_DAYS` in your environment.
@@ -50,7 +57,7 @@ Safety net without `source` column:
 
 ## Testing Utilities
 
-- scripts/tw_compare_ec_tw.py
+- `scripts/manual/wsp/tw_compare_ec_tw.py`
   - Compares EC rows (from DB or prior backup) with a parsed TourWrangler URL for a specific date.
-- scripts/tw_fallback_test.py
+- `scripts/manual/wsp/tw_fallback_test.py`
   - Backs up and temporarily deletes setlist rows for specified dates, upserts TourWrangler rows, and prints a diff vs the backup.

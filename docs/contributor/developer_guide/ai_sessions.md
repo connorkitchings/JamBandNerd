@@ -1,57 +1,54 @@
-# AI Session Guides
+# Agentic Development
 
-This document provides standardized prompts for starting and ending an AI-assisted development session.
+JamBandNerd uses a canonical multi-tool workflow for AI-assisted development. This document is the contributor-facing map to that system.
 
-## Session Start Template
+## Canonical Entry Points
 
-Copy, paste, and fill in the bracketed sections to begin a session. This prompt asks the AI to read
-context and confirm readiness.
+- `AGENTS.md` -> `.agent/AGENTS.md`
+- `CLAUDE.md` -> `AGENTS.md`
+- `GEMINI.md` -> `AGENTS.md`
+- `.agent/CONTEXT.md` for the startup router
+- `.agent/skills/CATALOG.md` for reusable task workflows
+- `.codex/QUICKSTART.md` for copy-paste commands
 
-```markdown
-Hello. We are continuing our work on the 'JamBandNerd' project.
+## Boot Order
 
-To get up to speed, please perform the following steps:
+AI tools should load these first:
 
-1.  **Review Core Project Documentation:**
-    *   `pyproject.toml`: To understand project dependencies and `uv` configuration.
-    *   `README.md`: For a high-level overview, setup, and usage instructions.
-    *   `gemini.md`: For AI-specific guidelines and key file references.
-    *   `docs/contributor/developer_guide/architecture.md`: For a detailed understanding of the project's architecture.
+1. `pyproject.toml`
+2. `README.md`
+3. `docs/user/pipeline_usage.md`
+4. `docs/contributor/developer_guide/architecture.md`
+5. `.agent/CONTEXT.md`
 
-2.  **Review Key Code Modules:**
-    *   `src/jambandnerd/config.py`: To understand the centralized configuration.
-    *   `scripts/run_optimized_pipeline.py`: To understand the main pipeline orchestration.
-    *   `src/jambandnerd/models/`: To understand the prediction model implementations.
+Everything else should be loaded on demand.
 
-3.  **Review the Last Session's Handoff:**
-    *   `docs/logs/[YYYY-MM-DD]/[XX].md` (use the most recent log for today)
+## Session Workflow
 
-4.  **Prepare for Today's Task:**
-    *   **Our focus today is:** [Describe the main goal for the session]
+### Start
 
-Once you have completed this review, please confirm you are ready, and we will begin.
-```
+1. Read `.agent/CONTEXT.md`
+2. Check `git status --short`
+3. Read the boot-order files only
+4. Load a matching skill from `.agent/skills/CATALOG.md`
+5. Check the latest relevant file in `session_logs/` if continuity matters
 
-## Session End Template
+### End
 
-Use this prompt to generate the dev log and update relevant documentation at the end of a session.
+1. Run the relevant validation commands from `.agent/workflows/health-check.md`
+2. Update any affected docs
+3. Write a session log to `session_logs/YYYY-MM-DD/NN.md`
+4. Add any durable lesson to `.agent/PLAYBOOK.md`
 
-```markdown
-We are now ending our development session for today. Please generate the dev log using the standard
-template structure.
+## Session Log Template
 
-- **Task Completed**: [Short description of the task or goal for the session.]
-- **Key Outcomes**:
-  - [Outcome 1]
-  - [Outcome 2]
-- **Blockers Encountered**: [Describe any blockers, or "None".]
-- **Session Handoff & Next Steps**: [Describe the immediate next task and any other notes for the
-next session.]
-- **Updated Documents**:
-  - [List any documents that were created or modified.]
+Use `session_logs/TEMPLATE.md` for the canonical structure.
 
-After generating the log, please confirm the file path and a list of the documents you updated.
+Historical logs in `docs/logs/` remain available as archive only.
 
- Additionally, as part of closing the session, review and update any affected documentation in
- `README.md` and the `docs/` folder to reflect changes made during the session.
-```
+## Repo-Specific Guardrails
+
+- Use `README.md` and `docs/user/pipeline_usage.md` as the command source of truth
+- Preserve the `reference_date` cutoff for all feature engineering and backtesting
+- Keep transformations in memory through `ModelData`
+- Keep band-specific logic in collectors, not shared transforms or models

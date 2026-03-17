@@ -97,10 +97,22 @@ The web interface provides:
 uv pip install -e ".[dev]"
 
 # Code quality
-ruff check src/
-black src/
-pytest tests/
+uv run black src tests scripts
+uv run ruff check src tests scripts
+uv run pytest
 ```
+
+## AI Tools
+
+JamBandNerd now uses a canonical multi-tool agent workflow:
+
+- `AGENTS.md` -> `.agent/AGENTS.md`
+- `.agent/CONTEXT.md` for the startup router
+- `.agent/skills/CATALOG.md` for task workflows
+- `.codex/QUICKSTART.md` for copy-paste commands
+- `session_logs/` for active AI handoffs and session notes
+
+Historical logs in `docs/logs/` remain available as archive only.
 
 ## Documentation
 
@@ -109,7 +121,7 @@ For comprehensive documentation, please visit the **[full documentation site](do
 Key sections include:
 
 - 🚀 **[User Guide](docs/user/getting_started.md)**: For users who want to install, configure, and run the project.
-- 🧑‍💻 **[Contributor Guide](docs/contributor/developer_guide/architecture.md)**: For contributors who want to understand the architecture and extend the platform.
+- 🧑‍💻 **[Contributor Guide](docs/contributor/onboarding.md)**: For contributors who want the development workflow, architecture, and agentic operating model.
 - 📚 **[Reference](docs/reference/)**: Detailed technical specifications, schemas, and guides.
 - 📈 **[Reports](docs/reports/)**: Summaries of improvements and validation testing.
 
@@ -152,7 +164,7 @@ The platform features comprehensive automation through GitHub Actions:
 
 ## Contributing
 
-See [Implementation Guide](docs/guides/implementation.md) for development workflow and current priorities.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the workflow overview and [docs/contributor/onboarding.md](docs/contributor/onboarding.md) for contributor-specific orientation.
 
 ## License
 

@@ -11,6 +11,7 @@ Usage:
     uv run python scripts/diagnose_band_data.py --band goose
     uv run python scripts/diagnose_band_data.py --band phish --verbose
 """
+
 from __future__ import annotations
 
 import argparse
@@ -28,30 +29,55 @@ from src.jambandnerd.config import BAND_ID_COLUMNS
 from src.jambandnerd.db.connection import get_supabase_client
 
 
+def _completed_show_bounds(*, today: date | None = None, days: int = 30) -> tuple[str, str]:
+    """Return the recent completed-show window, excluding today."""
+    today = today or date.today()
+    cutoff = today - timedelta(days=days)
+    end_date = today - timedelta(days=1)
+    return cutoff.isoformat(), end_date.isoformat()
+
+
+def _batched(items: list[str], size: int = 50) -> list[list[str]]:
+    """Split IDs into stable batches for Supabase `in_` queries."""
+    return [items[idx : idx + size] for idx in range(0, len(items), size)]
+
+
+def _fetch_setlist_ids_for_shows(
+    client, setlists_table: str, id_col: str, show_ids: set[str]
+) -> set[str]:
+    """Fetch setlist IDs for the target shows only."""
+    if not show_ids:
+        return set()
+
+    setlist_ids: set[str] = set()
+    for chunk in _batched(sorted(show_ids)):
+        resp = client.table(setlists_table).select(id_col).in_(id_col, chunk).execute()
+        for item in resp.data or []:
+            value = item.get(id_col)
+            if value is not None:
+                setlist_ids.add(str(value))
+    return setlist_ids
+
+
 def diagnose_band(band: str, verbose: bool = False) -> dict[str, any]:
     """Run comprehensive diagnostics on band data.
-    
+
     Args:
         band: Band slug (goose, phish, or wsp)
         verbose: Whether to print detailed output
-        
+
     Returns:
         Dictionary containing diagnostic results and any issues found
     """
     client = get_supabase_client()
     id_col = BAND_ID_COLUMNS.get(band, "show_id")
 
-    results = {
-        "band": band,
-        "id_column": id_col,
-        "issues": [],
-        "stats": {}
-    }
+    results = {"band": band, "id_column": id_col, "issues": [], "stats": {}}
 
     # Print header
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"Diagnosing {band.upper()} Data")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
     print(f"Primary ID Column: {id_col}")
 
     shows_table = f"{band}_shows_raw"
@@ -59,16 +85,21 @@ def diagnose_band(band: str, verbose: bool = False) -> dict[str, any]:
 
     # Check 1: Verify shows table
     try:
-        cutoff = (date.today() - timedelta(days=30)).isoformat()
-        shows_resp = client.table(shows_table).select("*").gte("show_date", cutoff).execute()
+        cutoff, end_date = _completed_show_bounds()
+        shows_resp = (
+            client.table(shows_table)
+            .select("*")
+            .gte("show_date", cutoff)
+            .lte("show_date", end_date)
+            .execute()
+        )
         shows_df = pd.DataFrame(shows_resp.data)
 
-        print(f"\n📊 Shows in last 30 days: {len(shows_df)}")
+        print(f"\n📊 Completed shows in last 30 days: {len(shows_df)}")
         results["stats"]["recent_shows"] = len(shows_df)
 
         if shows_df.empty:
-            results["issues"].append("No recent shows found")
-            print("❌ No recent shows found!")
+            print("ℹ️ No completed recent shows found.")
             return results
 
         # Check for ID column presence in shows
@@ -83,10 +114,12 @@ def diagnose_band(band: str, verbose: bool = False) -> dict[str, any]:
         # Check for show_date column
         date_col = "show_date"
         if date_col not in shows_df.columns:
-            results["issues"].append(f"Date column '{date_col}' missing from shows table")
+            results["issues"].append(
+                f"Date column '{date_col}' missing from shows table"
+            )
             print(f"❌ Date column '{date_col}' NOT FOUND!")
             # Try alternate date columns
-            alt_date_cols = [c for c in shows_df.columns if 'date' in c.lower()]
+            alt_date_cols = [c for c in shows_df.columns if "date" in c.lower()]
             if alt_date_cols:
                 print(f"   Found alternate date columns: {', '.join(alt_date_cols)}")
         else:
@@ -123,7 +156,9 @@ def diagnose_band(band: str, verbose: bool = False) -> dict[str, any]:
 
         # Check for ID column in setlists
         if id_col not in setlists_df.columns:
-            results["issues"].append(f"ID column '{id_col}' missing from setlists table")
+            results["issues"].append(
+                f"ID column '{id_col}' missing from setlists table"
+            )
             print(f"❌ Column '{id_col}' NOT FOUND in setlists table!")
             print(f"Available columns: {', '.join(setlists_df.columns)}")
             return results
@@ -135,9 +170,13 @@ def diagnose_band(band: str, verbose: bool = False) -> dict[str, any]:
         pos_col = "position" if band == "phish" else "song_position"
         required_setlist_cols.append(pos_col)
 
-        missing_cols = [c for c in required_setlist_cols if c not in setlists_df.columns]
+        missing_cols = [
+            c for c in required_setlist_cols if c not in setlists_df.columns
+        ]
         if missing_cols:
-            results["issues"].append(f"Missing required setlist columns: {', '.join(missing_cols)}")
+            results["issues"].append(
+                f"Missing required setlist columns: {', '.join(missing_cols)}"
+            )
             print(f"⚠️  Missing columns: {', '.join(missing_cols)}")
 
     except Exception as e:
@@ -147,15 +186,15 @@ def diagnose_band(band: str, verbose: bool = False) -> dict[str, any]:
 
     # Check 3: Find orphaned shows (shows without setlists)
     try:
-        # Get all setlist IDs for matching
-        all_setlists_resp = client.table(setlists_table).select(id_col).execute()
-        all_setlists_df = pd.DataFrame(all_setlists_resp.data)
-
         show_ids = set(shows_df[id_col].astype(str))
-        setlist_ids = set(all_setlists_df[id_col].astype(str)) if not all_setlists_df.empty else set()
+        setlist_ids = _fetch_setlist_ids_for_shows(
+            client, setlists_table, id_col, show_ids
+        )
         orphaned = show_ids - setlist_ids
 
-        print(f"\n🔍 Orphaned shows (shows without setlists): {len(orphaned)}")
+        print(
+            f"\n🔍 Orphaned completed shows (shows without setlists): {len(orphaned)}"
+        )
         results["stats"]["orphaned_shows"] = len(orphaned)
 
         if orphaned:
@@ -163,8 +202,13 @@ def diagnose_band(band: str, verbose: bool = False) -> dict[str, any]:
             print("\nFirst 10 orphaned shows:")
             for show_id in list(orphaned)[:10]:
                 show = shows_df[shows_df[id_col].astype(str) == show_id].iloc[0]
-                show_date = show.get('show_date', 'Unknown')
-                venue = show.get('venue_name') or show.get('venuename') or show.get('venue') or 'Unknown venue'
+                show_date = show.get("show_date", "Unknown")
+                venue = (
+                    show.get("venue_name")
+                    or show.get("venuename")
+                    or show.get("venue")
+                    or "Unknown venue"
+                )
                 print(f"  - {show_date} at {venue} (ID: {show_id})")
 
             if verbose and len(orphaned) > 10:
@@ -190,7 +234,7 @@ def diagnose_band(band: str, verbose: bool = False) -> dict[str, any]:
         print("✅ No duplicate show IDs")
 
     # Check for missing venue information
-    venue_cols = ['venue_name', 'venuename', 'venue']
+    venue_cols = ["venue_name", "venuename", "venue"]
     venue_col_found = next((c for c in venue_cols if c in shows_df.columns), None)
     if venue_col_found:
         missing_venues = shows_df[venue_col_found].isna().sum()
@@ -204,14 +248,14 @@ def diagnose_band(band: str, verbose: bool = False) -> dict[str, any]:
         print("⚠️  No venue column found")
 
     # Final summary
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     if results["issues"]:
         print(f"❌ Found {len(results['issues'])} issue(s)")
         for i, issue in enumerate(results["issues"], 1):
             print(f"  {i}. {issue}")
     else:
         print("✅ No issues found - data looks good!")
-    print(f"{'='*60}\n")
+    print(f"{'=' * 60}\n")
 
     return results
 
@@ -225,26 +269,26 @@ def main() -> None:
 Examples:
   # Run basic diagnostics for Goose
   python scripts/diagnose_band_data.py --band goose
-  
+
   # Run detailed diagnostics for Phish
   python scripts/diagnose_band_data.py --band phish --verbose
-  
+
   # Check all bands
   for band in goose phish wsp billy um; do
     python scripts/diagnose_band_data.py --band $band
   done
-        """
+        """,
     )
     parser.add_argument(
         "--band",
         required=True,
         choices=["goose", "eggy", "phish", "wsp", "billy", "um"],
-        help="Band to diagnose"
+        help="Band to diagnose",
     )
     parser.add_argument(
         "--verbose",
         action="store_true",
-        help="Show detailed output including sample data"
+        help="Show detailed output including sample data",
     )
 
     args = parser.parse_args()
@@ -264,6 +308,7 @@ Examples:
     except Exception as e:
         print(f"\n❌ Fatal error: {e}")
         import traceback
+
         if args.verbose:
             traceback.print_exc()
         sys.exit(2)

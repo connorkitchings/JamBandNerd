@@ -13,7 +13,7 @@ This documentation is organized into audience-focused sections:
 - **[Onboarding](contributor/onboarding.md)**: How to get oriented and make your first contribution.
 - **[Architecture](contributor/developer_guide/architecture.md)**: System design and component overview.
 - **[Extending the Platform](contributor/developer_guide/extending_the_platform.md)**: Patterns for new bands and models.
-- **[AI Session Templates](contributor/developer_guide/ai_sessions.md)**: Standard prompts for AI-assisted development.
+- **[Agentic Development](contributor/developer_guide/ai_sessions.md)**: Canonical AI entrypoints, startup flow, and session logging workflow.
 
 ### ⚙️ [Operations](operations/github_actions.md)
 - **[Daily Pipeline](operations/github_actions.md)**: GitHub Actions workflow and monitoring notes.

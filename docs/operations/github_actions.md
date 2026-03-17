@@ -5,21 +5,27 @@ This repository runs a daily data pipeline via GitHub Actions.
 ## Triggers
 
 - Scheduled: Daily at 19:00 UTC (3:00 PM ET during DST)
-- Manual: `workflow_dispatch` with band selection
-  - Options: `all`, `goose`, `phish`, `wsp`
-  - Optional: `use_optimized_pipeline` (single-script) or standard multi-step jobs
+- Manual: `workflow_dispatch` with:
+  - `band`: `all` or a single band from the dynamically discovered list
+  - `skip_accuracy`: skip backtesting/aggregate accuracy for a faster run
 
 ## Overview
 
-- Collect data for selected bands
+- Collect raw data for selected band(s)
 - Generate predictions for Notebook and CK+
-- Calculate accuracy metrics and upsert to Supabase
+- Optionally run backtests + aggregate accuracy
+- Run freshness checks and write a run summary
 
 ## Notes
 
-- Secrets required: `SUPABASE_URL`, `SUPABASE_KEY`, `PHISH_API_KEY` (for Phish)
-- The optimized pipeline reuses loaded data and calculates accuracy over the last 100 valid shows per band.
+- Secrets required: `SUPABASE_URL`, `SUPABASE_KEY`; `PHISH_API_KEY` is required only for the Phish collector.
+- For WSP, the workflow installs Playwright (Firefox) to improve CI scraping reliability.
+- The pipeline validates prediction table freshness (`scripts/validate_prediction_tables.py`) after generation, using the latest written prediction row by `predicted_at`.
 - Accuracy backtesting excludes shows with 5 or fewer unique songs.
+
+## Optional Notifications
+
+If `DISCORD_WEBHOOK_URL` is set in GitHub Secrets, the workflow posts a success/failure message with a link to the run.
 
 ## Data Validation
 

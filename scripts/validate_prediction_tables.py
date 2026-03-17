@@ -7,7 +7,7 @@ import json
 from datetime import datetime, timezone
 from typing import Dict, Iterable, List
 
-from src.jambandnerd.db.connection import get_supabase_client
+from jambandnerd.db.connection import get_supabase_client
 
 
 def _parse_timestamp(value: str | None) -> datetime | None:
@@ -18,6 +18,22 @@ def _parse_timestamp(value: str | None) -> datetime | None:
         return datetime.fromisoformat(value.replace("Z", "+00:00"))
     except ValueError:
         return None
+
+
+def _latest_prediction_row(client, *, table: str, band: str, model_version: str):
+    """Fetch the most recently written prediction row for a band/model."""
+    resp = (
+        client.table(table)
+        .select("band, reference_date, predicted_at, predictions")
+        .eq("band", band)
+        .eq("model_version", model_version)
+        .order("predicted_at", desc=True)
+        .order("reference_date", desc=True)
+        .limit(1)
+        .execute()
+    )
+    rows: List[Dict[str, str]] = resp.data or []
+    return rows[0] if rows else None
 
 
 def validate_predictions(bands: Iterable[str], max_age_hours: int) -> int:
@@ -37,23 +53,14 @@ def validate_predictions(bands: Iterable[str], max_age_hours: int) -> int:
     for table, model_version in tables.items():
         print(f"\n== Validating {table} ({model_version}) ==")
         for band in band_list:
-            resp = (
-                client.table(table)
-                .select("band, reference_date, predicted_at, predictions")
-                .eq("band", band)
-                .eq("model_version", model_version)
-                .order("reference_date", desc=True)
-                .limit(1)
-                .execute()
+            row = _latest_prediction_row(
+                client, table=table, band=band, model_version=model_version
             )
-
-            rows: List[Dict[str, str]] = resp.data or []
-            if not rows:
+            if not row:
                 print(f"[FAIL] {band}: no rows found")
                 failures += 1
                 continue
 
-            row = rows[0]
             predicted_at = _parse_timestamp(row.get("predicted_at"))
             age_hrs = None
             if predicted_at:
@@ -61,7 +68,11 @@ def validate_predictions(bands: Iterable[str], max_age_hours: int) -> int:
 
             try:
                 predictions_blob = row.get("predictions")
-                parsed = json.loads(predictions_blob) if isinstance(predictions_blob, str) else predictions_blob
+                parsed = (
+                    json.loads(predictions_blob)
+                    if isinstance(predictions_blob, str)
+                    else predictions_blob
+                )
                 top_song = parsed[0]["song_name"] if parsed else "<empty>"
             except Exception as exc:
                 print(f"[FAIL] {band}: invalid JSON payload ({exc})")
@@ -69,7 +80,9 @@ def validate_predictions(bands: Iterable[str], max_age_hours: int) -> int:
                 continue
 
             if predicted_at is None:
-                print(f"[WARN] {band}: missing predicted_at timestamp; latest reference_date={row.get('reference_date')}")
+                print(
+                    f"[WARN] {band}: missing predicted_at timestamp; latest reference_date={row.get('reference_date')}"
+                )
                 failures += 1
                 continue
 
@@ -79,13 +92,17 @@ def validate_predictions(bands: Iterable[str], max_age_hours: int) -> int:
                 failures += 1
 
             age_display = f"{age_hrs:.1f}h" if age_hrs is not None else "unknown age"
-            print(f"[{status}] {band}: reference_date={row.get('reference_date')} predicted_at={predicted_at.isoformat()} age={age_display} top_song={top_song}")
+            print(
+                f"[{status}] {band}: reference_date={row.get('reference_date')} predicted_at={predicted_at.isoformat()} age={age_display} top_song={top_song}"
+            )
 
     return failures
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Validate prediction tables for freshness and JSON integrity")
+    parser = argparse.ArgumentParser(
+        description="Validate prediction tables for freshness and JSON integrity"
+    )
     parser.add_argument(
         "--band",
         dest="bands",
@@ -100,7 +117,9 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    failures = validate_predictions(bands=args.bands or [], max_age_hours=args.max_age_hours)
+    failures = validate_predictions(
+        bands=args.bands or [], max_age_hours=args.max_age_hours
+    )
     if failures:
         raise SystemExit(f"Validation failed with {failures} issue(s)")
 

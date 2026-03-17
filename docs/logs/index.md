@@ -4,6 +4,10 @@ This directory archives daily AI-assisted development sessions. Each entry captu
 key outcomes, and follow-up notes for the date in the filename.
 
 ## 2025 Sessions
+- [2025-12-13 — Repo hygiene and script reorg](2025-12-13/01_repo_hygiene_and_script_reorg.md)
+- [2025-12-12 — Historical Prediction Explorer](2025-12-12/01_historical_explorer.md)
+- [2025-12-11 — Streamlit blocker debugging](2025-12-11/01_streamlit_blocker_debugging.md)
+- [2025-12-10 — WSP collection repair and upsert fixes](2025-12-10/01_fix_wsp_collection_upsert.md)
 - [2025-10-27 — Billy ingestion session](2025-10-27/billy_ingestion_session.md)
 - [2025-10-27 — Umphrey's pipeline hardening](2025-10-27/um_pipeline_hardening.md)
 - [2025-10-25 — Pipeline stabilization series](2025-10-25/01.md)

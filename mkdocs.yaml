@@ -56,7 +56,7 @@ nav:
       - Onboarding: contributor/onboarding.md
       - Architecture: contributor/developer_guide/architecture.md
       - Extending the Platform: contributor/developer_guide/extending_the_platform.md
-      - AI Sessions: contributor/developer_guide/ai_sessions.md
+      - Agentic Development: contributor/developer_guide/ai_sessions.md
   - Operations:
       - Daily Pipeline: operations/github_actions.md
       - Pipeline Optimization: operations/pipeline_optimization.md

@@ -6,6 +6,7 @@ WSP data from various sources.
 
 import logging
 import os
+import re
 from datetime import date, datetime, timedelta
 
 import pandas as pd
@@ -27,6 +28,186 @@ from .tourwrangler import fetch_setlist_from_tourwrangler
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
+
+
+def _normalize_source_url(value: object) -> str | None:
+    """Return a normalized source URL string or None if unavailable."""
+    if value is None:
+        return None
+    normalized = str(value).strip()
+    return normalized or None
+
+
+def _normalize_venue_name(value: object) -> str | None:
+    """Normalize venue text for fallback matching only."""
+    if value is None:
+        return None
+    normalized = re.sub(r"[^a-z0-9]+", " ", str(value).lower())
+    normalized = re.sub(r"\s+", " ", normalized).strip()
+    if normalized.startswith("the "):
+        normalized = normalized[4:]
+    return normalized or None
+
+
+def _show_fallback_key(show: dict[str, object]) -> tuple[str, str] | None:
+    """Build a fallback identity key when source_url is unavailable."""
+    show_date = show.get("show_date") or show.get("showdate")
+    venue_name = show.get("venue_name") or show.get("venuename") or show.get("name")
+    if not show_date or not venue_name:
+        return None
+    normalized_venue = _normalize_venue_name(venue_name)
+    if not normalized_venue:
+        return None
+    return (str(show_date).strip(), normalized_venue)
+
+
+def _dedupe_show_batch(
+    shows_data: list[dict[str, object]],
+) -> tuple[list[dict[str, object]], int]:
+    """Collapse duplicate show rows in-memory, preferring source_url identity."""
+    deduped: list[dict[str, object]] = []
+    index_by_key: dict[object, int] = {}
+    duplicate_count = 0
+
+    for show in shows_data:
+        source_url = _normalize_source_url(show.get("source_url"))
+        fallback_key = _show_fallback_key(show)
+        dedupe_key: object = source_url or fallback_key
+
+        if dedupe_key is None:
+            deduped.append(show.copy())
+            continue
+
+        if dedupe_key in index_by_key:
+            duplicate_count += 1
+            existing = deduped[index_by_key[dedupe_key]]
+            for key, value in show.items():
+                if existing.get(key) in (None, "") and value not in (None, ""):
+                    existing[key] = value
+            continue
+
+        index_by_key[dedupe_key] = len(deduped)
+        deduped.append(show.copy())
+
+    return deduped, duplicate_count
+
+
+def _assign_show_ids(
+    shows_data: list[dict[str, object]],
+    *,
+    client,
+    year_start: int | None,
+    year_end: int | None,
+    full_backfill: bool,
+) -> tuple[list[dict[str, object]], dict[str, int]]:
+    """Resolve WSP show identity with source_url as the primary EC key."""
+    if not shows_data:
+        return [], {
+            "deduped_in_batch": 0,
+            "reused_by_source_url": 0,
+            "reused_by_fallback_key": 0,
+            "new_ids_assigned": 0,
+        }
+
+    deduped_shows, deduped_count = _dedupe_show_batch(shows_data)
+
+    try:
+        max_id_resp = (
+            client.table("wsp_shows_raw")
+            .select("show_id")
+            .order("show_id", desc=True)
+            .limit(1)
+            .execute()
+        )
+        next_id = (max_id_resp.data[0]["show_id"] + 1) if max_id_resp.data else 1
+    except Exception as exc:
+        logging.warning(f"Could not fetch max show_id: {exc}. Defaulting to 1.")
+        next_id = 1
+
+    source_url_map: dict[str, int] = {}
+    fallback_map: dict[tuple[str, str], int] = {}
+    existing_query = client.table("wsp_shows_raw").select(
+        "show_id, show_date, venue_name, source_url"
+    )
+    if not full_backfill and year_start and year_end:
+        existing_query = existing_query.gte("show_date", f"{year_start}-01-01").lte(
+            "show_date", f"{year_end}-12-31"
+        )
+
+    try:
+        existing_rows = existing_query.execute().data or []
+        for row in existing_rows:
+            show_id = row.get("show_id")
+            if show_id is None:
+                continue
+            source_url = _normalize_source_url(row.get("source_url"))
+            if source_url:
+                source_url_map[source_url] = int(show_id)
+            fallback_key = _show_fallback_key(row)
+            if fallback_key and fallback_key not in fallback_map:
+                fallback_map[fallback_key] = int(show_id)
+    except Exception as exc:
+        logging.warning(f"Could not fetch existing shows: {exc}")
+
+    resolved_shows: list[dict[str, object]] = []
+    stats = {
+        "deduped_in_batch": deduped_count,
+        "reused_by_source_url": 0,
+        "reused_by_fallback_key": 0,
+        "new_ids_assigned": 0,
+    }
+
+    for show in deduped_shows:
+        resolved = show.copy()
+        source_url = _normalize_source_url(resolved.get("source_url"))
+        fallback_key = _show_fallback_key(resolved)
+
+        chosen_id: int | None = None
+        if source_url and source_url in source_url_map:
+            chosen_id = source_url_map[source_url]
+            stats["reused_by_source_url"] += 1
+        elif fallback_key and fallback_key in fallback_map:
+            chosen_id = fallback_map[fallback_key]
+            stats["reused_by_fallback_key"] += 1
+        else:
+            chosen_id = next_id
+            next_id += 1
+            stats["new_ids_assigned"] += 1
+
+        resolved["show_id"] = chosen_id
+        resolved_shows.append(resolved)
+
+        if source_url:
+            source_url_map[source_url] = chosen_id
+        if fallback_key and fallback_key not in fallback_map:
+            fallback_map[fallback_key] = chosen_id
+
+    return resolved_shows, stats
+
+
+def _validate_resolved_shows(shows_data: list[dict[str, object]]) -> None:
+    """Fail early if the resolved batch still contains ambiguous identities."""
+    url_to_ids: dict[str, set[str]] = {}
+    for show in shows_data:
+        show_id = show.get("show_id")
+        if show_id in (None, ""):
+            raise RuntimeError("Resolved WSP show batch contains a row without show_id.")
+
+        source_url = _normalize_source_url(show.get("source_url"))
+        if not source_url:
+            raise RuntimeError(
+                "Resolved WSP show batch contains a row without source_url."
+            )
+
+        url_to_ids.setdefault(source_url, set()).add(str(show_id))
+
+    ambiguous = {url: ids for url, ids in url_to_ids.items() if len(ids) > 1}
+    if ambiguous:
+        sample_url, sample_ids = next(iter(ambiguous.items()))
+        raise RuntimeError(
+            "Resolved WSP show batch maps one source_url to multiple show_ids: "
+            f"{sample_url} -> {sorted(sample_ids)}"
+        )
 
 
 def process_wsp_data(
@@ -65,72 +246,48 @@ def process_wsp_data(
         end_date=datetime(year_end, 12, 31).date() if year_end else None,
     )
 
-    # Assign integer show_ids consistently
-    # Assign integer show_ids consistently
     if shows_data:
-        # Get DB client to check for existing shows and max ID
-        # client is already initialized above
-
-        # 1. Get max show_id
-        try:
-            max_id_resp = (
-                client.table("wsp_shows_raw")
-                .select("show_id")
-                .order("show_id", desc=True)
-                .limit(1)
-                .execute()
-            )
-            next_id = (max_id_resp.data[0]["show_id"] + 1) if max_id_resp.data else 1
-        except Exception as e:
-            logging.warning(f"Could not fetch max show_id: {e}. Defaulting to 1.")
-            next_id = 1
-
-        # 2. Get existing shows for lookup (to avoid duplicates)
-        existing_map = {}
-        if year_start:
-            try:
-                # Fetch simplified list of shows for the relevant years
-                start_iso = f"{year_start}-01-01"
-                end_iso = f"{year_end}-12-31" if year_end else f"{year_start}-12-31"
-
-                # Fetch in chunks if needed, but for one year 1000 limit is fine
-                exist_resp = (
-                    client.table("wsp_shows_raw")
-                    .select("show_id, show_date, venue_name")
-                    .gte("show_date", start_iso)
-                    .lte("show_date", end_iso)
-                    .execute()
-                )
-                for s in exist_resp.data:
-                    # Key by date + venue (first 10 chars of venue to be safe against slight variations)
-                    key = (s["show_date"], (s.get("venue_name") or "")[:15])
-                    existing_map[key] = s["show_id"]
-            except Exception as e:
-                logging.warning(f"Could not fetch existing shows: {e}")
-
-        # 3. Assign IDs
-        for show in shows_data:
-            if "show_id" not in show:
-                # Try to find existing
-                s_date = show.get("show_date")
-                s_venue = (show.get("venue_name") or "")[:15]
-                base_key = (s_date, s_venue)
-
-                if base_key in existing_map:
-                    show["show_id"] = existing_map[base_key]
-                else:
-                    show["show_id"] = next_id
-                    next_id += 1
-                    # Add to map so duplicates within this batch get same ID
-                    existing_map[base_key] = show["show_id"]
+        shows_data, identity_stats = _assign_show_ids(
+            shows_data,
+            client=client,
+            year_start=year_start,
+            year_end=year_end,
+            full_backfill=full_backfill,
+        )
+        _validate_resolved_shows(shows_data)
+        logging.info(
+            "WSP show identity resolution: deduped=%s reused_by_source_url=%s "
+            "reused_by_fallback_key=%s new_ids=%s",
+            identity_stats["deduped_in_batch"],
+            identity_stats["reused_by_source_url"],
+            identity_stats["reused_by_fallback_key"],
+            identity_stats["new_ids_assigned"],
+        )
 
     if shows_data:
         shows_df = normalize_shows(shows_data)
-        upsert_dataframe(
-            table_name="wsp_shows_raw",
-            df=shows_df,
-            conflict_columns=["show_id"],
-        )
+        try:
+            upsert_dataframe(
+                table_name="wsp_shows_raw",
+                df=shows_df,
+                conflict_columns=["show_id"],
+            )
+        except Exception as exc:
+            duplicate_source_urls = (
+                shows_df["source_url"][shows_df["source_url"].duplicated()].tolist()
+                if "source_url" in shows_df.columns
+                else []
+            )
+            if duplicate_source_urls:
+                raise RuntimeError(
+                    "WSP show upsert failed with duplicate source_url values in the "
+                    f"resolved batch: {duplicate_source_urls[:5]}"
+                ) from exc
+            raise RuntimeError(
+                "WSP show upsert failed after identity resolution. "
+                "This likely indicates an existing DB row matched by source_url but "
+                "was assigned a different show_id before upsert."
+            ) from exc
         logging.info(f"Upserted {len(shows_df)} shows into wsp_shows_raw.")
     status.shows_collected = len(shows_data)
     logging.info("--- Finished WSP Show Collection ---")
@@ -211,7 +368,7 @@ def process_wsp_data(
             logging.info(
                 f"Upserted {len(setlists_df)} setlist records into wsp_setlists_raw."
             )
-            status.setlists_collected = len(setlists_df)
+            status.setlists_collected += len(setlists_df)
         else:
             logging.info("No new shows require setlist scraping.")
 
@@ -265,7 +422,10 @@ def process_wsp_data(
         logging.warning(f"EC-over-TW promotion step encountered an error: {exc}")
 
     # 7. TourWrangler fallback for missing recent historical setlists
-    tourwrangler_fallback(client)
+    fallback_rows, fallback_shows = tourwrangler_fallback(client)
+    status.fallback_setlists_collected = fallback_rows
+    status.fallback_shows_filled = fallback_shows
+    status.setlists_collected += fallback_rows
 
     # 8. Log collection run
     try:
@@ -290,7 +450,7 @@ def process_wsp_data(
     logging.info("Widespread Panic data collection finished.")
 
 
-def tourwrangler_fallback(client) -> None:
+def tourwrangler_fallback(client) -> tuple[int, int]:
     """Fetch missing recent historical setlists from TourWrangler.
 
     This function checks for shows in the configured backup window that are missing
@@ -386,5 +546,8 @@ def tourwrangler_fallback(client) -> None:
                 logging.info(
                     f"Upserted {len(backup_df)} TourWrangler backup setlist rows."
                 )
+                return len(backup_df), backup_df["show_id"].astype(str).nunique()
+        return 0, 0
     except Exception as exc:
         logging.warning(f"TourWrangler fallback step encountered an error: {exc}")
+        return 0, 0
