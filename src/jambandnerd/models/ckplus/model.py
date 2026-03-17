@@ -31,10 +31,10 @@ class CKPlusPredictor(PredictionModel):
     RETIREMENT_GAPS = {
         "goose": 100,  # A smaller gap for a band with a more regular rotation
         "phish": 150,  # A larger gap for a band with a deeper catalog
-        "wsp": 150,    # Similar to Phish
+        "wsp": 150,  # Similar to Phish
         "billy": 150,
         "um": 150,
-        "default": 250 # A safe fallback for other bands
+        "default": 250,  # A safe fallback for other bands
     }
 
     def __init__(self, band: str, alpha: float = 0.7, min_plays_threshold: int = 5):
@@ -42,13 +42,16 @@ class CKPlusPredictor(PredictionModel):
         if not 0 <= alpha <= 1:
             raise ValueError(f"alpha must be between 0 and 1, got {alpha}")
         if min_plays_threshold < 1:
-            raise ValueError(f"min_plays_threshold must be at least 1, got {min_plays_threshold}")
+            raise ValueError(
+                f"min_plays_threshold must be at least 1, got {min_plays_threshold}"
+            )
 
         self.band = band
         self.alpha = float(alpha)
         self.min_plays_threshold = int(min_plays_threshold)
-        self.retired_gap_threshold = self.RETIREMENT_GAPS.get(band, self.RETIREMENT_GAPS["default"])
-
+        self.retired_gap_threshold = self.RETIREMENT_GAPS.get(
+            band, self.RETIREMENT_GAPS["default"]
+        )
 
     def _score_row(self, row: pd.Series) -> float:
         """Calculate CK+ score for a single song, with robust error handling."""
@@ -59,7 +62,9 @@ class CKPlusPredictor(PredictionModel):
 
             # Guard against division by zero
             min_thr = max(1, self.min_plays_threshold)
-            reliability = min(1.0, times_played / min_thr) * (1.0 / (1.0 + max(0.0, std_gap)))
+            reliability = min(1.0, times_played / min_thr) * (
+                1.0 / (1.0 + max(0.0, std_gap))
+            )
 
             # Base overdue signal S
             gap_ratio = row.get("gap_ratio", float("nan"))
@@ -82,7 +87,9 @@ class CKPlusPredictor(PredictionModel):
 
         except (ValueError, TypeError, ZeroDivisionError) as e:
             # Log the error and return 0 score for this song
-            print(f"Warning: Error calculating score for song {row.get('song_name', 'unknown')}: {e}")
+            print(
+                f"Warning: Error calculating score for song {row.get('song_name', 'unknown')}: {e}"
+            )
             return 0.0
 
     def predict(
@@ -106,10 +113,16 @@ class CKPlusPredictor(PredictionModel):
         # 3. Calculate final features
         f["current_gap"] = model_data.reference_index - f["last_played_index"]
         f["gap_ratio"] = f.apply(
-            lambda r: (r["current_gap"] / r["avg_gap"]) if pd.notna(r["avg_gap"]) and r["avg_gap"] > 0 else float("nan"), axis=1
+            lambda r: (r["current_gap"] / r["avg_gap"])
+            if pd.notna(r["avg_gap"]) and r["avg_gap"] > 0
+            else float("nan"),
+            axis=1,
         )
         f["gap_z_score"] = f.apply(
-            lambda r: ((r["current_gap"] - r["avg_gap"]) / r["std_gap"]) if (r["std_gap"] and r["std_gap"] > 0) else 0.0, axis=1
+            lambda r: ((r["current_gap"] - r["avg_gap"]) / r["std_gap"])
+            if (r["std_gap"] and r["std_gap"] > 0)
+            else 0.0,
+            axis=1,
         )
 
         # 4. Apply final exclusions
@@ -121,7 +134,9 @@ class CKPlusPredictor(PredictionModel):
 
         # 5. Score and Rank
         f["ckplus_score"] = f.apply(self._score_row, axis=1)
-        f = f.sort_values(["ckplus_score", "gap_ratio", "song_name"], ascending=[False, False, True])
+        f = f.sort_values(
+            ["ckplus_score", "gap_ratio", "song_name"], ascending=[False, False, True]
+        )
         top = f.head(top_k)
 
         if self.band == "wsp":
@@ -135,10 +150,22 @@ class CKPlusPredictor(PredictionModel):
                     song_name=str(row["song_name"]),
                     times_played=int(row["times_played"]),
                     current_gap=int(row["current_gap"]),
-                    avg_gap=float(row.get("avg_gap") if pd.notna(row.get("avg_gap")) else 0.0),
-                    gap_ratio=float(row.get("gap_ratio") if pd.notna(row.get("gap_ratio")) else 0.0),
-                    gap_z_score=float(row.get("gap_z_score") if pd.notna(row.get("gap_z_score")) else 0.0),
-                    ckplus_score=float(row.get("ckplus_score") if pd.notna(row.get("ckplus_score")) else 0.0),
+                    avg_gap=float(
+                        row.get("avg_gap") if pd.notna(row.get("avg_gap")) else 0.0
+                    ),
+                    gap_ratio=float(
+                        row.get("gap_ratio") if pd.notna(row.get("gap_ratio")) else 0.0
+                    ),
+                    gap_z_score=float(
+                        row.get("gap_z_score")
+                        if pd.notna(row.get("gap_z_score"))
+                        else 0.0
+                    ),
+                    ckplus_score=float(
+                        row.get("ckplus_score")
+                        if pd.notna(row.get("ckplus_score"))
+                        else 0.0
+                    ),
                     LTP=row["last_played_date"].isoformat(),
                 )
             )
@@ -149,8 +176,9 @@ class CKPlusPredictor(PredictionModel):
         print("CKPlusPredictor does not require explicit training.")
         pass
 
-    def calculate_accuracy(self, predictions, actual_songs, *args, **kwargs) -> Dict[str, Any]:
+    def calculate_accuracy(
+        self, predictions, actual_songs, *args, **kwargs
+    ) -> Dict[str, Any]:
         """Placeholder for calculate_accuracy method."""
         print("Accuracy calculation not implemented for this model.")
         return {}
-

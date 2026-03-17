@@ -63,15 +63,21 @@ where = ["src"]
 [tool.ruff]
 line-length = 88  # defaults to 88, matching Black
 target-version = "py312"
-select = ["E", "F", "W", "I"]
-ignore = ["E501"]
 
 [tool.black]
 line-length = 88
 target-version = ["py312"]
 
 [tool.ruff.lint]
-extend-select = ["I"]
+select = ["E", "F", "W", "I"]
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+# Many scripts intentionally modify `sys.path` before importing project modules, which
+# triggers `E402` even though this is required for correct runtime behavior when the
+# scripts are executed directly.
+"scripts/*.py" = ["E402"]
+"scripts/**/*.py" = ["E402"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

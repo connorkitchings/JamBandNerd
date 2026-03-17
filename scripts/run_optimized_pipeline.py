@@ -12,6 +12,7 @@ Usage:
     # Run the pipeline for all bands, but skip accuracy calculation
     uv run python scripts/run_optimized_pipeline.py --band all --skip-accuracy
 """
+
 from __future__ import annotations
 
 import argparse
@@ -22,7 +23,7 @@ import traceback
 from datetime import datetime
 
 # Add project root to path
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, project_root)
 
 # Import the functions from the refactored scripts
@@ -42,19 +43,19 @@ from scripts.validate_prediction_tables import validate_predictions
 # Suppress noisy httpx logs
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
+
 def log_with_timestamp(message: str) -> None:
     """Log a message with a timestamp."""
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print(f"[{timestamp}] {message}")
 
-def run_step(func, band: str, step_name: str, *args, **kwargs) -> bool:
 
+def run_step(func, band: str, step_name: str, *args, **kwargs) -> bool:
     """Run a pipeline step and handle logging and errors."""
 
     log_with_timestamp(f"[{band.upper()}] Starting: {step_name}")
 
     try:
-
         func(band=band, *args, **kwargs)
 
         log_with_timestamp(f"[{band.upper()}] Finished: {step_name}")
@@ -62,7 +63,6 @@ def run_step(func, band: str, step_name: str, *args, **kwargs) -> bool:
         return True
 
     except Exception as e:
-
         log_with_timestamp(f"[{band.upper()}] FAILED: {step_name} with error: {e}")
 
         traceback.print_exc()
@@ -71,88 +71,92 @@ def run_step(func, band: str, step_name: str, *args, **kwargs) -> bool:
 
 
 def _validate_band_predictions(*, band: str, max_age_hours: int = 72) -> None:
-
     failures = validate_predictions(bands=[band], max_age_hours=max_age_hours)
 
     if failures:
-
-        raise RuntimeError(f"Prediction validation failed for {band}: {failures} issue(s)")
-
-
-
+        raise RuntimeError(
+            f"Prediction validation failed for {band}: {failures} issue(s)"
+        )
 
 
 def run_band_pipeline(band: str, skip_accuracy: bool = False) -> bool:
-
     """Run the complete, orchestrated pipeline for a single band."""
 
     log_prefix = f"[{band.upper()}]"
 
     log_with_timestamp(f"{log_prefix} Starting full pipeline...")
 
-
-
     # Step 1: Data Collection
 
     collection_runners = {
-
         "goose": run_goose_collection,
         "eggy": run_eggy_collection,
-
         "phish": run_phish_collection,
-
         "wsp": run_wsp_collection,
-
         "billy": run_billy_collection,
-
         "um": run_um_collection,
-
     }
 
     log_with_timestamp(f"[{band.upper()}] Starting: Data Collection")
 
     try:
-
         collection_runners[band]()
 
         log_with_timestamp(f"[{band.upper()}] Finished: Data Collection")
 
     except Exception as e:
-
         log_with_timestamp(f"[{band.upper()}] FAILED: Data Collection with error: {e}")
 
         traceback.print_exc()
 
         return False
 
-
-
     # Step 2: Generate Predictions, Backtest, and Calculate Accuracy for each model
     models = ["notebook", "ckplus"]
     for model in models:
-        if not run_step(generate_predictions, band, f"{model.title()} Predictions", model=model, date_str=None, exclusion_window=3):
+        if not run_step(
+            generate_predictions,
+            band,
+            f"{model.title()} Predictions",
+            model=model,
+            date_str=None,
+            exclusion_window=3,
+        ):
             return False
 
         if not skip_accuracy:
-            if not run_step(run_backtest, band, f"{model.title()} Backtest", model=model, start=None, end=None, shows=100, exclusion_window=3):
+            if not run_step(
+                run_backtest,
+                band,
+                f"{model.title()} Backtest",
+                model=model,
+                start=None,
+                end=None,
+                shows=100,
+                exclusion_window=3,
+            ):
                 return False
-            if not run_step(save_aggregate_accuracy, band, f"{model.title()} Aggregate Accuracy", model=model, shows=100):
+            if not run_step(
+                save_aggregate_accuracy,
+                band,
+                f"{model.title()} Aggregate Accuracy",
+                model=model,
+                shows=100,
+            ):
                 return False
 
     if skip_accuracy:
         log_with_timestamp(f"{log_prefix} Skipping accuracy calculations.")
 
-
-
-    if not run_step(_validate_band_predictions, band, "Prediction Validation", max_age_hours=72):
-
+    if not run_step(
+        _validate_band_predictions, band, "Prediction Validation", max_age_hours=72
+    ):
         return False
-
-
 
     log_with_timestamp(f"{log_prefix} ✅ Successfully completed pipeline.")
 
     return True
+
 
 def main():
     """Main pipeline orchestrator."""
@@ -163,12 +167,12 @@ def main():
         "--band",
         choices=["goose", "eggy", "phish", "wsp", "billy", "um", "all"],
         default="all",
-        help="Band to process (default: all)"
+        help="Band to process (default: all)",
     )
     parser.add_argument(
         "--skip-accuracy",
         action="store_true",
-        help="Skip all accuracy-related calculations"
+        help="Skip all accuracy-related calculations",
     )
     args = parser.parse_args()
 
@@ -196,10 +200,13 @@ def main():
             failed_bands.append(band)
 
     if failed_bands:
-        log_with_timestamp(f"❌ Pipeline finished with failures in: {', '.join(failed_bands)}")
+        log_with_timestamp(
+            f"❌ Pipeline finished with failures in: {', '.join(failed_bands)}"
+        )
         sys.exit(1)
     else:
         log_with_timestamp("🎉 All pipelines completed successfully!")
+
 
 if __name__ == "__main__":
     main()

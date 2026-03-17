@@ -13,7 +13,7 @@ import json
 import os
 import sys
 from datetime import date, datetime, timedelta
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any, Dict, Iterable, List, Optional, Sequence
 
 import pandas as pd
 
@@ -58,7 +58,9 @@ def _hash_row(record: Dict[str, Any]) -> str:
             pass
         cleaned[key] = value
 
-    payload = json.dumps(cleaned, sort_keys=True, ensure_ascii=False, default=str).encode("utf-8")
+    payload = json.dumps(
+        cleaned, sort_keys=True, ensure_ascii=False, default=str
+    ).encode("utf-8")
     return hashlib.sha256(payload).hexdigest()
 
 
@@ -68,10 +70,14 @@ def _parse_date(value: Optional[str]) -> Optional[date]:
     try:
         return datetime.strptime(value, "%Y-%m-%d").date()
     except ValueError as exc:
-        raise argparse.ArgumentTypeError(f"Invalid date '{value}'. Use YYYY-MM-DD.") from exc
+        raise argparse.ArgumentTypeError(
+            f"Invalid date '{value}'. Use YYYY-MM-DD."
+        ) from exc
 
 
-def _normalize_dataframe(df: pd.DataFrame, schema_name: str, *, skip_validation: bool) -> pd.DataFrame:
+def _normalize_dataframe(
+    df: pd.DataFrame, schema_name: str, *, skip_validation: bool
+) -> pd.DataFrame:
     """Coerce DataFrame types according to Supabase schema (if available)."""
 
     schema = get_table_schema(schema_name)
@@ -101,7 +107,9 @@ def _upsert(
     if df.empty:
         return
     df = _normalize_dataframe(df, table_name, skip_validation=skip_validation)
-    upsert_dataframe(table_name=table_name, df=df, conflict_columns=list(conflict_columns))
+    upsert_dataframe(
+        table_name=table_name, df=df, conflict_columns=list(conflict_columns)
+    )
 
 
 def _batched(sequence: Sequence[Any], size: int) -> Iterable[Sequence[Any]]:
@@ -159,7 +167,9 @@ def _load_existing_setlist_ids(show_ids: Sequence[Any]) -> set[str]:
     return existing
 
 
-def _shows_to_process(shows_df: pd.DataFrame, *, full_backfill: bool) -> List[Dict[str, Any]]:
+def _shows_to_process(
+    shows_df: pd.DataFrame, *, full_backfill: bool
+) -> List[Dict[str, Any]]:
     """Determine which shows still require setlist scraping."""
 
     if shows_df.empty:
@@ -168,9 +178,7 @@ def _shows_to_process(shows_df: pd.DataFrame, *, full_backfill: bool) -> List[Di
     if "source_url" not in shows_df.columns:
         return []
 
-    source_urls = (
-        shows_df["source_url"].dropna().astype(str).unique().tolist()
-    )
+    source_urls = shows_df["source_url"].dropna().astype(str).unique().tolist()
     if not source_urls:
         return []
 
@@ -191,8 +199,7 @@ def _shows_to_process(shows_df: pd.DataFrame, *, full_backfill: bool) -> List[Di
         }
 
     print(
-        "UM shows pending setlist scrape: "
-        f"{len(pending_show_ids)}/{len(show_id_map)}"
+        f"UM shows pending setlist scrape: {len(pending_show_ids)}/{len(show_id_map)}"
     )
 
     shows: List[Dict[str, Any]] = []
@@ -254,7 +261,12 @@ def run_um_collection(
         _upsert(
             "um_venues_raw",
             venues_df,
-            conflict_columns=["venue_name", "venue_city", "venue_state", "venue_country"],
+            conflict_columns=[
+                "venue_name",
+                "venue_city",
+                "venue_state",
+                "venue_country",
+            ],
             skip_validation=skip_validation,
         )
         print(f"Upserted {len(venues_df)} venues into um_venues_raw.")
@@ -267,7 +279,9 @@ def run_um_collection(
     if not full_backfill:
         today = date.today()
         if start_dt is None:
-            start_dt = max(today - timedelta(days=730), date(collector.EARLIEST_YEAR, 1, 1))
+            start_dt = max(
+                today - timedelta(days=730), date(collector.EARLIEST_YEAR, 1, 1)
+            )
         if end_dt is None or end_dt < today:
             end_dt = today + timedelta(days=90)
 
@@ -306,7 +320,9 @@ def run_um_collection(
     }
     for column, dtype in numeric_columns.items():
         if column in setlists_df.columns:
-            setlists_df[column] = pd.to_numeric(setlists_df[column], errors="coerce").astype(dtype)
+            setlists_df[column] = pd.to_numeric(
+                setlists_df[column], errors="coerce"
+            ).astype(dtype)
 
     bool_columns = ["is_segue", "encore"]
     for column in bool_columns:
@@ -316,7 +332,9 @@ def run_um_collection(
     if "set_label" in setlists_df.columns and "set_number" not in setlists_df.columns:
         setlists_df["set_number"] = setlists_df["set_label"].fillna("").astype(str)
 
-    assert_required_columns("um_setlists_raw", setlists_df, ["set_number", "song_position"])
+    assert_required_columns(
+        "um_setlists_raw", setlists_df, ["set_number", "song_position"]
+    )
 
     setlists_df = _compute_source_hash(setlists_df)
     _upsert(
@@ -348,7 +366,9 @@ def run_um_collection(
 
 
 def _build_argument_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Run the Umphrey's McGee web scraping pipeline.")
+    parser = argparse.ArgumentParser(
+        description="Run the Umphrey's McGee web scraping pipeline."
+    )
     parser.add_argument(
         "--start-date",
         help="Earliest show date to collect (YYYY-MM-DD). Defaults to earliest known show.",

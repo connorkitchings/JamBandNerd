@@ -4,6 +4,7 @@ This script fetches data from the elgoose.net API via the `GooseCollector`,
 normalizes responses to the raw table schemas, and performs upserts into
 `goose_songs_raw`, `goose_shows_raw`, and `goose_setlists_raw`.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -16,7 +17,7 @@ from typing import Any, Dict, Iterable, List, Optional
 import pandas as pd
 
 # Add the project root to the Python path
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, project_root)
 
 import argparse
@@ -66,9 +67,9 @@ def _normalize_songs(raw: Iterable[Dict[str, Any]]) -> pd.DataFrame:
             "api_song_id": api_song_id,
             "song_name": item.get("name"),
             "first_played": None,  # Not in API
-            "last_played": None,   # Not in API
-            "times_played": 0,     # Not in API
-            "average_length_seconds": None, # Not in API
+            "last_played": None,  # Not in API
+            "times_played": 0,  # Not in API
+            "average_length_seconds": None,  # Not in API
             "source_hash": _compute_source_hash(item),
             "created_at": item.get("created_at"),
             "updated_at": item.get("updated_at"),
@@ -117,7 +118,7 @@ def _normalize_venues(raw: Iterable[Dict[str, Any]]) -> pd.DataFrame:
             "capacity": int(item.get("capacity") or 0),
             "slug": item.get("slug"),
             "source_hash": _compute_source_hash(item),
-            "created_at": item.get("created_at"), # Not in API, will be None
+            "created_at": item.get("created_at"),  # Not in API, will be None
         }
         normalized.append(record)
     return pd.DataFrame(normalized)
@@ -131,11 +132,16 @@ def _normalize_setlists(raw: Iterable[Dict[str, Any]]) -> pd.DataFrame:
         set_number = item.get("setnumber")
         song_position = item.get("position")
         song_name = item.get("songname")
-        if not (show_id and set_number is not None and song_position is not None and song_name):
+        if not (
+            show_id
+            and set_number is not None
+            and song_position is not None
+            and song_name
+        ):
             continue
         settype = item.get("settype") or ""
         is_encore = settype.lower() == "encore"
-        if str(set_number).lower().startswith('e'):
+        if str(set_number).lower().startswith("e"):
             set_num = 99
         else:
             try:
@@ -150,8 +156,8 @@ def _normalize_setlists(raw: Iterable[Dict[str, Any]]) -> pd.DataFrame:
             "encore": is_encore,
             "notes": item.get("footnote"),
             "source_hash": _compute_source_hash(item),
-            "created_at": item.get("created_at"), # Not in API, will be None
-            "updated_at": item.get("updated_at"), # Not in API, will be None
+            "created_at": item.get("created_at"),  # Not in API, will be None
+            "updated_at": item.get("updated_at"),  # Not in API, will be None
         }
         normalized.append(record)
     return pd.DataFrame(normalized)
@@ -165,7 +171,13 @@ def run_goose_collection(skip_validation: bool = False) -> None:
     get_supabase_client()
 
     # Upsert logic for each table type
-    def upsert_table(table_name: str, collector_func, normalizer_func, conflict_cols: List[str], required_columns: List[str] | None = None):
+    def upsert_table(
+        table_name: str,
+        collector_func,
+        normalizer_func,
+        conflict_cols: List[str],
+        required_columns: List[str] | None = None,
+    ):
         print(f"Collecting {table_name}...")
         raw_data = collector_func()
         df = normalizer_func(raw_data)
@@ -198,15 +210,29 @@ def run_goose_collection(skip_validation: bool = False) -> None:
             df_to_upsert = df
 
         try:
-            upsert_dataframe(table_name=table_name, df=df_to_upsert, conflict_columns=conflict_cols)
+            upsert_dataframe(
+                table_name=table_name, df=df_to_upsert, conflict_columns=conflict_cols
+            )
             print(f"Upserted data into {table_name}.")
         except Exception as e:
             print(f"Error upserting to {table_name}: {e}")
 
-    upsert_table("goose_songs_raw", collector.collect_songs, _normalize_songs, ["api_song_id"])
-    upsert_table("goose_shows_raw", collector.collect_shows, _normalize_shows, ["show_id"])
-    upsert_table("goose_venues_raw", collector.collect_venues, _normalize_venues, ["venue_id"])
-    upsert_table("goose_setlists_raw", collector.collect_setlists, _normalize_setlists, ["show_id", "set_number", "song_position"], required_columns=["set_number", "song_position"])
+    upsert_table(
+        "goose_songs_raw", collector.collect_songs, _normalize_songs, ["api_song_id"]
+    )
+    upsert_table(
+        "goose_shows_raw", collector.collect_shows, _normalize_shows, ["show_id"]
+    )
+    upsert_table(
+        "goose_venues_raw", collector.collect_venues, _normalize_venues, ["venue_id"]
+    )
+    upsert_table(
+        "goose_setlists_raw",
+        collector.collect_setlists,
+        _normalize_setlists,
+        ["show_id", "set_number", "song_position"],
+        required_columns=["set_number", "song_position"],
+    )
 
     # Log collection run
     try:
@@ -220,7 +246,13 @@ def run_goose_collection(skip_validation: bool = False) -> None:
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Run Goose data collection with optional schema validation")
-    parser.add_argument("--skip-validation", action="store_true", help="Bypass schema validation before upserts")
+    parser = argparse.ArgumentParser(
+        description="Run Goose data collection with optional schema validation"
+    )
+    parser.add_argument(
+        "--skip-validation",
+        action="store_true",
+        help="Bypass schema validation before upserts",
+    )
     args = parser.parse_args()
     run_goose_collection(skip_validation=args.skip_validation)

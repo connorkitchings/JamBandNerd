@@ -61,7 +61,7 @@ class TestUmCollector:
                 <div class="setlist-date-long">
                     <a href="/setlists/um20231231.html">December 31, 2023</a>
                     <a class="venue">Riviera Theatre</a>
-                    <a href="/venues/city/Chicago">Chicago</a>, 
+                    <a href="/venues/city/Chicago">Chicago</a>,
                     <a href="/venues/state/IL">IL</a>
                 </div>
                 <div class="setlist-body">

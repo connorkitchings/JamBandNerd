@@ -52,11 +52,17 @@ def get_model_explanation(model_slug: str) -> str:
 
 def prepare_chart_data(accuracy_df: pd.DataFrame, k: int) -> pd.DataFrame:
     """Transform the accuracy data into a long-form DataFrame for charting."""
-    recall_cols = [c for c in ["k10_recall", "k25_recall", "k50_recall"] if c in accuracy_df.columns]
+    recall_cols = [
+        c
+        for c in ["k10_recall", "k25_recall", "k50_recall"]
+        if c in accuracy_df.columns
+    ]
     if not recall_cols:
         return pd.DataFrame()
 
-    base_df = accuracy_df.sort_values("show_date", ascending=False).reset_index(drop=True)
+    base_df = accuracy_df.sort_values("show_date", ascending=False).reset_index(
+        drop=True
+    )
     base_df["show_num"] = range(1, len(base_df) + 1)
     ks = [10, 25, 50]
     long_rows = []
@@ -65,24 +71,29 @@ def prepare_chart_data(accuracy_df: pd.DataFrame, k: int) -> pd.DataFrame:
             rc = f"k{kk}_recall"
             mc = f"k{kk}_matches"
             if rc in base_df.columns:
-                long_rows.append({
-                    "show_num": idx + 1,
-                    "show_date": row.get("show_date"),
-                    "venue_name": row.get("venue_name"),
-                    "k": kk,
-                    "recall": row.get(rc),
-                    "matches": row.get(mc) if mc in base_df.columns else None,
-                    "is_focus": kk == k,
-                })
-    
+                long_rows.append(
+                    {
+                        "show_num": idx + 1,
+                        "show_date": row.get("show_date"),
+                        "venue_name": row.get("venue_name"),
+                        "k": kk,
+                        "recall": row.get(rc),
+                        "matches": row.get(mc) if mc in base_df.columns else None,
+                        "is_focus": kk == k,
+                    }
+                )
+
     if not long_rows:
         return pd.DataFrame()
 
     long_df = pd.DataFrame(long_rows)
     if "show_date" in long_df.columns:
-        long_df["show_date_display"] = pd.to_datetime(long_df["show_date"]).dt.strftime("%Y-%m-%d")
-    
+        long_df["show_date_display"] = pd.to_datetime(long_df["show_date"]).dt.strftime(
+            "%Y-%m-%d"
+        )
+
     return long_df
+
 
 def create_accuracy_chart(long_df: pd.DataFrame, k: int) -> alt.Chart:
     """Create the historical accuracy chart using Altair."""
@@ -129,8 +140,10 @@ def create_accuracy_chart(long_df: pd.DataFrame, k: int) -> alt.Chart:
         )
     )
 
+
 def display_summary_metrics(accuracy_df: pd.DataFrame):
     """Display the summary metrics for recall at different K values."""
+
     def fmt(val: float | None) -> str:
         return f"{val:.1%}" if val is not None else "N/A"
 
@@ -159,6 +172,7 @@ def display_summary_metrics(accuracy_df: pd.DataFrame):
         unsafe_allow_html=True,
     )
 
+
 def display_historical_accuracy(client: Client, band: str, model: str, k: int):
     """Display the historical accuracy section and the model explanation."""
     model_display_name = MODEL_CONFIG.get(model, {}).get("display_name", model.title())
@@ -186,7 +200,7 @@ def display_historical_accuracy(client: Client, band: str, model: str, k: int):
             chart = create_accuracy_chart(long_df, k)
             st.altair_chart(chart, use_container_width=True)
             st.markdown(
-                f"<div style='font-size:0.9em; color: var(--text-muted); text-align:center; margin-top:8px;'>Use the sidebar to change the focus K. Other Ks are shown in grey.</div>",
+                "<div style='font-size:0.9em; color: var(--text-muted); text-align:center; margin-top:8px;'>Use the sidebar to change the focus K. Other Ks are shown in grey.</div>",
                 unsafe_allow_html=True,
             )
         else:

@@ -142,7 +142,9 @@ class BillyCollector(BandCollector):
 
         # Collect and add upcoming shows
         upcoming_cutoff = date.today()
-        upcoming_shows = self._collect_upcoming_shows(min_date=end_date or start_date or upcoming_cutoff)
+        upcoming_shows = self._collect_upcoming_shows(
+            min_date=end_date or start_date or upcoming_cutoff
+        )
 
         # Add upcoming shows, avoiding duplicates
         seen_uuids = {s["source_uuid"] for s in filtered_shows}
@@ -152,17 +154,25 @@ class BillyCollector(BandCollector):
                 if show.get("source_uuid"):
                     seen_uuids.add(show["source_uuid"])
 
-        logger.info("✅ %s: Total shows including upcoming: %s", self.ARTIST_NAME, len(filtered_shows))
+        logger.info(
+            "✅ %s: Total shows including upcoming: %s",
+            self.ARTIST_NAME,
+            len(filtered_shows),
+        )
         return sorted(filtered_shows, key=lambda s: s["show_date"], reverse=True)
 
-    def collect_setlists(self, shows_to_process: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def collect_setlists(
+        self, shows_to_process: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
         """Scrape setlist entries for the provided shows."""
 
         if not shows_to_process:
             logger.info("No Billy Strings shows supplied for setlist scraping.")
             return []
 
-        def _submit_args(show: Dict[str, Any]) -> Tuple[str, str, Optional[str], Optional[str]]:
+        def _submit_args(
+            show: Dict[str, Any],
+        ) -> Tuple[str, str, Optional[str], Optional[str]]:
             show_id = str(show.get("show_id"))
             source_url = show.get("source_url") or ""
             uuid = show.get("source_uuid")
@@ -179,7 +189,11 @@ class BillyCollector(BandCollector):
                 show_id, source_url, uuid, show_date = _submit_args(record)
                 if not show_id or not source_url:
                     continue
-                futures[executor.submit(self._scrape_show_setlist, show_id, source_url, uuid, show_date)] = (
+                futures[
+                    executor.submit(
+                        self._scrape_show_setlist, show_id, source_url, uuid, show_date
+                    )
+                ] = (
                     show_id,
                     source_url,
                     show_date,
@@ -187,7 +201,11 @@ class BillyCollector(BandCollector):
 
             iterable: Iterable = futures
             try:
-                iterable = tqdm(futures, total=len(futures), desc=f"Collecting {self.ARTIST_NAME} setlists")
+                iterable = tqdm(
+                    futures,
+                    total=len(futures),
+                    desc=f"Collecting {self.ARTIST_NAME} setlists",
+                )
             except Exception:  # pragma: no cover - tqdm optional
                 pass
 
@@ -239,7 +257,9 @@ class BillyCollector(BandCollector):
             if len(cells) < 6:
                 continue
 
-            title_cell, artist_cell, plays_cell, teases_cell, first_cell, last_cell = cells[:6]
+            title_cell, artist_cell, plays_cell, teases_cell, first_cell, last_cell = (
+                cells[:6]
+            )
 
             song_link = title_cell.find("a")
             song_name = (song_link or title_cell).get_text(strip=True)
@@ -247,14 +267,22 @@ class BillyCollector(BandCollector):
                 continue
 
             original_artist_link = artist_cell.find("a")
-            original_artist_text = (original_artist_link or artist_cell).get_text(strip=True)
+            original_artist_text = (original_artist_link or artist_cell).get_text(
+                strip=True
+            )
             original_artist = original_artist_text or None
             if original_artist:
-                original_artist = None if original_artist.upper() in {"N/A", "--"} else original_artist
+                original_artist = (
+                    None
+                    if original_artist.upper() in {"N/A", "--"}
+                    else original_artist
+                )
 
             catalog.append(
                 {
-                    "song_uuid": self._extract_song_uuid(song_link) if song_link else None,
+                    "song_uuid": self._extract_song_uuid(song_link)
+                    if song_link
+                    else None,
                     "song_name": song_name,
                     "original_artist": original_artist,
                     "original_artist_id": self._extract_artist_id(original_artist_link),
@@ -270,7 +298,10 @@ class BillyCollector(BandCollector):
         return catalog
 
     def collect_venues(self) -> List[Dict[str, Any]]:  # pragma: no cover - placeholder
-        logger.info("%s: Venue collection not implemented; venues derived from shows.", self.ARTIST_NAME)
+        logger.info(
+            "%s: Venue collection not implemented; venues derived from shows.",
+            self.ARTIST_NAME,
+        )
         return []
 
     # ------------------------------------------------------------------
@@ -289,7 +320,9 @@ class BillyCollector(BandCollector):
 
     def _parse_show_card(self, link: Any) -> Optional[Tuple[date, Dict[str, Any]]]:
         badge = link.select_one("div.badge")
-        venue_block = link.select_one("div.col-8") or link.select_one("div.col-8.col-md-9")
+        venue_block = link.select_one("div.col-8") or link.select_one(
+            "div.col-8.col-md-9"
+        )
 
         if not badge or not venue_block:
             return None
@@ -377,7 +410,9 @@ class BillyCollector(BandCollector):
             if not show_date or show_date < min_date:
                 continue
 
-            venue_block = link.select_one("div.col-8") or link.select_one("div.col-8.col-md-9")
+            venue_block = link.select_one("div.col-8") or link.select_one(
+                "div.col-8.col-md-9"
+            )
             venue_lines = list(venue_block.stripped_strings) if venue_block else []
             venue_name = venue_lines[0] if venue_lines else ""
             location_text = venue_lines[1] if len(venue_lines) > 1 else ""
@@ -399,7 +434,9 @@ class BillyCollector(BandCollector):
                 }
             )
 
-        logger.info("✅ %s: Collected %s upcoming shows.", self.ARTIST_NAME, len(upcoming))
+        logger.info(
+            "✅ %s: Collected %s upcoming shows.", self.ARTIST_NAME, len(upcoming)
+        )
         return upcoming
 
     def _scrape_show_setlist(
@@ -413,14 +450,21 @@ class BillyCollector(BandCollector):
             response = self.session.get(source_url, timeout=self.config.timeout)
             response.raise_for_status()
         except RequestException as exc:
-            logger.error("Failed to fetch setlist for show_id=%s (%s): %s", show_id, source_url, exc)
+            logger.error(
+                "Failed to fetch setlist for show_id=%s (%s): %s",
+                show_id,
+                source_url,
+                exc,
+            )
             return []
 
         soup = BeautifulSoup(response.text, "html.parser")
 
         panel = soup.select_one("#shows-panel")
         if not panel:
-            logger.warning("No setlist panel found for show_id=%s (%s)", show_id, source_url)
+            logger.warning(
+                "No setlist panel found for show_id=%s (%s)", show_id, source_url
+            )
             return []
 
         entries: List[Dict[str, Any]] = []
@@ -456,7 +500,9 @@ class BillyCollector(BandCollector):
             song_uuid = self._extract_song_uuid(song_anchor)
 
             notes_section = row.select_one("div.col-11.col-md-2")
-            song_notes = notes_section.get_text(" ", strip=True) if notes_section else ""
+            song_notes = (
+                notes_section.get_text(" ", strip=True) if notes_section else ""
+            )
 
             entries.append(
                 {
@@ -479,7 +525,9 @@ class BillyCollector(BandCollector):
                 except ValueError:
                     parsed_date = None
             if not parsed_date or parsed_date < date.today():
-                logger.warning("No setlist rows parsed for show_id=%s (%s)", show_id, source_url)
+                logger.warning(
+                    "No setlist rows parsed for show_id=%s (%s)", show_id, source_url
+                )
         return entries
 
     def _extract_song_notes(self, stripe: Any, primary_text: str) -> str:
@@ -512,7 +560,9 @@ class BillyCollector(BandCollector):
             normalized = value.strip()
             if not normalized:
                 normalized = "unknown"
-            generated = uuid.uuid5(uuid.NAMESPACE_URL, f"{self.BASE_URL}/setlist/{normalized}")
+            generated = uuid.uuid5(
+                uuid.NAMESPACE_URL, f"{self.BASE_URL}/setlist/{normalized}"
+            )
             return str(generated)
 
     def _extract_artist_id(self, anchor: Any) -> Optional[str]:
@@ -566,4 +616,3 @@ class BillyCollector(BandCollector):
         if match:
             return int(match.group(1))
         return 1
-

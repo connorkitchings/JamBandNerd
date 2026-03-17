@@ -11,6 +11,7 @@ Usage:
   # Calculate and save aggregate accuracy for the Goose Notebook model
   uv run python scripts/save_aggregate_accuracy.py --band goose --model notebook --shows 100
 """
+
 from __future__ import annotations
 
 import argparse
@@ -70,23 +71,27 @@ def save_aggregate_accuracy(band: str, model: str, shows: int) -> None:
 
     for k in [10, 25, 50]:
         # Extract the per-show metrics for this k from the DataFrame
-        per_k_metrics = per_show_df[
-            [
-                f"k{k}_hit",
-                f"k{k}_matches",
-                f"k{k}_precision",
-                f"k{k}_recall",
-                f"k{k}_f1",
+        per_k_metrics = (
+            per_show_df[
+                [
+                    f"k{k}_hit",
+                    f"k{k}_matches",
+                    f"k{k}_precision",
+                    f"k{k}_recall",
+                    f"k{k}_f1",
+                ]
             ]
-        ].rename(
-            columns={
-                f"k{k}_hit": "hit",
-                f"k{k}_matches": "matches",
-                f"k{k}_precision": "precision",
-                f"k{k}_recall": "recall",
-                f"k{k}_f1": "f1",
-            }
-        ).to_dict('records')
+            .rename(
+                columns={
+                    f"k{k}_hit": "hit",
+                    f"k{k}_matches": "matches",
+                    f"k{k}_precision": "precision",
+                    f"k{k}_recall": "recall",
+                    f"k{k}_f1": "f1",
+                }
+            )
+            .to_dict("records")
+        )
 
         agg = aggregate_metrics(per_k_metrics, k)
         record[f"k{k}_hit_rate"] = agg.hit_rate
@@ -97,10 +102,7 @@ def save_aggregate_accuracy(band: str, model: str, shows: int) -> None:
 
     # 3. Upsert the aggregated record
     # Use correct table naming convention based on what exists in database
-    table_mapping = {
-        "notebook": "notebook_accuracy",
-        "ckplus": "accuracy_ckplus"
-    }
+    table_mapping = {"notebook": "notebook_accuracy", "ckplus": "accuracy_ckplus"}
     table_name = table_mapping.get(model, f"accuracy_{model}")
     print(f"{log_prefix} Saving aggregate accuracy summary to {table_name}...")
 
@@ -111,9 +113,13 @@ def save_aggregate_accuracy(band: str, model: str, shows: int) -> None:
         print(f"{log_prefix} Successfully saved aggregate accuracy.")
 
         # Print summary for verification
-        print(f"{log_prefix} Summary: {record['num_shows']} shows from {record['window_start']} to {record['window_end']}")
+        print(
+            f"{log_prefix} Summary: {record['num_shows']} shows from {record['window_start']} to {record['window_end']}"
+        )
         for k in [10, 25, 50]:
-            print(f"{log_prefix} K={k}: hit_rate={record[f'k{k}_hit_rate']:.3f} precision={record[f'k{k}_precision']:.3f} recall={record[f'k{k}_recall']:.3f}")
+            print(
+                f"{log_prefix} K={k}: hit_rate={record[f'k{k}_hit_rate']:.3f} precision={record[f'k{k}_precision']:.3f} recall={record[f'k{k}_recall']:.3f}"
+            )
 
     except Exception as e:
         print(f"{log_prefix} Error saving to {table_name}: {e}")

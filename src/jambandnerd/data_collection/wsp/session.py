@@ -7,7 +7,7 @@ import time
 from typing import Optional
 
 import requests
-from playwright.sync_api import sync_playwright, Browser, BrowserContext, Page
+from playwright.sync_api import Browser, BrowserContext, Page, sync_playwright
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 

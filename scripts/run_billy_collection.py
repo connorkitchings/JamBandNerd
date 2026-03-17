@@ -11,7 +11,7 @@ from __future__ import annotations
 import os
 import sys
 
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, project_root)
 
 import argparse
@@ -49,7 +49,9 @@ def _hash_row(record: Dict[str, Any]) -> str:
             pass
         cleaned[key] = value
 
-    payload = json.dumps(cleaned, sort_keys=True, ensure_ascii=False, default=str).encode("utf-8")
+    payload = json.dumps(
+        cleaned, sort_keys=True, ensure_ascii=False, default=str
+    ).encode("utf-8")
     return hashlib.sha256(payload).hexdigest()
 
 
@@ -65,7 +67,9 @@ def _normalize_shows(raw_shows: Iterable[Dict[str, Any]]) -> pd.DataFrame:
 
     df["show_date"] = pd.to_datetime(df["show_date"], errors="coerce").dt.date
     df = df.dropna(subset=["show_date", "source_uuid"])
-    df["show_date"] = df["show_date"].apply(lambda d: d.isoformat() if pd.notnull(d) else None)
+    df["show_date"] = df["show_date"].apply(
+        lambda d: d.isoformat() if pd.notnull(d) else None
+    )
 
     df["source_hash"] = df.apply(lambda row: _hash_row(row.to_dict()), axis=1)
     df["created_at"] = datetime.now(timezone.utc).isoformat()
@@ -177,7 +181,9 @@ def run_billy_collection(
     if songs_data:
         songs_df = pd.DataFrame(songs_data)
         songs_df = songs_df.drop_duplicates(subset=["song_name"]).reset_index(drop=True)
-        songs_df["source_hash"] = songs_df.apply(lambda row: _hash_row(row.to_dict()), axis=1)
+        songs_df["source_hash"] = songs_df.apply(
+            lambda row: _hash_row(row.to_dict()), axis=1
+        )
         songs_df["created_at"] = datetime.now(timezone.utc).isoformat()
         songs_df["updated_at"] = datetime.now(timezone.utc).isoformat()
         _upsert_dataframe("billy_songs_raw", songs_df, ["song_name"], skip_validation)
@@ -201,7 +207,9 @@ def run_billy_collection(
     except Exception as exc:  # pragma: no cover - supabase connectivity
         print(f"Warning: could not fetch billy_shows_raw from database ({exc}).")
 
-    show_lookup = {row.get("source_uuid"): row for row in shows_from_db if row.get("source_uuid")}
+    show_lookup = {
+        row.get("source_uuid"): row for row in shows_from_db if row.get("source_uuid")
+    }
     shows_requiring_setlists: List[Dict[str, Any]] = []
 
     for show in shows_data:
@@ -215,7 +223,9 @@ def run_billy_collection(
         return
 
     if not shows_requiring_setlists:
-        print("No Billy Strings shows with database IDs available for setlist scraping.")
+        print(
+            "No Billy Strings shows with database IDs available for setlist scraping."
+        )
         _log_collection_run("billy")
         return
 
@@ -256,7 +266,9 @@ def run_billy_collection(
         _log_collection_run("billy")
         return
 
-    assert_required_columns("billy_setlists_raw", setlists_df, ["set_number", "song_position"])
+    assert_required_columns(
+        "billy_setlists_raw", setlists_df, ["set_number", "song_position"]
+    )
 
     _upsert_dataframe(
         "billy_setlists_raw",
@@ -279,11 +291,23 @@ def _log_collection_run(band: str) -> None:
 
 
 def _build_cli() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Run Billy Strings data collection with optional schema validation")
-    parser.add_argument("--skip-validation", action="store_true", help="Bypass schema validation before upserts")
-    parser.add_argument("--start-date", help="Limit show scraping to dates on/after YYYY-MM-DD")
-    parser.add_argument("--end-date", help="Limit show scraping to dates on/before YYYY-MM-DD")
-    parser.add_argument("--skip-setlists", action="store_true", help="Skip the setlist collection step")
+    parser = argparse.ArgumentParser(
+        description="Run Billy Strings data collection with optional schema validation"
+    )
+    parser.add_argument(
+        "--skip-validation",
+        action="store_true",
+        help="Bypass schema validation before upserts",
+    )
+    parser.add_argument(
+        "--start-date", help="Limit show scraping to dates on/after YYYY-MM-DD"
+    )
+    parser.add_argument(
+        "--end-date", help="Limit show scraping to dates on/before YYYY-MM-DD"
+    )
+    parser.add_argument(
+        "--skip-setlists", action="store_true", help="Skip the setlist collection step"
+    )
     parser.add_argument(
         "--full-backfill",
         action="store_true",

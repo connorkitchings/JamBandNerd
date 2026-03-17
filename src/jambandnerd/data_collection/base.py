@@ -1,4 +1,5 @@
 """Abstract base classes for data collection."""
+
 from __future__ import annotations
 
 import logging
@@ -19,6 +20,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class CollectorConfig:
     """Configuration for data collectors."""
+
     base_url: str
     timeout: int = 30
     max_retries: int = 3
@@ -31,6 +33,7 @@ class CollectorConfig:
 @dataclass
 class RateLimiter:
     """Simple rate limiter for API calls."""
+
     max_calls: int
     window_seconds: int
     calls: int = 0
@@ -49,7 +52,9 @@ class RateLimiter:
         if self.calls >= self.max_calls:
             sleep_time = self.window_seconds - (now - self.window_start)
             if sleep_time > 0:
-                logger.info(f"Rate limit reached ({self.calls}/{self.max_calls}), sleeping for {sleep_time:.1f}s")
+                logger.info(
+                    f"Rate limit reached ({self.calls}/{self.max_calls}), sleeping for {sleep_time:.1f}s"
+                )
                 time.sleep(sleep_time)
                 self.calls = 0
                 self.window_start = time.time()
@@ -65,8 +70,7 @@ class BandCollector(ABC):
     def __init__(self, config: CollectorConfig):
         self.config = config
         self.rate_limiter = RateLimiter(
-            max_calls=config.rate_limit_calls,
-            window_seconds=config.rate_limit_window
+            max_calls=config.rate_limit_calls, window_seconds=config.rate_limit_window
         )
 
         # Create session with connection pooling and retry strategy
@@ -85,11 +89,13 @@ class BandCollector(ABC):
         self.session.mount("https://", adapter)
 
         # Set default headers
-        self.session.headers.update({
-            'User-Agent': config.user_agent,
-            # Accept both JSON and HTML since some collectors scrape pages
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,application/json;q=0.8,*/*;q=0.7',
-        })
+        self.session.headers.update(
+            {
+                "User-Agent": config.user_agent,
+                # Accept both JSON and HTML since some collectors scrape pages
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,application/json;q=0.8,*/*;q=0.7",
+            }
+        )
 
     def _fetch_from_endpoint(self, endpoint: str, **kwargs) -> List[Dict[str, Any]]:
         """Fetch data from an API endpoint with retry logic and rate limiting."""
@@ -99,7 +105,7 @@ class BandCollector(ABC):
         self.rate_limiter.wait_if_needed()
 
         # Set default timeout if not provided
-        kwargs.setdefault('timeout', self.config.timeout)
+        kwargs.setdefault("timeout", self.config.timeout)
 
         # Redact API key from URL for logging
         log_url = re.sub(r"apikey=[^&]*", "apikey=REDACTED", url)
@@ -115,17 +121,23 @@ class BandCollector(ABC):
                 data = response.json()
 
                 # Handle API error responses
-                if isinstance(data, dict) and data.get('error'):
-                    error_msg = data.get('error_message', data.get('message', 'Unknown API error'))
-                    raise requests.exceptions.RequestException(f"API Error: {error_msg}")
+                if isinstance(data, dict) and data.get("error"):
+                    error_msg = data.get(
+                        "error_message", data.get("message", "Unknown API error")
+                    )
+                    raise requests.exceptions.RequestException(
+                        f"API Error: {error_msg}"
+                    )
 
                 # Extract data array if wrapped
-                if isinstance(data, dict) and 'data' in data:
-                    return data['data'] or []
+                if isinstance(data, dict) and "data" in data:
+                    return data["data"] or []
                 elif isinstance(data, list):
                     return data
                 else:
-                    logger.warning(f"Unexpected response format from {url}, returning empty list")
+                    logger.warning(
+                        f"Unexpected response format from {url}, returning empty list"
+                    )
                     return []
 
             except ValueError as e:
@@ -146,12 +158,16 @@ class BandCollector(ABC):
             raise
 
     @abstractmethod
-    def collect_shows(self, start_date: Optional[date] = None, end_date: Optional[date] = None) -> List[Dict[str, Any]]:
+    def collect_shows(
+        self, start_date: Optional[date] = None, end_date: Optional[date] = None
+    ) -> List[Dict[str, Any]]:
         """Collect show data for a given date range."""
         pass
 
     @abstractmethod
-    def collect_setlists(self, show_ids: Optional[List[str]] = None) -> List[Dict[str, Any]]:
+    def collect_setlists(
+        self, show_ids: Optional[List[str]] = None
+    ) -> List[Dict[str, Any]]:
         """Collect setlist data for a list of show IDs."""
         pass
 

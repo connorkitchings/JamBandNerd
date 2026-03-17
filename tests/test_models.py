@@ -16,8 +16,8 @@ class TestPredictionModelBase:
     def test_prediction_model_interface(self):
         """Test that PredictionModel defines the expected interface."""
         # Check that the abstract methods exist
-        assert hasattr(PredictionModel, 'train')
-        assert hasattr(PredictionModel, 'predict')
+        assert hasattr(PredictionModel, "train")
+        assert hasattr(PredictionModel, "predict")
 
         # Check that they are marked as abstract methods
         assert PredictionModel.predict.__isabstractmethod__
@@ -41,7 +41,7 @@ class MockPredictionModel(PredictionModel):
 
         return [
             {"song": "Test Song 1", "probability": 0.6},
-            {"song": "Test Song 2", "probability": 0.4}
+            {"song": "Test Song 2", "probability": 0.4},
         ]
 
     def calculate_accuracy(self, predictions, actual_songs):
@@ -49,7 +49,7 @@ class MockPredictionModel(PredictionModel):
         return {
             "top_1_accuracy": 0.75,
             "top_3_accuracy": 0.90,
-            "mean_reciprocal_rank": 0.82
+            "mean_reciprocal_rank": 0.82,
         }
 
 
@@ -96,7 +96,7 @@ class TestMockPredictionModel:
         model = MockPredictionModel()
         mock_predictions = [
             {"song": "Song A", "probability": 0.5},
-            {"song": "Song B", "probability": 0.3}
+            {"song": "Song B", "probability": 0.3},
         ]
         mock_actual = ["Song A", "Song C"]
 

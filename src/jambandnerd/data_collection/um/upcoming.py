@@ -56,7 +56,9 @@ class UpcomingShow:
         }
 
 
-def _parse_address(formatted: Optional[str]) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+def _parse_address(
+    formatted: Optional[str],
+) -> Tuple[Optional[str], Optional[str], Optional[str]]:
     """Parse the formatted address into city, region/state, country."""
     if not formatted:
         return None, None, None
@@ -103,7 +105,9 @@ def collect_upcoming_shows(
         timeout=30,
     )
     if response.status_code != 200:
-        raise UpcomingShowsError(f"Failed to fetch upcoming shows ({response.status_code})")
+        raise UpcomingShowsError(
+            f"Failed to fetch upcoming shows ({response.status_code})"
+        )
 
     try:
         payload = response.json()

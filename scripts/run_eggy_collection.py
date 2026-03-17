@@ -4,6 +4,7 @@ This script fetches data from thecarton.net API via the `EggyCollector`,
 normalizes responses to the Supabase raw schemas, and performs upserts into
 `eggy_songs_raw`, `eggy_shows_raw`, `eggy_setlists_raw`, and `eggy_venues_raw`.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -137,7 +138,12 @@ def _normalize_setlists(raw: Iterable[Dict[str, Any]]) -> pd.DataFrame:
         set_number = item.get("setnumber") or item.get("set_number")
         song_position = item.get("position") or item.get("song_position")
         song_name = item.get("songname") or item.get("song_name")
-        if not (show_id and set_number is not None and song_position is not None and song_name):
+        if not (
+            show_id
+            and set_number is not None
+            and song_position is not None
+            and song_name
+        ):
             continue
 
         settype = item.get("settype") or item.get("set_type") or ""
@@ -209,14 +215,22 @@ def run_eggy_collection(skip_validation: bool = False) -> None:
             df_to_upsert = df
 
         try:
-            upsert_dataframe(table_name=table_name, df=df_to_upsert, conflict_columns=conflict_cols)
+            upsert_dataframe(
+                table_name=table_name, df=df_to_upsert, conflict_columns=conflict_cols
+            )
             print(f"Upserted data into {table_name}.")
         except Exception as exc:
             print(f"Error upserting to {table_name}: {exc}")
 
-    upsert_table("eggy_songs_raw", collector.collect_songs, _normalize_songs, ["api_song_id"])
-    upsert_table("eggy_shows_raw", collector.collect_shows, _normalize_shows, ["show_id"])
-    upsert_table("eggy_venues_raw", collector.collect_venues, _normalize_venues, ["venue_id"])
+    upsert_table(
+        "eggy_songs_raw", collector.collect_songs, _normalize_songs, ["api_song_id"]
+    )
+    upsert_table(
+        "eggy_shows_raw", collector.collect_shows, _normalize_shows, ["show_id"]
+    )
+    upsert_table(
+        "eggy_venues_raw", collector.collect_venues, _normalize_venues, ["venue_id"]
+    )
     upsert_table(
         "eggy_setlists_raw",
         collector.collect_setlists,
@@ -227,7 +241,9 @@ def run_eggy_collection(skip_validation: bool = False) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Collect Eggy data into Supabase raw tables.")
+    parser = argparse.ArgumentParser(
+        description="Collect Eggy data into Supabase raw tables."
+    )
     parser.add_argument(
         "--skip-validation",
         action="store_true",

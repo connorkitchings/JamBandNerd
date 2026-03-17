@@ -81,6 +81,7 @@ jobs:
         if: steps.check.outputs.should_run == 'true'
         run: |
           MISSING=()
+          BAND="${{ matrix.band }}"
           
           # Check each secret by testing if it's empty
           if [[ -z "$SUPABASE_URL" ]]; then
@@ -91,8 +92,9 @@ jobs:
             MISSING+=("SUPABASE_KEY")
           fi
           
-          if [[ -z "$PHISH_API_KEY" ]]; then
-            MISSING+=("PHISH_API_KEY")
+          # PHISH_API_KEY is only required for Phish collection
+          if [[ "$BAND" == "phish" && -z "$PHISH_API_KEY" ]]; then
+            MISSING+=("PHISH_API_KEY (required for phish only)")
           fi
           
           if [[ ${#MISSING[@]} -gt 0 ]]; then
@@ -120,7 +122,7 @@ jobs:
           uv pip install .
 
       - name: Install Playwright Browsers
-        if: steps.check.outputs.should_run == 'true'
+        if: steps.check.outputs.should_run == 'true' && matrix.band == 'wsp'
         run: |
           source .venv/bin/activate
           playwright install --with-deps firefox
@@ -208,6 +210,14 @@ jobs:
             echo "Could not determine last completed show date. Skipping predictions for it."
           fi
           
+          echo "::endgroup::"
+
+      - name: Validate Prediction Tables
+        if: steps.check.outputs.should_run == 'true'
+        run: |
+          source .venv/bin/activate
+          echo "::group::Validating prediction table freshness for ${{ matrix.band }}"
+          python scripts/validate_prediction_tables.py --band ${{ matrix.band }} --max-age-hours 72
           echo "::endgroup::"
 
       - name: Run Backtest and Calculate Aggregate Accuracy
@@ -299,13 +309,15 @@ jobs:
               try:
                   id_col = BAND_ID_COLUMNS.get(band, 'show_id')
                   shows_data = client.table(f'{band}_shows_raw').select('*').gte('show_date', cutoff).execute().data
-                  setlists_data = client.table(f'{band}_setlists_raw').select(id_col).execute().data
                   
                   shows = pd.DataFrame(shows_data) if shows_data else pd.DataFrame()
-                  setlists = pd.DataFrame(setlists_data) if setlists_data else pd.DataFrame()
                   
                   if not shows.empty:
-                      show_ids = set(shows[id_col].astype(str))
+                      show_ids_raw = [sid for sid in shows[id_col].dropna().tolist()]
+                      show_ids = {str(sid) for sid in show_ids_raw}
+                      # Fetch only setlists for the recent shows to avoid row limits
+                      setlists_data = client.table(f'{band}_setlists_raw').select(id_col).in_(id_col, show_ids_raw).execute().data
+                      setlists = pd.DataFrame(setlists_data) if setlists_data else pd.DataFrame()
                       setlist_ids = set(setlists[id_col].astype(str)) if not setlists.empty else set()
                       missing = show_ids - setlist_ids
                       
@@ -367,7 +379,7 @@ jobs:
                       print(f'| {band.upper()} | n/a | n/a | No completed shows |')
                       continue
                   
-                  show_id_value = str(latest_show.get(id_col))
+                  show_id_value = latest_show.get(id_col)
                   ref_date = latest_show.get('show_date', 'n/a')
                   
                   setlist_resp = client.table(f'{band}_setlists_raw').select('song_name').eq(id_col, show_id_value).execute()
@@ -395,7 +407,34 @@ jobs:
         run: |
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Next Steps:" >> $GITHUB_STEP_SUMMARY
-                    echo "- Visit the [JamBandNerd web app](https://jambandnerd.streamlit.app/) to view updated predictions." >> $GITHUB_STEP_SUMMARY
-                    echo "- Check the Supabase dashboard for data validation." >> $GITHUB_STEP_SUMMARY
-                              echo "- Review any warnings above and re-run collection if needed." >> $GITHUB_STEP_SUMMARY
+          echo "- Visit the [JamBandNerd web app](https://jambandnerd.streamlit.app/) to view updated predictions." >> $GITHUB_STEP_SUMMARY
+          echo "- Check the Supabase dashboard for data validation." >> $GITHUB_STEP_SUMMARY
+          echo "- Review any warnings above and re-run collection if needed." >> $GITHUB_STEP_SUMMARY
+
+  notify-discord:
+    name: Notify Discord
+    needs: [daily-pipeline, pipeline-summary]
+    if: always() && secrets.DISCORD_WEBHOOK_URL != ''
+    runs-on: ubuntu-latest
+    steps:
+      - name: Post status to Discord
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          WORKFLOW_STATUS: ${{ needs.daily-pipeline.result }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [[ "$WORKFLOW_STATUS" == "success" ]]; then
+            STATUS_TEXT="✅ Daily pipeline succeeded"
+          else
+            STATUS_TEXT="⚠️ Daily pipeline completed with issues (check GitHub Actions)"
+          fi
+
+          payload=$(STATUS_TEXT="$STATUS_TEXT" python - <<'PY'
+          import json, os
+          content = f"{os.environ['STATUS_TEXT']}\n{os.environ['RUN_URL']}"
+          print(json.dumps({"content": content}))
+          PY
+          )
+
+          curl -sS -X POST -H "Content-Type: application/json" -d "$payload" "$DISCORD_WEBHOOK_URL"
           

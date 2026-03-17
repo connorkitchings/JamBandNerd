@@ -31,7 +31,7 @@ class TestSupabaseConnection:
         # Should not raise an exception
         validate_environment()
 
-    @patch('jambandnerd.db.connection.create_client')
+    @patch("jambandnerd.db.connection.create_client")
     def test_get_supabase_client_success(self, mock_create_client, setup_test_env):
         """Test successful Supabase client creation."""
         mock_client = MagicMock()
@@ -41,11 +41,10 @@ class TestSupabaseConnection:
 
         assert client == mock_client
         mock_create_client.assert_called_once_with(
-            "https://test.supabase.co",
-            "test_key_123"
+            "https://test.supabase.co", "test_key_123"
         )
 
-    @patch('jambandnerd.db.connection.create_client')
+    @patch("jambandnerd.db.connection.create_client")
     def test_get_supabase_client_singleton(self, mock_create_client, setup_test_env):
         """Test that get_supabase_client returns the same instance."""
         mock_client = MagicMock()
@@ -53,6 +52,7 @@ class TestSupabaseConnection:
 
         # Clear any existing client instance
         import jambandnerd.db.connection
+
         jambandnerd.db.connection._supabase_client = None
 
         client1 = get_supabase_client()
@@ -69,7 +69,10 @@ class TestSupabaseConnection:
 
         # Clear any existing client instance
         import jambandnerd.db.connection
+
         jambandnerd.db.connection._supabase_client = None
 
-        with pytest.raises(ValueError, match="SUPABASE_URL and SUPABASE_KEY must be set"):
+        with pytest.raises(
+            ValueError, match="SUPABASE_URL and SUPABASE_KEY must be set"
+        ):
             get_supabase_client()

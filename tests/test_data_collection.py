@@ -18,10 +18,10 @@ class TestBandCollectorBase:
     def test_band_collector_interface(self):
         """Test that BandCollector defines the expected interface."""
         # Check that the abstract methods exist
-        assert hasattr(BandCollector, 'collect_shows')
-        assert hasattr(BandCollector, 'collect_setlists')
-        assert hasattr(BandCollector, 'collect_songs')
-        assert hasattr(BandCollector, 'collect_venues')
+        assert hasattr(BandCollector, "collect_shows")
+        assert hasattr(BandCollector, "collect_setlists")
+        assert hasattr(BandCollector, "collect_songs")
+        assert hasattr(BandCollector, "collect_venues")
 
         # Check that they are marked as abstract methods
         assert BandCollector.collect_shows.__isabstractmethod__
@@ -36,6 +36,7 @@ class MockBandCollector(BandCollector):
     def __init__(self):
         # Create a minimal config for testing
         from jambandnerd.data_collection.base import CollectorConfig
+
         config = CollectorConfig(base_url="https://test.example.com")
         super().__init__(config)
 
@@ -109,8 +110,6 @@ class TestMockBandCollector:
         assert venues[0]["venue_id"] == "test_venue_1"
         assert venues[0]["name"] == "Test Venue"
 
-
         assert len(venues) == 1
         assert venues[0]["venue_id"] == "test_venue_1"
         assert venues[0]["name"] == "Test Venue"
-

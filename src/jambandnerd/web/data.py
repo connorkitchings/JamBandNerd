@@ -44,7 +44,9 @@ BAND_CONFIG = {
 
 
 @st.cache_data(ttl=STREAMLIT_CACHE_TTL_LONG)
-def fetch_available_prediction_dates(_db_client: Client, band: str, model: str) -> list[str]:
+def fetch_available_prediction_dates(
+    _db_client: Client, band: str, model: str
+) -> list[str]:
     """Fetch all dates that have predictions for a band, sorted descending."""
     if band not in BAND_CONFIG:
         return []
@@ -59,11 +61,17 @@ def fetch_available_prediction_dates(_db_client: Client, band: str, model: str) 
             .order("reference_date", desc=True)
             .execute()
         )
-        # Deduplicate dates (though they should be unique per band/model/date ideally, 
+        # Deduplicate dates (though they should be unique per band/model/date ideally,
         # unless there are multiple runs, but we only care about distinct dates here)
         dates = sorted(
-            list({r["reference_date"] for r in (resp.data or []) if r.get("reference_date")}),
-            reverse=True
+            list(
+                {
+                    r["reference_date"]
+                    for r in (resp.data or [])
+                    if r.get("reference_date")
+                }
+            ),
+            reverse=True,
         )
         return dates
     except Exception as e:
@@ -251,7 +259,7 @@ def fetch_setlist_for_date(
         )
         if not show_resp.data:
             return pd.DataFrame(), None
-        
+
         show_id = show_resp.data[0].get(id_col)
 
         if not show_id:
@@ -292,6 +300,7 @@ def fetch_setlist_for_date(
     except Exception as e:
         st.error(f"Failed to fetch setlist for {band} on {show_date}: {e}")
         return pd.DataFrame(), None
+
 
 @st.cache_data(ttl=STREAMLIT_CACHE_TTL_LONG)
 def fetch_last_show_setlist(

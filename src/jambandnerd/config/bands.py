@@ -1,10 +1,18 @@
 """Band-specific configuration."""
+
 from __future__ import annotations
 
 from typing import Final
 
 # Supported bands
-SUPPORTED_BANDS: Final[tuple[str, ...]] = ("goose", "eggy", "phish", "wsp", "billy", "um")
+SUPPORTED_BANDS: Final[tuple[str, ...]] = (
+    "goose",
+    "eggy",
+    "phish",
+    "wsp",
+    "billy",
+    "um",
+)
 
 # Band display names
 BAND_DISPLAY_NAMES: Final[dict[str, str]] = {

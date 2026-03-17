@@ -4,6 +4,7 @@ This script fetches data from the phish.net API via the `PhishCollector`,
 normalizes responses to the raw table schemas, and performs upserts into
 `phish_songs_raw`, `phish_shows_raw`, `phish_venues_raw`, and `phish_setlists_raw`.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -103,9 +104,9 @@ def _normalize_shows(raw: Iterable[Dict[str, Any]]) -> pd.DataFrame:
         df["api_artist_id"] = pd.to_numeric(
             df["api_artist_id"], errors="coerce"
         ).astype("Int64")
-        df["api_tour_id"] = pd.to_numeric(
-            df["api_tour_id"], errors="coerce"
-        ).astype("Int64")
+        df["api_tour_id"] = pd.to_numeric(df["api_tour_id"], errors="coerce").astype(
+            "Int64"
+        )
     return df
 
 
@@ -132,6 +133,7 @@ def _normalize_venues(raw: Iterable[Dict[str, Any]]) -> pd.DataFrame:
 
 def _normalize_setlists(raw: Iterable[Dict[str, Any]]) -> pd.DataFrame:
     """Normalize setlists to `phish_setlists_raw` schema."""
+
     def _to_bool(value: Any) -> bool:
         if value is None:
             return False
@@ -221,7 +223,9 @@ def run_phish_collection(
         current_year = datetime.now().year
         year_start = current_year - 1
         year_end = current_year
-        logging.info(f"Defaulting to setlist collection for years: {year_start}-{year_end}")
+        logging.info(
+            f"Defaulting to setlist collection for years: {year_start}-{year_end}"
+        )
 
     def upsert_table(
         table_name: str,
@@ -261,9 +265,13 @@ def run_phish_collection(
                 if report.missing_columns:
                     logging.warning(f"    Missing columns: {report.missing_columns}")
                 if report.type_mismatches:
-                    logging.warning(f"    Type mismatches: {len(report.type_mismatches)} columns")
+                    logging.warning(
+                        f"    Type mismatches: {len(report.type_mismatches)} columns"
+                    )
                 if report.nullable_violations:
-                    logging.warning(f"    Nullable violations: {report.nullable_violations}")
+                    logging.warning(
+                        f"    Nullable violations: {report.nullable_violations}"
+                    )
                 # Proceed anyway with coerced data - validation is now warning-only
 
         try:
@@ -283,7 +291,10 @@ def run_phish_collection(
     if not only_setlists:
         # Collect and upsert songs, shows, venues
         upsert_table(
-            "phish_songs_raw", collector.collect_songs, _normalize_songs, ["api_song_id"]
+            "phish_songs_raw",
+            collector.collect_songs,
+            _normalize_songs,
+            ["api_song_id"],
         )
 
     # Shows provide data for venues and drive setlist selection
@@ -293,7 +304,7 @@ def run_phish_collection(
     # Optional year-based filtering for setlists
     filtered_shows_df = shows_df.copy()
     if year_start is not None or year_end is not None:
-        ys = year_start if year_start is not None else -10**9
+        ys = year_start if year_start is not None else -(10**9)
         ye = year_end if year_end is not None else 10**9
         if not filtered_shows_df.empty and "show_year" in filtered_shows_df.columns:
             filtered_shows_df["show_year"] = pd.to_numeric(
@@ -309,9 +320,7 @@ def run_phish_collection(
             )
 
     if not only_setlists and not shows_df.empty:
-        upsert_dataframe(
-            "phish_shows_raw", shows_df, conflict_columns=["api_show_id"]
-        )
+        upsert_dataframe("phish_shows_raw", shows_df, conflict_columns=["api_show_id"])
         logging.info(f"Upserted {len(shows_df)} shows into phish_shows_raw.")
         if not only_setlists:
             venues_df = _normalize_venues(shows_data)

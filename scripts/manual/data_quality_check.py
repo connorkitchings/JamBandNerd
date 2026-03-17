@@ -1,7 +1,8 @@
-import sys
 import os
-import pandas as pd
+import sys
 from datetime import date, timedelta
+
+import pandas as pd
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -10,8 +11,8 @@ load_dotenv()
 # Add src to path
 sys.path.insert(0, os.path.join(os.getcwd(), "src"))
 
-from jambandnerd.db.connection import get_supabase_client
 from jambandnerd.config import BAND_ID_COLUMNS
+from jambandnerd.db.connection import get_supabase_client
 
 
 def check_band(band):

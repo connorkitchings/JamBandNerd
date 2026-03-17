@@ -30,7 +30,9 @@ class EggyCollector(BandCollector):
         """Limit API payloads to the target artist when an artist field exists."""
         if not records:
             return []
-        if all("artist" not in record or record.get("artist") is None for record in records):
+        if all(
+            "artist" not in record or record.get("artist") is None for record in records
+        ):
             return records
         artist_lower = self.ARTIST_NAME.lower()
         filtered = [

@@ -4,6 +4,7 @@ This module provides a centralized, refactored pipeline for computing all featur
 required by the various prediction models. It ensures that data leakage is prevented
 by strictly adhering to a `reference_date` cutoff.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -18,13 +19,15 @@ def _stats_for_song(group: pd.DataFrame) -> pd.Series:
     # Use unique show indices to avoid counting reprises/encores as separate plays
     plays_idx = sorted(group["show_index"].unique().tolist())
     gaps = [plays_idx[i] - plays_idx[i - 1] for i in range(1, len(plays_idx))]
-    return pd.Series({
-        "times_played": len(plays_idx),
-        "last_played_index": plays_idx[-1],
-        "last_played_date": group["show_date"].max(),
-        "avg_gap": pd.Series(gaps).mean() if gaps else float("nan"),
-        "std_gap": pd.Series(gaps).std(ddof=0) if gaps else 0.0,
-    })
+    return pd.Series(
+        {
+            "times_played": len(plays_idx),
+            "last_played_index": plays_idx[-1],
+            "last_played_date": group["show_date"].max(),
+            "avg_gap": pd.Series(gaps).mean() if gaps else float("nan"),
+            "std_gap": pd.Series(gaps).std(ddof=0) if gaps else 0.0,
+        }
+    )
 
 
 @dataclass
@@ -80,7 +83,7 @@ def _compute_base_features(
 
     # 1. Set absolute cutoff date
     shows = shows_df.copy()
-    shows["show_date"] = pd.to_datetime(shows["show_date"], errors='coerce').dt.date
+    shows["show_date"] = pd.to_datetime(shows["show_date"], errors="coerce").dt.date
     historical_shows = shows[shows["show_date"] < reference_date].copy()
     if debug:
         print(f"Shape after filtering for historical shows: {historical_shows.shape}")
@@ -126,7 +129,11 @@ def _compute_base_features(
         print(f"Plays shape after dropping NA: {plays.shape}")
 
     # 4. Calculate historical gap stats
-    song_features = plays.groupby("song_name").apply(_stats_for_song, include_groups=False).reset_index()
+    song_features = (
+        plays.groupby("song_name")
+        .apply(_stats_for_song, include_groups=False)
+        .reset_index()
+    )
     if debug:
         print(f"Shape of master_feature_set: {song_features.shape}")
 
@@ -151,7 +158,6 @@ def generate_model_data(
     exclusion_window: int = 3,
     band: str | None = None,
 ) -> ModelData:
-
     """
     Orchestrates the full feature generation pipeline.
     """
@@ -171,6 +177,7 @@ def generate_model_data(
             BAND_EXCLUSION_WINDOWS,
             EXCLUSION_WINDOW_DEFAULT,
         )
+
         exclusion_window = BAND_EXCLUSION_WINDOWS.get(band, EXCLUSION_WINDOW_DEFAULT)
 
     historical_plays, master_features, ref_index, recent_songs = _compute_base_features(
@@ -191,4 +198,4 @@ def generate_model_data(
         reference_index=ref_index,
         recently_played_songs=recent_songs,
         diagnostics=diagnostics,
-)
+    )

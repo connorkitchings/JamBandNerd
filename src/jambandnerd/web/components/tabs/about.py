@@ -47,7 +47,9 @@ def display_about(selected_model: str) -> None:
         unsafe_allow_html=True,
     )
 
-    model_display = MODEL_CONFIG.get(selected_model, {}).get("display_name", selected_model.title())
+    model_display = MODEL_CONFIG.get(selected_model, {}).get(
+        "display_name", selected_model.title()
+    )
     summary = MODEL_SUMMARY.get(
         selected_model,
         {"title": model_display, "intro": "Model summary unavailable.", "bullets": []},

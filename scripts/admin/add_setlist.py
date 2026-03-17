@@ -33,7 +33,6 @@ def parse_setlist_text(text: str) -> List[Dict]:
 
     for line in lines:
         set_number = None
-        encore = False
         songs_part = None
 
         m = re.match(r"^Set\s*(\d+)\s+(.*)$", line, flags=re.IGNORECASE)
@@ -44,7 +43,6 @@ def parse_setlist_text(text: str) -> List[Dict]:
             m2 = re.match(r"^Encore\s+(.*)$", line, flags=re.IGNORECASE)
             if m2:
                 set_number = 99
-                encore = True
                 songs_part = m2.group(1)
 
         if set_number is None or songs_part is None:
@@ -52,29 +50,33 @@ def parse_setlist_text(text: str) -> List[Dict]:
             continue
 
         # Split by commas into items; within each item, '>' denotes segues
-        items = [s.strip() for s in songs_part.split(',') if s.strip()]
+        items = [s.strip() for s in songs_part.split(",") if s.strip()]
         pos = 1
         for item in items:
-            parts = [p.strip() for p in item.split('>') if p.strip()]
+            parts = [p.strip() for p in item.split(">") if p.strip()]
             for i, part in enumerate(parts):
                 song_name = (
                     part.replace("\u2019", "'")  # normalize curly apostrophes
-                        .replace("\u2018", "'")
-                        .strip()
+                    .replace("\u2018", "'")
+                    .strip()
                 )
-                rows.append({
-                    "set_number": set_number,
-                    "song_position": pos,
-                    "song_name": song_name,
-                    "is_segue": i < (len(parts) - 1),
-                    "song_notes": "",
-                })
+                rows.append(
+                    {
+                        "set_number": set_number,
+                        "song_position": pos,
+                        "song_name": song_name,
+                        "is_segue": i < (len(parts) - 1),
+                        "song_notes": "",
+                    }
+                )
                 pos += 1
 
     return rows
 
 
-def ensure_show(client, band: str, show_date: str, venue_name: str, city: str, state: str) -> str:
+def ensure_show(
+    client, band: str, show_date: str, venue_name: str, city: str, state: str
+) -> str:
     """Ensure a show exists in {band}_shows_raw, return show_id.
 
     Strategy: if a show with this date+venue exists, reuse it; otherwise, generate a
@@ -98,7 +100,9 @@ def ensure_show(client, band: str, show_date: str, venue_name: str, city: str, s
         pass
 
     # Create deterministic show_id from date|venue
-    show_id = str(int(hashlib.md5(f"{show_date}|{venue_name}".encode()).hexdigest()[:8], 16))
+    show_id = str(
+        int(hashlib.md5(f"{show_date}|{venue_name}".encode()).hexdigest()[:8], 16)
+    )
 
     row = {
         "show_id": show_id,
@@ -133,17 +137,23 @@ def upsert_setlist(client, band: str, show_id: str, rows: List[Dict]) -> None:
     # Chunked upsert
     for i in range(0, len(payload), 500):
         chunk = payload[i : i + 500]
-        client.table(sets_tbl).upsert(chunk, on_conflict="show_id,set_number,song_position").execute()
+        client.table(sets_tbl).upsert(
+            chunk, on_conflict="show_id,set_number,song_position"
+        ).execute()
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Admin tool to add a manual setlist to raw tables.")
+    parser = argparse.ArgumentParser(
+        description="Admin tool to add a manual setlist to raw tables."
+    )
     parser.add_argument("--band", choices=["wsp", "goose", "phish"], required=True)
     parser.add_argument("--date", required=True, help="Show date YYYY-MM-DD")
     parser.add_argument("--venue", required=True)
     parser.add_argument("--city", required=True)
     parser.add_argument("--state", required=True)
-    parser.add_argument("--file", required=True, help="Path to a text file containing the setlist lines")
+    parser.add_argument(
+        "--file", required=True, help="Path to a text file containing the setlist lines"
+    )
 
     args = parser.parse_args()
 
@@ -164,10 +174,14 @@ def main() -> None:
         sys.exit(1)
 
     client = get_supabase_client()
-    show_id = ensure_show(client, args.band, args.date, args.venue, args.city, args.state)
+    show_id = ensure_show(
+        client, args.band, args.date, args.venue, args.city, args.state
+    )
     upsert_setlist(client, args.band, show_id, rows)
 
-    print(f"OK - inserted/updated {len(rows)} rows for {args.band} {args.date} (show_id={show_id})")
+    print(
+        f"OK - inserted/updated {len(rows)} rows for {args.band} {args.date} (show_id={show_id})"
+    )
 
 
 if __name__ == "__main__":

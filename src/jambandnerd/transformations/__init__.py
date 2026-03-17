@@ -17,6 +17,3 @@ __all__ = [
     "generate_model_data",
     "gaps",
 ]
-
-
-

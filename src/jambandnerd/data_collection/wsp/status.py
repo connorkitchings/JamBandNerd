@@ -23,6 +23,8 @@ class CollectionStatus:
         self.songs_collected = 0
         self.shows_collected = 0
         self.setlists_collected = 0
+        self.fallback_setlists_collected = 0
+        self.fallback_shows_filled = 0
         self.critical_failures: List[str] = []
 
     def record_403_error(self, context: str) -> None:
@@ -90,6 +92,8 @@ class CollectionStatus:
             f"  - Songs collected: {self.songs_collected}",
             f"  - Shows collected: {self.shows_collected}",
             f"  - Setlists collected: {self.setlists_collected}",
+            f"  - TourWrangler fallback shows filled: {self.fallback_shows_filled}",
+            f"  - TourWrangler fallback setlists collected: {self.fallback_setlists_collected}",
         ]
         if self.critical_failures:
             lines.append("  Recent failures:")
@@ -110,6 +114,12 @@ class CollectionStatus:
             f"  - Shows collected: {self.shows_collected}",
             f"  - Setlists collected: {self.setlists_collected}",
         ]
+        if self.fallback_setlists_collected > 0 or self.fallback_shows_filled > 0:
+            lines.append("  - TourWrangler fallback:")
+            lines.append(f"    - Shows filled: {self.fallback_shows_filled}")
+            lines.append(
+                f"    - Setlist rows inserted: {self.fallback_setlists_collected}"
+            )
         if self.http_403_errors > 0 or self.other_http_errors > 0:
             lines.append("  - Some errors occurred but data was still collected:")
             lines.append(f"    - 403 errors: {self.http_403_errors}")

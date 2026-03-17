@@ -4,6 +4,7 @@ This script fetches raw Goose shows and setlists from Supabase, computes the sho
 per-song current gaps, and the past-year aggregations required by the notebook model.
 It prints a concise preview for validation.
 """
+
 from __future__ import annotations
 
 import os
@@ -13,7 +14,7 @@ from typing import Any, Dict, List
 import pandas as pd
 
 # Add the project root to the Python path (align with collection script pattern)
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, project_root)
 
 from src.jambandnerd.db.connection import get_supabase_client  # noqa: E402
@@ -43,7 +44,9 @@ def main() -> None:
     # Minimal columns check
     need_show_cols = {"show_id", "show_date"}
     need_set_cols = {"show_id", "song_name"}
-    if not need_show_cols.issubset(shows_df.columns) or not need_set_cols.issubset(setlists_df.columns):
+    if not need_show_cols.issubset(shows_df.columns) or not need_set_cols.issubset(
+        setlists_df.columns
+    ):
         print("Missing required columns in raw tables; cannot compute features.")
         return
 
@@ -51,7 +54,10 @@ def main() -> None:
 
     print("Latest show index:", agg.latest_show_index)
     print("Latest show date:", agg.latest_show_date)
-    print("Excluded recent songs (played in last 3 shows):", len(agg.excluded_recent_songs))
+    print(
+        "Excluded recent songs (played in last 3 shows):",
+        len(agg.excluded_recent_songs),
+    )
 
     preview = agg.features.head(25)
     print("Top 25 features preview:")
@@ -60,5 +66,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
-

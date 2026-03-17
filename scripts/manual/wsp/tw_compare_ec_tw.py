@@ -5,7 +5,7 @@ from __future__ import annotations
 Compare EC setlists (from DB or backup) vs TourWrangler parse for a specific date and URL.
 
 Usage:
-  uv run python scripts/tw_compare_ec_tw.py --date 2025-10-03 \
+  uv run python scripts/manual/wsp/tw_compare_ec_tw.py --date 2025-10-03 \
     --url https://www.tourwrangler.com/artists/widespread-panic/shows/october-3-2025-radians-amphitheater-memphis-tennessee
 
 This script does not write to the database; it only reads and prints a summary.
@@ -51,7 +51,14 @@ def run(date_str: str, url: str) -> None:
     client = get_supabase_client()
 
     # Find show
-    shows = client.table("wsp_shows_raw").select("show_id, show_date, city, state").eq("show_date", date_str).execute().data or []
+    shows = (
+        client.table("wsp_shows_raw")
+        .select("show_id, show_date, city, state")
+        .eq("show_date", date_str)
+        .execute()
+        .data
+        or []
+    )
     if not shows:
         print(f"No show found for {date_str}")
         return
@@ -60,7 +67,10 @@ def run(date_str: str, url: str) -> None:
     print(f"Show: {show}")
 
     # EC rows (from DB). If not found, try local prior backup file
-    ec_rows = client.table("wsp_setlists_raw").select("*").eq("show_id", sid).execute().data or []
+    ec_rows = (
+        client.table("wsp_setlists_raw").select("*").eq("show_id", sid).execute().data
+        or []
+    )
     if not ec_rows:
         backup = Path("tw_test_backups/wsp_ec_backup_2025-10-03_04.json")
         if backup.exists():
@@ -81,22 +91,37 @@ def run(date_str: str, url: str) -> None:
         }
 
     print("\nSummary:")
-    print(json.dumps({
-        "ec": summarize(ec_rows),
-        "tw": summarize(tw_rows),
-    }, indent=2, default=str))
+    print(
+        json.dumps(
+            {
+                "ec": summarize(ec_rows),
+                "tw": summarize(tw_rows),
+            },
+            indent=2,
+            default=str,
+        )
+    )
 
     # Keyed compare ignoring order: membership by (set, name)
-    ec_setnames = {(str(r.get("set_number")), normalize_name(r.get("song_name"))) for r in ec_rows}
-    tw_setnames = {(str(r.get("set_number")), normalize_name(r.get("song_name"))) for r in tw_rows}
+    ec_setnames = {
+        (str(r.get("set_number")), normalize_name(r.get("song_name"))) for r in ec_rows
+    }
+    tw_setnames = {
+        (str(r.get("set_number")), normalize_name(r.get("song_name"))) for r in tw_rows
+    }
     missing_in_tw = sorted(list(ec_setnames - tw_setnames))[:20]
     extra_in_tw = sorted(list(tw_setnames - ec_setnames))[:20]
 
     print("\nDiff (Ignoring position):")
-    print(json.dumps({
-        "missing_in_tw": missing_in_tw,
-        "extra_in_tw": extra_in_tw,
-    }, indent=2))
+    print(
+        json.dumps(
+            {
+                "missing_in_tw": missing_in_tw,
+                "extra_in_tw": extra_in_tw,
+            },
+            indent=2,
+        )
+    )
 
 
 if __name__ == "__main__":

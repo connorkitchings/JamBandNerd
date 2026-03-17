@@ -14,6 +14,3 @@ __all__ = [
     "GooseCollector",
     "collector",
 ]
-
-
-

@@ -79,10 +79,12 @@ def format_predictions_df(df: pd.DataFrame, model: str) -> pd.DataFrame:
 
     config = MODEL_CONFIG[model]
     cols_to_display = [col for col in config["columns"] if col in df.columns]
-    display_df = df[cols_to_display]
+    display_df = df[cols_to_display].copy()
     if "LTP" in display_df.columns:
         try:
-            display_df["LTP"] = pd.to_datetime(display_df["LTP"]).dt.strftime("%m/%d/%Y")
+            display_df.loc[:, "LTP"] = pd.to_datetime(display_df["LTP"]).dt.strftime(
+                "%m/%d/%Y"
+            )
         except Exception:
             pass
     return display_df.rename(columns=config["columns"])
@@ -129,8 +131,12 @@ def display_predictions(client: Client, band: str, model: str):
                 date_str = start_dt.strftime("%m/%d/%Y")
             venue = upcoming_details.get("venue_name")
             city = upcoming_details.get("city") or upcoming_details.get("venue_city")
-            region = upcoming_details.get("region") or upcoming_details.get("venue_state")
-            country = upcoming_details.get("country") or upcoming_details.get("venue_country")
+            region = upcoming_details.get("region") or upcoming_details.get(
+                "venue_state"
+            )
+            country = upcoming_details.get("country") or upcoming_details.get(
+                "venue_country"
+            )
             if venue:
                 venue_bits.append(venue)
             location_parts = [part for part in [city, region] if part]
@@ -159,12 +165,18 @@ def display_predictions(client: Client, band: str, model: str):
         display_df = format_predictions_df(predictions_df.head(50), model)
 
         predicted_at_raw = meta.get("predicted_at")
-        predicted_at = pd.to_datetime(predicted_at_raw).floor("min") if predicted_at_raw else None
-        predicted_at_str = predicted_at.strftime("%Y-%m-%d %H:%M") if predicted_at else "unknown"
+        predicted_at = (
+            pd.to_datetime(predicted_at_raw).floor("min") if predicted_at_raw else None
+        )
+        predicted_at_str = (
+            predicted_at.strftime("%Y-%m-%d %H:%M") if predicted_at else "unknown"
+        )
         model_version = meta.get("model_version", "v1")
         header_text = left_header or model_display_name
 
-        _render_hero(header_text, f"{model_display_name} ({model_version})", predicted_at_str)
+        _render_hero(
+            header_text, f"{model_display_name} ({model_version})", predicted_at_str
+        )
 
         st.dataframe(display_df, use_container_width=True, hide_index=True, height=650)
         st.markdown(

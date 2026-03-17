@@ -11,6 +11,7 @@ Usage:
   # Generate CK+ predictions for Phish for a specific date
   uv run python scripts/generate_predictions.py --band phish --model ckplus --date 2024-08-01
 """
+
 from __future__ import annotations
 
 import argparse
@@ -49,7 +50,9 @@ class NpEncoder(json.JSONEncoder):
         return super(NpEncoder, self).default(obj)
 
 
-def generate_predictions(band: str, model: str, date_str: str | None, exclusion_window: int):
+def generate_predictions(
+    band: str, model: str, date_str: str | None, exclusion_window: int
+):
     """Generate and save predictions for a given band and model."""
     band = band.lower()
     model = model.lower()
@@ -64,7 +67,9 @@ def generate_predictions(band: str, model: str, date_str: str | None, exclusion_
         try:
             upcoming_df = pd.DataFrame(fetch_table("um_upcoming_shows"))
         except Exception as exc:  # pragma: no cover - Supabase connectivity
-            print(f"[{band.upper()}/{model.upper()}] Warning: could not load upcoming shows ({exc}).")
+            print(
+                f"[{band.upper()}/{model.upper()}] Warning: could not load upcoming shows ({exc})."
+            )
             upcoming_df = None
 
     if shows_df.empty or setlists_df.empty:
@@ -73,10 +78,16 @@ def generate_predictions(band: str, model: str, date_str: str | None, exclusion_
 
     shows_df, setlists_df = prepare_band_data(shows_df, setlists_df)
     reference_date = resolve_reference_date(date_str, shows_df, upcoming_df=upcoming_df)
-    print(f"{log_prefix} Generating predictions for reference date: {reference_date.isoformat()}")
+    print(
+        f"{log_prefix} Generating predictions for reference date: {reference_date.isoformat()}"
+    )
 
     model_data = generate_model_data(
-        shows_df, setlists_df, reference_date, exclusion_window=exclusion_window, band=band
+        shows_df,
+        setlists_df,
+        reference_date,
+        exclusion_window=exclusion_window,
+        band=band,
     )
 
     # 2. Select and run model
@@ -87,7 +98,9 @@ def generate_predictions(band: str, model: str, date_str: str | None, exclusion_
         predictions = preds
         print(f"{log_prefix} --- Model Diagnostics ---")
         print(json.dumps(diagnostics, indent=2, cls=NpEncoder))
-        print(f"{log_prefix} Recently played songs (excluded): {model_data.recently_played_songs}")
+        print(
+            f"{log_prefix} Recently played songs (excluded): {model_data.recently_played_songs}"
+        )
         print(f"{log_prefix} -------------------------")
     elif model == "ckplus":
         predictor = CKPlusPredictor(band=band)
@@ -142,7 +155,9 @@ def generate_predictions(band: str, model: str, date_str: str | None, exclusion_
 
     output_df = pd.DataFrame([output_row])
 
-    print(f"{log_prefix} Generated {len(predictions_list)} predictions. Saving to {table_name}...")
+    print(
+        f"{log_prefix} Generated {len(predictions_list)} predictions. Saving to {table_name}..."
+    )
     upsert_dataframe(
         table_name=table_name,
         df=output_df,

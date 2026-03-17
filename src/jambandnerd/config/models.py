@@ -1,4 +1,5 @@
 """Model-specific configuration constants."""
+
 from __future__ import annotations
 
 from typing import Final
@@ -22,17 +23,17 @@ CKPLUS_ALPHA_DEFAULT: Final[float] = 0.7
 
 # Retirement gap thresholds by band (shows without a play before considered "retired")
 RETIREMENT_GAPS: Final[dict[str, int]] = {
-    "goose": 100,   # Smaller gap for a band with more regular rotation
-    "eggy": 120,    # Smaller catalog but still rotating regularly
-    "phish": 150,   # Larger gap for a band with deeper catalog
-    "wsp": 150,     # Similar to Phish
+    "goose": 100,  # Smaller gap for a band with more regular rotation
+    "eggy": 120,  # Smaller catalog but still rotating regularly
+    "phish": 150,  # Larger gap for a band with deeper catalog
+    "wsp": 150,  # Similar to Phish
     "billy": 150,
     "um": 150,
-    "default": 250  # Safe fallback for other bands
+    "default": 250,  # Safe fallback for other bands
 }
 
 # Model version identifiers
 MODEL_VERSIONS: Final[dict[str, str]] = {
     "notebook": "notebook_v1",
-    "ckplus": "ckplus_v1"
+    "ckplus": "ckplus_v1",
 }

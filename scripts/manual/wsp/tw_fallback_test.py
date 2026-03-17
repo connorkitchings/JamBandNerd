@@ -12,7 +12,7 @@ Steps:
 5) Compare current (TW) rows to the EC backup and print summary, also write both to files for review.
 
 Usage:
-  uv run python scripts/tw_fallback_test.py --dates 2025-10-03 2025-10-04
+  uv run python scripts/manual/wsp/tw_fallback_test.py --dates 2025-10-03 2025-10-04
 """
 
 import argparse
@@ -44,9 +44,11 @@ from src.jambandnerd.db.validation import (
 
 
 def compute_source_hash_row(rec: dict) -> str:
-    payload = json.dumps({k: (None if pd.isna(v) else v) for k, v in rec.items()}, sort_keys=True, default=str).encode(
-        "utf-8"
-    )
+    payload = json.dumps(
+        {k: (None if pd.isna(v) else v) for k, v in rec.items()},
+        sort_keys=True,
+        default=str,
+    ).encode("utf-8")
     return hashlib.sha256(payload).hexdigest()
 
 
@@ -75,7 +77,12 @@ def run(dates: List[str]) -> None:
     # 1) Locate shows
     shows: List[Dict[str, Any]] = []
     for d in dates:
-        resp = client.table("wsp_shows_raw").select("show_id, show_date, city, state").eq("show_date", d).execute()
+        resp = (
+            client.table("wsp_shows_raw")
+            .select("show_id, show_date, city, state")
+            .eq("show_date", d)
+            .execute()
+        )
         shows.extend(resp.data or [])
     if not shows:
         print("No shows found for requested dates.")
@@ -89,7 +96,14 @@ def run(dates: List[str]) -> None:
     backup_dir = Path("tw_test_backups")
     backup_dir.mkdir(exist_ok=True)
     backup_file = backup_dir / f"wsp_ec_backup_{'_'.join(dates)}.json"
-    existing = client.table("wsp_setlists_raw").select("*").in_("show_id", show_ids).execute().data or []
+    existing = (
+        client.table("wsp_setlists_raw")
+        .select("*")
+        .in_("show_id", show_ids)
+        .execute()
+        .data
+        or []
+    )
     backup_file.write_text(json.dumps(existing, indent=2))
     print(f"Backed up {len(existing)} existing setlist rows to {backup_file}")
 
@@ -100,7 +114,9 @@ def run(dates: List[str]) -> None:
 
     # 4) Fetch from TourWrangler
     schema = get_table_schema("wsp_setlists_raw")
-    has_source = any((str(col.get("column_name", "")).lower() == "source") for col in (schema or []))
+    has_source = any(
+        (str(col.get("column_name", "")).lower() == "source") for col in (schema or [])
+    )
 
     tw_rows_all: List[Dict[str, Any]] = []
     for s in shows:
@@ -121,28 +137,46 @@ def run(dates: List[str]) -> None:
         return
 
     df = pd.DataFrame(tw_rows_all)
-    df["source_hash"] = df.apply(lambda row: compute_source_hash_row(row.to_dict()), axis=1)
+    df["source_hash"] = df.apply(
+        lambda row: compute_source_hash_row(row.to_dict()), axis=1
+    )
 
     if schema:
         df = coerce_df_types(df, schema)
-        _ = validate_dataframe_against_table(df, "wsp_setlists_raw", schema)  # warnings are non-blocking
+        _ = validate_dataframe_against_table(
+            df, "wsp_setlists_raw", schema
+        )  # warnings are non-blocking
 
-    upsert_dataframe("wsp_setlists_raw", df, conflict_columns=["show_id", "set_number", "song_position"])
+    upsert_dataframe(
+        "wsp_setlists_raw",
+        df,
+        conflict_columns=["show_id", "set_number", "song_position"],
+    )
     print(f"Upserted {len(df)} TourWrangler rows.")
 
     # 5) Compare current (TW) rows vs EC backup
-    current = client.table("wsp_setlists_raw").select("*").in_("show_id", show_ids).execute().data or []
+    current = (
+        client.table("wsp_setlists_raw")
+        .select("*")
+        .in_("show_id", show_ids)
+        .execute()
+        .data
+        or []
+    )
     cur_keys = to_keyed(current)
     ec_keys = to_keyed(existing)
 
     summary = {}
+
+    def strip_pos(xs):
+        return {(a, c) for (a, _b, c) in xs}
+
     for sid in show_ids:
         cur = cur_keys.get(sid, set())
         ec = ec_keys.get(sid, set())
         missing_in_tw = sorted(list(ec - cur))
         extra_in_tw = sorted(list(cur - ec))
         # order-only or membership diffs ignoring position
-        strip_pos = lambda xs: {(a, c) for (a, b, c) in xs}
         order_or_membership = sorted(list(strip_pos(cur) ^ strip_pos(ec)))
         summary[sid] = {
             "ec_count": len(ec),
@@ -169,7 +203,6 @@ def run(dates: List[str]) -> None:
                 ecp = prior_ec_keys.get(sid, set())
                 missing_in_tw = sorted(list(ecp - cur))
                 extra_in_tw = sorted(list(cur - ecp))
-                strip_pos = lambda xs: {(a, c) for (a, b, c) in xs}
                 order_or_membership = sorted(list(strip_pos(cur) ^ strip_pos(ecp)))
                 prior_summary[sid] = {
                     "prior_ec_count": len(ecp),
@@ -186,12 +219,20 @@ def run(dates: List[str]) -> None:
             print(f"Could not compare with prior EC backup ({prior_backup}): {e}")
 
     # Write artifacts
-    (backup_dir / f"wsp_tw_current_rows_{'_'.join(dates)}.json").write_text(json.dumps(current, indent=2))
-    print(f"Wrote TW rows to {(backup_dir / f'wsp_tw_current_rows_{"_".join(dates)}.json')}\nDone.")
+    (backup_dir / f"wsp_tw_current_rows_{'_'.join(dates)}.json").write_text(
+        json.dumps(current, indent=2)
+    )
+    print(
+        f"Wrote TW rows to {(backup_dir / f'wsp_tw_current_rows_{"_".join(dates)}.json')}\nDone."
+    )
 
 
 if __name__ == "__main__":
-    ap = argparse.ArgumentParser(description="Run TW fallback for specific dates and compare against EC backup")
-    ap.add_argument("--dates", nargs="+", required=True, help="Dates in YYYY-MM-DD format")
+    ap = argparse.ArgumentParser(
+        description="Run TW fallback for specific dates and compare against EC backup"
+    )
+    ap.add_argument(
+        "--dates", nargs="+", required=True, help="Dates in YYYY-MM-DD format"
+    )
     args = ap.parse_args()
     run(args.dates)

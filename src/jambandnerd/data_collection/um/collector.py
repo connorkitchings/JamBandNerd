@@ -20,7 +20,9 @@ from ..config import get_collector_config
 logger = logging.getLogger(__name__)
 
 
-_MONTH_PATTERN = re.compile(r"^(January|February|March|April|May|June|July|August|September|October|November|December) \d{1,2}, \d{4}$")
+_MONTH_PATTERN = re.compile(
+    r"^(January|February|March|April|May|June|July|August|September|October|November|December) \d{1,2}, \d{4}$"
+)
 
 
 @dataclass
@@ -83,7 +85,12 @@ class UmCollector(BandCollector):
         try:
             target_df = _extract_table(
                 html=response.text,
-                required_columns={"Song Name", "Original Artist", "Debut Date", "Last Played"},
+                required_columns={
+                    "Song Name",
+                    "Original Artist",
+                    "Debut Date",
+                    "Last Played",
+                },
             )
         except ValueError as exc:
             logger.error("Could not parse UM song table: %s", exc)
@@ -101,25 +108,32 @@ class UmCollector(BandCollector):
             "Times Played Live": "times_played_live",
             "Avg Show Gap": "avg_show_gap",
         }
-        df = target_df.rename(columns={k: v for k, v in column_map.items() if k in target_df.columns})
+        df = target_df.rename(
+            columns={k: v for k, v in column_map.items() if k in target_df.columns}
+        )
 
         # Normalize string columns
         df["song_name"] = df["song_name"].astype(str).str.strip()
 
         if "original_artist" in df.columns:
-            df["original_artist"] = df["original_artist"].replace({"—": None, "N/A": None, "": None})
+            df["original_artist"] = df["original_artist"].replace(
+                {"—": None, "N/A": None, "": None}
+            )
 
         # Convert dates to ISO format
         for col in ("debut_date", "last_played"):
             if col in df.columns:
-                df[col] = (
-                    pd.to_datetime(df[col], errors="coerce")
-                    .dt.date.apply(lambda d: d.isoformat() if pd.notnull(d) else None)
+                df[col] = pd.to_datetime(df[col], errors="coerce").dt.date.apply(
+                    lambda d: d.isoformat() if pd.notnull(d) else None
                 )
 
         # Numeric conversions
         if "times_played_live" in df.columns:
-            df["times_played_live"] = pd.to_numeric(df["times_played_live"], errors="coerce").fillna(0).astype(int)
+            df["times_played_live"] = (
+                pd.to_numeric(df["times_played_live"], errors="coerce")
+                .fillna(0)
+                .astype(int)
+            )
         if "avg_show_gap" in df.columns:
             df["avg_show_gap"] = pd.to_numeric(df["avg_show_gap"], errors="coerce")
 
@@ -164,15 +178,19 @@ class UmCollector(BandCollector):
             "Times Played": "times_played",
             "Last Played": "last_played",
         }
-        df.rename(columns={k: v for k, v in column_map.items() if k in df.columns}, inplace=True)
+        df.rename(
+            columns={k: v for k, v in column_map.items() if k in df.columns},
+            inplace=True,
+        )
 
         if "last_played" in df.columns:
-            df["last_played"] = (
-                pd.to_datetime(df["last_played"], errors="coerce")
-                .dt.date.apply(lambda d: d.isoformat() if pd.notnull(d) else None)
-            )
+            df["last_played"] = pd.to_datetime(
+                df["last_played"], errors="coerce"
+            ).dt.date.apply(lambda d: d.isoformat() if pd.notnull(d) else None)
         if "times_played" in df.columns:
-            df["times_played"] = pd.to_numeric(df["times_played"], errors="coerce").fillna(0).astype(int)
+            df["times_played"] = (
+                pd.to_numeric(df["times_played"], errors="coerce").fillna(0).astype(int)
+            )
 
         df["venue_name"] = df["venue_name"].astype(str).str.strip()
         df["venue_city"] = df["venue_city"].astype(str).str.strip()
@@ -218,10 +236,18 @@ class UmCollector(BandCollector):
             records.append(payload)
 
         records.sort(key=lambda item: item["show_date"])
-        logger.info("✅ %s: Collected %s shows between %s and %s.", self.ARTIST_NAME, len(records), start, end)
+        logger.info(
+            "✅ %s: Collected %s shows between %s and %s.",
+            self.ARTIST_NAME,
+            len(records),
+            start,
+            end,
+        )
         return records
 
-    def collect_setlists(self, shows_to_process: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def collect_setlists(
+        self, shows_to_process: Iterable[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
         """Return setlist rows for the provided shows."""
 
         shows_list = list(shows_to_process)
@@ -236,19 +262,26 @@ class UmCollector(BandCollector):
                 continue
             source_url = record.get("source_url") or record.get("link")
             if not source_url:
-                logger.debug("Skipping show_id=%s because no source_url/link present.", show_id)
+                logger.debug(
+                    "Skipping show_id=%s because no source_url/link present.", show_id
+                )
                 continue
             if source_url not in self._setlists_by_url:
                 # Attempt a targeted fetch if the URL was not covered by the cached year pages
                 parsed = self._fetch_single_show(source_url)
                 if not parsed:
-                    logger.warning("No setlist found for show_id=%s (%s)", show_id, source_url)
+                    logger.warning(
+                        "No setlist found for show_id=%s (%s)", show_id, source_url
+                    )
                     continue
 
             rows = self._setlists_by_url.get(source_url, [])
             metadata = self._shows_by_url.get(source_url)
             if not metadata:
-                logger.debug("Setlists cached but metadata missing for %s; refetching.", source_url)
+                logger.debug(
+                    "Setlists cached but metadata missing for %s; refetching.",
+                    source_url,
+                )
                 parsed = self._fetch_single_show(source_url)
                 if not parsed:
                     continue
@@ -297,7 +330,9 @@ class UmCollector(BandCollector):
         try:
             response = self.session.get(url, timeout=self.config.timeout)
             if response.status_code == 404:
-                logger.warning("UM setlist archive for %s returned 404; skipping year.", year)
+                logger.warning(
+                    "UM setlist archive for %s returned 404; skipping year.", year
+                )
                 self._parsed_years.add(year)
                 return
             response.raise_for_status()
@@ -309,7 +344,10 @@ class UmCollector(BandCollector):
         sections = soup.select("section.setlist-artist-1")
         if not sections:
             if year > date.today().year:
-                logger.info("Skipping UM setlist archive for %s; no sections published yet.", year)
+                logger.info(
+                    "Skipping UM setlist archive for %s; no sections published yet.",
+                    year,
+                )
             else:
                 logger.warning("No UM setlist sections found for year %s.", year)
             self._parsed_years.add(year)
@@ -328,7 +366,9 @@ class UmCollector(BandCollector):
         logger.info("Parsed %s UM shows from %s archive.", added, year)
         self._parsed_years.add(year)
 
-    def _fetch_single_show(self, source_url: str) -> Optional[Tuple[_ShowMetadata, List[Dict[str, Any]]]]:
+    def _fetch_single_show(
+        self, source_url: str
+    ) -> Optional[Tuple[_ShowMetadata, List[Dict[str, Any]]]]:
         """Fetch and parse a single show page when not covered by year cache."""
 
         try:
@@ -380,7 +420,9 @@ class UmCollector(BandCollector):
         try:
             show_date = datetime.strptime(date_text, "%B %d, %Y").date()
         except ValueError:
-            logger.warning("Could not parse UM show date from '%s' (%s)", date_text, source_url)
+            logger.warning(
+                "Could not parse UM show date from '%s' (%s)", date_text, source_url
+            )
             return None
 
         venue_anchor = header.find("a", class_="venue")
@@ -414,6 +456,7 @@ class UmCollector(BandCollector):
 # ----------------------------------------------------------------------
 # Pure helper functions
 # ----------------------------------------------------------------------
+
 
 def _extract_table(html: str, required_columns: set[str]) -> pd.DataFrame:
     """Extract the first table containing all required columns."""
@@ -478,7 +521,9 @@ def _parse_show_notes(container: Tag) -> Optional[str]:
     return text or None
 
 
-def _parse_setlist_body(body: Tag, footnotes_map: Dict[str, str]) -> List[Dict[str, Any]]:
+def _parse_setlist_body(
+    body: Tag, footnotes_map: Dict[str, str]
+) -> List[Dict[str, Any]]:
     """Parse setlist paragraphs into structured rows."""
 
     rows: List[Dict[str, Any]] = []
@@ -493,7 +538,9 @@ def _parse_setlist_body(body: Tag, footnotes_map: Dict[str, str]) -> List[Dict[s
             continue
 
         raw_label = set_label_tag.get_text(strip=True).rstrip(":")
-        normalized_label, encore_counter = _normalize_set_label(raw_label, encore_counter)
+        normalized_label, encore_counter = _normalize_set_label(
+            raw_label, encore_counter
+        )
         set_sequence += 1
         song_position = 0
 
@@ -506,7 +553,9 @@ def _parse_setlist_body(body: Tag, footnotes_map: Dict[str, str]) -> List[Dict[s
                 song_name = anchor.get_text(strip=True)
             else:
                 raw_text = span.get_text(" ", strip=True)
-                raw_text = re.sub(r"\[[^\]]+\]", "", raw_text)  # Remove inline footnote markers
+                raw_text = re.sub(
+                    r"\[[^\]]+\]", "", raw_text
+                )  # Remove inline footnote markers
                 raw_text = raw_text.replace(">", " ").replace(",", " ")
                 song_name = re.sub(r"\s+", " ", raw_text).strip()
 

@@ -16,7 +16,7 @@ All validation improvements have been successfully implemented and tested. The v
 
 ### Test 1: Basic Validation Test ✅
 
-**Script:** `scripts/test_validation_warnings.py`
+**Script:** `scripts/manual/validation/test_validation_warnings.py`
 
 **Results:**
 - ✅ Missing required columns are correctly detected and cause validation failure
@@ -36,7 +36,7 @@ Test 2: Missing Required Columns
 
 ### Test 2: Comprehensive Validation Test ✅
 
-**Script:** `scripts/test_validation_comprehensive.py`
+**Script:** `scripts/manual/validation/test_validation_comprehensive.py`
 
 **Results:**
 - ✅ Valid data passes without warnings
@@ -230,11 +230,11 @@ All collection scripts now use a consistent warning format:
 
 The following test scripts are available for future validation testing:
 
-1. **`scripts/test_validation_warnings.py`**
+1. **`scripts/manual/validation/test_validation_warnings.py`**
    - Basic validation warning tests
    - Verifies warning-only behavior
 
-2. **`scripts/test_validation_comprehensive.py`**
+2. **`scripts/manual/validation/test_validation_comprehensive.py`**
    - Comprehensive validation scenarios
    - Tests all validation cases (valid, missing columns, nullable violations, type mismatches)
 

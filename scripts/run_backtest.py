@@ -13,6 +13,7 @@ Usage:
   # Backtest the Goose Notebook model over a specific date range
   uv run python scripts/run_backtest.py --band goose --model notebook --start 2023-01-01 --end 2023-12-31
 """
+
 from __future__ import annotations
 
 import argparse
@@ -109,7 +110,9 @@ def run_backtest(
 
         # Stricter validation to skip rows with invalid date types
         if not isinstance(ref_date, date):
-            print(f"{log_prefix} Skipping show_id {show_id} due to invalid date type: {type(ref_date)} (value: {ref_date})")
+            print(
+                f"{log_prefix} Skipping show_id {show_id} due to invalid date type: {type(ref_date)} (value: {ref_date})"
+            )
             continue
 
         actual_songs = (
@@ -120,13 +123,17 @@ def run_backtest(
         )
         # Skip shows with insufficient songs (but be more permissive)
         if not actual_songs or len(actual_songs) <= 2:
-            print(f"{log_prefix} Skipping show {show_id} on {ref_date}: only {len(actual_songs)} songs")
+            print(
+                f"{log_prefix} Skipping show {show_id} on {ref_date}: only {len(actual_songs)} songs"
+            )
             continue
 
         try:
             # Use the day before the show for more realistic backtesting
             # This prevents data leakage from the actual show date
-            prediction_date = ref_date - timedelta(days=1) if isinstance(ref_date, date) else ref_date
+            prediction_date = (
+                ref_date - timedelta(days=1) if isinstance(ref_date, date) else ref_date
+            )
             model_data = generate_model_data(
                 shows_df, sets_df, prediction_date, exclusion_window=exclusion_window
             )
@@ -154,6 +161,7 @@ def run_backtest(
         except (ValueError, TypeError):
             # If show_id is non-numeric (e.g., date strings), hash it to an integer
             import hashlib
+
             show_id_int = int(hashlib.md5(show_id.encode()).hexdigest()[:8], 16)
 
         show_metrics = {
@@ -230,12 +238,8 @@ def main() -> None:
         choices=["notebook", "ckplus"],
         help="The model to backtest.",
     )
-    parser.add_argument(
-        "--start", help="Start date for backtest window (YYYY-MM-DD)."
-    )
-    parser.add_argument(
-        "--end", help="End date for backtest window (YYYY-MM-DD)."
-    )
+    parser.add_argument("--start", help="Start date for backtest window (YYYY-MM-DD).")
+    parser.add_argument("--end", help="End date for backtest window (YYYY-MM-DD).")
     parser.add_argument(
         "--shows",
         type=int,

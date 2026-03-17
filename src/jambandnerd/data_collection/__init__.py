@@ -22,7 +22,6 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from .base import BandCollector, CollectorConfig
     from .billy.collector import BillyCollector
-    from .cosmic.collector import CosmicCollector
     from .eggy.collector import EggyCollector
     from .goose.collector import GooseCollector
     from .phish.collector import PhishCollector
@@ -38,14 +37,12 @@ __all__ = [
     "WSPCollector",
     "BillyCollector",
     "UmCollector",
-    "CosmicCollector",
     "goose",
     "eggy",
     "phish",
     "wsp",
     "billy",
     "um",
-    "cosmic",
     "base",
     "config",
     "collect_data",

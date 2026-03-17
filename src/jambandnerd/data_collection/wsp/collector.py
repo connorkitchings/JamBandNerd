@@ -17,12 +17,12 @@ from ..config import get_collector_config
 from ..setlist_reviewer import review_setlist
 from .parser import _validate_song_name, parse_setlist_from_text
 from .session import (
+    IS_GITHUB_ACTIONS,
+    cleanup_playwright,
     create_enhanced_session,
+    decode_ec_response,
     make_request,
     make_simple_request,
-    decode_ec_response,
-    cleanup_playwright,
-    IS_GITHUB_ACTIONS,
 )
 from .status import CollectionStatus
 

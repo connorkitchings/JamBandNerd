@@ -74,8 +74,7 @@ def collect_shows(
                     "a",
                     href=lambda href: href
                     and (
-                        ".asp" in href
-                        and ("setlist" in href or "/setlists/" in href)
+                        ".asp" in href and ("setlist" in href or "/setlists/" in href)
                     ),
                 )
 
@@ -90,9 +89,7 @@ def collect_shows(
             setlist_links = target_table.find_all(
                 "a",
                 href=lambda href: href
-                and (
-                    ".asp" in href and ("setlist" in href or "/setlists/" in href)
-                ),
+                and (".asp" in href and ("setlist" in href or "/setlists/" in href)),
             )
 
             for link in setlist_links:
@@ -108,9 +105,7 @@ def collect_shows(
                         continue
 
                     date_part = parts[0]  # "01/18/24"
-                    venue_location_part = parts[
-                        1
-                    ]  # "Stifel Theatre, St. Louis, MO"
+                    venue_location_part = parts[1]  # "Stifel Theatre, St. Louis, MO"
 
                     # Parse date - convert 2-digit year to 4-digit
                     try:
@@ -168,7 +163,9 @@ def collect_shows(
                     href = link["href"]
                     if href.startswith("../"):
                         # Relative path like ../setlists/20240118a.asp
-                        show_url = f"{base_url}/{href[3:]}"  # Remove ../ and prepend base URL
+                        show_url = (
+                            f"{base_url}/{href[3:]}"  # Remove ../ and prepend base URL
+                        )
                     elif href.startswith("setlist"):
                         # Absolute path within asp directory
                         show_url = f"{base_url}/asp/{href}"
@@ -194,9 +191,7 @@ def collect_shows(
 
         except requests.exceptions.HTTPError as e:
             if e.response and e.response.status_code == 404:
-                logger.info(
-                    f"No tour page found for year {year_str} (404), skipping."
-                )
+                logger.info(f"No tour page found for year {year_str} (404), skipping.")
             elif e.response and e.response.status_code == 403:
                 if status:
                     status.record_403_error(url)

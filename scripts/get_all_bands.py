@@ -16,6 +16,7 @@ def get_bands():
             bands.append(match.group(1))
     return sorted(bands)
 
+
 if __name__ == "__main__":
     bands = get_bands()
     print(json.dumps(bands))

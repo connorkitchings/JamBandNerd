@@ -1,4 +1,5 @@
 """Comprehensive validation test to verify all warning scenarios."""
+
 from __future__ import annotations
 
 import os
@@ -38,20 +39,24 @@ def test_comprehensive_validation():
     print("Test 1: Valid Data (should pass without warnings)")
     print("-" * 80)
 
-    valid_df = pd.DataFrame({
-        "show_id": ["test_001"],
-        "set_number": [1],
-        "song_position": [1],
-        "song_name": ["Test Song"],
-        "encore": [False],
-        "notes": [None],
-        "source_hash": ["abc123"],
-        "created_at": [None],
-        "updated_at": [None],
-    })
+    valid_df = pd.DataFrame(
+        {
+            "show_id": ["test_001"],
+            "set_number": [1],
+            "song_position": [1],
+            "song_name": ["Test Song"],
+            "encore": [False],
+            "notes": [None],
+            "source_hash": ["abc123"],
+            "created_at": [None],
+            "updated_at": [None],
+        }
+    )
 
     coerced_valid = coerce_df_types(valid_df, schema)
-    report_valid = validate_dataframe_against_table(coerced_valid, "goose_setlists_raw", schema)
+    report_valid = validate_dataframe_against_table(
+        coerced_valid, "goose_setlists_raw", schema
+    )
 
     if report_valid.is_valid:
         print("✅ Valid data passed validation (no warnings)")
@@ -62,7 +67,9 @@ def test_comprehensive_validation():
         if report_valid.type_mismatches:
             print(f"    Type mismatches: {len(report_valid.type_mismatches)} columns")
             for tm in report_valid.type_mismatches[:3]:
-                print(f"        - {tm.column}: expected {tm.expected_type}, got {tm.observed_type}")
+                print(
+                    f"        - {tm.column}: expected {tm.expected_type}, got {tm.observed_type}"
+                )
         if report_valid.nullable_violations:
             print(f"    Nullable violations: {report_valid.nullable_violations}")
 
@@ -72,21 +79,27 @@ def test_comprehensive_validation():
     print("Test 2: Missing Required Columns (should fail)")
     print("-" * 80)
 
-    incomplete_df = pd.DataFrame({
-        "show_id": ["test_002"],
-        "set_number": [1],
-        # Missing required fields like song_position, song_name
-    })
+    incomplete_df = pd.DataFrame(
+        {
+            "show_id": ["test_002"],
+            "set_number": [1],
+            # Missing required fields like song_position, song_name
+        }
+    )
 
     coerced_incomplete = coerce_df_types(incomplete_df, schema)
-    report_incomplete = validate_dataframe_against_table(coerced_incomplete, "goose_setlists_raw", schema)
+    report_incomplete = validate_dataframe_against_table(
+        coerced_incomplete, "goose_setlists_raw", schema
+    )
 
     if not report_incomplete.is_valid:
         print("⚠️  Validation warnings for goose_setlists_raw:")
         if report_incomplete.missing_columns:
             print(f"    Missing columns: {report_incomplete.missing_columns}")
         if report_incomplete.type_mismatches:
-            print(f"    Type mismatches: {len(report_incomplete.type_mismatches)} columns")
+            print(
+                f"    Type mismatches: {len(report_incomplete.type_mismatches)} columns"
+            )
         if report_incomplete.nullable_violations:
             print(f"    Nullable violations: {report_incomplete.nullable_violations}")
         print()
@@ -100,20 +113,24 @@ def test_comprehensive_validation():
     print("Test 3: Nullable Violations (should fail)")
     print("-" * 80)
 
-    null_violation_df = pd.DataFrame({
-        "show_id": [None],  # Required field
-        "set_number": [1],
-        "song_position": [1],
-        "song_name": ["Test Song"],
-        "encore": [False],
-        "notes": [None],
-        "source_hash": ["abc123"],
-        "created_at": [None],
-        "updated_at": [None],
-    })
+    null_violation_df = pd.DataFrame(
+        {
+            "show_id": [None],  # Required field
+            "set_number": [1],
+            "song_position": [1],
+            "song_name": ["Test Song"],
+            "encore": [False],
+            "notes": [None],
+            "source_hash": ["abc123"],
+            "created_at": [None],
+            "updated_at": [None],
+        }
+    )
 
     coerced_null = coerce_df_types(null_violation_df, schema)
-    report_null = validate_dataframe_against_table(coerced_null, "goose_setlists_raw", schema)
+    report_null = validate_dataframe_against_table(
+        coerced_null, "goose_setlists_raw", schema
+    )
 
     if not report_null.is_valid:
         print("⚠️  Validation warnings for goose_setlists_raw:")
@@ -134,26 +151,32 @@ def test_comprehensive_validation():
     print("Test 4: Type Mismatches (tracked as warnings, but validation passes)")
     print("-" * 80)
 
-    type_mismatch_df = pd.DataFrame({
-        "show_id": ["test_004"],
-        "set_number": ["not_a_number"],  # String where integer expected
-        "song_position": [1],
-        "song_name": ["Test Song"],
-        "encore": ["maybe"],  # Invalid boolean
-        "notes": [None],
-        "source_hash": ["abc123"],
-        "created_at": [None],
-        "updated_at": [None],
-    })
+    type_mismatch_df = pd.DataFrame(
+        {
+            "show_id": ["test_004"],
+            "set_number": ["not_a_number"],  # String where integer expected
+            "song_position": [1],
+            "song_name": ["Test Song"],
+            "encore": ["maybe"],  # Invalid boolean
+            "notes": [None],
+            "source_hash": ["abc123"],
+            "created_at": [None],
+            "updated_at": [None],
+        }
+    )
 
     coerced_mismatch = coerce_df_types(type_mismatch_df, schema)
-    report_mismatch = validate_dataframe_against_table(coerced_mismatch, "goose_setlists_raw", schema)
+    report_mismatch = validate_dataframe_against_table(
+        coerced_mismatch, "goose_setlists_raw", schema
+    )
 
     print(f"Validation result: is_valid={report_mismatch.is_valid}")
     if report_mismatch.type_mismatches:
         print("⚠️  Type mismatches detected (but validation still passes):")
         for tm in report_mismatch.type_mismatches:
-            print(f"    - {tm.column}: expected {tm.expected_type}, got {tm.observed_type}")
+            print(
+                f"    - {tm.column}: expected {tm.expected_type}, got {tm.observed_type}"
+            )
     if report_mismatch.missing_columns:
         print(f"    Missing columns: {report_mismatch.missing_columns}")
     if report_mismatch.nullable_violations:

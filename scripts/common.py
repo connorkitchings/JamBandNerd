@@ -1,4 +1,5 @@
 """Common utility functions for pipeline scripts."""
+
 from __future__ import annotations
 
 import sys
@@ -41,15 +42,21 @@ def ensure_source_reachable(band: str, *, timeout: int = 15) -> None:
         raise RuntimeError(f"Failed to contact {url}: {exc}") from exc
 
 
-def assert_required_columns(table_name: str, df: pd.DataFrame, columns: Iterable[str]) -> None:
+def assert_required_columns(
+    table_name: str, df: pd.DataFrame, columns: Iterable[str]
+) -> None:
     """Ensure that a DataFrame contains the required columns."""
 
     missing = [column for column in columns if column not in df.columns]
     if missing:
-        raise RuntimeError(f"{table_name} missing expected columns: {', '.join(missing)}")
+        raise RuntimeError(
+            f"{table_name} missing expected columns: {', '.join(missing)}"
+        )
 
 
-def prepare_band_data(shows_df: pd.DataFrame, setlists_df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
+def prepare_band_data(
+    shows_df: pd.DataFrame, setlists_df: pd.DataFrame
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     Clean and normalize shows and setlists data for a band.
 
@@ -69,7 +76,9 @@ def prepare_band_data(shows_df: pd.DataFrame, setlists_df: pd.DataFrame) -> Tupl
         setlists_df["song_name"] = setlists_df["song"]
 
     # Data cleaning and type conversion
-    shows_df["show_date"] = pd.to_datetime(shows_df["show_date"], errors='coerce').dt.date
+    shows_df["show_date"] = pd.to_datetime(
+        shows_df["show_date"], errors="coerce"
+    ).dt.date
     shows_df.dropna(subset=["show_date", "show_id"], inplace=True)
     setlists_df.dropna(subset=["show_id", "song_name"], inplace=True)
 
@@ -108,13 +117,17 @@ def resolve_reference_date(
     if is_today:
         # Ensure _show_date_dt is created on a copy to avoid SettingWithCopyWarning
         shows_df_copy = shows_df.copy()
-        shows_df_copy["_show_date_dt"] = pd.to_datetime(shows_df_copy["show_date"]).dt.normalize()
+        shows_df_copy["_show_date_dt"] = pd.to_datetime(
+            shows_df_copy["show_date"]
+        ).dt.normalize()
         today_ts = pd.Timestamp(today).normalize()
         future_shows = shows_df_copy[shows_df_copy["_show_date_dt"] >= today_ts]
 
         if not future_shows.empty:
             next_show_date = future_shows["_show_date_dt"].min()
-            print(f"No specific date provided; defaulting to next upcoming show: {next_show_date.date().isoformat()}")
+            print(
+                f"No specific date provided; defaulting to next upcoming show: {next_show_date.date().isoformat()}"
+            )
             return next_show_date.date()
 
         if upcoming_df is not None and not upcoming_df.empty:
@@ -125,7 +138,9 @@ def resolve_reference_date(
                 parsed = pd.to_datetime(upcoming_copy[column], errors="coerce")
                 if parsed.isna().all():
                     continue
-                future_candidates = [d.date() for d in parsed.dropna() if d.date() >= today]
+                future_candidates = [
+                    d.date() for d in parsed.dropna() if d.date() >= today
+                ]
                 if future_candidates:
                     next_show = min(future_candidates)
                     print(
@@ -140,7 +155,9 @@ def resolve_reference_date(
             print("Error: No shows found in the database to use as a reference.")
             sys.exit(1)
         last_show_date = past_shows["_show_date_dt"].max()
-        print(f"No future shows found; defaulting to most recent past show: {last_show_date.date().isoformat()}")
+        print(
+            f"No future shows found; defaulting to most recent past show: {last_show_date.date().isoformat()}"
+        )
         return last_show_date.date()
     else:
         # If a specific historical date is given, use it
@@ -156,7 +173,9 @@ def fetch_table(table_name: str, chunk_size: int = 10000) -> List[Dict]:
 
     try:
         # Correctly pass count as a keyword argument
-        count_response = client.table(table_name).select("*", count="exact").limit(0).execute()
+        count_response = (
+            client.table(table_name).select("*", count="exact").limit(0).execute()
+        )
         total_rows = count_response.count
         print(f"Found {total_rows} total rows in {table_name}.")
     except Exception as e:
@@ -167,7 +186,12 @@ def fetch_table(table_name: str, chunk_size: int = 10000) -> List[Dict]:
     while True:
         try:
             print(f"Fetching rows from offset {offset}...")
-            response = client.table(table_name).select("*").range(offset, offset + chunk_size - 1).execute()
+            response = (
+                client.table(table_name)
+                .select("*")
+                .range(offset, offset + chunk_size - 1)
+                .execute()
+            )
 
             if not response.data:
                 print("Received no more data. Ending fetch.")

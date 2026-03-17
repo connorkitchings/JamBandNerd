@@ -7,6 +7,7 @@ from bs4 import BeautifulSoup
 
 logger = logging.getLogger(__name__)
 
+
 def _validate_song_name(song_name: str) -> bool:
     """Validate that this looks like a real song name, not statistics or metadata."""
     if not song_name or len(song_name.strip()) == 0:
@@ -78,10 +79,8 @@ def _validate_song_name(song_name: str) -> bool:
 
     return True
 
-def parse_setlist_from_text(
-    soup: BeautifulSoup,
-    show_id: str
-) -> List[Dict[str, Any]]:
+
+def parse_setlist_from_text(soup: BeautifulSoup, show_id: str) -> List[Dict[str, Any]]:
     """Parse setlist directly from text content, looking for 0:, 1:, 2:, E: patterns."""
     setlist_data = []
 
@@ -127,32 +126,37 @@ def parse_setlist_from_text(
                     continue
 
                 # Handle segues within a song part (e.g., "Song A > Song B")
-                if '>' in song_part:
-                    segued_songs = song_part.split('>')
+                if ">" in song_part:
+                    segued_songs = song_part.split(">")
                     for i, segued_song in enumerate(segued_songs):
-                        segued_song = segued_song.strip().rstrip('*').strip()
+                        segued_song = segued_song.strip().rstrip("*").strip()
                         if segued_song and _validate_song_name(segued_song):
-                            setlist_data.append({
-                                "show_id": show_id,
-                                "set_number": set_number,
-                                "song_position": song_position,
-                                "song_name": segued_song,
-                                "is_segue": i < len(segued_songs) - 1,  # All but last are segues
-                                "song_notes": ""
-                            })
+                            setlist_data.append(
+                                {
+                                    "show_id": show_id,
+                                    "set_number": set_number,
+                                    "song_position": song_position,
+                                    "song_name": segued_song,
+                                    "is_segue": i
+                                    < len(segued_songs) - 1,  # All but last are segues
+                                    "song_notes": "",
+                                }
+                            )
                             song_position += 1
                 else:
                     # Regular song
-                    song_name = song_part.rstrip('*').strip()
+                    song_name = song_part.rstrip("*").strip()
                     if _validate_song_name(song_name):
-                        setlist_data.append({
-                            "show_id": show_id,
-                            "set_number": set_number,
-                            "song_position": song_position,
-                            "song_name": song_name,
-                            "is_segue": False,
-                            "song_notes": ""
-                        })
+                        setlist_data.append(
+                            {
+                                "show_id": show_id,
+                                "set_number": set_number,
+                                "song_position": song_position,
+                                "song_name": song_name,
+                                "is_segue": False,
+                                "song_notes": "",
+                            }
+                        )
                         song_position += 1
 
     return setlist_data

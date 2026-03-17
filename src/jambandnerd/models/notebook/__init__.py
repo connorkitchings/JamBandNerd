@@ -15,5 +15,3 @@ __all__ = [
     "RankedPrediction",
     "model",
 ]
-
-

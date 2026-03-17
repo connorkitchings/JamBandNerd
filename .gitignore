@@ -26,7 +26,10 @@ dist/
 *.egg-info
 
 # Pytest cache
-.pytest_cache   
+.pytest_cache/
 
 # Ruff cache
-.ruff_cache.DS_Store
+.ruff_cache/
+
+# Manual artifacts
+tw_test_backups/

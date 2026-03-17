@@ -3,11 +3,8 @@
 from __future__ import annotations
 
 import json
-from datetime import date, datetime, timedelta
+from datetime import datetime
 from unittest.mock import MagicMock
-
-import pandas as pd
-import pytest
 
 
 class TestFetchPredictions:

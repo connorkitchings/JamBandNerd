@@ -1,4 +1,5 @@
 """Handles Supabase connection."""
+
 import os
 from typing import Optional
 
@@ -14,6 +15,7 @@ except Exception:
 load_dotenv()
 
 _supabase_client: Optional[Client] = None
+
 
 def get_supabase_client() -> Client:
     """
@@ -46,11 +48,14 @@ def get_supabase_client() -> Client:
         supabase_key = supabase_key or os.environ.get("SUPABASE_KEY")
 
         if not supabase_url or not supabase_key:
-            raise ValueError("SUPABASE_URL and SUPABASE_KEY must be set in Streamlit secrets or the environment.")
+            raise ValueError(
+                "SUPABASE_URL and SUPABASE_KEY must be set in Streamlit secrets or the environment."
+            )
 
         _supabase_client = create_client(supabase_url, supabase_key)
 
     return _supabase_client
+
 
 def validate_environment() -> None:
     """
@@ -70,4 +75,6 @@ def validate_environment() -> None:
     has_key = has_key or bool(os.environ.get("SUPABASE_KEY"))
 
     if not (has_url and has_key):
-        raise ValueError("Missing SUPABASE_URL or SUPABASE_KEY (in Streamlit secrets or environment).")
+        raise ValueError(
+            "Missing SUPABASE_URL or SUPABASE_KEY (in Streamlit secrets or environment)."
+        )

@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-import pandas as pd
-import pytest
-
 
 class TestCleanSongNameForDisplay:
     """Tests for _clean_song_name_for_display helper function."""
@@ -16,9 +13,7 @@ class TestCleanSongNameForDisplay:
         )
 
         assert clean_song_name_for_display("Disco>", "wsp") == "Disco"
-        assert (
-            clean_song_name_for_display("Space Wrangler*", "wsp") == "Space Wrangler"
-        )
+        assert clean_song_name_for_display("Space Wrangler*", "wsp") == "Space Wrangler"
         # Note: function strips right-to-left sequentially, so *> gets both stripped
         # but >* only strips the * leaving the >
         assert clean_song_name_for_display("Chilly Water*>", "wsp") == "Chilly Water"
@@ -75,7 +70,6 @@ class TestSetNumberOrdering:
     def test_encore_sorting(self):
         """Verify encore sets sort last."""
         # Import the ordering key from the module
-        from jambandnerd.web.components.tabs.last_show import display_last_show_setlist
 
         # Test the internal ordering logic
         def _set_order_key(v):

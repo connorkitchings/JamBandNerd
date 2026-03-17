@@ -68,14 +68,17 @@ def display_historical_explorer(client: Client, band: str, model: str) -> None:
     # Note: last_show filters predictions_df[predictions_df["current_gap"] > 3] for display purposes
     # We should probably replicate that consistency.
     predictions_df_display = predictions_df.copy()
-    if not predictions_df_display.empty and "current_gap" in predictions_df_display.columns:
+    if (
+        not predictions_df_display.empty
+        and "current_gap" in predictions_df_display.columns
+    ):
         try:
             predictions_df_display = predictions_df_display[
                 predictions_df_display["current_gap"] > 3
             ]
         except Exception:
             pass
-    
+
     # Re-rank for display if we filtered
     if "rank" in predictions_df_display.columns:
         predictions_df_display = predictions_df_display.reset_index(drop=True)
@@ -109,23 +112,27 @@ def display_historical_explorer(client: Client, band: str, model: str) -> None:
 
     # Metadata
     prediction_meta = prediction_meta or {}
-    predicted_at_raw = prediction_meta.get("created_at") or prediction_meta.get("inserted_at")
+    predicted_at_raw = prediction_meta.get("created_at") or prediction_meta.get(
+        "inserted_at"
+    )
     predicted_at = (
         pd.to_datetime(predicted_at_raw).floor("min") if predicted_at_raw else None
     )
     predicted_at_str = (
         predicted_at.strftime("%Y-%m-%d %H:%M") if predicted_at else "unknown"
     )
-    
+
     model_display = MODEL_DISPLAY.get(model, model.title())
-    
+
     # Render
     render_hero(header_text, model_display, predicted_at_str, "N/A (Historical)")
     render_summary_cards(stats)
-    
+
     if predictions_df.empty:
-        st.info("No predictions found for this show (it might predate our prediction tracking).")
-    
+        st.info(
+            "No predictions found for this show (it might predate our prediction tracking)."
+        )
+
     render_setlist(
         setlist_df,
         prediction_ranks,

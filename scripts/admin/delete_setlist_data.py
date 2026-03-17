@@ -1,4 +1,3 @@
-
 import argparse
 import os
 import sys
@@ -32,7 +31,12 @@ def delete_setlist_data(band: str, date_str: str):
     print(f"Deleting data from {table_name} for date: {date_str}...")
 
     shows_table_name = f"{band}_shows_raw"
-    shows_response = client.table(shows_table_name).select("show_id").eq("show_date", date_str).execute()
+    shows_response = (
+        client.table(shows_table_name)
+        .select("show_id")
+        .eq("show_date", date_str)
+        .execute()
+    )
 
     if not shows_response.data:
         print(f"No shows found for {band} on {date_str}.")
@@ -47,26 +51,44 @@ def delete_setlist_data(band: str, date_str: str):
     print(f"Found {len(show_ids)} show(s) for {band} on {date_str}.")
 
     # Delete from setlists table
-    setlists_delete_response = client.table(table_name).delete().in_("show_id", show_ids).execute()
+    setlists_delete_response = (
+        client.table(table_name).delete().in_("show_id", show_ids).execute()
+    )
 
     if len(setlists_delete_response.data) > 0:
-        print(f"Successfully deleted {len(setlists_delete_response.data)} rows from {table_name}.")
+        print(
+            f"Successfully deleted {len(setlists_delete_response.data)} rows from {table_name}."
+        )
     else:
         print(f"No data to delete in {table_name} for shows on {date_str}.")
 
     # Also delete the show from the shows table
-    shows_delete_response = client.table(shows_table_name).delete().in_("show_id", show_ids).execute()
+    shows_delete_response = (
+        client.table(shows_table_name).delete().in_("show_id", show_ids).execute()
+    )
 
     if len(shows_delete_response.data) > 0:
-        print(f"Successfully deleted {len(shows_delete_response.data)} rows from {shows_table_name}.")
+        print(
+            f"Successfully deleted {len(shows_delete_response.data)} rows from {shows_table_name}."
+        )
     else:
         print(f"No data to delete in {shows_table_name} for date {date_str}.")
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Delete setlist data for a specific band and date.")
-    parser.add_argument("--band", required=True, help="The band to delete data for (e.g., 'goose', 'phish', 'wsp').")
-    parser.add_argument("--date", required=True, help="The date to delete data for in YYYY-MM-DD format.")
+    parser = argparse.ArgumentParser(
+        description="Delete setlist data for a specific band and date."
+    )
+    parser.add_argument(
+        "--band",
+        required=True,
+        help="The band to delete data for (e.g., 'goose', 'phish', 'wsp').",
+    )
+    parser.add_argument(
+        "--date",
+        required=True,
+        help="The date to delete data for in YYYY-MM-DD format.",
+    )
     args = parser.parse_args()
 
     delete_setlist_data(args.band, args.date)
