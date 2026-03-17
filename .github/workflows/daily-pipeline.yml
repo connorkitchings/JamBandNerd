@@ -414,12 +414,14 @@ jobs:
   notify-discord:
     name: Notify Discord
     needs: [daily-pipeline, pipeline-summary]
-    if: always() && secrets.DISCORD_WEBHOOK_URL != ''
+    if: always()
     runs-on: ubuntu-latest
+    env:
+      DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
     steps:
       - name: Post status to Discord
+        if: env.DISCORD_WEBHOOK_URL != ''
         env:
-          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
           WORKFLOW_STATUS: ${{ needs.daily-pipeline.result }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
