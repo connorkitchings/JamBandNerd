@@ -18,6 +18,7 @@ venv/
 build/
 dist/
 .eggs/
+site/
 
 # devcontainer
 .devcontainer/
