@@ -335,13 +335,11 @@ def process_wsp_data(
     # 5. Check for existing setlists to avoid re-scraping
     if skip_existing_setlists:
         try:
+            setlists_from_db = fetch_table("wsp_setlists_raw")
             existing_ids = {
                 record["show_id"]
-                for record in client.table("wsp_setlists_raw")
-                .select("show_id")
-                .in_("show_id", shows_to_process_df["show_id"].tolist())
-                .execute()
-                .data
+                for record in setlists_from_db
+                if record.get("show_id") is not None
             }
             shows_to_process_df = shows_to_process_df[
                 ~shows_to_process_df["show_id"].isin(existing_ids)

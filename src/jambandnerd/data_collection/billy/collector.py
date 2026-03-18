@@ -230,7 +230,7 @@ class BillyCollector(BandCollector):
         """Scrape the Billy Strings song catalog from bmfsdb.com."""
 
         params = {"showAll": "1", "perPage": "2000"}
-        url = f"{self.BASE_URL}/songs"
+        url = f"{self.BASE_URL}/songs/"
         logger.info("Fetching Billy Strings song catalog from %s", url)
 
         try:

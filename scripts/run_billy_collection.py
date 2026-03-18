@@ -232,14 +232,12 @@ def run_billy_collection(
     existing_setlist_show_ids: set[str] = set()
     if skip_existing_setlists:
         try:
-            client = get_supabase_client()
-            resp = client.table("billy_setlists_raw").select("show_id").execute()
-            if resp.data:
-                existing_setlist_show_ids = {
-                    str(item["show_id"])
-                    for item in resp.data
-                    if item.get("show_id") is not None
-                }
+            setlists_from_db = fetch_table("billy_setlists_raw")
+            existing_setlist_show_ids = {
+                str(item["show_id"])
+                for item in setlists_from_db
+                if item.get("show_id") is not None
+            }
         except Exception as exc:  # pragma: no cover - supabase connectivity
             print(f"Warning: could not load existing Billy setlist show IDs ({exc}).")
 
