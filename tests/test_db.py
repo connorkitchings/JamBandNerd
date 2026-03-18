@@ -34,6 +34,10 @@ class TestSupabaseConnection:
     @patch("jambandnerd.db.connection.create_client")
     def test_get_supabase_client_success(self, mock_create_client, setup_test_env):
         """Test successful Supabase client creation."""
+        # Reset the singleton to ensure create_client is called
+        import jambandnerd.db.connection
+        jambandnerd.db.connection._supabase_client = None
+
         mock_client = MagicMock()
         mock_create_client.return_value = mock_client
 

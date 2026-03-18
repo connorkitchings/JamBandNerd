@@ -22,3 +22,5 @@ This file stores persistent lessons and operating patterns that should survive a
 - Use `scripts/README.md` when reconciling which scripts are canonical vs manual/admin.
 - When guidance drifts, fix the root entrypoints first and update downstream docs second.
 - For freshness or orphan checks, validate only completed shows; including today or future scheduled shows creates false positives that look like ingestion failures.
+- When performing database read operations for large batch verifications (e.g. checking which setlists are already ingested), always use paginated `fetch_table` wrappers instead of raw Supabase `.execute()` limits which silently truncate after 1000 rows.
+- Ensure API endpoints queried by collectors include trailing slashes if the server is known to redirect to internal ports that may be unreachable.
