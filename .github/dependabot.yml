@@ -8,9 +8,6 @@ updates:
       day: "monday"
       time: "09:00"
       timezone: "America/New_York"
-    labels:
-      - "dependencies"
-      - "security"
     open-pull-requests-limit: 5
     groups:
       supabase-python:
@@ -29,6 +26,3 @@ updates:
       day: "monday"
       time: "09:15"
       timezone: "America/New_York"
-    labels:
-      - "dependencies"
-      - "github-actions"
