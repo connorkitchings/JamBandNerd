@@ -1,0 +1,34 @@
+version: 2
+
+updates:
+  - package-ecosystem: "uv"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "America/New_York"
+    labels:
+      - "dependencies"
+      - "security"
+    open-pull-requests-limit: 5
+    groups:
+      supabase-python:
+        patterns:
+          - "supabase"
+          - "postgrest"
+          - "realtime"
+          - "storage3"
+          - "supabase-auth"
+          - "supabase-functions"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:15"
+      timezone: "America/New_York"
+    labels:
+      - "dependencies"
+      - "github-actions"

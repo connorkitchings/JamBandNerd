@@ -102,6 +102,23 @@ uv run ruff check src tests scripts
 uv run pytest
 ```
 
+### Security Maintenance
+
+The repo now has two separate dependency-safety controls:
+
+- **Dependabot** watches the `uv` lockfile and GitHub Actions versions, with the Supabase Python packages grouped into a single update PR.
+- **Dependency Audit** is a standalone GitHub Actions workflow that exports the locked Python dependency set and audits it with `pip-audit`.
+
+Manual local audit command:
+
+```bash
+tmpfile=$(mktemp /tmp/jbn-audit.XXXXXX)
+uv export --format requirements-txt --locked --no-hashes --no-emit-project --output-file "$tmpfile"
+uv run --with pip-audit python -m pip_audit -r "$tmpfile" --cache-dir /tmp/pip-audit-cache --no-deps --disable-pip
+```
+
+This audit is intentionally separate from the daily pipeline so dependency findings do not block data collection and publishing.
+
 ## AI Tools
 
 JamBandNerd now uses a canonical multi-tool agent workflow:

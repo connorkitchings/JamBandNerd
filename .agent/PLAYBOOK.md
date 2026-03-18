@@ -25,3 +25,4 @@ This file stores persistent lessons and operating patterns that should survive a
 - When performing database read operations for large batch verifications (e.g. checking which setlists are already ingested), always use paginated `fetch_table` wrappers instead of raw Supabase `.execute()` limits which silently truncate after 1000 rows.
 - Ensure API endpoints queried by collectors include trailing slashes if the server is known to redirect to internal ports that may be unreachable.
 - For live pytest suites that gate on `os.environ`, export `.env` into the shell before invoking `pytest`; app-level `load_dotenv()` hooks do not help preflight env checks that run first.
+- For `uv` projects, audit the exported lockfile with `uv export --no-emit-project` plus `pip-audit`; `uvx pip-audit` on its own audits the tool environment, not the repo dependency set.
