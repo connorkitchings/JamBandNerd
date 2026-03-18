@@ -85,6 +85,9 @@ python_files = "test_*.py"
 python_classes = "Test*"
 python_functions = "test_*"
 addopts = "-v"
+markers = [
+  "live: exercises real upstreams and Supabase publishing paths",
+]
 
 [tool.mypy]
 python_version = "3.12"

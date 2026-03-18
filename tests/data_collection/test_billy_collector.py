@@ -131,3 +131,31 @@ class TestBillyCollector:
             assert len(songs) == 1
             assert songs[0]["song_name"] == "Dust in a Baggie"
             assert songs[0]["times_played"] == 100
+
+    def test_collect_songs_uses_canonical_trailing_slash_url(self, collector):
+        mock_html = """
+        <div wire:id="1" wire:snapshot='{"memo":{"id":"1","name":"songs-index"}}'>
+            <table class="table-hover">
+                <tbody>
+                    <tr>
+                        <td><a href="/song/dust-in-a-baggie">Dust in a Baggie</a></td>
+                        <td>Original</td>
+                        <td>100</td>
+                        <td>5</td>
+                        <td>2017-01-01</td>
+                        <td>2023-10-31</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        """
+
+        with patch.object(collector.session, "get") as mock_get:
+            mock_response = MagicMock()
+            mock_response.text = mock_html
+            mock_response.status_code = 200
+            mock_get.return_value = mock_response
+
+            collector.collect_songs()
+
+            assert mock_get.call_args.args[0] == "https://bmfsdb.com/songs/"

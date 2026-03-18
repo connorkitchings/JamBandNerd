@@ -33,9 +33,9 @@ jobs:
       bands_list: ${{ steps.get_bands.outputs.bands_list }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.12'
       - id: get_bands
@@ -75,7 +75,7 @@ jobs:
 
       - name: Checkout repository
         if: steps.check.outputs.should_run == 'true'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Validate required secrets
         if: steps.check.outputs.should_run == 'true'
@@ -106,7 +106,7 @@ jobs:
 
       - name: Set up Python and UV
         if: steps.check.outputs.should_run == 'true'
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.12'
       
@@ -259,10 +259,10 @@ jobs:
     
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.12'
           

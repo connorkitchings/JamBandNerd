@@ -24,3 +24,4 @@ This file stores persistent lessons and operating patterns that should survive a
 - For freshness or orphan checks, validate only completed shows; including today or future scheduled shows creates false positives that look like ingestion failures.
 - When performing database read operations for large batch verifications (e.g. checking which setlists are already ingested), always use paginated `fetch_table` wrappers instead of raw Supabase `.execute()` limits which silently truncate after 1000 rows.
 - Ensure API endpoints queried by collectors include trailing slashes if the server is known to redirect to internal ports that may be unreachable.
+- For live pytest suites that gate on `os.environ`, export `.env` into the shell before invoking `pytest`; app-level `load_dotenv()` hooks do not help preflight env checks that run first.

@@ -1,1 +1,1 @@
-"""Test package for JamBandNerd."""
+"""Test package marker for shared test helpers."""
