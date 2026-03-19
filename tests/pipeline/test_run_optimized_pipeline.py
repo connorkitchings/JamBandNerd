@@ -29,14 +29,18 @@ def pipeline_recorder(monkeypatch):
         return _inner
 
     for band, attr_name in COLLECTION_RUNNERS.items():
-        monkeypatch.setattr(run_optimized_pipeline, attr_name, record(f"{band}:collect"))
+        monkeypatch.setattr(
+            run_optimized_pipeline, attr_name, record(f"{band}:collect")
+        )
 
     monkeypatch.setattr(
         run_optimized_pipeline, "generate_predictions", record("generate_predictions")
     )
     monkeypatch.setattr(run_optimized_pipeline, "run_backtest", record("run_backtest"))
     monkeypatch.setattr(
-        run_optimized_pipeline, "save_aggregate_accuracy", record("save_aggregate_accuracy")
+        run_optimized_pipeline,
+        "save_aggregate_accuracy",
+        record("save_aggregate_accuracy"),
     )
     monkeypatch.setattr(
         run_optimized_pipeline,
@@ -111,7 +115,9 @@ def test_run_band_pipeline_skip_accuracy_preserves_predictions_and_validation(
         raise AssertionError("accuracy step should be skipped")
 
     monkeypatch.setattr(run_optimized_pipeline, "run_backtest", fail_if_called)
-    monkeypatch.setattr(run_optimized_pipeline, "save_aggregate_accuracy", fail_if_called)
+    monkeypatch.setattr(
+        run_optimized_pipeline, "save_aggregate_accuracy", fail_if_called
+    )
 
     success = run_optimized_pipeline.run_band_pipeline(band, skip_accuracy=True)
 

@@ -20,8 +20,7 @@ dependencies = [
   # lxml 4.9.3 is last known stable for Python <=3.12; Python 3.13+ may not be supported yet
   "lxml==4.9.3",
   "supabase",
-  "streamlit",
-  "beautifulsoup4",
+    "beautifulsoup4",
   "psycopg2-binary",
   "typer",
   "tqdm",

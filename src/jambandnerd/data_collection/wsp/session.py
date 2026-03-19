@@ -209,11 +209,13 @@ def _get_playwright_browser() -> Browser:
             },
         )
         # Mask automation indicators
-        _playwright_context.add_init_script("""
+        _playwright_context.add_init_script(
+            """
             Object.defineProperty(navigator, 'webdriver', {
                 get: () => undefined
             });
-        """)
+        """
+        )
 
     return _playwright_browser
 

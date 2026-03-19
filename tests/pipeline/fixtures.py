@@ -6,7 +6,9 @@ from typing import Any
 BANDS = ("goose", "eggy", "phish", "wsp", "billy", "um")
 
 
-def band_raw_tables(band: str) -> tuple[list[dict[str, Any]], list[dict[str, Any]], date]:
+def band_raw_tables(
+    band: str,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], date]:
     """Return minimal but realistic raw rows for a band's transform path."""
 
     if band not in BANDS:

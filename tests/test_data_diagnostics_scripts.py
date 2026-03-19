@@ -1,6 +1,9 @@
 from datetime import date
 
-from scripts.diagnose_band_data import _completed_show_bounds, _fetch_setlist_ids_for_shows
+from scripts.diagnose_band_data import (
+    _completed_show_bounds,
+    _fetch_setlist_ids_for_shows,
+)
 from scripts.verify_data_freshness import _completed_show_window
 
 

@@ -280,9 +280,9 @@ class BillyCollector(BandCollector):
 
             catalog.append(
                 {
-                    "song_uuid": self._extract_song_uuid(song_link)
-                    if song_link
-                    else None,
+                    "song_uuid": (
+                        self._extract_song_uuid(song_link) if song_link else None
+                    ),
                     "song_name": song_name,
                     "original_artist": original_artist,
                     "original_artist_id": self._extract_artist_id(original_artist_link),

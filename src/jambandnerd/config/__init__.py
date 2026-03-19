@@ -24,12 +24,6 @@ from .models import (
     TOP_K_VALUES,
 )
 from .pipeline import BACKOFF_FACTOR, DEFAULT_REQUEST_TIMEOUT, MAX_RETRIES
-from .web import (
-    EXCLUDED_SHOW_DATES,
-    MAX_ACCURACY_SHOWS,
-    STREAMLIT_CACHE_TTL,
-    STREAMLIT_CACHE_TTL_LONG,
-)
 
 __all__ = [
     # bands.py
@@ -57,9 +51,4 @@ __all__ = [
     "DEFAULT_REQUEST_TIMEOUT",
     "MAX_RETRIES",
     "BACKOFF_FACTOR",
-    # web.py
-    "STREAMLIT_CACHE_TTL",
-    "STREAMLIT_CACHE_TTL_LONG",
-    "EXCLUDED_SHOW_DATES",
-    "MAX_ACCURACY_SHOWS",
 ]

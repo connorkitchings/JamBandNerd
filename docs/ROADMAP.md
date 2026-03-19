@@ -4,16 +4,14 @@
 
 ## 1. Introduction
 
-JamBandNerd now has a stable pipeline foundation, mature prediction models, and a legacy Streamlit
-interface that proved out the product shape. A working website now exists in `apps/web`, and the
-current goal is to make it the unambiguous primary product surface before final Streamlit removal.
+JamBandNerd has a stable pipeline foundation, mature prediction models, and a working website in
+`apps/web` that is the sole product surface. The Streamlit app has been retired.
 
 This roadmap shifts priorities accordingly:
 
-1. **Website Parity:** Keep improving the current website routes and shared shell.
-2. **Soft Cutover Prep:** Make the website the default path in docs, onboarding, and workflow messaging.
-3. **Deployment Hardening:** Add the production website deployment workflow and verification path.
-4. **Final Legacy Removal:** Retire Streamlit from the repo once deployment and confidence are in place.
+1. **Website Operations:** Keep the website routes and shared shell production-ready.
+2. **Deployment Hardening:** Maintain the production website deployment workflow and verification path.
+3. **Future Expansion:** Explore public API work only after the website creates real external-consumer demand.
 
 ## 2. Prioritization Strategy
 
@@ -31,7 +29,7 @@ everywhere users and contributors look first.
 - **Implementation:**
   1. Update the canonical entrypoints: `README.md`, `docs/user/pipeline_usage.md`, and `docs/contributor/developer_guide/architecture.md`.
   2. Update product/planning docs: `docs/overview/project/prd.md`, `docs/ROADMAP.md`, and `docs/overview/implementation_status.md`.
-  3. Update contributor and user guidance to describe Streamlit as a legacy transition surface rather than the destination architecture.
+  3. Update contributor and user guidance to reflect the website-first product direction.
 - **Priority:** **Highest**.
 
 ### 1.2. Navigation and Operations Cleanup
@@ -39,7 +37,7 @@ everywhere users and contributors look first.
 - **Goal:** Ensure navigation points to current website-first guidance.
 - **Implementation:**
   1. Add a website delivery strategy doc for the new target architecture.
-  2. Reclassify Streamlit deployment docs as legacy/internal transition guidance.
+  2. Retire legacy deployment docs and archive them.
   3. Run stale-reference searches across active docs and update broken navigation.
 - **Priority:** **Highest**.
 
@@ -67,12 +65,12 @@ everywhere users and contributors look first.
 
 ---
 
-## Phase 3: Parity Migration (Largely Complete)
+## Phase 3: Parity Migration (Completed)
 
-### 3.1. Rebuild the Current Product Surface
+### 3.1. Website Parity
 
-- **Goal:** Reach full parity with the current Streamlit experience before cutover.
-- **Required website views:**
+- **Goal:** Replace the Streamlit experience with the website.
+- **Completed website views:**
   - Current predictions
   - Model comparison
   - Historical explorer
@@ -91,23 +89,13 @@ everywhere users and contributors look first.
 - **Implementation:**
   1. Keep `scripts/run_optimized_pipeline.py` as the canonical end-to-end entrypoint.
   2. Keep prediction schemas and backtest workflows stable unless the website build proves a real mismatch.
-  3. Only touch legacy Streamlit code when needed to validate behavior during migration.
 - **Priority:** **High**.
 
 ---
 
-## Phase 4: Cutover and Operations (Current Priority)
+## Phase 4: Ongoing Operations
 
-### 4.1. Website Cutover
-
-- **Goal:** Make the website the primary public surface and demote Streamlit to legacy status.
-- **Implementation:**
-  1. Validate parity against the existing Streamlit feature set.
-  2. Update docs and contributor guidance to point new feature work at the website app only.
-3. Remove Streamlit deployment from the primary operations path.
-- **Priority:** **Medium**.
-
-### 4.2. Ongoing Operations
+### 4.1. Website Operations
 
 - **Goal:** Operate the website and pipeline as a coherent production system.
 - **Implementation:**

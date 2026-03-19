@@ -69,9 +69,11 @@ def normalize_shows(raw: Iterable[Dict[str, Any]]) -> pd.DataFrame:
 
         record = {
             "show_id": str(show_id),
-            "show_date": _parse_date(show_date_raw)
-            if show_date_raw and not show_date_raw.count("-") == 2
-            else show_date_raw,
+            "show_date": (
+                _parse_date(show_date_raw)
+                if show_date_raw and not show_date_raw.count("-") == 2
+                else show_date_raw
+            ),
             "venue_name": venue_name,
             "city": city,
             "state": state,

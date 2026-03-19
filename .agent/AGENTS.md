@@ -50,7 +50,6 @@ Read these first and avoid bulk-loading other docs:
 Open on demand:
 - CI/CD: `docs/operations/github_actions.md`
 - Website delivery: `docs/operations/website_delivery.md`
-- Legacy Streamlit UI: `docs/operations/streamlit_deploy.md`
 - WSP fallback: `docs/operations/tourwrangler_fallback.md`
 - Historical archive: `docs/logs/`
 

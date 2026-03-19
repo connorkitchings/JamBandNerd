@@ -159,11 +159,17 @@ def test_run_billy_collection_uses_paginated_existing_setlist_reads(monkeypatch)
             ]
         raise AssertionError(f"unexpected fetch_table call for {table_name}")
 
-    monkeypatch.setattr(run_billy_collection, "ensure_source_reachable", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        run_billy_collection, "ensure_source_reachable", lambda *_args, **_kwargs: None
+    )
     monkeypatch.setattr(run_billy_collection, "BillyCollector", lambda: collector)
     monkeypatch.setattr(run_billy_collection, "fetch_table", fake_fetch_table)
-    monkeypatch.setattr(run_billy_collection, "_upsert_dataframe", lambda *_args, **_kwargs: None)
-    monkeypatch.setattr(run_billy_collection, "_log_collection_run", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        run_billy_collection, "_upsert_dataframe", lambda *_args, **_kwargs: None
+    )
+    monkeypatch.setattr(
+        run_billy_collection, "_log_collection_run", lambda *_args, **_kwargs: None
+    )
 
     run_billy_collection.run_billy_collection(skip_validation=True)
 
@@ -188,29 +194,44 @@ def test_wsp_process_uses_paginated_existing_setlist_reads(monkeypatch):
     def fake_fetch_table(table_name, chunk_size=10000):
         fetch_calls.append((table_name, chunk_size))
         if table_name == "wsp_setlists_raw":
-            return [{"show_id": 1}] + [{"show_id": 1000 + index} for index in range(10000)]
+            return [{"show_id": 1}] + [
+                {"show_id": 1000 + index} for index in range(10000)
+            ]
         raise AssertionError(f"unexpected fetch_table call for {table_name}")
 
-    monkeypatch.setattr(wsp_orchestration, "ensure_source_reachable", lambda *_args, **_kwargs: None)
-    monkeypatch.setattr(wsp_orchestration, "WSPCollector", lambda status=None: collector)
+    monkeypatch.setattr(
+        wsp_orchestration, "ensure_source_reachable", lambda *_args, **_kwargs: None
+    )
+    monkeypatch.setattr(
+        wsp_orchestration, "WSPCollector", lambda status=None: collector
+    )
     monkeypatch.setattr(wsp_orchestration, "get_supabase_client", lambda: client)
     monkeypatch.setattr(wsp_orchestration, "fetch_table", fake_fetch_table)
-    monkeypatch.setattr(wsp_orchestration, "get_table_schema", lambda *_args, **_kwargs: [])
-    monkeypatch.setattr(wsp_orchestration, "upsert_dataframe", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        wsp_orchestration, "get_table_schema", lambda *_args, **_kwargs: []
+    )
+    monkeypatch.setattr(
+        wsp_orchestration, "upsert_dataframe", lambda *_args, **_kwargs: None
+    )
     monkeypatch.setattr(
         wsp_orchestration, "tourwrangler_fallback", lambda *_args, **_kwargs: (0, 0)
     )
     monkeypatch.setattr(
         wsp_orchestration,
         "_assign_show_ids",
-        lambda shows_data, **_kwargs: (shows_data, {
-            "deduped_in_batch": 0,
-            "reused_by_source_url": 0,
-            "reused_by_fallback_key": 0,
-            "new_ids_assigned": 0,
-        }),
+        lambda shows_data, **_kwargs: (
+            shows_data,
+            {
+                "deduped_in_batch": 0,
+                "reused_by_source_url": 0,
+                "reused_by_fallback_key": 0,
+                "new_ids_assigned": 0,
+            },
+        ),
     )
-    monkeypatch.setattr(wsp_orchestration, "_validate_resolved_shows", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        wsp_orchestration, "_validate_resolved_shows", lambda *_args, **_kwargs: None
+    )
     monkeypatch.setattr(
         wsp_orchestration,
         "normalize_songs",

@@ -18,7 +18,9 @@ except Exception as e:
     sys.exit(1)
 
 
-def _completed_show_window(*, today: date | None = None, days: int = 7) -> tuple[str, str]:
+def _completed_show_window(
+    *, today: date | None = None, days: int = 7
+) -> tuple[str, str]:
     """Return the recent completed-show window, excluding today."""
     today = today or date.today()
     cutoff = today - timedelta(days=days)

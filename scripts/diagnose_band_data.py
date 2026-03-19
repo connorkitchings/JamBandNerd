@@ -29,7 +29,9 @@ from src.jambandnerd.config import BAND_ID_COLUMNS
 from src.jambandnerd.db.connection import get_supabase_client
 
 
-def _completed_show_bounds(*, today: date | None = None, days: int = 30) -> tuple[str, str]:
+def _completed_show_bounds(
+    *, today: date | None = None, days: int = 30
+) -> tuple[str, str]:
     """Return the recent completed-show window, excluding today."""
     today = today or date.today()
     cutoff = today - timedelta(days=days)

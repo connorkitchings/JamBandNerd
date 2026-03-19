@@ -127,3 +127,5 @@ After a preview or production deploy, manually verify:
 - `/last-show`
 
 Also confirm that pages render with server-side Supabase reads instead of the missing-env fallback state.
+
+The smoke test suite also covers `/about` and `/predictions` alongside the routes above.

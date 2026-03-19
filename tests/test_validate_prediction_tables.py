@@ -53,7 +53,9 @@ class _ClientStub:
         return _QueryStub(self._table_rows.get(name, []))
 
 
-def _prediction_rows(*, latest_predictions, stale_predictions=None, latest_predicted_at=None):
+def _prediction_rows(
+    *, latest_predictions, stale_predictions=None, latest_predicted_at=None
+):
     latest_predicted_at = latest_predicted_at or datetime.now(timezone.utc)
     stale_predicted_at = latest_predicted_at - timedelta(days=3)
     stale_predictions = stale_predictions or latest_predictions
@@ -114,7 +116,9 @@ def test_validate_predictions_uses_latest_predicted_at(monkeypatch, capsys):
 
 def test_validate_predictions_fails_on_invalid_latest_json(monkeypatch, capsys):
     now = datetime.now(timezone.utc)
-    rows = _prediction_rows(latest_predictions=[{"song_name": "Fresh Song"}], latest_predicted_at=now)
+    rows = _prediction_rows(
+        latest_predictions=[{"song_name": "Fresh Song"}], latest_predicted_at=now
+    )
     rows["predictions_notebook"][1]["predictions"] = "{bad json"
     rows["predictions_ckplus"][1]["predictions"] = "{bad json"
     monkeypatch.setattr(

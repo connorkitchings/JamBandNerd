@@ -84,7 +84,7 @@ enhance their concert experience through data-driven insights.
 - **Prediction Display**: Show next song probabilities with confidence scores
 - **Historical Accuracy**: Display model performance trends over time
 - **Responsive Design**: Support desktop and mobile viewing
-- **Parity Goal**: Reach feature parity with the current legacy Streamlit surface before cutover
+- **Status**: The website at `apps/web` is the product surface. Streamlit has been retired.
 
 #### Infrastructure
 

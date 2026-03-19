@@ -14,14 +14,18 @@ def ensure_live_env(*, band: str) -> None:
         missing.append("PHISH_API_KEY")
     if missing:
         joined = ", ".join(missing)
-        raise RuntimeError(f"Missing required live-test environment variables: {joined}")
+        raise RuntimeError(
+            f"Missing required live-test environment variables: {joined}"
+        )
 
 
 def parse_timestamp(value: str) -> datetime:
     return datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone(timezone.utc)
 
 
-def assert_prediction_publish_fresh(*, band: str, model: str, started_at: datetime) -> None:
+def assert_prediction_publish_fresh(
+    *, band: str, model: str, started_at: datetime
+) -> None:
     client = get_supabase_client()
     table_name = PREDICTION_TABLES[model]
     model_version = f"{model}_v1"
@@ -42,7 +46,9 @@ def assert_prediction_publish_fresh(*, band: str, model: str, started_at: dateti
     assert parse_timestamp(row["predicted_at"]) >= started_at - timedelta(minutes=5)
 
 
-def assert_accuracy_publish_fresh(*, band: str, model: str, started_at: datetime) -> None:
+def assert_accuracy_publish_fresh(
+    *, band: str, model: str, started_at: datetime
+) -> None:
     client = get_supabase_client()
     model_version = f"{model}_v1"
 
@@ -55,10 +61,12 @@ def assert_accuracy_publish_fresh(*, band: str, model: str, started_at: datetime
         .limit(1)
         .execute()
     )
-    assert per_show_response.data, f"No per-show accuracy row found for {band}/{model_version}"
-    assert parse_timestamp(per_show_response.data[0]["evaluated_at"]) >= started_at - timedelta(
-        minutes=5
-    )
+    assert (
+        per_show_response.data
+    ), f"No per-show accuracy row found for {band}/{model_version}"
+    assert parse_timestamp(
+        per_show_response.data[0]["evaluated_at"]
+    ) >= started_at - timedelta(minutes=5)
 
     aggregate_table = ACCURACY_TABLES[model]
     aggregate_response = (
@@ -70,7 +78,9 @@ def assert_accuracy_publish_fresh(*, band: str, model: str, started_at: datetime
         .limit(1)
         .execute()
     )
-    assert aggregate_response.data, f"No aggregate accuracy row found for {band}/{model_version}"
+    assert (
+        aggregate_response.data
+    ), f"No aggregate accuracy row found for {band}/{model_version}"
     row = aggregate_response.data[0]
     assert row["window_start"]
     assert row["window_end"]

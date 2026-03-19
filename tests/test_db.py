@@ -15,7 +15,7 @@ class TestSupabaseConnection:
         monkeypatch.delenv("SUPABASE_URL", raising=False)
         monkeypatch.setenv("SUPABASE_KEY", "test_key")
 
-        with pytest.raises(ValueError, match="Missing SUPABASE_URL"):
+        with pytest.raises(ValueError, match="Missing SUPABASE_URL or SUPABASE_KEY"):
             validate_environment()
 
     def test_validate_environment_missing_key(self, monkeypatch):
@@ -36,6 +36,7 @@ class TestSupabaseConnection:
         """Test successful Supabase client creation."""
         # Reset the singleton to ensure create_client is called
         import jambandnerd.db.connection
+
         jambandnerd.db.connection._supabase_client = None
 
         mock_client = MagicMock()
@@ -79,4 +80,5 @@ class TestSupabaseConnection:
         with pytest.raises(
             ValueError, match="SUPABASE_URL and SUPABASE_KEY must be set"
         ):
+            get_supabase_client()
             get_supabase_client()

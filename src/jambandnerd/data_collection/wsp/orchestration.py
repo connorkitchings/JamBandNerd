@@ -191,7 +191,9 @@ def _validate_resolved_shows(shows_data: list[dict[str, object]]) -> None:
     for show in shows_data:
         show_id = show.get("show_id")
         if show_id in (None, ""):
-            raise RuntimeError("Resolved WSP show batch contains a row without show_id.")
+            raise RuntimeError(
+                "Resolved WSP show batch contains a row without show_id."
+            )
 
         source_url = _normalize_source_url(show.get("source_url"))
         if not source_url:

@@ -1,4 +1,4 @@
-# Data Ingestion and Streamlit Last Setlist Issues
+# Data Ingestion Issues
 
 **Date**: 2025-10-04  
 **Status**: Identified Issues  
@@ -6,7 +6,7 @@
 
 ## Executive Summary
 
-This document analyzes issues with data ingestion for all bands (Goose, Phish, WSP, Billy) and the "Last Show Setlist" feature in the Streamlit web app. The analysis identifies root causes and provides specific fixes.
+This document analyzes issues with data ingestion for all bands (Goose, Phish, WSP, Billy) and the "Last Show Setlist" feature in the product presentation surface. The analysis identifies root causes and provides specific fixes.
 
 ---
 

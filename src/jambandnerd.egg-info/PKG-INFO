@@ -11,7 +11,6 @@ Requires-Dist: requests
 Requires-Dist: python-dotenv
 Requires-Dist: lxml==4.9.3
 Requires-Dist: supabase
-Requires-Dist: streamlit
 Requires-Dist: beautifulsoup4
 Requires-Dist: psycopg2-binary
 Requires-Dist: typer
@@ -31,7 +30,7 @@ Requires-Dist: pymdown-extensions; extra == "docs"
 
 # JamBandNerd
 
-A cloud-based data science platform for collecting, transforming, and predicting jam band setlists. The system provides real-time setlist predictions through automated data pipelines and an interactive web interface.
+A cloud-based data platform for collecting, transforming, and predicting jam band setlists. The system provides real-time setlist predictions through automated pipelines, Supabase-backed storage, and a website-first product roadmap.
 
 ## Quick Start
 
@@ -105,14 +104,11 @@ uv run predict-billy-ckplus -- --date 2025-10-24
 
 For detailed usage, please refer to the full documentation.
 
-### Web Interface
+### Website Surface
 
-```bash
-# Launch the interactive Streamlit web application
-uv run streamlit run src/jambandnerd/web/app.py
-```
+JamBandNerd now ships a website-first product surface in `apps/web`. The target architecture is a monorepo website application with server-side reads from Supabase and production hosting on Vercel.
 
-The web interface provides:
+The target website experience includes:
 
 - **Multi-band selection**: Switch between all dynamically discovered bands.
 - **Model comparison**: Toggle between Notebook and CK+ models.
@@ -121,6 +117,20 @@ The web interface provides:
 - **Accuracy visualization**: Historical performance charts with configurable K values (K=10/25/50; selected K highlighted).
 - **Show details**: Prominent Next Show header with venue, plus model and prediction timestamp.
 
+The primary local UI workflow is:
+
+```bash
+npm install
+cp apps/web/.env.local.example apps/web/.env.local
+npm run dev:web
+npm run lint:web
+npm run build:web
+```
+
+The legacy Streamlit app remains in the repo only as an internal fallback during cutover. Its local run instructions now live in `docs/operations/streamlit_deploy.md` rather than the primary README path.
+
+The website delivery path now uses Vercel’s native GitHub integration model. Treat `main` as the production branch and use preview deployments for feature branches and pull requests.
+
 ### Development
 
 ```bash
@@ -128,10 +138,39 @@ The web interface provides:
 uv pip install -e ".[dev]"
 
 # Code quality
-ruff check src/
-black src/
-pytest tests/
+uv run black src tests scripts
+uv run ruff check src tests scripts
+uv run pytest
 ```
+
+### Security Maintenance
+
+The repo now has two separate dependency-safety controls:
+
+- **Dependabot** watches the `uv` lockfile and GitHub Actions versions, with the Supabase Python packages grouped into a single update PR.
+- **Dependency Audit** is a standalone GitHub Actions workflow that exports the locked Python dependency set and audits it with `pip-audit`.
+
+Manual local audit command:
+
+```bash
+tmpfile=$(mktemp /tmp/jbn-audit.XXXXXX)
+uv export --format requirements-txt --locked --no-hashes --no-emit-project --output-file "$tmpfile"
+uv run --with pip-audit python -m pip_audit -r "$tmpfile" --cache-dir /tmp/pip-audit-cache --no-deps --disable-pip
+```
+
+This audit is intentionally separate from the daily pipeline so dependency findings do not block data collection and publishing.
+
+## AI Tools
+
+JamBandNerd now uses a canonical multi-tool agent workflow:
+
+- `AGENTS.md` -> `.agent/AGENTS.md`
+- `.agent/CONTEXT.md` for the startup router
+- `.agent/skills/CATALOG.md` for task workflows
+- `.codex/QUICKSTART.md` for copy-paste commands
+- `session_logs/` for active AI handoffs and session notes
+
+Historical logs in `docs/logs/` remain available as archive only.
 
 ## Documentation
 
@@ -140,7 +179,7 @@ For comprehensive documentation, please visit the **[full documentation site](do
 Key sections include:
 
 - 🚀 **[User Guide](docs/user/getting_started.md)**: For users who want to install, configure, and run the project.
-- 🧑‍💻 **[Contributor Guide](docs/contributor/developer_guide/architecture.md)**: For contributors who want to understand the architecture and extend the platform.
+- 🧑‍💻 **[Contributor Guide](docs/contributor/onboarding.md)**: For contributors who want the development workflow, architecture, and agentic operating model.
 - 📚 **[Reference](docs/reference/)**: Detailed technical specifications, schemas, and guides.
 - 📈 **[Reports](docs/reports/)**: Summaries of improvements and validation testing.
 
@@ -153,7 +192,7 @@ mkdocs serve
 
 ## Architecture
 
-**Modular Pipeline Design**: Data Sources → Raw Storage → In-Memory Transform → Models → Predictions → Web Interface
+**Modular Pipeline Design**: Data Sources -> Raw Storage -> In-Memory Transform -> Models -> Predictions -> Website
 
 **Supported Bands**: The pipeline dynamically discovers supported bands by looking for `run_*_collection.py` scripts in the `scripts/` directory. To add a new band, simply create a new collection script following the existing pattern.
 
@@ -164,6 +203,7 @@ mkdocs serve
 - Pluggable prediction models (Notebook, CK+).
 - Unified cross-band prediction and accuracy storage.
 - Supabase backend with automated validation.
+- Website-first product delivery with the current Streamlit app retained only as a legacy transition surface.
 - **GitHub Actions automation** with daily pipeline execution.
 
 ### Widespread Panic Data & Fallback
@@ -183,7 +223,7 @@ The platform features comprehensive automation through GitHub Actions:
 
 ## Contributing
 
-See [Implementation Guide](docs/guides/implementation.md) for development workflow and current priorities.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the workflow overview and [docs/contributor/onboarding.md](docs/contributor/onboarding.md) for contributor-specific orientation.
 
 ## License
 

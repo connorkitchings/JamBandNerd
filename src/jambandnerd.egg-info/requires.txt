@@ -3,7 +3,6 @@ requests
 python-dotenv
 lxml==4.9.3
 supabase
-streamlit
 beautifulsoup4
 psycopg2-binary
 typer

@@ -28,10 +28,10 @@ uv run python scripts/diagnose_band_data.py --band goose
 uv run python scripts/verify_data_freshness.py --band goose
 ```
 
-## Web App
+## Website
 
 ```bash
-uv run streamlit run src/jambandnerd/web/app.py
+npm install && npm run dev:web
 ```
 
 ## Quality Gates

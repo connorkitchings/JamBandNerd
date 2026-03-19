@@ -10,7 +10,7 @@ JamBandNerd has a production-ready data platform and a website migration in prog
 - **Pipeline status**: stable and production-capable
 - **Prediction status**: stable across supported models and bands
 - **Automation status**: daily GitHub Actions workflows in place
-- **Frontend status**: `apps/web` is the default product surface; legacy Streamlit remains only as a temporary fallback
+- **Frontend status**: `apps/web` is the sole product surface
 
 ## Implemented Platform Components
 
@@ -28,13 +28,6 @@ JamBandNerd has a production-ready data platform and a website migration in prog
 - Scheduled GitHub Actions pipeline runs with manual triggers
 - Validation and data-quality checks in the pipeline workflow
 - Security/dependency maintenance workflows
-
-### Legacy Presentation Surface
-
-- Streamlit app in `src/jambandnerd/web/`
-- Multi-band browsing and model comparison
-- Prediction, explorer, performance, and last-show views
-- Useful as a transition/reference surface during website migration
 
 ## In Progress
 
@@ -62,5 +55,5 @@ JamBandNerd has a production-ready data platform and a website migration in prog
 
 ## Notes
 
-- The existing Streamlit code remains only as a temporary fallback for local validation while cutover finishes.
+- The Streamlit app has been retired. The website at `apps/web` is the sole product surface.
 - Pipeline and schema stability remain the priority during the frontend migration.

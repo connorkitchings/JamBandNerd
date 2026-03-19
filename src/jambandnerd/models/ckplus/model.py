@@ -113,15 +113,19 @@ class CKPlusPredictor(PredictionModel):
         # 3. Calculate final features
         f["current_gap"] = model_data.reference_index - f["last_played_index"]
         f["gap_ratio"] = f.apply(
-            lambda r: (r["current_gap"] / r["avg_gap"])
-            if pd.notna(r["avg_gap"]) and r["avg_gap"] > 0
-            else float("nan"),
+            lambda r: (
+                (r["current_gap"] / r["avg_gap"])
+                if pd.notna(r["avg_gap"]) and r["avg_gap"] > 0
+                else float("nan")
+            ),
             axis=1,
         )
         f["gap_z_score"] = f.apply(
-            lambda r: ((r["current_gap"] - r["avg_gap"]) / r["std_gap"])
-            if (r["std_gap"] and r["std_gap"] > 0)
-            else 0.0,
+            lambda r: (
+                ((r["current_gap"] - r["avg_gap"]) / r["std_gap"])
+                if (r["std_gap"] and r["std_gap"] > 0)
+                else 0.0
+            ),
             axis=1,
         )
 

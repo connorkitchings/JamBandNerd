@@ -41,7 +41,9 @@ def test_scrape_single_setlist_scrape_new(
     show_info = {"show_id": "123", "source_url": "http://example.com/setlist.html"}
 
     # Mock the response for no existing setlist
-    mock_supabase_client.table.return_value.select.return_value.eq.return_value.limit.return_value.execute.return_value.data = []
+    mock_supabase_client.table.return_value.select.return_value.eq.return_value.limit.return_value.execute.return_value.data = (
+        []
+    )
 
     # Mock the parsed setlist
     mock_parse_setlist.return_value = [{"song_name": "Song A"}]
@@ -81,7 +83,9 @@ def test_tourwrangler_fallback(mock_get_supabase_client, mock_fetch_from_tw):
     mock_supabase_client.table.return_value.select.return_value.gte.return_value.lt.return_value.execute.return_value.data = [
         mock_show
     ]
-    mock_supabase_client.table.return_value.select.return_value.in_.return_value.execute.return_value.data = []  # No existing setlist
+    mock_supabase_client.table.return_value.select.return_value.in_.return_value.execute.return_value.data = (
+        []
+    )  # No existing setlist
 
     # Act
     tourwrangler_fallback(mock_supabase_client)

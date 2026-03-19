@@ -1,6 +1,6 @@
 # Mobile Verification Checklist
 
-This checklist verifies the website in `apps/web` on real phones and tablets. Use the legacy Streamlit interface only if you are explicitly validating a fallback behavior covered in `streamlit_deploy.md`.
+This checklist verifies the website in `apps/web` on real phones and tablets.
 
 ## 1) Run the website for mobile access
 

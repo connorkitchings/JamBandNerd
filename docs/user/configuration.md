@@ -4,7 +4,7 @@ This guide explains how to configure the JamBandNerd project, including how to a
 
 ## Band Configuration
 
-Adding a new band to the project requires changes in the data collection pipeline and, during the website transition, whichever presentation surfaces are still in use.
+Adding a new band to the project requires changes in the data collection pipeline and the website config.
 
 ### 1. Data Collection
 
@@ -15,9 +15,9 @@ To add a new band, you need to create a new data collector and integrate it into
 3. **Add to `run_optimized_pipeline.py`**: In `scripts/run_optimized_pipeline.py`, add a new `elif` block in the `run_band_pipeline` function to call your new collection script. You should also add a band-specific entry to the `CKPLUS_RETIREMENT_GAPS` dictionary.
 4. **Update GitHub Actions**: In `.github/workflows/daily-pipeline.yml`, add the new band to the `matrix.band` list in the `collect-data` job and add a corresponding `elif` block to handle its collection script.
 
-### 2. Presentation Layer
+### 2. Website Config
 
-The public surface is now the website app in `apps/web`. Add new bands to the website config in `apps/web/src/lib/config.ts`. Touch the legacy Streamlit app only if a temporary fallback needs to stay aligned during cutover.
+The product surface is the website app in `apps/web`. Add new bands to `apps/web/src/lib/config.ts`.
 
 ```ts
 BAND_CONFIG = {
@@ -45,9 +45,9 @@ Adding a new model follows a similar pattern.
 1. **Create a new model**: Create a new file in `src/jambandnerd/models/<model_name>/model.py`. This file should contain a class that inherits from `PredictionModel` and implements the `predict` method.
 2. **Add prediction scripts**: Create new scripts in the `scripts/` directory to run your model and save the predictions and accuracy scores.
 
-### 2. Presentation Layer
+### 2. Website Config
 
-The public surface is now the website app in `apps/web`. Add new models to the website config in `apps/web/src/lib/config.ts`. Touch the legacy Streamlit app only if a temporary fallback needs to stay aligned during cutover.
+The product surface is the website app in `apps/web`. Add new models to `apps/web/src/lib/config.ts`.
 
 ```ts
 MODEL_CONFIG = {

@@ -17,7 +17,7 @@ To add a new band, you need to create a new data collector and integrate it into
 
 ### 2. Presentation Layer
 
-The public surface is the website app in `apps/web`. Add new bands to `apps/web/src/lib/config.ts`. Update the legacy Streamlit fallback only if you explicitly need temporary parity during cutover.
+The public surface is the website app in `apps/web`. Add new bands to `apps/web/src/lib/config.ts`.
 
 ```ts
 BAND_CONFIG = {
@@ -52,7 +52,7 @@ Adding a new model follows a similar pattern.
 
 ### 2. Presentation Layer
 
-The public surface is the website app in `apps/web`. Add new models to `apps/web/src/lib/config.ts`. Update the legacy Streamlit fallback only if you explicitly need temporary parity during cutover.
+The public surface is the website app in `apps/web`. Add new models to `apps/web/src/lib/config.ts`.
 
 ```ts
 MODEL_CONFIG = {
