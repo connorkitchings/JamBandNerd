@@ -3,6 +3,9 @@
 Instructions: This document is the tactical plan for the project. Use it to plan sprints,
 track tasks, and manage risks. It answers the questions "Who, when, and on what?"
 
+Current note: this file is a historical sprint record. For the active product direction and
+website-first migration plan, use `docs/ROADMAP.md`.
+
 Sprint Overview
 Current Sprint: Sprint 2 (Goose-first Pipeline)
 

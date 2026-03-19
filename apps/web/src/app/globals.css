@@ -1,0 +1,62 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #b0c6ff;
+  --color-primary-container: #0058cb;
+  --color-secondary-container: #334d58;
+  --color-on-secondary-container: #a1bdca;
+  --color-tertiary: #e9c400;
+  --color-background: #111316;
+  --color-surface: #111316;
+  --color-surface-container-low: #1a1c1f;
+  --color-surface-container: #1e2023;
+  --color-surface-container-high: #282a2d;
+  --color-surface-container-highest: #333538;
+  --color-on-surface: #e2e2e6;
+  --color-on-surface-variant: #c3c6d6;
+  --color-on-background: #e2e2e6;
+  --color-outline: #8d90a0;
+  --color-outline-variant: #424654;
+  --font-headline: var(--font-space-grotesk);
+  --font-label: var(--font-space-grotesk);
+  --font-body: var(--font-inter);
+  --radius-lg: 0.25rem;
+  --radius-xl: 0.5rem;
+  --radius-2xl: 0.75rem;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html {
+  background: #111316;
+}
+
+body {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top right, rgba(0, 88, 203, 0.16), transparent 24%),
+    radial-gradient(circle at 15% 15%, rgba(176, 198, 255, 0.1), transparent 22%),
+    linear-gradient(180deg, #111316 0%, #14171c 100%);
+  color: #e2e2e6;
+  font-family:
+    var(--font-inter),
+    ui-sans-serif,
+    system-ui,
+    sans-serif;
+}
+
+a {
+  text-decoration: none;
+}
+
+::selection {
+  background: rgba(176, 198, 255, 0.35);
+  color: #002d6e;
+}
+
+.glass-card {
+  background: rgba(51, 53, 56, 0.7);
+  backdrop-filter: blur(20px);
+}

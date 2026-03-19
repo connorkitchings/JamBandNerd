@@ -4,7 +4,7 @@ This guide explains how to configure the JamBandNerd project, including how to a
 
 ## Band Configuration
 
-Adding a new band to the project requires changes in two main places: the data collection pipeline and the web application.
+Adding a new band to the project requires changes in the data collection pipeline and, during the website transition, whichever presentation surfaces are still in use.
 
 ### 1. Data Collection
 
@@ -15,9 +15,9 @@ To add a new band, you need to create a new data collector and integrate it into
 3. **Add to `run_optimized_pipeline.py`**: In `scripts/run_optimized_pipeline.py`, add a new `elif` block in the `run_band_pipeline` function to call your new collection script. You should also add a band-specific entry to the `CKPLUS_RETIREMENT_GAPS` dictionary.
 4. **Update GitHub Actions**: In `.github/workflows/daily-pipeline.yml`, add the new band to the `matrix.band` list in the `collect-data` job and add a corresponding `elif` block to handle its collection script.
 
-### 2. Web Application
+### 2. Presentation Layer
 
-To make the new band available in the Streamlit web application, you need to update the `BAND_CONFIG` dictionary in `src/jambandnerd/web/app.py`.
+The long-term public surface is a website, not Streamlit. Today, the only repo-tracked UI configuration still lives in the legacy Streamlit app at `src/jambandnerd/web/app.py`. Update it only when you need interim parity before website cutover.
 
 ```python
 BAND_CONFIG = {
@@ -46,9 +46,9 @@ Adding a new model follows a similar pattern.
 1. **Create a new model**: Create a new file in `src/jambandnerd/models/<model_name>/model.py`. This file should contain a class that inherits from `PredictionModel` and implements the `predict` method.
 2. **Add prediction scripts**: Create new scripts in the `scripts/` directory to run your model and save the predictions and accuracy scores.
 
-### 2. Web Application
+### 2. Presentation Layer
 
-To make the new model available in the Streamlit web application, you need to update the `MODEL_CONFIG` dictionary in `src/jambandnerd/web/app.py`.
+The long-term public surface is a website, not Streamlit. Today, the only repo-tracked UI configuration still lives in the legacy Streamlit app at `src/jambandnerd/web/app.py`. Update it only when you need interim parity before website cutover.
 
 ```python
 MODEL_CONFIG = {

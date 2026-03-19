@@ -1,6 +1,6 @@
 # JamBandNerd
 
-A cloud-based data science platform for collecting, transforming, and predicting jam band setlists. The system provides real-time setlist predictions through automated data pipelines and an interactive web interface.
+A cloud-based data platform for collecting, transforming, and predicting jam band setlists. The system provides real-time setlist predictions through automated pipelines, Supabase-backed storage, and a website-first product roadmap.
 
 ## Quick Start
 
@@ -74,14 +74,11 @@ uv run predict-billy-ckplus -- --date 2025-10-24
 
 For detailed usage, please refer to the full documentation.
 
-### Web Interface
+### Website Direction
 
-```bash
-# Launch the interactive Streamlit web application
-uv run streamlit run src/jambandnerd/web/app.py
-```
+JamBandNerd is now planned as a full website rather than a Streamlit deployment. The target architecture is a monorepo website application with server-side reads from Supabase and production hosting on Vercel.
 
-The web interface provides:
+The target website experience includes:
 
 - **Multi-band selection**: Switch between all dynamically discovered bands.
 - **Model comparison**: Toggle between Notebook and CK+ models.
@@ -89,6 +86,22 @@ The web interface provides:
 - **Historical Explorer**: Browse past shows to view predictions vs. actual setlists for specific dates.
 - **Accuracy visualization**: Historical performance charts with configurable K values (K=10/25/50; selected K highlighted).
 - **Show details**: Prominent Next Show header with venue, plus model and prediction timestamp.
+
+The website foundation now lives in `apps/web` and can be started locally with:
+
+```bash
+npm install
+npm run dev:web
+```
+
+### Legacy Streamlit Interface
+
+The existing Streamlit app remains in the repo as a transition surface for local validation while the website is being built.
+
+```bash
+# Launch the legacy Streamlit interface locally
+uv run streamlit run src/jambandnerd/web/app.py
+```
 
 ### Development
 
@@ -151,7 +164,7 @@ mkdocs serve
 
 ## Architecture
 
-**Modular Pipeline Design**: Data Sources → Raw Storage → In-Memory Transform → Models → Predictions → Web Interface
+**Modular Pipeline Design**: Data Sources -> Raw Storage -> In-Memory Transform -> Models -> Predictions -> Website
 
 **Supported Bands**: The pipeline dynamically discovers supported bands by looking for `run_*_collection.py` scripts in the `scripts/` directory. To add a new band, simply create a new collection script following the existing pattern.
 
@@ -162,6 +175,7 @@ mkdocs serve
 - Pluggable prediction models (Notebook, CK+).
 - Unified cross-band prediction and accuracy storage.
 - Supabase backend with automated validation.
+- Website-first product delivery with the current Streamlit app retained only as a legacy transition surface.
 - **GitHub Actions automation** with daily pipeline execution.
 
 ### Widespread Panic Data & Fallback

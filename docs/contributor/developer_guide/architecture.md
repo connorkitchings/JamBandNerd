@@ -5,7 +5,7 @@ This document defines JamBandNerd’s technical foundation. Update as architectu
 ## 1. Overview
 
 **Project Goal:**
-A modular Python platform for collecting, processing, and predicting jam band setlists, with robust orchestration and analytics. The design is extensible to add new bands and models.
+A modular platform for collecting, processing, and predicting jam band setlists, with robust orchestration, analytics, and a website-first product surface. The design is extensible to add new bands and models.
 
 **Repository:**
 `https://github.com/connorkitchings/JamBandNerd`
@@ -37,7 +37,7 @@ graph TD
     end
     
     subgraph "Presentation"
-        H[fa:fa-desktop Streamlit Web App]
+        H[fa:fa-desktop Website<br><i>target</i>]
     end
 
     A --> B
@@ -76,9 +76,9 @@ graph TD
 #### Presentation Layer
 
 - **Purpose**: User interface for prediction exploration
-- **Framework**: Streamlit for rapid development and deployment.
-- **Structure**: Modular design with separate components for sidebar, tabs, and data handling (`src/jambandnerd/web/`).
-- **Data**: Direct Supabase queries for real-time data.
+- **Framework**: Website-first architecture, with a monorepo frontend app as the target public surface.
+- **Current State**: The existing Streamlit app in `src/jambandnerd/web/` remains available as a legacy transition surface until website cutover.
+- **Data**: Server-side reads from Supabase are the preferred target architecture for the website.
 
 #### Orchestration Layer
 

@@ -1,6 +1,6 @@
 # JamBandNerd Documentation
 
-Welcome to the comprehensive documentation for JamBandNerd - a cloud-based data science platform for collecting, transforming, and predicting jam band setlists.
+Welcome to the comprehensive documentation for JamBandNerd, a cloud-based data platform for collecting, transforming, and predicting jam band setlists.
 
 This documentation is organized into audience-focused sections:
 
@@ -18,7 +18,8 @@ This documentation is organized into audience-focused sections:
 ### ⚙️ [Operations](operations/github_actions.md)
 - **[Daily Pipeline](operations/github_actions.md)**: GitHub Actions workflow and monitoring notes.
 - **[Pipeline Optimization](operations/pipeline_optimization.md)**: Consolidation strategy and performance tips.
-- **[Streamlit Deployment](operations/streamlit_deploy.md)**: Local and cloud deployment instructions.
+- **[Website Delivery Strategy](operations/website_delivery.md)**: Website-first architecture, deployment target, and migration path.
+- **[Legacy Streamlit Interface](operations/streamlit_deploy.md)**: Temporary local validation surface during the website migration.
 - **[TourWrangler Fallback](operations/tourwrangler_fallback.md)**: Backup ingestion runbook for WSP.
 
 ### 📚 Reference Library

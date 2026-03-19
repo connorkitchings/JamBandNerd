@@ -30,8 +30,8 @@ This file defines how AI coding tools should work in this repository. Keep it sh
 - Return compact metric deltas and verification commands.
 
 ### Web/App
-- Own Streamlit behavior, state handling, and presentation-layer fixes.
-- Prefer small data access and state changes over broad UI rewrites.
+- Own the website delivery strategy, frontend architecture, and legacy Streamlit transition work.
+- Prefer changes that move the repo toward the website target over new Streamlit-only feature work.
 
 ### Researcher
 - Gather current external information with citations when needed.
@@ -49,7 +49,8 @@ Read these first and avoid bulk-loading other docs:
 
 Open on demand:
 - CI/CD: `docs/operations/github_actions.md`
-- Web UI: `docs/operations/streamlit_deploy.md`
+- Website delivery: `docs/operations/website_delivery.md`
+- Legacy Streamlit UI: `docs/operations/streamlit_deploy.md`
 - WSP fallback: `docs/operations/tourwrangler_fallback.md`
 - Historical archive: `docs/logs/`
 

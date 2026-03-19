@@ -4,7 +4,7 @@ Welcome to the JamBandNerd project! This guide will help you get set up and runn
 
 ## 1. Project Overview
 
-JamBandNerd is a data science platform for collecting, transforming, and predicting jam band setlists. The project is built with Python and uses Supabase for the database, and Streamlit for the web interface.
+JamBandNerd is a data platform for collecting, transforming, and predicting jam band setlists. The project uses Python for pipelines, Supabase for storage, and is now targeting a full website as its primary user-facing surface.
 
 The project is designed to be modular and extensible, so you can easily add new bands, models, or features.
 

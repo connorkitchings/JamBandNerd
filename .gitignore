@@ -34,3 +34,8 @@ site/
 
 # Manual artifacts
 tw_test_backups/
+
+# Node / Next.js
+node_modules/
+.next/
+npm-debug.log*

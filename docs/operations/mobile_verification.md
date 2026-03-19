@@ -1,6 +1,7 @@
-# Mobile Verification Checklist (Streamlit)
+# Mobile Verification Checklist (Legacy Streamlit)
 
-This checklist helps verify the Streamlit UI on real phones/tablets after UI or data changes.
+This checklist helps verify the legacy Streamlit UI on real phones/tablets after UI or data changes.
+It is useful during the website migration, but it is not the long-term product verification path.
 
 ## 1) Run the app for mobile access
 

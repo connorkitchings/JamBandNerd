@@ -1,0 +1,608 @@
+import "server-only";
+
+import { cache } from "react";
+
+import {
+  BAND_CONFIG,
+  BAND_ID_COLUMNS,
+  type BandSlug,
+  type ModelSlug,
+  normalizeBand,
+  normalizeModel,
+} from "@/lib/config";
+import { getSupabaseServerClient, hasSupabaseEnv } from "@/lib/supabase/server";
+
+type JsonPrediction = Record<string, unknown>;
+
+export type PredictionRow = {
+  rank: number;
+  songName: string;
+  lastPlayed: string | null;
+  currentGap: number | null;
+  playsPastYear: number | null;
+  avgGap: number | null;
+  gapRatio: number | null;
+  gapZScore: number | null;
+  ckplusScore: number | null;
+  probability: number | null;
+};
+
+export type PredictionSnapshot = {
+  referenceDate: string | null;
+  predictedAt: string | null;
+  modelVersion: string | null;
+  predictions: PredictionRow[];
+  raw: Record<string, unknown>;
+};
+
+export type AccuracyRow = {
+  showDate: string | null;
+  venueName: string | null;
+  k10Recall: number | null;
+  k25Recall: number | null;
+  k50Recall: number | null;
+};
+
+export type SetlistSong = {
+  setNumber: number | null;
+  position: number | null;
+  songName: string;
+};
+
+export type SetlistSnapshot = {
+  showDetails: Record<string, unknown> | null;
+  songs: SetlistSong[];
+};
+
+export type ShowDetails = {
+  venueName: string | null;
+  city: string | null;
+  state: string | null;
+  country: string | null;
+  showDate: string | null;
+  raw: Record<string, unknown>;
+};
+
+export type ExplorerSnapshot = {
+  availableDates: string[];
+  selectedDate: string | null;
+  predictions: PredictionSnapshot | null;
+  setlist: SetlistSnapshot | null;
+};
+
+export type RouteState<T> =
+  | { status: "missing_env" }
+  | { status: "error"; message: string }
+  | { status: "empty" }
+  | ({ status: "ready" } & T);
+
+function parsePredictions(value: unknown): JsonPrediction[] {
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? (parsed as JsonPrediction[]) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  return Array.isArray(value) ? (value as JsonPrediction[]) : [];
+}
+
+function parseNumber(value: unknown): number | null {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : null;
+  }
+
+  if (typeof value === "string" && value.trim()) {
+    const numeric = Number(value);
+    return Number.isFinite(numeric) ? numeric : null;
+  }
+
+  return null;
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  if (typeof value === "object" && value !== null) {
+    return value as Record<string, unknown>;
+  }
+
+  return null;
+}
+
+function normalizePredictionRows(rows: JsonPrediction[]): PredictionRow[] {
+  return rows.map((row, index) => ({
+    rank: index + 1,
+    songName: String(row.song_name ?? "Unknown Song"),
+    lastPlayed:
+      typeof row.LTP === "string"
+        ? row.LTP
+        : typeof row.last_played_date === "string"
+          ? row.last_played_date
+          : null,
+    currentGap: parseNumber(row.current_gap),
+    playsPastYear: parseNumber(row.plays_past_year),
+    avgGap: parseNumber(row.avg_gap),
+    gapRatio: parseNumber(row.gap_ratio),
+    gapZScore: parseNumber(row.gap_z_score),
+    ckplusScore: parseNumber(row.ckplus_score),
+    probability: parseNumber(row.probability),
+  }));
+}
+
+function getClientOrState<T>(): RouteState<T> | null {
+  if (!hasSupabaseEnv()) {
+    return { status: "missing_env" };
+  }
+
+  return null;
+}
+
+export const getLatestPredictions = cache(
+  async (
+    bandInput: string | undefined,
+    modelInput: string | undefined,
+  ): Promise<RouteState<{ band: BandSlug; model: ModelSlug; snapshot: PredictionSnapshot }>> => {
+    const missingEnv = getClientOrState<{
+      band: BandSlug;
+      model: ModelSlug;
+      snapshot: PredictionSnapshot;
+    }>();
+    if (missingEnv) {
+      return missingEnv;
+    }
+
+    const band = normalizeBand(bandInput);
+    const model = normalizeModel(modelInput);
+    const client = getSupabaseServerClient();
+
+    if (!client) {
+      return { status: "missing_env" };
+    }
+
+    try {
+      const { data, error } = await client
+        .from(`predictions_${model}`)
+        .select("*")
+        .eq("band", band)
+        .order("reference_date", { ascending: false })
+        .limit(1);
+
+      if (error) {
+        return { status: "error", message: error.message };
+      }
+
+      const row = data?.[0];
+      if (!row) {
+        return { status: "empty" };
+      }
+
+      const snapshot: PredictionSnapshot = {
+        referenceDate:
+          typeof row.reference_date === "string" ? row.reference_date : null,
+        predictedAt: typeof row.predicted_at === "string" ? row.predicted_at : null,
+        modelVersion:
+          typeof row.model_version === "string" ? row.model_version : null,
+        predictions: normalizePredictionRows(parsePredictions(row.predictions)),
+        raw: row,
+      };
+
+      return { status: "ready", band, model, snapshot };
+    } catch (error) {
+      return {
+        status: "error",
+        message: error instanceof Error ? error.message : "Unknown error",
+      };
+    }
+  },
+);
+
+export const getPredictionsForDate = cache(
+  async (
+    bandInput: string | undefined,
+    modelInput: string | undefined,
+    referenceDate: string,
+  ): Promise<RouteState<{ band: BandSlug; model: ModelSlug; snapshot: PredictionSnapshot }>> => {
+    const missingEnv = getClientOrState<{
+      band: BandSlug;
+      model: ModelSlug;
+      snapshot: PredictionSnapshot;
+    }>();
+    if (missingEnv) {
+      return missingEnv;
+    }
+
+    const band = normalizeBand(bandInput);
+    const model = normalizeModel(modelInput);
+    const client = getSupabaseServerClient();
+
+    if (!client) {
+      return { status: "missing_env" };
+    }
+
+    try {
+      const { data, error } = await client
+        .from(`predictions_${model}`)
+        .select("*")
+        .eq("band", band)
+        .eq("reference_date", referenceDate)
+        .limit(1);
+
+      if (error) {
+        return { status: "error", message: error.message };
+      }
+
+      const row = data?.[0];
+      if (!row) {
+        return { status: "empty" };
+      }
+
+      const snapshot: PredictionSnapshot = {
+        referenceDate:
+          typeof row.reference_date === "string" ? row.reference_date : null,
+        predictedAt:
+          typeof row.created_at === "string"
+            ? row.created_at
+            : typeof row.predicted_at === "string"
+              ? row.predicted_at
+              : null,
+        modelVersion:
+          typeof row.model_version === "string" ? row.model_version : null,
+        predictions: normalizePredictionRows(parsePredictions(row.predictions)),
+        raw: row,
+      };
+
+      return { status: "ready", band, model, snapshot };
+    } catch (error) {
+      return {
+        status: "error",
+        message: error instanceof Error ? error.message : "Unknown error",
+      };
+    }
+  },
+);
+
+export const getPredictionDates = cache(
+  async (
+    bandInput: string | undefined,
+    modelInput: string | undefined,
+  ): Promise<RouteState<{ band: BandSlug; model: ModelSlug; dates: string[] }>> => {
+    const missingEnv = getClientOrState<{
+      band: BandSlug;
+      model: ModelSlug;
+      dates: string[];
+    }>();
+    if (missingEnv) {
+      return missingEnv;
+    }
+
+    const band = normalizeBand(bandInput);
+    const model = normalizeModel(modelInput);
+    const client = getSupabaseServerClient();
+
+    if (!client) {
+      return { status: "missing_env" };
+    }
+
+    try {
+      const { data, error } = await client
+        .from(`predictions_${model}`)
+        .select("reference_date")
+        .eq("band", band)
+        .order("reference_date", { ascending: false });
+
+      if (error) {
+        return { status: "error", message: error.message };
+      }
+
+      const dates = [...new Set((data ?? []).map((row) => row.reference_date).filter(Boolean))];
+      return dates.length === 0
+        ? { status: "empty" }
+        : { status: "ready", band, model, dates };
+    } catch (error) {
+      return {
+        status: "error",
+        message: error instanceof Error ? error.message : "Unknown error",
+      };
+    }
+  },
+);
+
+export const getRecentAccuracy = cache(
+  async (
+    bandInput: string | undefined,
+    modelInput: string | undefined,
+    limit = 25,
+  ): Promise<RouteState<{ band: BandSlug; model: ModelSlug; rows: AccuracyRow[] }>> => {
+    const missingEnv = getClientOrState<{
+      band: BandSlug;
+      model: ModelSlug;
+      rows: AccuracyRow[];
+    }>();
+    if (missingEnv) {
+      return missingEnv;
+    }
+
+    const band = normalizeBand(bandInput);
+    const model = normalizeModel(modelInput);
+    const client = getSupabaseServerClient();
+
+    if (!client) {
+      return { status: "missing_env" };
+    }
+
+    try {
+      const { data, error } = await client
+        .from("accuracy_per_show")
+        .select("show_date, venue_name, k10_recall, k25_recall, k50_recall")
+        .eq("band", band)
+        .eq("model_version", `${model}_v1`)
+        .order("show_date", { ascending: false })
+        .limit(limit);
+
+      if (error) {
+        return { status: "error", message: error.message };
+      }
+
+      const rows =
+        data?.map((row) => ({
+          showDate: typeof row.show_date === "string" ? row.show_date : null,
+          venueName: typeof row.venue_name === "string" ? row.venue_name : null,
+          k10Recall: parseNumber(row.k10_recall),
+          k25Recall: parseNumber(row.k25_recall),
+          k50Recall: parseNumber(row.k50_recall),
+        })) ?? [];
+
+      return rows.length === 0
+        ? { status: "empty" }
+        : { status: "ready", band, model, rows };
+    } catch (error) {
+      return {
+        status: "error",
+        message: error instanceof Error ? error.message : "Unknown error",
+      };
+    }
+  },
+);
+
+export const getShowDetailsByDate = cache(
+  async (
+    bandInput: string | undefined,
+    showDate: string | null,
+  ): Promise<RouteState<{ band: BandSlug; show: ShowDetails }>> => {
+    const missingEnv = getClientOrState<{ band: BandSlug; show: ShowDetails }>();
+    if (missingEnv) {
+      return missingEnv;
+    }
+
+    const band = normalizeBand(bandInput);
+    if (!showDate) {
+      return { status: "empty" };
+    }
+
+    const client = getSupabaseServerClient();
+    if (!client) {
+      return { status: "missing_env" };
+    }
+
+    try {
+      const showsTable = BAND_CONFIG[band].showsTable;
+      const { data, error } = await client
+        .from(showsTable)
+        .select("*")
+        .eq("show_date", showDate)
+        .limit(1);
+
+      if (error) {
+        return { status: "error", message: error.message };
+      }
+
+      const row = asRecord(data?.[0]);
+      if (!row) {
+        return { status: "empty" };
+      }
+
+      return {
+        status: "ready",
+        band,
+        show: {
+          venueName:
+            typeof row.venue_name === "string"
+              ? row.venue_name
+              : typeof row.venue === "string"
+                ? row.venue
+                : null,
+          city:
+            typeof row.venue_city === "string"
+              ? row.venue_city
+              : typeof row.city === "string"
+                ? row.city
+                : null,
+          state:
+            typeof row.venue_state === "string"
+              ? row.venue_state
+              : typeof row.state === "string"
+                ? row.state
+                : null,
+          country:
+            typeof row.venue_country === "string"
+              ? row.venue_country
+              : typeof row.country === "string"
+                ? row.country
+                : null,
+          showDate: typeof row.show_date === "string" ? row.show_date : null,
+          raw: row,
+        },
+      };
+    } catch (error) {
+      return {
+        status: "error",
+        message: error instanceof Error ? error.message : "Unknown error",
+      };
+    }
+  },
+);
+
+async function getSetlistForDate(
+  band: BandSlug,
+  showDate: string,
+): Promise<SetlistSnapshot | null> {
+  const client = getSupabaseServerClient();
+  if (!client) {
+    return null;
+  }
+
+  const idColumn = BAND_ID_COLUMNS[band];
+  const positionColumn = band === "phish" ? "position" : "song_position";
+  const showsTable = BAND_CONFIG[band].showsTable;
+  const setlistTable = `${band}_setlists_raw`;
+
+  const { data: showRows, error: showError } = await client
+    .from(showsTable)
+    .select("*")
+    .eq("show_date", showDate)
+    .limit(1);
+
+  const showRow = asRecord(showRows?.[0]);
+  const showId = showRow?.[idColumn];
+
+  if (showError || !showId) {
+    return null;
+  }
+
+  const [setlistResponse, detailResponse] = await Promise.all([
+    client
+      .from(setlistTable)
+      .select("*")
+      .eq(idColumn, showId)
+      .order("set_number", { ascending: true })
+      .order(positionColumn, { ascending: true }),
+    client.from(showsTable).select("*").eq(idColumn, showId).limit(1),
+  ]);
+
+  if (setlistResponse.error || detailResponse.error) {
+    return null;
+  }
+
+  const seen = new Set<string>();
+  const songs: SetlistSong[] =
+    setlistResponse.data?.flatMap((item) => {
+      const row = asRecord(item);
+      if (!row) {
+        return [];
+      }
+
+      const key = `${row.set_number}-${row[positionColumn]}`;
+      if (seen.has(key)) {
+        return [];
+      }
+      seen.add(key);
+      return [
+        {
+          setNumber: parseNumber(row.set_number),
+          position: parseNumber(row[positionColumn]),
+          songName: String(row.song_name ?? "Unknown Song"),
+        },
+      ];
+    }) ?? [];
+
+  return {
+    showDetails: detailResponse.data?.[0] ?? null,
+    songs,
+  };
+}
+
+export const getLastShowSetlist = cache(
+  async (bandInput: string | undefined): Promise<RouteState<{ band: BandSlug; setlist: SetlistSnapshot }>> => {
+    const missingEnv = getClientOrState<{ band: BandSlug; setlist: SetlistSnapshot }>();
+    if (missingEnv) {
+      return missingEnv;
+    }
+
+    const band = normalizeBand(bandInput);
+    const client = getSupabaseServerClient();
+
+    if (!client) {
+      return { status: "missing_env" };
+    }
+
+    try {
+      const showsTable = BAND_CONFIG[band].showsTable;
+      const todayIso = new Date().toISOString().slice(0, 10);
+
+      const { data: recentShows, error } = await client
+        .from(showsTable)
+        .select("*")
+        .lt("show_date", todayIso)
+        .order("show_date", { ascending: false })
+        .limit(50);
+
+      if (error) {
+        return { status: "error", message: error.message };
+      }
+
+      const selectedDate = recentShows?.[0]?.show_date;
+      if (typeof selectedDate !== "string") {
+        return { status: "empty" };
+      }
+
+      const setlist = await getSetlistForDate(band, selectedDate);
+      if (!setlist) {
+        return { status: "empty" };
+      }
+
+      return { status: "ready", band, setlist };
+    } catch (error) {
+      return {
+        status: "error",
+        message: error instanceof Error ? error.message : "Unknown error",
+      };
+    }
+  },
+);
+
+export async function getExplorerSnapshot(
+  bandInput: string | undefined,
+  modelInput: string | undefined,
+  selectedDateInput?: string,
+): Promise<RouteState<{ band: BandSlug; model: ModelSlug; explorer: ExplorerSnapshot }>> {
+  const datesState = await getPredictionDates(bandInput, modelInput);
+
+  if (datesState.status !== "ready") {
+    return datesState as RouteState<{
+      band: BandSlug;
+      model: ModelSlug;
+      explorer: ExplorerSnapshot;
+    }>;
+  }
+
+  const selectedDate = selectedDateInput ?? datesState.dates[0] ?? null;
+  if (!selectedDate) {
+    return { status: "empty" };
+  }
+
+  const [predictionsState, setlist] = await Promise.all([
+    getPredictionsForDate(datesState.band, datesState.model, selectedDate),
+    getSetlistForDate(datesState.band, selectedDate),
+  ]);
+
+  if (predictionsState.status !== "ready") {
+    return predictionsState as RouteState<{
+      band: BandSlug;
+      model: ModelSlug;
+      explorer: ExplorerSnapshot;
+    }>;
+  }
+
+  return {
+    status: "ready",
+    band: datesState.band,
+    model: datesState.model,
+    explorer: {
+      availableDates: datesState.dates,
+      selectedDate,
+      predictions: predictionsState.snapshot,
+      setlist,
+    },
+  };
+}

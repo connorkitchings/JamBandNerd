@@ -18,7 +18,7 @@ enhance their concert experience through data-driven insights.
 ### Primary Goals
 
 1. **Automate Data Pipeline**: Eliminate manual data collection and processing
-2. **Provide Real-Time Predictions**: Deliver next-song predictions accessible via web interface
+2. **Provide Real-Time Predictions**: Deliver next-song predictions through a production website
 3. **Demonstrate Model Accuracy**: Track and display prediction performance over time
 4. **Scale to Multiple Bands**: Support Phish, Goose, and Widespread Panic initially
 
@@ -78,12 +78,13 @@ enhance their concert experience through data-driven insights.
   designed to be extensible, allowing for the addition of new bands by creating new data collector modules.
 - **Accuracy Tracking**: Store and calculate prediction accuracy at show level
 
-#### Web Interface
+#### Website Experience
 
 - **Band Selection**: Toggle between supported bands
 - **Prediction Display**: Show next song probabilities with confidence scores
 - **Historical Accuracy**: Display model performance trends over time
 - **Responsive Design**: Support desktop and mobile viewing
+- **Parity Goal**: Reach feature parity with the current legacy Streamlit surface before cutover
 
 #### Infrastructure
 
@@ -155,7 +156,7 @@ enhance their concert experience through data-driven insights.
 
 ### Interface Requirements
 
-#### Web Application
+#### Website
 
 - **FR-WA-01**: Interface SHALL display current predictions for selected band
 - **FR-WA-02**: Interface SHALL allow switching between available bands
@@ -163,6 +164,8 @@ enhance their concert experience through data-driven insights.
 - **FR-WA-04**: Interface SHALL display historical accuracy trends
 - **FR-WA-05**: Interface SHALL be responsive for desktop and mobile devices
 - **FR-WA-06**: Interface SHALL load within 3 seconds for prediction views
+- **FR-WA-07**: Website SHALL read prediction data server-side from Supabase in v1
+- **FR-WA-08**: Website SHALL not require a separate public API in v1
 
 #### User Experience
 
@@ -177,7 +180,7 @@ enhance their concert experience through data-driven insights.
 
 - **FR-SY-01**: Data collection SHALL complete within 1 hour for all bands
 - **FR-SY-02**: Prediction generation SHALL complete within 30 minutes per band
-- **FR-SY-03**: Web interface SHALL support 100 concurrent users
+- **FR-SY-03**: Website SHALL support 100 concurrent users
 - **FR-SY-04**: System SHALL maintain 99% uptime for prediction availability
 
 #### Scalability
@@ -275,7 +278,8 @@ enhance their concert experience through data-driven insights.
 - **Supabase**: Database and backend services
 - **phish.net API**: Phish show data access
 - **GitHub Actions**: Automation infrastructure
-- **Streamlit**: Web interface framework
+- **Next.js**: Website framework target
+- **Vercel**: Website hosting target
 
 ### Internal Dependencies
 
@@ -291,7 +295,7 @@ enhance their concert experience through data-driven insights.
 
 - **Week 1-2**: Database setup and data collection migration
 - **Week 3-4**: Prediction pipeline development and testing
-- **Week 5-6**: Web interface development
+- **Week 5-6**: Website application development
 - **Week 7-8**: Integration testing and automation setup
 
 ### Phase 2 - 12 weeks

@@ -1,6 +1,9 @@
-# Streamlit Deployment Guide (JamBandNerd)
+# Legacy Streamlit Interface Guide
 
-This guide explains how to develop, configure, and deploy the JamBandNerd app on Streamlit Community Cloud (and locally).
+This guide covers the legacy Streamlit interface that remains in the repo as a temporary
+transition surface. It is no longer the target public deployment path for JamBandNerd.
+
+For the current product direction, see [Website Delivery Strategy](website_delivery.md).
 
 ## Local development
 
@@ -21,7 +24,14 @@ SUPABASE_KEY = "YOUR_KEY"
 PHISH_API_KEY = "optional"
 ```
 
-## Streamlit Community Cloud
+## Legacy Status
+
+- The public product target is now a full website.
+- The Streamlit app remains useful for local validation and feature reference during migration.
+- New frontend product work should target the website plan unless a Streamlit change is needed to
+  verify behavior before cutover.
+
+## Historical Streamlit Cloud Notes
 
 1. Connect your GitHub repo and choose the app entry point:
    - App file: `src/jambandnerd/web/app.py`
@@ -33,7 +43,9 @@ PHISH_API_KEY = "optional"
 3. (Optional) Keep a `requirements.txt` for broad compatibility if the resolver struggles with your `pyproject.toml`.
 4. Deploy. Cloud logs are available under the app’s Logs tab.
 
-Important: GitHub Actions secrets do not automatically become runtime secrets in Streamlit Cloud. Add runtime secrets in the Streamlit app’s Secrets panel. The app prefers `st.secrets` and falls back to environment variables.
+Important: GitHub Actions secrets do not automatically become runtime secrets in Streamlit Cloud.
+Add runtime secrets in the Streamlit app’s Secrets panel. The app prefers `st.secrets` and falls
+back to environment variables.
 
 ## App configuration (.streamlit/config.toml)
 

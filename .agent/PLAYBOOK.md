@@ -26,3 +26,5 @@ This file stores persistent lessons and operating patterns that should survive a
 - Ensure API endpoints queried by collectors include trailing slashes if the server is known to redirect to internal ports that may be unreachable.
 - For live pytest suites that gate on `os.environ`, export `.env` into the shell before invoking `pytest`; app-level `load_dotenv()` hooks do not help preflight env checks that run first.
 - For `uv` projects, audit the exported lockfile with `uv export --no-emit-project` plus `pip-audit`; `uvx pip-audit` on its own audits the tool environment, not the repo dependency set.
+- In typed Next.js apps using Supabase JS, dynamic `.select()` column strings often confuse the generated parser types; prefer `select("*")` plus explicit record narrowing when the column names are runtime-driven.
+- When integrating Google Stitch exports into the Next.js app, treat Stitch as visual input only: convert exports into typed components, keep data fetching server-side, and replace placeholder bands/models/routes with real repo-supported values before shipping.

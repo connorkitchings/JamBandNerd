@@ -26,9 +26,11 @@ The primary and recommended way to run the data pipeline is with the `run_optimi
     uv run python scripts/run_optimized_pipeline.py --band all --skip-accuracy
     ```
 
-## Web Interface
+## Website Direction
 
-To view the predictions and accuracy metrics, launch the interactive Streamlit web application:
+The public product direction is now a full website backed by the existing pipeline and Supabase data model. The planned website will replace Streamlit as the primary user-facing surface.
+
+Until that migration lands, you can still inspect predictions and accuracy locally with the legacy Streamlit app:
 
 ```bash
 uv run streamlit run src/jambandnerd/web/app.py

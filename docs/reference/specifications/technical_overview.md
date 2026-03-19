@@ -6,8 +6,9 @@ evolve.
 ## 1. Overview
 
 **Project Goal:**
-A modular Python platform for collecting, processing, and predicting jam band setlists, with robust
-orchestration and analytics. The design is extensible to add new bands and models.
+A modular platform for collecting, processing, and predicting jam band setlists, with robust
+orchestration, analytics, and a website-first product surface. The design is extensible to add new
+bands and models.
 
 **Repository:**
 `https://github.com/connorkitchings/JamBandNerd`
@@ -39,7 +40,7 @@ graph TD
     end
     
     subgraph "Presentation"
-        H[fa:fa-desktop Streamlit Web App]
+        H[fa:fa-desktop Website<br><i>target</i>]
     end
 
     A --> B
@@ -79,9 +80,10 @@ graph TD
 #### Presentation Layer
 
 - **Purpose**: User interface for prediction exploration
-- **Framework**: Streamlit for rapid development and deployment
--- **Features**: Band/model selection, prediction display, accuracy trends
-- **Data**: Direct Supabase queries for real-time data
+- **Framework**: Website-first architecture, with a monorepo frontend app as the target public surface
+- **Features**: Band/model selection, prediction display, historical explorer, and accuracy trends
+- **Data**: Server-side Supabase reads are the preferred target architecture for the website
+- **Current State**: The existing Streamlit app remains available as a legacy transition surface
 
 #### Orchestration Layer
 
@@ -381,12 +383,12 @@ jobs:
         run: python scripts/notify.py --error
 ```
 
-#### Streamlit Deployment
+#### Website Deployment
 
-- **Platform**: Streamlit Community Cloud or Railway
-- **Configuration**: Environment variables for Supabase connection
-- **Scaling**: Auto-scaling based on usage (personal use = minimal)
-- **Monitoring**: Built-in Streamlit metrics and error reporting
+- **Platform**: Vercel is the target production host for the website app
+- **Configuration**: Environment variables for Supabase connection and frontend runtime config
+- **Scaling**: Managed hosting with preview deploys and production rollouts
+- **Monitoring**: Platform logging plus application-level health checks
 
 ### Development Environment
 
@@ -402,7 +404,7 @@ jobs:
 - **Testing**: Automated test execution on pull requests
 - **Linting**: Code quality checks with ruff and black
 - **Security**: Dependency vulnerability scanning
-- **Deployment**: Automatic deployment on main branch updates
+- **Deployment**: Automatic website preview and production deployment on branch updates
 
 ---
 
@@ -412,7 +414,7 @@ jobs:
 
 - **Data Collection**: Complete within 60 minutes for all bands
 - **Prediction Generation**: Complete within 30 minutes per band
-- **Web Interface**: Page loads under 3 seconds
+- **Website**: Page loads under 3 seconds
 - **Database Queries**: Sub-second response for prediction retrieval
 
 ### Scalability Considerations
