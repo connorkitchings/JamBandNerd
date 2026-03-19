@@ -22,13 +22,17 @@ Stabilize the accumulated website-first work, tighten pre-merge consistency, and
 - `npm run test:web:smoke:list`
 - `gh pr list --head streamlined --base main --json number,title,state,url`
 - `git diff --stat`
+- `git add .`
+- `git commit -m "Stabilize website baseline and deployment workflow"`
+- `git push origin streamlined`
+- `gh pr create --base main --head streamlined --title "Stabilize website baseline and deployment workflow" ...`
 
 ## Files Changed Or Artifacts Produced
 
 - Polished stale deployment/branch wording now that `main` is the production branch.
 - Upgraded `/predictions` from stale route-shell copy to a fuller latest-board page with consistent route CTAs and metadata framing.
 - Expanded smoke coverage to include the predictions and about routes.
-- Prepared the accumulated website baseline for commit/push/PR packaging into `main`.
+- Committed the accumulated website baseline on `streamlined` and opened the merge PR into `main`.
 
 ## Validation Status
 
@@ -36,7 +40,9 @@ Stabilize the accumulated website-first work, tighten pre-merge consistency, and
 - `npm run build:web`: passed
 - `npm run test:web:smoke:list`: passed
 - PR presence check (`streamlined` -> `main`): no existing PR before packaging
+- Commit created: `76831c8` (`Stabilize website baseline and deployment workflow`)
+- PR opened: `#6` (`streamlined` -> `main`)
 
 ## Next Step
 
-Commit the accumulated website work on `streamlined`, push it, and open the PR into `main`.
+Review and merge PR `#6`, then connect the repo to Vercel with `apps/web` as the root directory and the documented Supabase env vars.
