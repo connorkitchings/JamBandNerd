@@ -28,3 +28,4 @@ This file stores persistent lessons and operating patterns that should survive a
 - For `uv` projects, audit the exported lockfile with `uv export --no-emit-project` plus `pip-audit`; `uvx pip-audit` on its own audits the tool environment, not the repo dependency set.
 - In typed Next.js apps using Supabase JS, dynamic `.select()` column strings often confuse the generated parser types; prefer `select("*")` plus explicit record narrowing when the column names are runtime-driven.
 - When integrating Google Stitch exports into the Next.js app, treat Stitch as visual input only: convert exports into typed components, keep data fetching server-side, and replace placeholder bands/models/routes with real repo-supported values before shipping.
+- For npm workspace smoke checks, do not rely on `npm run <script> -- --list` forwarding through multiple script layers; add an explicit `:list` script so CI and local verification use the same command path.
