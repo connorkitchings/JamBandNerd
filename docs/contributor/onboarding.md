@@ -31,12 +31,13 @@ The project follows a modular development approach. Each major component (data c
 
 ### Key Directories
 
+- `apps/web/`: The primary website application and default frontend target.
 - `src/jambandnerd/`: The main source code for the project.
   - `data_collection/`: Band-specific data collectors.
   - `db/`: Database connection and operations.
   - `models/`: Prediction models and accuracy calculations.
   - `transformations/`: Data transformation and feature engineering.
-  - `web/`: The legacy Streamlit interface that remains in the repo during the website migration.
+  - `web/`: The legacy Streamlit fallback that remains in the repo during cutover.
 - `scripts/`: Standalone scripts for running the data pipelines.
 - `docs/`: Project documentation.
 - `tests/`: Unit and integration tests.
@@ -62,6 +63,13 @@ uv run pytest
     uv run ruff check src tests scripts
     uv run pytest
     ```
+
+For website work, also run:
+
+```bash
+npm run lint:web
+npm run build:web
+```
 
 6. **Commit your changes**: Commit your changes from a feature branch with a clear conventional commit message.
 7. **Push your changes and open a pull request**: Push your changes to your fork and open a pull request against the main repository.

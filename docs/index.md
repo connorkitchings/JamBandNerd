@@ -19,7 +19,8 @@ This documentation is organized into audience-focused sections:
 - **[Daily Pipeline](operations/github_actions.md)**: GitHub Actions workflow and monitoring notes.
 - **[Pipeline Optimization](operations/pipeline_optimization.md)**: Consolidation strategy and performance tips.
 - **[Website Delivery Strategy](operations/website_delivery.md)**: Website-first architecture, deployment target, and migration path.
-- **[Legacy Streamlit Interface](operations/streamlit_deploy.md)**: Temporary local validation surface during the website migration.
+- **[Mobile Verification](operations/mobile_verification.md)**: Real-device and responsive checks for the website.
+- **[Legacy Streamlit Interface](operations/streamlit_deploy.md)**: Internal fallback-only guidance during cutover.
 - **[TourWrangler Fallback](operations/tourwrangler_fallback.md)**: Backup ingestion runbook for WSP.
 
 ### 📚 Reference Library

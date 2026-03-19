@@ -1,11 +1,12 @@
 # Legacy Streamlit Interface Guide
 
-This guide covers the legacy Streamlit interface that remains in the repo as a temporary
-transition surface. It is no longer the target public deployment path for JamBandNerd.
+This guide covers the legacy Streamlit interface that remains in the repo as a temporary internal
+fallback. It is not the primary local workflow and it is no longer part of the recommended public
+deployment path for JamBandNerd.
 
 For the current product direction, see [Website Delivery Strategy](website_delivery.md).
 
-## Local development
+## Legacy fallback only
 
 ```bash
 uv venv --python=3.12
@@ -14,7 +15,7 @@ uv pip install .
 streamlit run src/jambandnerd/web/app.py
 ```
 
-The Streamlit app supports the full JamBandNerd catalog: Goose, Eggy, Phish, Widespread Panic, Billy Strings, and Umphrey's McGee. Use the band selector in the sidebar (or `?band=` query parameter) to pivot between them.
+Use this only when you need to compare legacy behavior against the website during cutover. The default frontend workflow lives in `apps/web`.
 
 For local secrets, create `.streamlit/secrets.toml`:
 
@@ -26,10 +27,9 @@ PHISH_API_KEY = "optional"
 
 ## Legacy Status
 
-- The public product target is now a full website.
-- The Streamlit app remains useful for local validation and feature reference during migration.
-- New frontend product work should target the website plan unless a Streamlit change is needed to
-  verify behavior before cutover.
+- The public product surface is the website.
+- The Streamlit app remains useful only for temporary fallback validation.
+- New frontend product work should target `apps/web` unless a legacy validation gap requires a short-lived Streamlit change.
 
 ## Historical Streamlit Cloud Notes
 
@@ -41,7 +41,7 @@ PHISH_API_KEY = "optional"
    - `SUPABASE_KEY`
    - `PHISH_API_KEY` (only if needed)
 3. (Optional) Keep a `requirements.txt` for broad compatibility if the resolver struggles with your `pyproject.toml`.
-4. Deploy. Cloud logs are available under the app’s Logs tab.
+4. Deploy only if you explicitly need the historical fallback path. Cloud logs are available under the app’s Logs tab.
 
 Important: GitHub Actions secrets do not automatically become runtime secrets in Streamlit Cloud.
 Add runtime secrets in the Streamlit app’s Secrets panel. The app prefers `st.secrets` and falls
@@ -95,6 +95,6 @@ You can add an `APP_PASSWORD` secret to require a simple password gate. See `app
 - Logs: Use the app’s Logs page for errors and tracebacks.
 - Path prefix/proxy: If hosting behind a custom proxy, set `baseUrlPath` in `.streamlit/config.toml` and adjust your reverse proxy accordingly.
 
-## CI/CD behavior
+## Historical CI/CD behavior
 
 Streamlit Cloud redeploys automatically on pushes to the configured branch. For reproducibility, pin key dependencies in `pyproject.toml` or `requirements.txt` as needed.

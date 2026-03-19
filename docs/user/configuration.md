@@ -17,24 +17,23 @@ To add a new band, you need to create a new data collector and integrate it into
 
 ### 2. Presentation Layer
 
-The long-term public surface is a website, not Streamlit. Today, the only repo-tracked UI configuration still lives in the legacy Streamlit app at `src/jambandnerd/web/app.py`. Update it only when you need interim parity before website cutover.
+The public surface is now the website app in `apps/web`. Add new bands to the website config in `apps/web/src/lib/config.ts`. Touch the legacy Streamlit app only if a temporary fallback needs to stay aligned during cutover.
 
-```python
+```ts
 BAND_CONFIG = {
-    "goose": {
-        "display_name": "Goose",
-        "shows_table": "goose_shows_raw",
-    },
-    "phish": {
-        "display_name": "Phish",
-        "shows_table": "phish_shows_raw",
-    },
-    # Add your new band here
-    "new_band": {
-        "display_name": "New Band",
-        "shows_table": "new_band_shows_raw",
-    },
-}
+  goose: {
+    displayName: "Goose",
+    showsTable: "goose_shows_raw",
+  },
+  phish: {
+    displayName: "Phish",
+    showsTable: "phish_shows_raw",
+  },
+  new_band: {
+    displayName: "New Band",
+    showsTable: "new_band_shows_raw",
+  },
+} as const;
 ```
 
 ## Model Configuration
@@ -48,25 +47,23 @@ Adding a new model follows a similar pattern.
 
 ### 2. Presentation Layer
 
-The long-term public surface is a website, not Streamlit. Today, the only repo-tracked UI configuration still lives in the legacy Streamlit app at `src/jambandnerd/web/app.py`. Update it only when you need interim parity before website cutover.
+The public surface is now the website app in `apps/web`. Add new models to the website config in `apps/web/src/lib/config.ts`. Touch the legacy Streamlit app only if a temporary fallback needs to stay aligned during cutover.
 
-```python
+```ts
 MODEL_CONFIG = {
-    "notebook": {
-        # ...
-    },
-    "ckplus": {
-        # ...
-    },
-    # Add your new model here
-    "new_model": {
-        "display_name": "New Model",
-        "explanation": "A brief explanation of how the new model works.",
-        "columns": {
-            # ... specify the columns to display for your model
-        },
-    },
-}
+  notebook: {
+    displayName: "Notebook",
+    explanation: "Existing notebook model explanation.",
+  },
+  ckplus: {
+    displayName: "CK+",
+    explanation: "Existing CK+ model explanation.",
+  },
+  new_model: {
+    displayName: "New Model",
+    explanation: "A brief explanation of how the new model works.",
+  },
+} as const;
 ```
 
 ## Model Parameter Tuning

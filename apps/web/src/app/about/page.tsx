@@ -8,15 +8,15 @@ export default function AboutPage() {
           <p>
             JamBandNerd collects jam band setlists, transforms them in memory, and stores
             predictions plus historical accuracy in Supabase. GitHub Actions keeps the pipeline
-            fresh, while this website becomes the long-term public delivery surface.
+            fresh, while this website is now the primary public delivery surface.
           </p>
           <p>
             The current website foundation already mirrors the core legacy read paths: latest
             predictions, predictions by date, per-show accuracy, and last-show setlists.
           </p>
           <p>
-            The next phase is parity work: richer layout treatment, better comparison UX, explorer
-            polish, and full replacement of the Streamlit product surface.
+            The next phase is preview verification, merge stabilization, and eventual removal of
+            the legacy Streamlit fallback once the website operations path is fully locked in.
           </p>
         </div>
       </SectionCard>

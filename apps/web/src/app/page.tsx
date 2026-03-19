@@ -7,6 +7,11 @@ import { DataState } from "@/components/data-state";
 import { PredictionTable } from "@/components/prediction-table";
 import { BAND_CONFIG, MODEL_CONFIG } from "@/lib/config";
 import { getLatestPredictions, getRecentAccuracy, getShowDetailsByDate } from "@/lib/data";
+import {
+  buildLocationLabel,
+  formatDateLabel,
+  formatTimestampLabel,
+} from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -16,48 +21,6 @@ type Props = {
     model?: string;
   }>;
 };
-
-function formatDateLabel(value: string | null) {
-  if (!value) {
-    return "Date unavailable";
-  }
-
-  const parsed = new Date(`${value}T12:00:00Z`);
-  if (Number.isNaN(parsed.getTime())) {
-    return value;
-  }
-
-  return new Intl.DateTimeFormat("en-US", {
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "UTC",
-  }).format(parsed);
-}
-
-function formatTimestampLabel(value: string | null) {
-  if (!value) {
-    return "No timestamp";
-  }
-
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) {
-    return value;
-  }
-
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    timeZoneName: "short",
-  }).format(parsed);
-}
-
-function buildLocationLabel(parts: Array<string | null>) {
-  const filtered = parts.filter((part): part is string => Boolean(part));
-  return filtered.join(", ");
-}
 
 function getFallbackConfidence(predictionState: Awaited<ReturnType<typeof getLatestPredictions>>) {
   if (predictionState.status !== "ready") {

@@ -1,0 +1,42 @@
+# 2026-03-19 Session Log 08
+
+## Goal
+
+Stabilize the accumulated website-first work, tighten pre-merge consistency, and package the current `streamlined` branch into a reviewable PR for `main`.
+
+## Constraints
+
+- Keep working locally on `streamlined`, not `main`.
+- Prefer low-risk polish over new feature expansion.
+- Use existing website/server-side data paths; no schema or API changes.
+- Keep the Streamlit fallback in place while preparing the website merge.
+
+## Commands Run
+
+- `git status --short`
+- `git branch --show-current && git branch --list && git symbolic-ref refs/remotes/origin/HEAD`
+- `sed -n ...` on current route files, docs, workflows, and session logs
+- `rg -n ...` for stale branch/deployment wording
+- `npm run lint:web`
+- `npm run build:web`
+- `npm run test:web:smoke:list`
+- `gh pr list --head streamlined --base main --json number,title,state,url`
+- `git diff --stat`
+
+## Files Changed Or Artifacts Produced
+
+- Polished stale deployment/branch wording now that `main` is the production branch.
+- Upgraded `/predictions` from stale route-shell copy to a fuller latest-board page with consistent route CTAs and metadata framing.
+- Expanded smoke coverage to include the predictions and about routes.
+- Prepared the accumulated website baseline for commit/push/PR packaging into `main`.
+
+## Validation Status
+
+- `npm run lint:web`: passed
+- `npm run build:web`: passed
+- `npm run test:web:smoke:list`: passed
+- PR presence check (`streamlined` -> `main`): no existing PR before packaging
+
+## Next Step
+
+Commit the accumulated website work on `streamlined`, push it, and open the PR into `main`.

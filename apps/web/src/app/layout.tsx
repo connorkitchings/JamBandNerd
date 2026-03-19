@@ -33,7 +33,9 @@ export default function RootLayout({
       >
         <div className="min-h-screen">
           <SiteHeader />
-          <main className="w-full px-6 pb-24 pt-24 md:px-8 lg:px-10">{children}</main>
+          <main className="safe-bottom-content w-full px-6 pt-24 md:px-8 lg:px-10">
+            {children}
+          </main>
           <MobileBottomNav />
         </div>
       </body>

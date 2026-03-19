@@ -74,9 +74,9 @@ uv run predict-billy-ckplus -- --date 2025-10-24
 
 For detailed usage, please refer to the full documentation.
 
-### Website Direction
+### Website Surface
 
-JamBandNerd is now planned as a full website rather than a Streamlit deployment. The target architecture is a monorepo website application with server-side reads from Supabase and production hosting on Vercel.
+JamBandNerd now ships a website-first product surface in `apps/web`. The target architecture is a monorepo website application with server-side reads from Supabase and production hosting on Vercel.
 
 The target website experience includes:
 
@@ -87,21 +87,19 @@ The target website experience includes:
 - **Accuracy visualization**: Historical performance charts with configurable K values (K=10/25/50; selected K highlighted).
 - **Show details**: Prominent Next Show header with venue, plus model and prediction timestamp.
 
-The website foundation now lives in `apps/web` and can be started locally with:
+The primary local UI workflow is:
 
 ```bash
 npm install
+cp apps/web/.env.local.example apps/web/.env.local
 npm run dev:web
+npm run lint:web
+npm run build:web
 ```
 
-### Legacy Streamlit Interface
+The legacy Streamlit app remains in the repo only as an internal fallback during cutover. Its local run instructions now live in `docs/operations/streamlit_deploy.md` rather than the primary README path.
 
-The existing Streamlit app remains in the repo as a transition surface for local validation while the website is being built.
-
-```bash
-# Launch the legacy Streamlit interface locally
-uv run streamlit run src/jambandnerd/web/app.py
-```
+The website delivery path now uses Vercel’s native GitHub integration model. Treat `main` as the production branch and use preview deployments for feature branches and pull requests.
 
 ### Development
 

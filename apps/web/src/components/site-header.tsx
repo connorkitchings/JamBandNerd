@@ -1,30 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
-const links = [
-  {
-    href: "/",
-    label: "Predictions",
-    matches: ["/", "/predictions"],
-  },
-  {
-    href: "/performance",
-    label: "Performance",
-    matches: ["/performance"],
-  },
-  {
-    href: "/explorer",
-    label: "Analysis",
-    matches: ["/explorer", "/compare", "/last-show"],
-  },
-  {
-    href: "/about",
-    label: "About",
-    matches: ["/about"],
-  },
-];
+import { DESKTOP_NAV_ITEMS, isActivePath, isDetailPath } from "@/lib/navigation";
 
 function SearchIcon() {
   return (
@@ -50,22 +29,71 @@ function UserIcon() {
   );
 }
 
+function BackIcon() {
+  return (
+    <svg aria-hidden="true" className="size-5" fill="none" viewBox="0 0 24 24">
+      <path
+        d="M15 5L8 12L15 19"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.75"
+      />
+    </svg>
+  );
+}
+
 export function SiteHeader() {
   const pathname = usePathname();
+  const router = useRouter();
+  const showMobileBackButton = isDetailPath(pathname);
+
+  function handleBack() {
+    if (window.history.length > 1) {
+      router.back();
+      return;
+    }
+
+    router.push("/");
+  }
 
   return (
-    <nav className="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-background/95 px-6 py-4 backdrop-blur">
-      <div className="flex items-center justify-between gap-4">
+    <nav
+      aria-label="Primary navigation"
+      className="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-background/95 px-6 py-4 backdrop-blur"
+    >
+      <div className="relative flex items-center justify-between gap-4">
+        <div className="flex w-12 items-center md:w-auto">
+          {showMobileBackButton ? (
+            <button
+              aria-label="Go back"
+              className="flex size-10 items-center justify-center rounded-full text-on-background transition-colors hover:text-primary md:hidden"
+              onClick={handleBack}
+              type="button"
+            >
+              <BackIcon />
+            </button>
+          ) : (
+            <div className="size-10 md:hidden" />
+          )}
+          <Link
+            href="/"
+            className="hidden font-headline text-2xl font-bold tracking-[-0.08em] text-on-background md:block"
+          >
+            JamBandNerd
+          </Link>
+        </div>
+
         <Link
           href="/"
-          className="font-headline text-2xl font-bold tracking-[-0.08em] text-on-background"
+          className="absolute left-1/2 -translate-x-1/2 font-headline text-2xl font-bold tracking-[-0.08em] text-on-background md:hidden"
         >
           JamBandNerd
         </Link>
 
         <div className="hidden items-center gap-8 md:flex">
-          {links.map((link) => {
-            const isActive = link.matches.includes(pathname);
+          {DESKTOP_NAV_ITEMS.map((link) => {
+            const isActive = isActivePath(pathname, link.matches);
             return (
               <Link
                 key={link.href}
@@ -82,10 +110,10 @@ export function SiteHeader() {
           })}
         </div>
 
-        <div className="flex items-center gap-4 text-on-background">
+        <div className="flex w-12 items-center justify-end text-on-background md:w-auto md:gap-4">
           <button
             aria-label="Search"
-            className="text-on-background/60 transition-colors hover:text-primary"
+            className="hidden text-on-background/60 transition-colors hover:text-primary md:inline-flex"
             type="button"
           >
             <SearchIcon />

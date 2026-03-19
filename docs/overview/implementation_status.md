@@ -10,7 +10,7 @@ JamBandNerd has a production-ready data platform and a website migration in prog
 - **Pipeline status**: stable and production-capable
 - **Prediction status**: stable across supported models and bands
 - **Automation status**: daily GitHub Actions workflows in place
-- **Frontend status**: legacy Streamlit UI exists today; website is the new target product surface
+- **Frontend status**: `apps/web` is the default product surface; legacy Streamlit remains only as a temporary fallback
 
 ## Implemented Platform Components
 
@@ -42,15 +42,16 @@ JamBandNerd has a production-ready data platform and a website migration in prog
 
 - Active documentation now treats the website as the destination architecture
 - Streamlit is no longer the planned public deployment target
-- The next implementation milestone is a monorepo website app with server-side Supabase reads
+- `apps/web` is live as a Next.js website app with server-side Supabase reads
+- Homepage, explorer, compare, performance, and last-show routes now exist as real website surfaces
+- Remaining website work is primarily deployment hardening, hosted verification, and final cutover from legacy Streamlit
 
 ## Remaining Major Work
 
 ### Website Delivery
 
-- Scaffold the website app in this repository
-- Rebuild current Streamlit capabilities on the website
-- Add deployment workflow for the website target
+- Continue deepening route parity and richer analysis views in `apps/web`
+- Add Vercel project setup, env templates, and website verification checks
 - Cut over the public product surface away from Streamlit
 
 ### Optional Future Expansion
@@ -61,5 +62,5 @@ JamBandNerd has a production-ready data platform and a website migration in prog
 
 ## Notes
 
-- The existing Streamlit code is not deprecated for local validation yet, but it is now a transition surface rather than the long-term product.
+- The existing Streamlit code remains only as a temporary fallback for local validation while cutover finishes.
 - Pipeline and schema stability remain the priority during the frontend migration.

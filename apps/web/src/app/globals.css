@@ -51,6 +51,10 @@ a {
   text-decoration: none;
 }
 
+button {
+  cursor: pointer;
+}
+
 ::selection {
   background: rgba(176, 198, 255, 0.35);
   color: #002d6e;
@@ -59,4 +63,22 @@ a {
 .glass-card {
   background: rgba(51, 53, 56, 0.7);
   backdrop-filter: blur(20px);
+}
+
+.safe-bottom-content {
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 6rem);
+}
+
+.safe-bottom-nav {
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 0.75rem);
+}
+
+@media (min-width: 1024px) {
+  .safe-bottom-content {
+    padding-bottom: 3rem;
+  }
+
+  .safe-bottom-nav {
+    padding-bottom: 0;
+  }
 }

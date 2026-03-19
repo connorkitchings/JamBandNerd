@@ -407,7 +407,7 @@ jobs:
         run: |
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Next Steps:" >> $GITHUB_STEP_SUMMARY
-          echo "- Visit the [JamBandNerd web app](https://jambandnerd.streamlit.app/) to view updated predictions." >> $GITHUB_STEP_SUMMARY
+          echo "- Open the JamBandNerd website deployment to review updated predictions." >> $GITHUB_STEP_SUMMARY
           echo "- Check the Supabase dashboard for data validation." >> $GITHUB_STEP_SUMMARY
           echo "- Review any warnings above and re-run collection if needed." >> $GITHUB_STEP_SUMMARY
 

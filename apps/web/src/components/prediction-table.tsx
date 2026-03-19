@@ -1,4 +1,9 @@
 import type { PredictionRow } from "@/lib/data";
+import {
+  ResponsiveTableFrame,
+  TABLE_CELL_CLASS,
+  TABLE_HEAD_CLASS,
+} from "@/components/responsive-table";
 
 type Props = {
   rows: PredictionRow[];
@@ -67,26 +72,25 @@ export function PredictionTable({ rows, mode }: Props) {
   );
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[880px] border-collapse text-left">
+    <ResponsiveTableFrame minWidthClassName="min-w-[880px]" testId="prediction-table">
         <thead>
           <tr>
-            <th className="px-4 py-4 font-label text-[10px] font-medium uppercase tracking-[0.18rem] text-on-surface-variant">
+            <th className={`${TABLE_HEAD_CLASS} whitespace-nowrap`}>
               Rank
             </th>
-            <th className="px-4 py-4 font-label text-[10px] font-medium uppercase tracking-[0.18rem] text-on-surface-variant">
+            <th className={TABLE_HEAD_CLASS}>
               Song Title
             </th>
-            <th className="px-4 py-4 font-label text-[10px] font-medium uppercase tracking-[0.18rem] text-on-surface-variant">
+            <th className={`${TABLE_HEAD_CLASS} whitespace-nowrap`}>
               Last Played
             </th>
-            <th className="px-4 py-4 font-label text-[10px] font-medium uppercase tracking-[0.18rem] text-on-surface-variant">
+            <th className={`${TABLE_HEAD_CLASS} whitespace-nowrap`}>
               Gap
             </th>
-            <th className="px-4 py-4 font-label text-[10px] font-medium uppercase tracking-[0.18rem] text-on-surface-variant">
+            <th className={`${TABLE_HEAD_CLASS} whitespace-nowrap`}>
               Confidence
             </th>
-            <th className="px-4 py-4 font-label text-[10px] font-medium uppercase tracking-[0.18rem] text-on-surface-variant">
+            <th className={`${TABLE_HEAD_CLASS} whitespace-nowrap`}>
               Type
             </th>
           </tr>
@@ -103,10 +107,10 @@ export function PredictionTable({ rows, mode }: Props) {
                   index % 2 === 1 ? "bg-surface-container-low/30" : ""
                 }`}
               >
-                <td className="px-4 py-5 font-headline text-lg font-bold text-primary">
+                <td className={`${TABLE_CELL_CLASS} whitespace-nowrap font-headline text-lg font-bold text-primary`}>
                   {String(row.rank).padStart(2, "0")}
                 </td>
-                <td className="px-4 py-5">
+                <td className={TABLE_CELL_CLASS}>
                   <div className="flex flex-col">
                     <span className="font-headline font-bold text-on-surface">{row.songName}</span>
                     <span className="font-label text-[10px] uppercase text-on-surface-variant">
@@ -114,13 +118,13 @@ export function PredictionTable({ rows, mode }: Props) {
                     </span>
                   </div>
                 </td>
-                <td className="px-4 py-5 text-sm text-on-surface-variant">
+                <td className={`${TABLE_CELL_CLASS} whitespace-nowrap text-sm text-on-surface-variant`}>
                   {row.lastPlayed ?? "Unknown"}
                 </td>
-                <td className="px-4 py-5 font-headline text-sm">
+                <td className={`${TABLE_CELL_CLASS} whitespace-nowrap font-headline text-sm`}>
                   {renderNumber(row.currentGap)} {row.currentGap === 1 ? "Show" : "Shows"}
                 </td>
-                <td className="px-4 py-5">
+                <td className={`${TABLE_CELL_CLASS} whitespace-nowrap`}>
                   <div className="h-1.5 w-full max-w-[100px] rounded-full bg-surface-container-highest">
                     <div
                       className={`h-full rounded-full ${
@@ -137,7 +141,7 @@ export function PredictionTable({ rows, mode }: Props) {
                     {signalPercent.toFixed(1)}%
                   </span>
                 </td>
-                <td className="px-4 py-5">
+                <td className={`${TABLE_CELL_CLASS} whitespace-nowrap`}>
                   <span
                     className={`px-2 py-0.5 font-label text-[9px] uppercase ${chip.className} border`}
                   >
@@ -148,7 +152,6 @@ export function PredictionTable({ rows, mode }: Props) {
             );
           })}
         </tbody>
-      </table>
-    </div>
+    </ResponsiveTableFrame>
   );
 }

@@ -5,29 +5,25 @@
 ## 1. Introduction
 
 JamBandNerd now has a stable pipeline foundation, mature prediction models, and a legacy Streamlit
-interface that proves out the product shape. The next major goal is to replace Streamlit with a
-full website that becomes the primary public product surface.
+interface that proved out the product shape. A working website now exists in `apps/web`, and the
+current goal is to make it the unambiguous primary product surface before final Streamlit removal.
 
 This roadmap shifts priorities accordingly:
 
-1. **Documentation Realignment:** Make the repo’s active docs website-first and internally consistent.
-2. **Website Foundation:** Add the new website app and core deployment workflow.
-3. **Parity Migration:** Rebuild the current user-facing prediction experience on the website.
-4. **Cutover and Operations:** Retire Streamlit as the primary surface and harden website operations.
+1. **Website Parity:** Keep improving the current website routes and shared shell.
+2. **Soft Cutover Prep:** Make the website the default path in docs, onboarding, and workflow messaging.
+3. **Deployment Hardening:** Add the production website deployment workflow and verification path.
+4. **Final Legacy Removal:** Retire Streamlit from the repo once deployment and confidence are in place.
 
 ## 2. Prioritization Strategy
 
-The highest priority is to complete **Phase 1: Documentation Realignment**. The repo still contains
-many active references that describe Streamlit as the target product, and those need to be fixed
-before implementation work can proceed cleanly.
-
-After the docs pass, focus on **Phase 2: Website Foundation** and **Phase 3: Parity Migration**.
-The existing pipeline, Supabase schema, and model behavior should stay stable unless the website
-build exposes a concrete data-access gap.
+Phases 1 through 3 are now substantially complete in the repo. The highest priority is **Phase 4:
+Cutover and Operations**, starting with a soft cutover that makes the website the default surface
+everywhere users and contributors look first.
 
 ---
 
-## Phase 1: Documentation Realignment (Current Priority)
+## Phase 1: Documentation Realignment (Completed)
 
 ### 1.1. Canonical Docs Update
 
@@ -49,7 +45,7 @@ build exposes a concrete data-access gap.
 
 ---
 
-## Phase 2: Website Foundation
+## Phase 2: Website Foundation (Completed)
 
 ### 2.1. Monorepo Frontend Setup
 
@@ -71,7 +67,7 @@ build exposes a concrete data-access gap.
 
 ---
 
-## Phase 3: Parity Migration
+## Phase 3: Parity Migration (Largely Complete)
 
 ### 3.1. Rebuild the Current Product Surface
 
@@ -100,7 +96,7 @@ build exposes a concrete data-access gap.
 
 ---
 
-## Phase 4: Cutover and Operations
+## Phase 4: Cutover and Operations (Current Priority)
 
 ### 4.1. Website Cutover
 
@@ -108,14 +104,15 @@ build exposes a concrete data-access gap.
 - **Implementation:**
   1. Validate parity against the existing Streamlit feature set.
   2. Update docs and contributor guidance to point new feature work at the website app only.
-  3. Remove Streamlit deployment from the primary operations path.
+3. Remove Streamlit deployment from the primary operations path.
 - **Priority:** **Medium**.
 
 ### 4.2. Ongoing Operations
 
 - **Goal:** Operate the website and pipeline as a coherent production system.
 - **Implementation:**
-  1. Add website observability and deployment health checks.
-  2. Keep pipeline failure alerting and data freshness monitoring in place.
-  3. Revisit public API work only after the website launch creates real external-consumer demand.
+  1. Wire the website to Vercel’s native GitHub integration with `apps/web` as the root directory.
+  2. Keep website verification checks in GitHub Actions (`lint`, `build`, smoke-suite listing).
+  3. Keep pipeline failure alerting and data freshness monitoring in place.
+  4. Revisit public API work only after the website launch creates real external-consumer demand.
 - **Priority:** **Medium**.

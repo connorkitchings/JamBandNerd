@@ -1,22 +1,20 @@
-# Mobile Verification Checklist (Legacy Streamlit)
+# Mobile Verification Checklist
 
-This checklist helps verify the legacy Streamlit UI on real phones/tablets after UI or data changes.
-It is useful during the website migration, but it is not the long-term product verification path.
+This checklist verifies the website in `apps/web` on real phones and tablets. Use the legacy Streamlit interface only if you are explicitly validating a fallback behavior covered in `streamlit_deploy.md`.
 
-## 1) Run the app for mobile access
+## 1) Run the website for mobile access
 
-The repo default binds Streamlit to `localhost` (see `.streamlit/config.toml`). For real-device
-testing, bind to all interfaces and connect via your machine’s LAN IP.
+The default local verification path is the Next.js website. For real-device testing, bind the dev server to all interfaces and connect via your machine’s LAN IP.
 
 ```bash
-# Bind to 0.0.0.0 so your phone can reach it on the local network
-uv run streamlit run src/jambandnerd/web/app.py --server.address 0.0.0.0 --server.port 8501
+npm install
+npm run dev:web -- --hostname 0.0.0.0 --port 3000
 ```
 
 Then open on your phone:
 
 ```text
-http://<your-lan-ip>:8501
+http://<your-lan-ip>:3000
 ```
 
 Notes:
@@ -26,33 +24,30 @@ Notes:
 ## 2) Core flows to verify (phone + tablet)
 
 ### Navigation and state
-- Band selector changes on the first tap (no “double-click” required).
-- Model selector changes persist across tab switches.
-- Query params (if used) reflect current band/model and restore on refresh.
+- Bottom navigation stays visible above the safe area.
+- Active route styling updates correctly as you move between `/`, `/explorer`, `/performance`, `/last-show`, and `/about`.
+- Search params for band/model/date remain shareable and survive refresh.
 
-### Predictions tab
-- Tables are horizontally scrollable (no content cut off).
-- Top-K badges render correctly and remain readable.
-- “Loading” spinners appear during fetches and disappear reliably.
+### Homepage and prediction views
+- Hero copy wraps cleanly on narrow widths.
+- Dense tables remain horizontally scrollable instead of clipping.
+- Filter controls stay tap-friendly and readable.
 
-### Last Show Analysis tab
-- Hero/header section wraps cleanly and doesn’t overflow.
-- Summary cards stack to a single column and remain readable.
-- Setlist rows show the correct badges (Top10/25/50, Debut, Bustout where applicable).
+### Historical Explorer
+- Date rail stays usable on phones and only shows valid prediction dates.
+- Prediction replay and actual setlist remain paired to the same selected date.
+- Summary cards stack without hiding key metadata.
 
-### Historical Explorer tab
-- Date dropdown is responsive and only lists dates with predictions available.
-- “Predicted At” shows a real timestamp (not “N/A”) when metadata exists.
-- For a known historical show, hits highlight correctly vs the actual setlist.
-
-### Performance / Leaderboard tabs
-- Charts are readable at narrow widths (labels/tooltips usable).
-- Tooltips don’t obscure the entire chart area on tap.
+### Performance and last show
+- Metric cards stack cleanly at narrow widths.
+- Last-show detail route shows the mobile back affordance and remains readable.
+- Setlist and prediction replay tables remain usable on touch screens.
 
 ## 3) Performance sanity checks
 
 - First load per band/model can be slower (cache warmup); subsequent interactions should be fast.
-- Switching tabs should not re-fetch large tables repeatedly.
+- Switching routes should not trigger obvious client-side layout flicker.
+- Server-rendered routes should not depend on client hydration for primary content.
 
 ## 4) If you hit a mobile-only bug
 

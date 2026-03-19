@@ -1,0 +1,49 @@
+name: Website Quality
+
+on:
+  pull_request:
+    paths:
+      - "apps/web/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/web-quality.yml"
+  push:
+    branches:
+      - main
+      - streamlined
+    paths:
+      - "apps/web/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/web-quality.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  verify-web:
+    name: Verify Website
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint website
+        run: npm run lint:web
+
+      - name: Build website
+        run: npm run build:web
+
+      - name: Verify smoke suite wiring
+        run: npm run test:web:smoke:list

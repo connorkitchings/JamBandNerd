@@ -3,21 +3,19 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-const items = [
-  { href: "/", label: "Predict", icon: "◈", matches: ["/", "/predictions"] },
-  { href: "/explorer", label: "Explore", icon: "◎", matches: ["/explorer", "/compare"] },
-  { href: "/performance", label: "Stats", icon: "◬", matches: ["/performance"] },
-  { href: "/about", label: "About", icon: "○", matches: ["/about", "/last-show"] },
-];
+import { MOBILE_NAV_ITEMS, isActivePath } from "@/lib/navigation";
 
 export function MobileBottomNav() {
   const pathname = usePathname();
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-background/95 px-2 py-3 backdrop-blur lg:hidden">
+    <nav
+      aria-label="Mobile navigation"
+      className="safe-bottom-nav fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-background/95 px-2 pt-3 backdrop-blur lg:hidden"
+    >
       <div className="flex items-center justify-around">
-        {items.map((item) => {
-          const isActive = item.matches.includes(pathname);
+        {MOBILE_NAV_ITEMS.map((item) => {
+          const isActive = isActivePath(pathname, item.matches);
           return (
             <Link
               key={item.href}
@@ -27,11 +25,11 @@ export function MobileBottomNav() {
               }`}
             >
               <span className="font-headline text-lg leading-none">{item.icon}</span>
-              <span className="font-label">{item.label}</span>
+              <span className="font-label">{item.mobileLabel}</span>
             </Link>
           );
         })}
       </div>
-    </div>
+    </nav>
   );
 }

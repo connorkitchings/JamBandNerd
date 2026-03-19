@@ -5,11 +5,14 @@ __pycache__/
 
 # Environment
 .env
+.env.local
 .venv/
 env/
 venv/
 .secrets
 .venv/
+apps/web/.env.local
+apps/web/.env.*.local
 
 # macOS System Files
 .DS_Store
@@ -39,3 +42,5 @@ tw_test_backups/
 node_modules/
 .next/
 npm-debug.log*
+playwright-report/
+test-results/

@@ -1,4 +1,9 @@
 import type { SetlistSong } from "@/lib/data";
+import {
+  ResponsiveTableFrame,
+  TABLE_CELL_CLASS,
+  TABLE_HEAD_CLASS,
+} from "@/components/responsive-table";
 
 type Props = {
   songs: SetlistSong[];
@@ -6,25 +11,30 @@ type Props = {
 
 export function SetlistTable({ songs }: Props) {
   return (
-    <div className="overflow-x-auto rounded-xl border border-outline-variant/30">
-      <table className="min-w-[520px] divide-y divide-outline-variant/30 text-left text-sm">
+    <ResponsiveTableFrame
+      minWidthClassName="min-w-[520px] divide-y divide-outline-variant/30"
+      testId="setlist-table"
+    >
         <thead className="bg-surface-container-low text-on-surface-variant">
           <tr>
-            <th className="px-4 py-3 font-label text-[10px] font-medium uppercase tracking-[0.18rem]">Set</th>
-            <th className="px-4 py-3 font-label text-[10px] font-medium uppercase tracking-[0.18rem]">Position</th>
-            <th className="px-4 py-3 font-label text-[10px] font-medium uppercase tracking-[0.18rem]">Song</th>
+            <th className={`${TABLE_HEAD_CLASS} whitespace-nowrap`}>Set</th>
+            <th className={`${TABLE_HEAD_CLASS} whitespace-nowrap`}>Position</th>
+            <th className={TABLE_HEAD_CLASS}>Song</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-outline-variant/20 bg-surface-container text-on-surface">
           {songs.map((song, index) => (
             <tr key={`${song.setNumber}-${song.position}-${index}`} className={index % 2 === 1 ? "bg-surface-container-low/40" : ""}>
-              <td className="px-4 py-3">{song.setNumber ?? "—"}</td>
-              <td className="px-4 py-3 text-on-surface-variant">{song.position ?? "—"}</td>
-              <td className="px-4 py-3 font-headline font-medium text-on-surface">{song.songName}</td>
+              <td className={`${TABLE_CELL_CLASS} whitespace-nowrap`}>{song.setNumber ?? "—"}</td>
+              <td className={`${TABLE_CELL_CLASS} whitespace-nowrap text-on-surface-variant`}>
+                {song.position ?? "—"}
+              </td>
+              <td className={`${TABLE_CELL_CLASS} font-headline font-medium text-on-surface`}>
+                {song.songName}
+              </td>
             </tr>
           ))}
         </tbody>
-      </table>
-    </div>
+    </ResponsiveTableFrame>
   );
 }

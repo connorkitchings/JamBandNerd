@@ -28,13 +28,17 @@ The primary and recommended way to run the data pipeline is with the `run_optimi
 
 ## Website Direction
 
-The public product direction is now a full website backed by the existing pipeline and Supabase data model. The planned website will replace Streamlit as the primary user-facing surface.
+The public product surface is now the website in `apps/web`, backed by the existing pipeline and Supabase data model.
 
-Until that migration lands, you can still inspect predictions and accuracy locally with the legacy Streamlit app:
+Primary local website commands:
 
 ```bash
-uv run streamlit run src/jambandnerd/web/app.py
+npm install
+npm run dev:web
+npm run build:web
 ```
+
+The legacy Streamlit app remains available only as an internal fallback during cutover. Its run instructions live in `docs/operations/streamlit_deploy.md`, not in the main pipeline workflow.
 
 ## Advanced Usage: Individual Scripts
 

@@ -576,7 +576,10 @@ export async function getExplorerSnapshot(
     }>;
   }
 
-  const selectedDate = selectedDateInput ?? datesState.dates[0] ?? null;
+  const selectedDate =
+    selectedDateInput && datesState.dates.includes(selectedDateInput)
+      ? selectedDateInput
+      : datesState.dates[0] ?? null;
   if (!selectedDate) {
     return { status: "empty" };
   }

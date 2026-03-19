@@ -1,0 +1,110 @@
+import type { Metadata } from "next";
+
+import { AccuracyTable } from "@/components/accuracy-table";
+import { PredictionTable } from "@/components/prediction-table";
+import { SetlistTable } from "@/components/setlist-table";
+
+export const metadata: Metadata = {
+  title: "JamBandNerd Table Preview",
+  robots: {
+    index: false,
+    follow: false,
+  },
+};
+
+const predictionRows = [
+  {
+    rank: 1,
+    songName: "Arcadia",
+    lastPlayed: "2026-03-01 - Austin",
+    currentGap: 11,
+    playsPastYear: 14,
+    avgGap: 8,
+    gapRatio: 1.4,
+    gapZScore: 1.2,
+    ckplusScore: 2.1,
+    probability: 0.96,
+  },
+  {
+    rank: 2,
+    songName: "Wysteria Lane",
+    lastPlayed: "2026-02-14 - Nashville",
+    currentGap: 24,
+    playsPastYear: 6,
+    avgGap: 10,
+    gapRatio: 2.4,
+    gapZScore: 2.0,
+    ckplusScore: 2.7,
+    probability: null,
+  },
+  {
+    rank: 3,
+    songName: "Slow Ready",
+    lastPlayed: "2026-03-05 - Atlanta",
+    currentGap: 3,
+    playsPastYear: 12,
+    avgGap: 6,
+    gapRatio: 0.5,
+    gapZScore: -0.2,
+    ckplusScore: 1.1,
+    probability: 0.84,
+  },
+];
+
+const accuracyRows = [
+  {
+    showDate: "2026-03-12",
+    venueName: "The Salt Shed",
+    k10Recall: 0.4,
+    k25Recall: 0.72,
+    k50Recall: 0.91,
+  },
+  {
+    showDate: "2026-03-14",
+    venueName: "Red Rocks Amphitheatre",
+    k10Recall: 0.5,
+    k25Recall: 0.76,
+    k50Recall: 0.93,
+  },
+];
+
+const setlistSongs = [
+  { setNumber: 1, position: 1, songName: "Drive" },
+  { setNumber: 1, position: 2, songName: "Tumble" },
+  { setNumber: 2, position: 1, songName: "Echo of a Rose" },
+  { setNumber: 2, position: 2, songName: "Hungersite" },
+];
+
+export default function TablePreviewPage() {
+  return (
+    <div className="mx-auto max-w-6xl space-y-8">
+      <section className="rounded-xl border border-outline-variant/30 bg-surface-container p-6">
+        <p className="font-label text-[10px] uppercase tracking-[0.2rem] text-on-surface-variant">
+          Internal Preview
+        </p>
+        <h1 className="mt-2 font-headline text-3xl font-semibold text-on-surface">
+          Responsive table surfaces
+        </h1>
+        <p className="mt-3 max-w-2xl text-sm leading-6 text-on-surface-variant">
+          This route exists for internal QA and smoke coverage so dense data modules can be checked
+          on mobile without requiring live Supabase data.
+        </p>
+      </section>
+
+      <section className="space-y-4">
+        <h2 className="font-headline text-xl font-semibold text-on-surface">Prediction table</h2>
+        <PredictionTable mode="notebook" rows={predictionRows} />
+      </section>
+
+      <section className="space-y-4">
+        <h2 className="font-headline text-xl font-semibold text-on-surface">Accuracy table</h2>
+        <AccuracyTable rows={accuracyRows} />
+      </section>
+
+      <section className="space-y-4">
+        <h2 className="font-headline text-xl font-semibold text-on-surface">Setlist table</h2>
+        <SetlistTable songs={setlistSongs} />
+      </section>
+    </div>
+  );
+}
