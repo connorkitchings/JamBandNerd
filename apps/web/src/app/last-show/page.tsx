@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { DataState } from "@/components/data-state";
 import { FilterLinks } from "@/components/filter-links";
-import { PredictionTable } from "@/components/prediction-table";
+import { SongBoard } from "@/components/song-board";
 import { SectionCard } from "@/components/section-card";
 import { SetlistTable } from "@/components/setlist-table";
 import { BAND_CONFIG } from "@/lib/config";
@@ -181,7 +181,7 @@ export default async function LastShowPage({ searchParams }: Props) {
                 <p className="mt-2 text-sm text-on-surface">{BAND_CONFIG[state.band].displayName}</p>
               </div>
             </div>
-            <PredictionTable rows={replayRows} mode="notebook" />
+            <SongBoard rows={replayRows} highlightSongs={actualSongs} compact />
           </div>
         ) : (
           <DataState

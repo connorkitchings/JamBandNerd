@@ -1,6 +1,6 @@
 import { DataState } from "@/components/data-state";
 import { FilterLinks } from "@/components/filter-links";
-import { PredictionTable } from "@/components/prediction-table";
+import { SongBoard } from "@/components/song-board";
 import { SectionCard } from "@/components/section-card";
 import { BAND_CONFIG } from "@/lib/config";
 import { getLatestPredictions, getShowDetailsByDate } from "@/lib/data";
@@ -207,10 +207,10 @@ export default async function ComparePage({ searchParams }: Props) {
 
       <div className="grid gap-6 xl:grid-cols-2">
         <SectionCard title="Notebook" eyebrow={notebook.snapshot.referenceDate ?? "No date"}>
-          <PredictionTable rows={notebook.snapshot.predictions} mode="notebook" />
+          <SongBoard rows={notebook.snapshot.predictions} compact />
         </SectionCard>
         <SectionCard title="CK+" eyebrow={ckplus.snapshot.referenceDate ?? "No date"}>
-          <PredictionTable rows={ckplus.snapshot.predictions} mode="ckplus" />
+          <SongBoard rows={ckplus.snapshot.predictions} compact />
         </SectionCard>
       </div>
     </div>

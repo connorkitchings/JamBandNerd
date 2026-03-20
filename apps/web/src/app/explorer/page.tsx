@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { DataState } from "@/components/data-state";
 import { FilterLinks } from "@/components/filter-links";
-import { PredictionTable } from "@/components/prediction-table";
+import { SongBoard } from "@/components/song-board";
 import { SectionCard } from "@/components/section-card";
 import { SetlistTable } from "@/components/setlist-table";
 import { BAND_CONFIG, MODEL_CONFIG } from "@/lib/config";
@@ -158,7 +158,7 @@ export default async function ExplorerPage({ searchParams }: Props) {
               </div>
             </div>
 
-            <PredictionTable rows={predictions} mode={state.model} />
+            <SongBoard rows={predictions} highlightSongs={actualSongs} compact />
           </div>
         </SectionCard>
 

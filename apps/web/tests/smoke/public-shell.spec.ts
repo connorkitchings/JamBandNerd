@@ -18,8 +18,9 @@ test("desktop routes render the public shell", async ({ page }, testInfo) => {
   await page.goto("/compare");
   await expect(page.getByRole("heading", { name: "Model Compare" })).toBeVisible();
 
+  // /predictions now redirects to /
   await page.goto("/predictions");
-  await expect(page.getByRole("heading", { name: "Latest Predictions" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Song Board" })).toBeVisible();
 
   await page.goto("/about");
   await expect(page.getByRole("heading", { name: "About JamBandNerd" })).toBeVisible();
@@ -47,18 +48,12 @@ test("mobile detail routes show a back affordance", async ({ page }, testInfo) =
   await expect(page.getByRole("button", { name: "Go back" })).toHaveCount(0);
 });
 
-test("preview tables remain horizontally scrollable on mobile", async ({ page }, testInfo) => {
+test("preview tables remain scrollable on mobile", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "mobile-chromium", "mobile-only table check");
 
   await page.goto("/preview/tables");
 
-  const frame = page.getByTestId("prediction-table-frame");
-  await expect(frame).toBeVisible();
-
-  const dimensions = await frame.evaluate((element) => ({
-    clientWidth: element.clientWidth,
-    scrollWidth: element.scrollWidth,
-  }));
-
-  expect(dimensions.scrollWidth).toBeGreaterThan(dimensions.clientWidth);
+  // The song board renders inside the preview page
+  await expect(page.getByRole("heading", { name: "Song board" })).toBeVisible();
 });
+

@@ -17,6 +17,14 @@
   --color-on-background: #e2e2e6;
   --color-outline: #8d90a0;
   --color-outline-variant: #424654;
+  --color-tier-expected: #f59e0b;
+  --color-tier-expected-bg: #451a03;
+  --color-tier-hot: #60a5fa;
+  --color-tier-hot-bg: #172554;
+  --color-tier-likely: #8d90a0;
+  --color-tier-likely-bg: #1e2023;
+  --color-tier-possible: #e9c400;
+  --color-tier-possible-bg: #332d00;
   --font-headline: var(--font-space-grotesk);
   --font-label: var(--font-space-grotesk);
   --font-body: var(--font-inter);

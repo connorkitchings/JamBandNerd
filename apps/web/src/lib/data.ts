@@ -6,6 +6,7 @@ import {
   BAND_CONFIG,
   BAND_ID_COLUMNS,
   type BandSlug,
+  type LikelihoodTier,
   type ModelSlug,
   normalizeBand,
   normalizeModel,
@@ -25,6 +26,7 @@ export type PredictionRow = {
   gapZScore: number | null;
   ckplusScore: number | null;
   probability: number | null;
+  tier: LikelihoodTier;
 };
 
 export type PredictionSnapshot = {
@@ -110,24 +112,45 @@ function asRecord(value: unknown): Record<string, unknown> | null {
   return null;
 }
 
+function computeTier(rank: number, probability: number | null): LikelihoodTier {
+  // When a future model supplies real probabilities, use those
+  if (probability !== null) {
+    if (probability >= 0.15) return "expected";
+    if (probability >= 0.08) return "hot";
+    if (probability >= 0.03) return "likely";
+    return "possible";
+  }
+
+  // Rank-based tiers
+  if (rank <= 5) return "expected";
+  if (rank <= 15) return "hot";
+  if (rank <= 30) return "likely";
+  return "possible";
+}
+
 function normalizePredictionRows(rows: JsonPrediction[]): PredictionRow[] {
-  return rows.map((row, index) => ({
-    rank: index + 1,
-    songName: String(row.song_name ?? "Unknown Song"),
-    lastPlayed:
-      typeof row.LTP === "string"
-        ? row.LTP
-        : typeof row.last_played_date === "string"
-          ? row.last_played_date
-          : null,
-    currentGap: parseNumber(row.current_gap),
-    playsPastYear: parseNumber(row.plays_past_year),
-    avgGap: parseNumber(row.avg_gap),
-    gapRatio: parseNumber(row.gap_ratio),
-    gapZScore: parseNumber(row.gap_z_score),
-    ckplusScore: parseNumber(row.ckplus_score),
-    probability: parseNumber(row.probability),
-  }));
+  return rows.map((row, index) => {
+    const rank = index + 1;
+    const probability = parseNumber(row.probability);
+    return {
+      rank,
+      songName: String(row.song_name ?? "Unknown Song"),
+      lastPlayed:
+        typeof row.LTP === "string"
+          ? row.LTP
+          : typeof row.last_played_date === "string"
+            ? row.last_played_date
+            : null,
+      currentGap: parseNumber(row.current_gap),
+      playsPastYear: parseNumber(row.plays_past_year),
+      avgGap: parseNumber(row.avg_gap),
+      gapRatio: parseNumber(row.gap_ratio),
+      gapZScore: parseNumber(row.gap_z_score),
+      ckplusScore: parseNumber(row.ckplus_score),
+      probability,
+      tier: computeTier(rank, probability),
+    };
+  });
 }
 
 function getClientOrState<T>(): RouteState<T> | null {

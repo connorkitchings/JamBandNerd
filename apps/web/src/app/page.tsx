@@ -1,10 +1,11 @@
 import Link from "next/link";
 
 import { DashboardAnalysis } from "@/components/dashboard-analysis";
-import { DashboardHero } from "@/components/dashboard-hero";
 import { DashboardSideNav } from "@/components/dashboard-side-nav";
 import { DataState } from "@/components/data-state";
-import { PredictionTable } from "@/components/prediction-table";
+import { PredictionHero } from "@/components/prediction-hero";
+import { SongBoard } from "@/components/song-board";
+import { SongSearch } from "@/components/song-search";
 import { BAND_CONFIG, MODEL_CONFIG } from "@/lib/config";
 import { getLatestPredictions, getRecentAccuracy, getShowDetailsByDate } from "@/lib/data";
 import {
@@ -21,47 +22,6 @@ type Props = {
     model?: string;
   }>;
 };
-
-function getFallbackConfidence(predictionState: Awaited<ReturnType<typeof getLatestPredictions>>) {
-  if (predictionState.status !== "ready") {
-    return null;
-  }
-
-  const top = predictionState.snapshot.predictions[0];
-  if (!top) {
-    return null;
-  }
-
-  if (top.probability !== null) {
-    return Math.round(Math.max(0, Math.min(1, top.probability)) * 100);
-  }
-
-  if (predictionState.model === "notebook") {
-    return Math.min(99, Math.max(18, (top.playsPastYear ?? top.rank) * 6));
-  }
-
-  return Math.min(99, Math.max(18, Math.round((top.ckplusScore ?? top.gapRatio ?? top.rank) * 18)));
-}
-
-function getConfidenceLabel(value: number | null) {
-  if (value === null) {
-    return "Signal Pending";
-  }
-
-  if (value >= 90) {
-    return "High Fidelity";
-  }
-
-  if (value >= 75) {
-    return "Stable Read";
-  }
-
-  if (value >= 60) {
-    return "Moderate Signal";
-  }
-
-  return "Volatile Read";
-}
 
 export default async function HomePage({ searchParams }: Props) {
   const params = await searchParams;
@@ -94,7 +54,7 @@ export default async function HomePage({ searchParams }: Props) {
       <div className="mx-auto max-w-6xl">
         <DataState
           title="No predictions available"
-          body="The homepage is wired to the live prediction tables, but no latest snapshot was returned for the selected band and model."
+          body="No latest prediction snapshot was found for the selected band and model."
         />
       </div>
     );
@@ -106,15 +66,6 @@ export default async function HomePage({ searchParams }: Props) {
   );
 
   const showDetails = showState.status === "ready" ? showState.show : null;
-  const averageRecall =
-    accuracyState.status === "ready" && accuracyState.rows.length > 0
-      ? Math.round(
-          (accuracyState.rows.reduce((sum, row) => sum + (row.k10Recall ?? 0), 0) /
-            accuracyState.rows.length) *
-            100,
-        )
-      : getFallbackConfidence(predictionState);
-
   const referenceDate = showDetails?.showDate ?? predictionState.snapshot.referenceDate;
   const dateLabel = formatDateLabel(referenceDate);
   const locationLabel = buildLocationLabel([
@@ -125,13 +76,21 @@ export default async function HomePage({ searchParams }: Props) {
   const statusLabel =
     referenceDate && referenceDate >= today ? "Pre-Show" : "Latest Snapshot";
   const snapshotLabel = formatTimestampLabel(predictionState.snapshot.predictedAt);
-  const topKLabel = `Top ${Math.min(10, predictionState.snapshot.predictions.length || 10)}`;
+  const accuracyRows = accuracyState.status === "ready" ? accuracyState.rows : [];
+
+  const searchSongs = predictionState.snapshot.predictions.map((row) => ({
+    rank: row.rank,
+    songName: row.songName,
+    tier: row.tier,
+    currentGap: row.currentGap,
+    lastPlayed: row.lastPlayed,
+  }));
 
   return (
     <div className="w-full pb-6 lg:pl-64">
       <DashboardSideNav band={predictionState.band} model={predictionState.model} />
 
-      <DashboardHero
+      <PredictionHero
         venueName={
           showDetails?.venueName ?? `${BAND_CONFIG[predictionState.band].displayName} Snapshot`
         }
@@ -139,21 +98,22 @@ export default async function HomePage({ searchParams }: Props) {
         locationLabel={locationLabel}
         statusLabel={statusLabel}
         modelLabel={MODEL_CONFIG[predictionState.model].displayName}
-        topKLabel={topKLabel}
+        bandLabel={BAND_CONFIG[predictionState.band].displayName}
         snapshotLabel={snapshotLabel}
-        confidencePercent={averageRecall}
-        confidenceLabel={getConfidenceLabel(averageRecall)}
+        totalSongs={predictionState.snapshot.predictions.length}
+        accuracyRows={accuracyRows}
+        predictions={predictionState.snapshot.predictions}
       />
 
       <section>
-        <div className="mb-8 flex items-end justify-between border-b border-outline-variant/20 pb-4">
+        <div className="mb-6 flex items-end justify-between border-b border-outline-variant/20 pb-4">
           <div>
             <h2 className="font-headline text-2xl font-bold uppercase tracking-tight text-on-surface">
-              The Expected
+              Song Board
             </h2>
             <p className="text-xs text-on-surface-variant">
-              Top current predictions for {BAND_CONFIG[predictionState.band].displayName} using{" "}
-              {MODEL_CONFIG[predictionState.model].displayName}.
+              All ranked predictions for {BAND_CONFIG[predictionState.band].displayName} using{" "}
+              {MODEL_CONFIG[predictionState.model].displayName}. Tiers reflect relative likelihood, not guarantees.
             </p>
           </div>
           <div className="hidden gap-2 sm:flex">
@@ -172,11 +132,15 @@ export default async function HomePage({ searchParams }: Props) {
           </div>
         </div>
 
-        <PredictionTable rows={predictionState.snapshot.predictions} mode={predictionState.model} />
+        <div className="mb-6">
+          <SongSearch songs={searchSongs} />
+        </div>
+
+        <SongBoard rows={predictionState.snapshot.predictions} />
       </section>
 
       <DashboardAnalysis
-        rows={accuracyState.status === "ready" ? accuracyState.rows : []}
+        rows={accuracyRows}
         predictions={predictionState.snapshot.predictions}
         bandLabel={BAND_CONFIG[predictionState.band].displayName}
         modelLabel={MODEL_CONFIG[predictionState.model].displayName}
@@ -186,13 +150,13 @@ export default async function HomePage({ searchParams }: Props) {
         <div className="flex flex-col gap-4 text-xs text-on-surface/40 md:flex-row md:items-center md:justify-between">
           <p>© 2026 JamBandNerd Archivist Labs</p>
           <div className="flex gap-6">
-            <a className="underline decoration-dotted transition hover:text-primary" href="https://github.com/" rel="noreferrer" target="_blank">
+            <a className="underline decoration-dotted transition hover:text-primary" href="https://github.com/" rel="noopener noreferrer" target="_blank">
               GitHub
             </a>
             <Link className="underline decoration-dotted transition hover:text-primary" href="/about">
               About
             </Link>
-            <Link className="underline decoration-dotted transition hover:text-primary" href="/performance?band=goose&model=notebook">
+            <Link className="underline decoration-dotted transition hover:text-primary" href={`/performance?band=${predictionState.band}&model=${predictionState.model}`}>
               Performance
             </Link>
           </div>

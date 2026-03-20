@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import { AccuracyTable } from "@/components/accuracy-table";
-import { PredictionTable } from "@/components/prediction-table";
+import { SongBoard } from "@/components/song-board";
 import { SetlistTable } from "@/components/setlist-table";
 
 export const metadata: Metadata = {
@@ -24,6 +24,7 @@ const predictionRows = [
     gapZScore: 1.2,
     ckplusScore: 2.1,
     probability: 0.96,
+    tier: "expected" as const,
   },
   {
     rank: 2,
@@ -36,6 +37,7 @@ const predictionRows = [
     gapZScore: 2.0,
     ckplusScore: 2.7,
     probability: null,
+    tier: "possible" as const,
   },
   {
     rank: 3,
@@ -48,6 +50,7 @@ const predictionRows = [
     gapZScore: -0.2,
     ckplusScore: 1.1,
     probability: 0.84,
+    tier: "expected" as const,
   },
 ];
 
@@ -92,8 +95,8 @@ export default function TablePreviewPage() {
       </section>
 
       <section className="space-y-4">
-        <h2 className="font-headline text-xl font-semibold text-on-surface">Prediction table</h2>
-        <PredictionTable mode="notebook" rows={predictionRows} />
+        <h2 className="font-headline text-xl font-semibold text-on-surface">Song board</h2>
+        <SongBoard rows={predictionRows} />
       </section>
 
       <section className="space-y-4">
