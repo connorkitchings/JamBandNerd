@@ -112,6 +112,22 @@ function asRecord(value: unknown): Record<string, unknown> | null {
   return null;
 }
 
+function getVenueNameFromRow(row: Record<string, unknown> | null): string | null {
+  if (!row) {
+    return null;
+  }
+
+  if (typeof row.venue_name === "string") {
+    return row.venue_name;
+  }
+
+  if (typeof row.venue === "string") {
+    return row.venue;
+  }
+
+  return null;
+}
+
 function computeTier(rank: number, probability: number | null): LikelihoodTier {
   // When a future model supplies real probabilities, use those
   if (probability !== null) {
@@ -357,7 +373,7 @@ export const getRecentAccuracy = cache(
     try {
       const { data, error } = await client
         .from("accuracy_per_show")
-        .select("show_date, venue_name, k10_recall, k25_recall, k50_recall")
+        .select("show_id, show_date, k10_recall, k25_recall, k50_recall")
         .eq("band", band)
         .eq("model_version", `${model}_v1`)
         .order("show_date", { ascending: false })
@@ -367,14 +383,85 @@ export const getRecentAccuracy = cache(
         return { status: "error", message: error.message };
       }
 
-      const rows =
+      const accuracyRows =
         data?.map((row) => ({
+          showId:
+            typeof row.show_id === "string" || typeof row.show_id === "number"
+              ? String(row.show_id)
+              : null,
           showDate: typeof row.show_date === "string" ? row.show_date : null,
-          venueName: typeof row.venue_name === "string" ? row.venue_name : null,
           k10Recall: parseNumber(row.k10_recall),
           k25Recall: parseNumber(row.k25_recall),
           k50Recall: parseNumber(row.k50_recall),
         })) ?? [];
+
+      if (accuracyRows.length === 0) {
+        return { status: "empty" };
+      }
+
+      const idColumn = BAND_ID_COLUMNS[band];
+      const showsTable = BAND_CONFIG[band].showsTable;
+      const showIds = [...new Set(accuracyRows.map((row) => row.showId).filter(Boolean))];
+      const showDates = [...new Set(accuracyRows.map((row) => row.showDate).filter(Boolean))];
+      const venueByShowId = new Map<string, string | null>();
+      const venueByShowDate = new Map<string, string | null>();
+
+      if (showIds.length > 0) {
+        const { data: showData, error: showError } = await client
+          .from(showsTable)
+          .select("*")
+          .in(idColumn, showIds);
+
+        if (showError) {
+          return { status: "error", message: showError.message };
+        }
+
+        for (const item of showData ?? []) {
+          const row = asRecord(item);
+          if (!row) {
+            continue;
+          }
+
+          const venueName = getVenueNameFromRow(row);
+          const showIdValue = row[idColumn];
+          if (typeof showIdValue === "string" || typeof showIdValue === "number") {
+            venueByShowId.set(String(showIdValue), venueName);
+          }
+
+          if (typeof row.show_date === "string") {
+            venueByShowDate.set(row.show_date, venueName);
+          }
+        }
+      } else if (showDates.length > 0) {
+        const { data: showData, error: showError } = await client
+          .from(showsTable)
+          .select("*")
+          .in("show_date", showDates);
+
+        if (showError) {
+          return { status: "error", message: showError.message };
+        }
+
+        for (const item of showData ?? []) {
+          const row = asRecord(item);
+          if (!row || typeof row.show_date !== "string") {
+            continue;
+          }
+
+          venueByShowDate.set(row.show_date, getVenueNameFromRow(row));
+        }
+      }
+
+      const rows: AccuracyRow[] = accuracyRows.map((row) => ({
+        showDate: row.showDate,
+        venueName:
+          (row.showId ? venueByShowId.get(row.showId) : null) ??
+          (row.showDate ? venueByShowDate.get(row.showDate) : null) ??
+          null,
+        k10Recall: row.k10Recall,
+        k25Recall: row.k25Recall,
+        k50Recall: row.k50Recall,
+      }));
 
       return rows.length === 0
         ? { status: "empty" }

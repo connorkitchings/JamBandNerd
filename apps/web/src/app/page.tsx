@@ -35,7 +35,7 @@ export default async function HomePage({ searchParams }: Props) {
       <div className="mx-auto max-w-6xl">
         <DataState
           title="Supabase environment required"
-          body="Set SUPABASE_URL and SUPABASE_KEY to enable server-side prediction reads in the website."
+          body="Set SUPABASE_URL and SUPABASE_ANON_KEY to enable server-side prediction reads in the website."
         />
       </div>
     );

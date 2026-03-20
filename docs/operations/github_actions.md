@@ -18,7 +18,7 @@ This repository runs a daily data pipeline via GitHub Actions.
 
 ## Notes
 
-- Secrets required: `SUPABASE_URL`, `SUPABASE_KEY`; `PHISH_API_KEY` is required only for the Phish collector.
+- Secrets required: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`; `PHISH_API_KEY` is required only for the Phish collector.
 - For WSP, the workflow installs Playwright (Firefox) to improve CI scraping reliability.
 - The pipeline validates prediction table freshness (`scripts/validate_prediction_tables.py`) after generation, using the latest written prediction row by `predicted_at`.
 - Accuracy backtesting excludes shows with 5 or fewer unique songs.
@@ -31,8 +31,8 @@ If `DISCORD_WEBHOOK_URL` is set in GitHub Secrets, the workflow posts a success/
 
 As of 2025-10-04, all collection scripts use **warning-only validation**:
 
-- **Type mismatches** are logged as warnings but don't block data inserts
-- **Missing required columns** and **nullable violations** still cause validation failure
+- **Type mismatches** are logged as warnings but don't block data inserts after coercion
+- **Missing required columns** and **nullable violations** fail the write
 - Validation warnings appear in GitHub Actions logs for monitoring
 - No `--skip-validation` flags needed in the workflow
 

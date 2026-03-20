@@ -74,6 +74,8 @@ def _pg_type_to_expected(pg_type: str) -> str:
     t = pg_type.lower()
     if t.startswith("character varying") or t in {"text", "varchar"}:
         return "text"
+    if t == "uuid":
+        return "uuid"
     if t in {"integer", "int4", "bigint", "int8", "smallint", "int2"}:
         return "integer"
     if t in {
@@ -177,6 +179,9 @@ def _coerce_series(series: pd.Series, expected: str) -> pd.Series:
         if v is None or (isinstance(v, float) and pd.isna(v)):
             return None
         return str(v)
+
+    if expected == "uuid":
+        return series.map(_to_text)
 
     return series.map(_to_text)
 
@@ -307,6 +312,9 @@ def validate_dataframe_against_table(
             "timestamp",
             "text",
         ):
+            continue
+
+        if expected == "uuid" and observed in ("text", "uuid"):
             continue
 
         # Only flag as mismatch if truly incompatible

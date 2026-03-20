@@ -7,7 +7,7 @@ These utilities target Supabase (Postgres) and are designed for reliability, cla
 
 - Required env vars (read from `.env` or process env):
   - `SUPABASE_URL`
-  - `SUPABASE_KEY`
+  - `SUPABASE_SERVICE_ROLE_KEY` (preferred)
 - Behavior:
   - Validate presence at process start when first DB interaction occurs.
   - Provide clear error messages if missing.
@@ -69,7 +69,7 @@ Coercion rules:
 
 - Raw: `{band}_songs_raw`, `{band}_shows_raw`, `{band}_setlists_raw`
 - Predictions: `predictions_{model_slug}`
-- Accuracy: `accuracy_{model_slug}`
+- Accuracy: `notebook_accuracy`, `accuracy_ckplus`
 
 ## Error Handling & Retries
 

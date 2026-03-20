@@ -5,7 +5,7 @@ This document defines the storage schemas for predictions and accuracy tracking.
 ## Table Names (Unified by Model)
 
 - Predictions: `predictions_{model_slug}`
-- Accuracy: `accuracy_{model_slug}`
+- Accuracy: `notebook_accuracy`, `accuracy_ckplus`
 
 Examples: `predictions_notebook`, `predictions_ckplus`, `notebook_accuracy`, `accuracy_ckplus`.
 

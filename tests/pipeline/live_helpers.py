@@ -8,7 +8,7 @@ from src.jambandnerd.db.connection import get_supabase_client
 
 
 def ensure_live_env(*, band: str) -> None:
-    required = ("SUPABASE_URL", "SUPABASE_KEY")
+    required = ("SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY")
     missing = [name for name in required if not os.environ.get(name)]
     if band == "phish" and not os.environ.get("PHISH_API_KEY"):
         missing.append("PHISH_API_KEY")

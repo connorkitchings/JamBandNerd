@@ -29,8 +29,15 @@ A cloud-based data platform for collecting, transforming, and predicting jam ban
 
     ```bash
     SUPABASE_URL=your_supabase_url
-    SUPABASE_KEY=your_supabase_key
+    SUPABASE_SERVICE_ROLE_KEY=your_pipeline_service_role_key
     PHISH_API_KEY=your_phish_net_key  # Optional, for Phish data only
+    ```
+
+    For the website, use `apps/web/.env.local` with:
+
+    ```bash
+    SUPABASE_URL=your_supabase_url
+    SUPABASE_ANON_KEY=your_supabase_anon_key
     ```
 
 ## Usage

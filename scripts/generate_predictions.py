@@ -149,7 +149,7 @@ def generate_predictions(
         "reference_date": reference_date.isoformat(),
         "model_version": model_version,
         "top_k": len(predictions_list),
-        "predictions": json.dumps(predictions_list, cls=NpEncoder),
+        "predictions": json.loads(json.dumps(predictions_list, cls=NpEncoder)),
         "predicted_at": datetime.now(timezone.utc).isoformat(),
     }
 

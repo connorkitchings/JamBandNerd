@@ -33,7 +33,7 @@ export default async function ComparePage({ searchParams }: Props) {
     return (
       <DataState
         title="Supabase environment required"
-        body="Set SUPABASE_URL and SUPABASE_KEY to enable the comparison route."
+        body="Set SUPABASE_URL and SUPABASE_ANON_KEY to enable the comparison route."
       />
     );
   }

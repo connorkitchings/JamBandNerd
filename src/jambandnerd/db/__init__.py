@@ -18,8 +18,12 @@ if TYPE_CHECKING:
     from .operations import (
         bulk_insert_dataframe,
         fetch_existing_ids,
+        fetch_existing_values,
+        fetch_rows_by_column_values,
         get_table_schema,
+        prepare_dataframe_for_upsert,
         upsert_dataframe,
+        validate_and_upsert_dataframe,
     )
     from .validation import (
         TypeMismatch,
@@ -33,8 +37,12 @@ __all__ = [
     "get_supabase_client",
     "validate_environment",
     "fetch_existing_ids",
+    "fetch_existing_values",
+    "fetch_rows_by_column_values",
     "bulk_insert_dataframe",
     "upsert_dataframe",
+    "prepare_dataframe_for_upsert",
+    "validate_and_upsert_dataframe",
     "get_table_schema",
     "TypeMismatch",
     "ValidationReport",

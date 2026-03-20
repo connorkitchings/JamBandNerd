@@ -32,4 +32,5 @@ npm run test:web:smoke
 - The Vercel project should use `apps/web` as its root directory.
 - `main` is the production branch.
 - Preview deployments should come from pull requests and non-`main` branches.
-- Local, preview, and production environments all use the same server-side Supabase variable names: `SUPABASE_URL` and `SUPABASE_KEY`.
+- The website expects `SUPABASE_URL` and `SUPABASE_ANON_KEY`.
+- Do not use a service-role secret in the website environment.
