@@ -22,13 +22,12 @@ import pandas as pd
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, project_root)
 
-from scripts.common import assert_required_columns, ensure_source_reachable
+from scripts.common import ensure_source_reachable
 from src.jambandnerd.data_collection.phish.collector import PhishCollector
 from src.jambandnerd.db.connection import get_supabase_client
-from src.jambandnerd.db.operations import get_table_schema, upsert_dataframe
-from src.jambandnerd.db.validation import (
-    coerce_df_types,
-    validate_dataframe_against_table,
+from src.jambandnerd.db.operations import (
+    upsert_dataframe,
+    validate_and_upsert_dataframe,
 )
 
 logging.basicConfig(
@@ -242,41 +241,25 @@ def run_phish_collection(
             logging.info(f"No data for {table_name}; skipping upsert.")
             return
 
-        if required_columns:
-            # Final guard against column name mismatches
-            if (
-                "song_position" in required_columns
-                and "position" in df.columns
-                and "song_position" not in df.columns
-            ):
-                df.rename(columns={"position": "song_position"}, inplace=True)
-            assert_required_columns(table_name, df, required_columns)
+        if (
+            required_columns
+            and "song_position" in required_columns
+            and "position" in df.columns
+            and "song_position" not in df.columns
+        ):
+            df.rename(columns={"position": "song_position"}, inplace=True)
 
         # Final guard to ensure created_at exists
         if "created_at" not in df.columns:
             df["created_at"] = datetime.now(timezone.utc).isoformat()
 
-        schema = get_table_schema(table_name)
-        if schema and not skip_validation:
-            df = coerce_df_types(df, schema)
-            report = validate_dataframe_against_table(df, table_name, schema)
-            if not report.is_valid:
-                logging.warning(f"⚠️  Validation warnings for {table_name}:")
-                if report.missing_columns:
-                    logging.warning(f"    Missing columns: {report.missing_columns}")
-                if report.type_mismatches:
-                    logging.warning(
-                        f"    Type mismatches: {len(report.type_mismatches)} columns"
-                    )
-                if report.nullable_violations:
-                    logging.warning(
-                        f"    Nullable violations: {report.nullable_violations}"
-                    )
-                # Proceed anyway with coerced data - validation is now warning-only
-
         try:
-            upsert_dataframe(
-                table_name=table_name, df=df, conflict_columns=conflict_cols
+            validate_and_upsert_dataframe(
+                table_name=table_name,
+                df=df,
+                conflict_columns=conflict_cols,
+                required_columns=required_columns,
+                skip_validation=skip_validation,
             )
             logging.info(f"Upserted data into {table_name}.")
         except Exception as e:

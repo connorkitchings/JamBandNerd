@@ -23,13 +23,13 @@ from typing import Any, Dict, Iterable, List, Optional
 
 import pandas as pd
 
-from scripts.common import assert_required_columns, ensure_source_reachable, fetch_table
+from scripts.common import ensure_source_reachable
 from src.jambandnerd.data_collection.billy.collector import BillyCollector
 from src.jambandnerd.db.connection import get_supabase_client
-from src.jambandnerd.db.operations import get_table_schema, upsert_dataframe
-from src.jambandnerd.db.validation import (
-    coerce_df_types,
-    validate_dataframe_against_table,
+from src.jambandnerd.db.operations import (
+    fetch_existing_values,
+    fetch_rows_by_column_values,
+    validate_and_upsert_dataframe,
 )
 
 
@@ -116,34 +116,6 @@ def _parse_date(date_str: Optional[str]) -> Optional[date]:
         raise argparse.ArgumentTypeError(f"Invalid date '{date_str}'. Use YYYY-MM-DD.")
 
 
-def _upsert_dataframe(
-    table_name: str,
-    df: pd.DataFrame,
-    conflict_columns: List[str],
-    skip_validation: bool,
-) -> None:
-    schema = get_table_schema(table_name)
-    df_to_write = df
-
-    if schema and not skip_validation:
-        df_to_write = coerce_df_types(df_to_write, schema)
-        report = validate_dataframe_against_table(df_to_write, table_name, schema)
-        if not report.is_valid:
-            print(f"⚠️  Validation warnings for {table_name}:")
-            if report.missing_columns:
-                print(f"    Missing columns: {report.missing_columns}")
-            if report.type_mismatches:
-                print(f"    Type mismatches: {len(report.type_mismatches)} columns")
-            if report.nullable_violations:
-                print(f"    Nullable violations: {report.nullable_violations}")
-
-    upsert_dataframe(
-        table_name=table_name,
-        df=df_to_write,
-        conflict_columns=conflict_columns,
-    )
-
-
 def run_billy_collection(
     skip_validation: bool = False,
     start_date: Optional[str] = None,
@@ -186,7 +158,12 @@ def run_billy_collection(
         )
         songs_df["created_at"] = datetime.now(timezone.utc).isoformat()
         songs_df["updated_at"] = datetime.now(timezone.utc).isoformat()
-        _upsert_dataframe("billy_songs_raw", songs_df, ["song_name"], skip_validation)
+        validate_and_upsert_dataframe(
+            "billy_songs_raw",
+            songs_df,
+            ["song_name"],
+            skip_validation=skip_validation,
+        )
         print(f"Upserted {len(songs_df)} songs into billy_songs_raw.")
     else:
         print("No Billy Strings songs scraped; skipping billy_songs_raw upsert.")
@@ -195,15 +172,29 @@ def run_billy_collection(
     shows_data = collector.collect_shows(start_date=start_dt, end_date=end_dt)
     if shows_data:
         shows_df = _normalize_shows(shows_data)
-        _upsert_dataframe("billy_shows_raw", shows_df, ["source_uuid"], skip_validation)
+        validate_and_upsert_dataframe(
+            "billy_shows_raw",
+            shows_df,
+            ["source_uuid"],
+            skip_validation=skip_validation,
+        )
         print(f"Upserted {len(shows_df)} shows into billy_shows_raw.")
     else:
         print("No Billy Strings shows scraped; skipping show upsert.")
 
-    # Refresh shows from DB to get generated show_id values
     shows_from_db: List[Dict[str, Any]] = []
     try:
-        shows_from_db = fetch_table("billy_shows_raw")
+        source_uuids = [
+            show.get("source_uuid")
+            for show in shows_data
+            if show.get("source_uuid") is not None
+        ]
+        shows_from_db = fetch_rows_by_column_values(
+            "billy_shows_raw",
+            select_columns=["show_id", "source_uuid", "source_url", "show_date"],
+            filter_column="source_uuid",
+            values=source_uuids,
+        )
     except Exception as exc:  # pragma: no cover - supabase connectivity
         print(f"Warning: could not fetch billy_shows_raw from database ({exc}).")
 
@@ -232,12 +223,16 @@ def run_billy_collection(
     existing_setlist_show_ids: set[str] = set()
     if skip_existing_setlists:
         try:
-            setlists_from_db = fetch_table("billy_setlists_raw")
-            existing_setlist_show_ids = {
-                str(item["show_id"])
-                for item in setlists_from_db
-                if item.get("show_id") is not None
-            }
+            candidate_show_ids = [
+                row.get("show_id")
+                for row in shows_requiring_setlists
+                if row.get("show_id") is not None
+            ]
+            existing_setlist_show_ids = fetch_existing_values(
+                "billy_setlists_raw",
+                value_column="show_id",
+                candidate_values=candidate_show_ids,
+            )
         except Exception as exc:  # pragma: no cover - supabase connectivity
             print(f"Warning: could not load existing Billy setlist show IDs ({exc}).")
 
@@ -264,15 +259,12 @@ def run_billy_collection(
         _log_collection_run("billy")
         return
 
-    assert_required_columns(
-        "billy_setlists_raw", setlists_df, ["set_number", "song_position"]
-    )
-
-    _upsert_dataframe(
+    validate_and_upsert_dataframe(
         "billy_setlists_raw",
         setlists_df,
         ["show_id", "set_number", "song_position"],
-        skip_validation,
+        required_columns=["set_number", "song_position"],
+        skip_validation=skip_validation,
     )
     print(f"Upserted {len(setlists_df)} rows into billy_setlists_raw.")
 

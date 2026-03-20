@@ -40,7 +40,9 @@ CREATE TABLE public.predictions_ckplus (
 
 This table stores the aggregate performance metrics for a model over a rolling window of the last N completed shows.
 
-- **Table Name**: `accuracy_{model_slug}` (e.g., `accuracy_notebook`, `accuracy_ckplus`)
+- **Table Names**:
+  - `notebook_accuracy`
+  - `accuracy_ckplus`
 
 ```sql
 CREATE TABLE public.accuracy_ckplus (

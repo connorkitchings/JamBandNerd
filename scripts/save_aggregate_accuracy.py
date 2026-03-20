@@ -25,6 +25,7 @@ import pandas as pd
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, project_root)
 
+from src.jambandnerd.config.database import ACCURACY_TABLES
 from src.jambandnerd.db.connection import get_supabase_client
 from src.jambandnerd.models.accuracy import aggregate_metrics
 
@@ -102,8 +103,7 @@ def save_aggregate_accuracy(band: str, model: str, shows: int) -> None:
 
     # 3. Upsert the aggregated record
     # Use correct table naming convention based on what exists in database
-    table_mapping = {"notebook": "notebook_accuracy", "ckplus": "accuracy_ckplus"}
-    table_name = table_mapping.get(model, f"accuracy_{model}")
+    table_name = ACCURACY_TABLES.get(model, f"accuracy_{model}")
     print(f"{log_prefix} Saving aggregate accuracy summary to {table_name}...")
 
     try:

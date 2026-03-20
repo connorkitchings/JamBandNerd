@@ -78,9 +78,11 @@ npm run test:web:smoke
 The website currently expects the same two server-side variables in all environments:
 
 - `SUPABASE_URL`
-- `SUPABASE_KEY`
+- `SUPABASE_ANON_KEY`
 
 For local development, copy `apps/web/.env.local.example` to `apps/web/.env.local`.
+
+Do not use a service-role key in the website environment.
 
 For Vercel, add the same variable names to:
 

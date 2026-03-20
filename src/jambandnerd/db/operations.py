@@ -2,11 +2,145 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Set
+import logging
+from datetime import date, datetime
+from typing import Any, Dict, Iterable, List, Optional, Sequence, Set
 
 import pandas as pd
 
 from .connection import get_supabase_client
+from .validation import coerce_df_types, validate_dataframe_against_table
+
+logger = logging.getLogger(__name__)
+_schema_cache: dict[str, List[Dict[str, Any]]] = {}
+
+
+def _clean_record_value(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {key: _clean_record_value(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_clean_record_value(item) for item in value]
+    if isinstance(value, pd.Timestamp):
+        return None if pd.isna(value) else value.isoformat()
+    if isinstance(value, (datetime, date)):
+        return value.isoformat()
+
+    try:
+        if pd.isna(value):
+            return None
+    except TypeError:
+        pass
+
+    if hasattr(value, "item") and not isinstance(value, (str, bytes)):
+        try:
+            return value.item()
+        except Exception:
+            pass
+
+    return value
+
+
+def _dataframe_to_records(df: pd.DataFrame) -> list[dict[str, Any]]:
+    records: list[dict[str, Any]] = []
+    for row in df.to_dict(orient="records"):
+        cleaned = {
+            str(key): _clean_record_value(value)
+            for key, value in row.items()
+            if not (
+                key in {"created_at", "updated_at"}
+                and value is not None
+                and _clean_record_value(value) is None
+            )
+        }
+        cleaned = {
+            key: value
+            for key, value in cleaned.items()
+            if not (key in {"created_at", "updated_at"} and value is None)
+        }
+        records.append(cleaned)
+    return records
+
+
+def _format_validation_warnings(
+    *, table_name: str, extra_columns: Sequence[str], type_mismatches: Sequence[Any]
+) -> None:
+    if extra_columns:
+        logger.warning("%s: ignoring extra columns %s", table_name, list(extra_columns))
+    if type_mismatches:
+        logger.warning(
+            "%s: %s column(s) still look mismatched after coercion",
+            table_name,
+            len(type_mismatches),
+        )
+
+
+def prepare_dataframe_for_upsert(
+    table_name: str,
+    df: pd.DataFrame,
+    *,
+    required_columns: Optional[Sequence[str]] = None,
+    skip_validation: bool = False,
+) -> pd.DataFrame:
+    """Prepare a DataFrame for safe Supabase upserts."""
+    prepared = df.copy()
+    if prepared.empty:
+        return prepared
+
+    if required_columns:
+        missing_required = [
+            column for column in required_columns if column not in prepared
+        ]
+        if missing_required:
+            joined = ", ".join(missing_required)
+            raise RuntimeError(f"{table_name} missing expected columns: {joined}")
+
+    schema = get_table_schema(table_name)
+    if not schema or skip_validation:
+        return prepared
+
+    prepared = coerce_df_types(prepared, schema)
+    report = validate_dataframe_against_table(prepared, table_name, schema)
+    if report.missing_columns or report.nullable_violations:
+        problems: list[str] = []
+        if report.missing_columns:
+            problems.append(f"missing columns: {report.missing_columns}")
+        if report.nullable_violations:
+            problems.append(f"nullable violations: {report.nullable_violations}")
+        joined = "; ".join(problems)
+        raise RuntimeError(f"{table_name} failed validation: {joined}")
+
+    _format_validation_warnings(
+        table_name=table_name,
+        extra_columns=report.extra_columns,
+        type_mismatches=report.type_mismatches,
+    )
+    return prepared
+
+
+def validate_and_upsert_dataframe(
+    table_name: str,
+    df: pd.DataFrame,
+    conflict_columns: List[str],
+    *,
+    required_columns: Optional[Sequence[str]] = None,
+    skip_validation: bool = False,
+    chunk_size: int = 500,
+) -> None:
+    """Validate a DataFrame against live schema and upsert the prepared rows."""
+    prepared = prepare_dataframe_for_upsert(
+        table_name,
+        df,
+        required_columns=required_columns,
+        skip_validation=skip_validation,
+    )
+    if prepared.empty:
+        return
+    upsert_dataframe(
+        table_name=table_name,
+        df=prepared,
+        conflict_columns=conflict_columns,
+        chunk_size=chunk_size,
+    )
 
 
 def fetch_existing_ids(
@@ -51,7 +185,7 @@ def bulk_insert_dataframe(
         chunk_size: The number of rows to insert per chunk.
     """
     client = get_supabase_client()
-    records = df.to_dict(orient="records")
+    records = _dataframe_to_records(df)
 
     for i in range(0, len(records), chunk_size):
         chunk = records[i : i + chunk_size]
@@ -74,14 +208,7 @@ def upsert_dataframe(
         chunk_size: The number of rows to upsert per chunk.
     """
     client = get_supabase_client()
-    records = df.to_dict(orient="records")
-
-    # Remove created_at/updated_at if None to valid DB defaults/preservation
-    for r in records:
-        if "created_at" in r and pd.isna(r["created_at"]):
-            del r["created_at"]
-        if "updated_at" in r and pd.isna(r["updated_at"]):
-            del r["updated_at"]
+    records = _dataframe_to_records(df)
 
     for i in range(0, len(records), chunk_size):
         chunk = records[i : i + chunk_size]
@@ -90,7 +217,9 @@ def upsert_dataframe(
         ).execute()
 
 
-def get_table_schema(table_name: str) -> List[Dict[str, Any]]:
+def get_table_schema(
+    table_name: str, *, use_cache: bool = True
+) -> List[Dict[str, Any]]:
     """
     Fetch the schema for a given table from Supabase via RPC, if available.
 
@@ -106,12 +235,69 @@ def get_table_schema(table_name: str) -> List[Dict[str, Any]]:
     Returns:
         A list of dictionaries describing columns, or an empty list on failure.
     """
+    if use_cache and table_name in _schema_cache:
+        return _schema_cache[table_name]
+
     client = get_supabase_client()
     try:
         response = client.rpc(
             "get_table_schema", {"p_table_name": table_name}
         ).execute()
-        return response.data or []
+        schema = response.data or []
+        if use_cache:
+            _schema_cache[table_name] = schema
+        return schema
     except Exception:
         # RPC not available or other error; let validation layer use local expectations
         return []
+
+
+def fetch_rows_by_column_values(
+    table_name: str,
+    *,
+    select_columns: Iterable[str],
+    filter_column: str,
+    values: Iterable[Any],
+    chunk_size: int = 200,
+) -> list[dict[str, Any]]:
+    """Fetch selected rows for a set of candidate values using batched IN queries."""
+    client = get_supabase_client()
+    unique_values = list(dict.fromkeys(values))
+    if not unique_values:
+        return []
+
+    selected = ",".join(select_columns)
+    rows: list[dict[str, Any]] = []
+    for start in range(0, len(unique_values), chunk_size):
+        chunk = unique_values[start : start + chunk_size]
+        response = (
+            client.table(table_name)
+            .select(selected)
+            .in_(filter_column, list(chunk))
+            .execute()
+        )
+        rows.extend(response.data or [])
+    return rows
+
+
+def fetch_existing_values(
+    table_name: str,
+    *,
+    value_column: str,
+    candidate_values: Iterable[Any],
+    chunk_size: int = 200,
+) -> set[str]:
+    """Return the existing subset of candidate values from a table."""
+    rows = fetch_rows_by_column_values(
+        table_name,
+        select_columns=[value_column],
+        filter_column=value_column,
+        values=candidate_values,
+        chunk_size=chunk_size,
+    )
+    existing: set[str] = set()
+    for row in rows:
+        value = row.get(value_column)
+        if value is not None:
+            existing.add(str(value))
+    return existing

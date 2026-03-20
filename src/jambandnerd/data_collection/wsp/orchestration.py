@@ -12,8 +12,12 @@ from datetime import date, datetime, timedelta
 import pandas as pd
 
 from jambandnerd.db.connection import get_supabase_client
-from jambandnerd.db.operations import get_table_schema, upsert_dataframe
-from scripts.common import assert_required_columns, ensure_source_reachable, fetch_table
+from jambandnerd.db.operations import (
+    fetch_existing_values,
+    get_table_schema,
+    validate_and_upsert_dataframe,
+)
+from scripts.common import ensure_source_reachable, fetch_table
 
 from .collector import WSPCollector
 from .normalizer import (
@@ -232,7 +236,7 @@ def process_wsp_data(
     songs_data = collector.collect_songs()
     if songs_data:
         songs_df = normalize_songs(songs_data)
-        upsert_dataframe(
+        validate_and_upsert_dataframe(
             table_name="wsp_songs_raw",
             df=songs_df,
             conflict_columns=["api_song_id"],
@@ -269,7 +273,7 @@ def process_wsp_data(
     if shows_data:
         shows_df = normalize_shows(shows_data)
         try:
-            upsert_dataframe(
+            validate_and_upsert_dataframe(
                 table_name="wsp_shows_raw",
                 df=shows_df,
                 conflict_columns=["show_id"],
@@ -299,7 +303,7 @@ def process_wsp_data(
     venues_data = collector.collect_venues()
     if venues_data:
         venues_df = normalize_venues(venues_data)
-        upsert_dataframe(
+        validate_and_upsert_dataframe(
             table_name="wsp_venues_raw",
             df=venues_df,
             conflict_columns=["venue_id"],
@@ -337,14 +341,14 @@ def process_wsp_data(
     # 5. Check for existing setlists to avoid re-scraping
     if skip_existing_setlists:
         try:
-            setlists_from_db = fetch_table("wsp_setlists_raw")
-            existing_ids = {
-                record["show_id"]
-                for record in setlists_from_db
-                if record.get("show_id") is not None
-            }
+            candidate_show_ids = shows_to_process_df["show_id"].dropna().tolist()
+            existing_ids = fetch_existing_values(
+                "wsp_setlists_raw",
+                value_column="show_id",
+                candidate_values=candidate_show_ids,
+            )
             shows_to_process_df = shows_to_process_df[
-                ~shows_to_process_df["show_id"].isin(existing_ids)
+                ~shows_to_process_df["show_id"].astype(str).isin(existing_ids)
             ]
         except Exception as e:
             logging.warning(
@@ -360,10 +364,11 @@ def process_wsp_data(
         setlists_data = collector.collect_setlists(records_for_scrape)
         if setlists_data:
             setlists_df = normalize_setlists(setlists_data)
-            upsert_dataframe(
+            validate_and_upsert_dataframe(
                 table_name="wsp_setlists_raw",
                 df=setlists_df,
                 conflict_columns=["show_id", "set_number", "song_position"],
+                required_columns=["set_number", "song_position"],
             )
             logging.info(
                 f"Upserted {len(setlists_df)} setlist records into wsp_setlists_raw."
@@ -527,10 +532,6 @@ def tourwrangler_fallback(client) -> tuple[int, int]:
 
             if backup_rows:
                 backup_df = pd.DataFrame(backup_rows)
-                assert_required_columns(
-                    "wsp_setlists_raw", backup_df, ["set_number", "song_position"]
-                )
-
                 schema = get_table_schema("wsp_setlists_raw")
                 if any(
                     str(col.get("column_name", "")).lower() == "source"
@@ -538,10 +539,11 @@ def tourwrangler_fallback(client) -> tuple[int, int]:
                 ):
                     backup_df["source"] = "tourwrangler"
 
-                upsert_dataframe(
+                validate_and_upsert_dataframe(
                     table_name="wsp_setlists_raw",
                     df=backup_df,
                     conflict_columns=["show_id", "set_number", "song_position"],
+                    required_columns=["set_number", "song_position"],
                 )
                 logging.info(
                     f"Upserted {len(backup_df)} TourWrangler backup setlist rows."

@@ -56,7 +56,7 @@ jobs:
 
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-      SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       PHISH_API_KEY: ${{ secrets.PHISH_API_KEY }}
 
     outputs:
@@ -88,8 +88,8 @@ jobs:
             MISSING+=("SUPABASE_URL")
           fi
           
-          if [[ -z "$SUPABASE_KEY" ]]; then
-            MISSING+=("SUPABASE_KEY")
+          if [[ -z "$SUPABASE_SERVICE_ROLE_KEY" ]]; then
+            MISSING+=("SUPABASE_SERVICE_ROLE_KEY")
           fi
           
           # PHISH_API_KEY is only required for Phish collection
@@ -254,7 +254,7 @@ jobs:
     
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-      SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       BAND_LIST_JSON: ${{ needs.setup.outputs.bands_list }}
     
     steps:

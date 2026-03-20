@@ -40,7 +40,7 @@ export default async function PerformancePage({ searchParams }: Props) {
     return (
       <DataState
         title="Supabase environment required"
-        body="Set SUPABASE_URL and SUPABASE_KEY to enable the performance route."
+        body="Set SUPABASE_URL and SUPABASE_ANON_KEY to enable the performance route."
       />
     );
   }

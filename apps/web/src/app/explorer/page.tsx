@@ -36,7 +36,7 @@ export default async function ExplorerPage({ searchParams }: Props) {
     return (
       <DataState
         title="Supabase environment required"
-        body="Set SUPABASE_URL and SUPABASE_KEY to enable the historical explorer route."
+        body="Set SUPABASE_URL and SUPABASE_ANON_KEY to enable the historical explorer route."
       />
     );
   }

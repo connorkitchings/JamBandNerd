@@ -167,7 +167,8 @@ language sql as $
   where table_schema = 'public' and table_name = p_table_name
   order by ordinal_position;
 $;
-grant execute on function public.get_table_schema(text) to anon, authenticated, service_role;
+revoke execute on function public.get_table_schema(text) from anon, authenticated;
+grant execute on function public.get_table_schema(text) to service_role;
 
 ```
 

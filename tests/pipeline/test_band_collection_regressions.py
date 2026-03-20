@@ -134,10 +134,21 @@ class _WSPClientStub:
 
 def test_run_billy_collection_uses_paginated_existing_setlist_reads(monkeypatch):
     collector = _BillyCollectorStub()
-    fetch_calls = []
+    lookup_calls = []
 
-    def fake_fetch_table(table_name, chunk_size=10000):
-        fetch_calls.append((table_name, chunk_size))
+    def fake_fetch_rows_by_column_values(
+        table_name, *, select_columns, filter_column, values, chunk_size=200
+    ):
+        lookup_calls.append(
+            (
+                "rows",
+                table_name,
+                tuple(select_columns),
+                filter_column,
+                tuple(values),
+                chunk_size,
+            )
+        )
         if table_name == "billy_shows_raw":
             return [
                 {
@@ -153,19 +164,42 @@ def test_run_billy_collection_uses_paginated_existing_setlist_reads(monkeypatch)
                     "show_date": "2024-03-02",
                 },
             ]
-        if table_name == "billy_setlists_raw":
-            return [{"show_id": 1001}] + [
-                {"show_id": 5000 + index} for index in range(10000)
-            ]
-        raise AssertionError(f"unexpected fetch_table call for {table_name}")
+        raise AssertionError(f"unexpected lookup for {table_name}")
+
+    def fake_fetch_existing_values(
+        table_name, *, value_column, candidate_values, chunk_size=200
+    ):
+        lookup_calls.append(
+            (
+                "existing",
+                table_name,
+                value_column,
+                tuple(candidate_values),
+                chunk_size,
+            )
+        )
+        assert table_name == "billy_setlists_raw"
+        assert value_column == "show_id"
+        return {"1001"}
 
     monkeypatch.setattr(
         run_billy_collection, "ensure_source_reachable", lambda *_args, **_kwargs: None
     )
     monkeypatch.setattr(run_billy_collection, "BillyCollector", lambda: collector)
-    monkeypatch.setattr(run_billy_collection, "fetch_table", fake_fetch_table)
     monkeypatch.setattr(
-        run_billy_collection, "_upsert_dataframe", lambda *_args, **_kwargs: None
+        run_billy_collection,
+        "fetch_rows_by_column_values",
+        fake_fetch_rows_by_column_values,
+    )
+    monkeypatch.setattr(
+        run_billy_collection,
+        "fetch_existing_values",
+        fake_fetch_existing_values,
+    )
+    monkeypatch.setattr(
+        run_billy_collection,
+        "validate_and_upsert_dataframe",
+        lambda *_args, **_kwargs: None,
     )
     monkeypatch.setattr(
         run_billy_collection, "_log_collection_run", lambda *_args, **_kwargs: None
@@ -173,7 +207,17 @@ def test_run_billy_collection_uses_paginated_existing_setlist_reads(monkeypatch)
 
     run_billy_collection.run_billy_collection(skip_validation=True)
 
-    assert fetch_calls == [("billy_shows_raw", 10000), ("billy_setlists_raw", 10000)]
+    assert lookup_calls == [
+        (
+            "rows",
+            "billy_shows_raw",
+            ("show_id", "source_uuid", "source_url", "show_date"),
+            "source_uuid",
+            ("existing-show", "new-show"),
+            200,
+        ),
+        ("existing", "billy_setlists_raw", "show_id", (1001, 1002), 200),
+    ]
     assert collector.setlist_calls == [
         [
             {
@@ -189,15 +233,22 @@ def test_run_billy_collection_uses_paginated_existing_setlist_reads(monkeypatch)
 def test_wsp_process_uses_paginated_existing_setlist_reads(monkeypatch):
     collector = _WSPCollectorStub()
     client = _WSPClientStub()
-    fetch_calls = []
+    lookup_calls = []
 
-    def fake_fetch_table(table_name, chunk_size=10000):
-        fetch_calls.append((table_name, chunk_size))
-        if table_name == "wsp_setlists_raw":
-            return [{"show_id": 1}] + [
-                {"show_id": 1000 + index} for index in range(10000)
-            ]
-        raise AssertionError(f"unexpected fetch_table call for {table_name}")
+    def fake_fetch_existing_values(
+        table_name, *, value_column, candidate_values, chunk_size=200
+    ):
+        lookup_calls.append(
+            (
+                table_name,
+                value_column,
+                tuple(candidate_values),
+                chunk_size,
+            )
+        )
+        assert table_name == "wsp_setlists_raw"
+        assert value_column == "show_id"
+        return {"1"}
 
     monkeypatch.setattr(
         wsp_orchestration, "ensure_source_reachable", lambda *_args, **_kwargs: None
@@ -206,12 +257,18 @@ def test_wsp_process_uses_paginated_existing_setlist_reads(monkeypatch):
         wsp_orchestration, "WSPCollector", lambda status=None: collector
     )
     monkeypatch.setattr(wsp_orchestration, "get_supabase_client", lambda: client)
-    monkeypatch.setattr(wsp_orchestration, "fetch_table", fake_fetch_table)
+    monkeypatch.setattr(
+        wsp_orchestration,
+        "fetch_existing_values",
+        fake_fetch_existing_values,
+    )
     monkeypatch.setattr(
         wsp_orchestration, "get_table_schema", lambda *_args, **_kwargs: []
     )
     monkeypatch.setattr(
-        wsp_orchestration, "upsert_dataframe", lambda *_args, **_kwargs: None
+        wsp_orchestration,
+        "validate_and_upsert_dataframe",
+        lambda *_args, **_kwargs: None,
     )
     monkeypatch.setattr(
         wsp_orchestration, "tourwrangler_fallback", lambda *_args, **_kwargs: (0, 0)
@@ -259,7 +316,7 @@ def test_wsp_process_uses_paginated_existing_setlist_reads(monkeypatch):
         year_end=2024,
     )
 
-    assert fetch_calls == [("wsp_setlists_raw", 10000)]
+    assert lookup_calls == [("wsp_setlists_raw", "show_id", (1, 2), 200)]
     assert collector.records_for_scrape == [
         {
             "show_id": 2,

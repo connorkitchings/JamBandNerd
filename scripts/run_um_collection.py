@@ -22,24 +22,14 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
-from scripts.common import (  # type: ignore  # noqa: E402
-    assert_required_columns,
-    ensure_source_reachable,
-)
+from scripts.common import ensure_source_reachable  # type: ignore  # noqa: E402
 from src.jambandnerd.data_collection.um.collector import UmCollector  # noqa: E402
 from src.jambandnerd.data_collection.um.upcoming import (  # noqa: E402
     UpcomingShowsError,
     collect_upcoming_shows,
 )
 from src.jambandnerd.db.connection import get_supabase_client  # noqa: E402
-from src.jambandnerd.db.operations import (  # noqa: E402
-    get_table_schema,
-    upsert_dataframe,
-)
-from src.jambandnerd.db.validation import (  # noqa: E402
-    coerce_df_types,
-    validate_dataframe_against_table,
-)
+from src.jambandnerd.db.operations import validate_and_upsert_dataframe  # noqa: E402
 
 
 def _hash_row(record: Dict[str, Any]) -> str:
@@ -75,40 +65,24 @@ def _parse_date(value: Optional[str]) -> Optional[date]:
         ) from exc
 
 
-def _normalize_dataframe(
-    df: pd.DataFrame, schema_name: str, *, skip_validation: bool
-) -> pd.DataFrame:
-    """Coerce DataFrame types according to Supabase schema (if available)."""
-
-    schema = get_table_schema(schema_name)
-    if schema and not skip_validation:
-        df = coerce_df_types(df, schema)
-        report = validate_dataframe_against_table(df, schema_name, schema)
-        if not report.is_valid:
-            print(f"⚠️  Validation warnings for {schema_name}:")
-            if report.missing_columns:
-                print(f"    Missing columns: {report.missing_columns}")
-            if report.type_mismatches:
-                print(f"    Type mismatches: {len(report.type_mismatches)} columns")
-            if report.nullable_violations:
-                print(f"    Nullable violations: {report.nullable_violations}")
-    return df
-
-
 def _upsert(
     table_name: str,
     df: pd.DataFrame,
     conflict_columns: Sequence[str],
     *,
     skip_validation: bool,
+    required_columns: Sequence[str] | None = None,
 ) -> None:
     """Normalize and upsert a DataFrame."""
 
     if df.empty:
         return
-    df = _normalize_dataframe(df, table_name, skip_validation=skip_validation)
-    upsert_dataframe(
-        table_name=table_name, df=df, conflict_columns=list(conflict_columns)
+    validate_and_upsert_dataframe(
+        table_name=table_name,
+        df=df,
+        conflict_columns=list(conflict_columns),
+        required_columns=required_columns,
+        skip_validation=skip_validation,
     )
 
 
@@ -332,16 +306,13 @@ def run_um_collection(
     if "set_label" in setlists_df.columns and "set_number" not in setlists_df.columns:
         setlists_df["set_number"] = setlists_df["set_label"].fillna("").astype(str)
 
-    assert_required_columns(
-        "um_setlists_raw", setlists_df, ["set_number", "song_position"]
-    )
-
     setlists_df = _compute_source_hash(setlists_df)
     _upsert(
         "um_setlists_raw",
         setlists_df,
         conflict_columns=["show_id", "show_position"],
         skip_validation=skip_validation,
+        required_columns=["set_number", "song_position"],
     )
     print(f"Upserted {len(setlists_df)} setlist rows into um_setlists_raw.")
 

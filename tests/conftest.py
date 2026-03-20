@@ -27,7 +27,7 @@ def mock_env_vars():
     """Provide mock environment variables for testing."""
     return {
         "SUPABASE_URL": "https://test.supabase.co",
-        "SUPABASE_KEY": "test_key_123",
+        "SUPABASE_SERVICE_ROLE_KEY": "test_service_role_key_123",
         "PHISH_API_KEY": "test_phish_key_456",
     }
 

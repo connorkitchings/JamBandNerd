@@ -57,5 +57,6 @@ tests/test_collectors.py
 tests/test_data_collection.py
 tests/test_data_diagnostics_scripts.py
 tests/test_db.py
+tests/test_db_operations.py
 tests/test_models.py
 tests/test_validate_prediction_tables.py

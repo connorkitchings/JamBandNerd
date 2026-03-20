@@ -33,7 +33,7 @@ export default async function LastShowPage({ searchParams }: Props) {
     return (
       <DataState
         title="Supabase environment required"
-        body="Set SUPABASE_URL and SUPABASE_KEY to enable the last-show route."
+        body="Set SUPABASE_URL and SUPABASE_ANON_KEY to enable the last-show route."
       />
     );
   }

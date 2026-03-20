@@ -13,17 +13,24 @@ class TestSupabaseConnection:
     def test_validate_environment_missing_url(self, monkeypatch):
         """Test validation fails when SUPABASE_URL is missing."""
         monkeypatch.delenv("SUPABASE_URL", raising=False)
-        monkeypatch.setenv("SUPABASE_KEY", "test_key")
+        monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "test_key")
 
-        with pytest.raises(ValueError, match="Missing SUPABASE_URL or SUPABASE_KEY"):
+        with pytest.raises(
+            ValueError,
+            match="Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY",
+        ):
             validate_environment()
 
     def test_validate_environment_missing_key(self, monkeypatch):
-        """Test validation fails when SUPABASE_KEY is missing."""
+        """Test validation fails when the service-role key is missing."""
         monkeypatch.setenv("SUPABASE_URL", "https://test.supabase.co")
+        monkeypatch.delenv("SUPABASE_SERVICE_ROLE_KEY", raising=False)
         monkeypatch.delenv("SUPABASE_KEY", raising=False)
 
-        with pytest.raises(ValueError, match="Missing SUPABASE_URL or SUPABASE_KEY"):
+        with pytest.raises(
+            ValueError,
+            match="Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY",
+        ):
             validate_environment()
 
     def test_validate_environment_success(self, setup_test_env):
@@ -46,7 +53,7 @@ class TestSupabaseConnection:
 
         assert client == mock_client
         mock_create_client.assert_called_once_with(
-            "https://test.supabase.co", "test_key_123"
+            "https://test.supabase.co", "test_service_role_key_123"
         )
 
     @patch("jambandnerd.db.connection.create_client")
@@ -70,7 +77,7 @@ class TestSupabaseConnection:
     def test_get_supabase_client_missing_env_vars(self, monkeypatch):
         """Test client creation fails with missing environment variables."""
         monkeypatch.delenv("SUPABASE_URL", raising=False)
-        monkeypatch.delenv("SUPABASE_KEY", raising=False)
+        monkeypatch.delenv("SUPABASE_SERVICE_ROLE_KEY", raising=False)
 
         # Clear any existing client instance
         import jambandnerd.db.connection
@@ -78,7 +85,8 @@ class TestSupabaseConnection:
         jambandnerd.db.connection._supabase_client = None
 
         with pytest.raises(
-            ValueError, match="SUPABASE_URL and SUPABASE_KEY must be set"
+            ValueError,
+            match="SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY",
         ):
             get_supabase_client()
             get_supabase_client()
