@@ -28,6 +28,10 @@ curl http://localhost:3000/last-show?band=goose
 curl http://localhost:3000/performance?band=goose&model=notebook
 npm run lint:web
 npm run build:web
+gh workflow run daily-pipeline.yml --ref chore-ingestion-supabase-hardening -f band=goose -f skip_accuracy=true
+gh pr create --base main --head chore-ingestion-supabase-hardening --title "Harden ingestion and Supabase access" ...
+gh api -X PUT repos/connorkitchings/JamBandNerd/pulls/7/merge -f merge_method=squash -f commit_title='Harden ingestion and Supabase access (#7)'
+gh api -X DELETE repos/connorkitchings/JamBandNerd/git/refs/heads/chore-ingestion-supabase-hardening
 ```
 
 ## Files Changed
@@ -41,6 +45,7 @@ npm run build:web
 - Added tracked SQL for `get_table_schema` grant hardening in `supabase/migrations/20260320_restrict_get_table_schema.sql`.
 - Added DB contract tests in `tests/test_db_operations.py`.
 - Fixed the website performance route to enrich accuracy rows from band raw show tables instead of assuming `accuracy_per_show.venue_name` exists.
+- Merged the work to `main` via PR #7 and verified the protected Vercel production deployment with a bypass token.
 
 ## Validation Status
 
@@ -51,6 +56,10 @@ npm run build:web
 - Live Goose pipeline smoke passed with `--band goose --skip-accuracy`.
 - Local website smoke passed for `/`, `/compare`, `/explorer`, and `/last-show` using `SUPABASE_ANON_KEY`.
 - `/performance` initially failed against live schema (`accuracy_per_show.venue_name` missing), then passed after the website data-loader fix and final `npm run build:web`.
+- GitHub Actions `Daily Data Pipeline` workflow dispatch on `chore-ingestion-supabase-hardening` passed for Goose (`23352061334`).
+- PR `Website Quality` passed on `main` after merge (`23353037834`).
+- Vercel preview and production deployments completed successfully after setting the project root to `apps/web`.
+- Protected production route verification passed for `/`, `/compare`, `/explorer`, `/last-show`, and `/performance`.
 - Ruby YAML parse passed for `.github/workflows/daily-pipeline.yml` and `.github/workflows/test_secrets.yml`.
 
 ## Live Review Findings Captured In Code/Docs
@@ -63,11 +72,8 @@ npm run build:web
 
 ## Next Step
 
-- Apply the tracked Supabase migration to production from an authenticated Supabase dashboard or CLI session, then do a live publish smoke test to confirm `get_table_schema` still works for pipeline contexts and the website continues to read through the non-secret key path.
-- Apply the tracked Supabase migration to production from an authenticated Supabase dashboard or CLI session.
-- Redeploy Vercel so the latest website fix for `/performance` is live.
-- After deploy, smoke-check `/`, `/compare`, `/explorer`, `/last-show`, and `/performance` on the deployed site.
+- Rotate the Vercel deployment protection bypass token used for protected-route verification.
 
 ## Blocker
 
-- Attempting to open the Supabase SQL editor from this session redirected to the Supabase sign-in page, so the migration could not be applied live from the current authenticated context.
+- None. The Supabase migration was applied, the code was merged, and the production deployment verified successfully.
