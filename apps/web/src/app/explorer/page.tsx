@@ -6,8 +6,8 @@ import { FilterLinks } from "@/components/filter-links";
 import { SongBoard } from "@/components/song-board";
 import { SectionCard } from "@/components/section-card";
 import { SetlistTable } from "@/components/setlist-table";
-import { MODEL_CONFIG, normalizeBand, normalizeModel } from "@/lib/config";
-import { getBands, getExplorerSnapshot, getShowDetailsByDate, calculateModelAgreement, bandEntryBySlug } from "@/lib/data";
+import { MODEL_CONFIG, normalizeModel } from "@/lib/config";
+import { getBands, getExplorerSnapshot, getShowDetailsByDate, calculateModelAgreement, bandEntryBySlug, resolveBandSelection } from "@/lib/data";
 import {
   buildLocationLabel,
   formatCompactDateLabel,
@@ -29,9 +29,8 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
   const params = await searchParams;
   const bandsResult = await getBands();
   const bands = bandsResult.status === "ready" ? bandsResult.bands : [];
-  const bandSlug = normalizeBand(params.band);
-  const bandEntry = bandEntryBySlug(bands, bandSlug);
-  const bandName = bandEntry?.displayName ?? bandSlug;
+  const bandSelection = resolveBandSelection(bands, params.band);
+  const bandName = bandSelection.bandEntry?.displayName ?? bandSelection.requestedSlug;
   const dateStr = params.date ? ` (${formatCompactDateLabel(params.date)})` : "";
 
   return {
@@ -46,13 +45,26 @@ function normalizeSongName(value: string) {
 
 export default async function ExplorerPage({ searchParams }: Props) {
   const params = await searchParams;
+  const bandsResult = await getBands();
+  const bands = bandsResult.status === "ready" ? bandsResult.bands : [];
+  const bandSelection = resolveBandSelection(bands, params.band);
+  if (bandsResult.status === "ready" && bandSelection.isInvalid) {
+    return (
+      <DataState
+        title="Band not found"
+        body={`No active band found for slug "${bandSelection.requestedSlug}". Select a supported band from the navigation.`}
+      />
+    );
+  }
+
+  const selectedBand =
+    bandsResult.status === "ready" ? bandSelection.bandEntry?.slug : params.band;
   const primaryModel = normalizeModel(params.model);
   const secondaryModelSlug = primaryModel === "ckplus" ? "notebook" : "ckplus";
 
-  const [bandsResult, state, secondaryState] = await Promise.all([
-    getBands(),
-    getExplorerSnapshot(params.band, primaryModel, params.date),
-    getExplorerSnapshot(params.band, secondaryModelSlug, params.date),
+  const [state, secondaryState] = await Promise.all([
+    getExplorerSnapshot(selectedBand, primaryModel, params.date),
+    getExplorerSnapshot(selectedBand, secondaryModelSlug, params.date),
   ]);
 
   if (state.status === "missing_env") {
@@ -73,17 +85,6 @@ export default async function ExplorerPage({ searchParams }: Props) {
       <DataState
         title="No historical prediction dates"
         body="No prediction history was found for the selected band/model pair."
-      />
-    );
-  }
-
-  const bands = bandsResult.status === "ready" ? bandsResult.bands : [];
-  const normalizedBand = normalizeBand(params.band);
-  if (!bands.some((b) => b.slug === normalizedBand)) {
-    return (
-      <DataState
-        title="Band not found"
-        body={`No active band found for slug "${normalizedBand}". Select a supported band from the navigation.`}
       />
     );
   }

@@ -107,7 +107,7 @@ The repo should verify the website in GitHub Actions before relying on Vercel pr
 
 1. `npm run lint:web`
 2. `npm run build:web`
-3. `npm run test:web:smoke:list`
+3. `npm run test:web:smoke`
 
 This keeps deployment triggering in Vercel while GitHub Actions acts as the verification gate.
 

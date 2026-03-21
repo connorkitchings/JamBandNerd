@@ -1,4 +1,12 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
+
+async function expectPageHeadingOrMissingEnv(page: Page, heading: string) {
+  await expect(
+    page
+      .getByRole("heading", { name: heading })
+      .or(page.getByRole("heading", { name: "Supabase environment required" })),
+  ).toBeVisible();
+}
 
 test("desktop routes render the public shell", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop-chromium", "desktop-only shell check");
@@ -10,17 +18,17 @@ test("desktop routes render the public shell", async ({ page }, testInfo) => {
   await expect(page.getByRole("navigation", { name: "Primary navigation" }).getByRole("link", { name: "Performance" })).toBeVisible();
 
   await page.goto("/performance");
-  await expect(page.getByRole("heading", { name: "Historical Performance" })).toBeVisible();
+  await expectPageHeadingOrMissingEnv(page, "Historical Performance");
 
   await page.goto("/explorer");
-  await expect(page.getByRole("heading", { name: "Historical Explorer" })).toBeVisible();
+  await expectPageHeadingOrMissingEnv(page, "Historical Explorer");
 
   await page.goto("/compare");
-  await expect(page.getByRole("heading", { name: "Model Compare" })).toBeVisible();
+  await expectPageHeadingOrMissingEnv(page, "Model Compare");
 
   // /predictions now redirects to /
   await page.goto("/predictions");
-  await expect(page.getByRole("heading", { name: "Song Board" })).toBeVisible();
+  await expectPageHeadingOrMissingEnv(page, "Song Board");
 
   await page.goto("/about");
   await expect(page.getByRole("heading", { name: "About JamBandNerd" })).toBeVisible();
@@ -56,4 +64,3 @@ test("preview tables remain scrollable on mobile", async ({ page }, testInfo) =>
   // The song board renders inside the preview page
   await expect(page.getByRole("heading", { name: "Song board" })).toBeVisible();
 });
-

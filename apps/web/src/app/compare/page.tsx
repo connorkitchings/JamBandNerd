@@ -3,8 +3,7 @@ import { DataState } from "@/components/data-state";
 import { FilterLinks } from "@/components/filter-links";
 import { SongBoard } from "@/components/song-board";
 import { SectionCard } from "@/components/section-card";
-import { normalizeBand } from "@/lib/config";
-import { getBands, getLatestPredictions, getShowDetailsByDate, bandEntryBySlug } from "@/lib/data";
+import { getBands, getLatestPredictions, getShowDetailsByDate, bandEntryBySlug, resolveBandSelection } from "@/lib/data";
 import {
   buildLocationLabel,
   formatCompactDateLabel,
@@ -23,9 +22,8 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
   const params = await searchParams;
   const bandsResult = await getBands();
   const bands = bandsResult.status === "ready" ? bandsResult.bands : [];
-  const bandSlug = normalizeBand(params.band);
-  const bandEntry = bandEntryBySlug(bands, bandSlug);
-  const bandName = bandEntry?.displayName ?? bandSlug;
+  const bandSelection = resolveBandSelection(bands, params.band);
+  const bandName = bandSelection.bandEntry?.displayName ?? bandSelection.requestedSlug;
 
   return {
     title: `${bandName} Model Compare | JamBandNerd`,
@@ -39,10 +37,23 @@ function normalizeSongName(value: string) {
 
 export default async function ComparePage({ searchParams }: Props) {
   const params = await searchParams;
-  const [bandsResult, notebook, ckplus] = await Promise.all([
-    getBands(),
-    getLatestPredictions(params.band, "notebook"),
-    getLatestPredictions(params.band, "ckplus"),
+  const bandsResult = await getBands();
+  const bands = bandsResult.status === "ready" ? bandsResult.bands : [];
+  const bandSelection = resolveBandSelection(bands, params.band);
+  if (bandsResult.status === "ready" && bandSelection.isInvalid) {
+    return (
+      <DataState
+        title="Band not found"
+        body={`No active band found for slug "${bandSelection.requestedSlug}". Select a supported band from the navigation.`}
+      />
+    );
+  }
+
+  const selectedBand =
+    bandsResult.status === "ready" ? bandSelection.bandEntry?.slug : params.band;
+  const [notebook, ckplus] = await Promise.all([
+    getLatestPredictions(selectedBand, "notebook"),
+    getLatestPredictions(selectedBand, "ckplus"),
   ]);
 
   if (notebook.status === "missing_env" || ckplus.status === "missing_env") {
@@ -59,17 +70,6 @@ export default async function ComparePage({ searchParams }: Props) {
       <DataState
         title="Comparison data unavailable"
         body="Both latest model snapshots were not available for this band."
-      />
-    );
-  }
-
-  const bands = bandsResult.status === "ready" ? bandsResult.bands : [];
-  const normalizedBand = normalizeBand(params.band);
-  if (!bands.some((b) => b.slug === normalizedBand)) {
-    return (
-      <DataState
-        title="Band not found"
-        body={`No active band found for slug "${normalizedBand}". Select a supported band from the navigation.`}
       />
     );
   }

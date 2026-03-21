@@ -41,6 +41,7 @@ tw_test_backups/
 # Node / Next.js
 node_modules/
 .next/
+*.tsbuildinfo
 npm-debug.log*
 playwright-report/
 test-results/

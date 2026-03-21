@@ -4,8 +4,7 @@ import { cache } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import {
-  BAND_CONFIG,
-  BAND_ID_COLUMNS,
+  DEFAULT_BAND_SLUG,
   type BandSlug,
   type LikelihoodTier,
   type ModelSlug,
@@ -375,6 +374,62 @@ function getClientOrState<T>(): RouteState<T> | null {
   return null;
 }
 
+type BandSelection = {
+  requestedSlug: string;
+  bandEntry: BandEntry | null;
+  isInvalid: boolean;
+};
+
+export function resolveBandSelection(
+  bands: BandEntry[],
+  bandInput: string | undefined,
+): BandSelection {
+  const requestedSlug = normalizeBand(bandInput);
+  const matchedBand = bandEntryBySlug(bands, requestedSlug) ?? null;
+
+  if (matchedBand) {
+    return {
+      requestedSlug,
+      bandEntry: matchedBand,
+      isInvalid: false,
+    };
+  }
+
+  if (typeof bandInput === "string" && bandInput.trim().length > 0) {
+    return {
+      requestedSlug,
+      bandEntry: null,
+      isInvalid: true,
+    };
+  }
+
+  return {
+    requestedSlug,
+    bandEntry: bandEntryBySlug(bands, DEFAULT_BAND_SLUG) ?? bands[0] ?? null,
+    isInvalid: false,
+  };
+}
+
+async function getBandContext(
+  bandInput: string | undefined,
+): Promise<RouteState<{ band: BandSlug; bandEntry: BandEntry }>> {
+  const bandsState = await getBands();
+  if (bandsState.status !== "ready") {
+    return bandsState as RouteState<{ band: BandSlug; bandEntry: BandEntry }>;
+  }
+
+  const selection = resolveBandSelection(bandsState.bands, bandInput);
+  if (!selection.bandEntry || selection.isInvalid) {
+    return { status: "empty" };
+  }
+
+  return {
+    status: "ready",
+    band: selection.bandEntry.slug,
+    bandEntry: selection.bandEntry,
+  };
+}
+
 export const getLatestPredictions = cache(
   async (
     bandInput: string | undefined,
@@ -389,7 +444,16 @@ export const getLatestPredictions = cache(
       return missingEnv;
     }
 
-    const band = normalizeBand(bandInput);
+    const bandState = await getBandContext(bandInput);
+    if (bandState.status !== "ready") {
+      return bandState as RouteState<{
+        band: BandSlug;
+        model: ModelSlug;
+        snapshot: PredictionSnapshot;
+      }>;
+    }
+
+    const band = bandState.band;
     const model = normalizeModel(modelInput);
     const client = getSupabaseServerClient();
 
@@ -487,7 +551,16 @@ export const getPredictionsForDate = cache(
       return missingEnv;
     }
 
-    const band = normalizeBand(bandInput);
+    const bandState = await getBandContext(bandInput);
+    if (bandState.status !== "ready") {
+      return bandState as RouteState<{
+        band: BandSlug;
+        model: ModelSlug;
+        snapshot: PredictionSnapshot;
+      }>;
+    }
+
+    const band = bandState.band;
     const model = normalizeModel(modelInput);
     const client = getSupabaseServerClient();
 
@@ -554,7 +627,16 @@ export const getPredictionDates = cache(
       return missingEnv;
     }
 
-    const band = normalizeBand(bandInput);
+    const bandState = await getBandContext(bandInput);
+    if (bandState.status !== "ready") {
+      return bandState as RouteState<{
+        band: BandSlug;
+        model: ModelSlug;
+        dates: string[];
+      }>;
+    }
+
+    const band = bandState.band;
     const model = normalizeModel(modelInput);
     const client = getSupabaseServerClient();
 
@@ -628,7 +710,16 @@ export const getRecentAccuracy = cache(
       return missingEnv;
     }
 
-    const band = normalizeBand(bandInput);
+    const bandState = await getBandContext(bandInput);
+    if (bandState.status !== "ready") {
+      return bandState as RouteState<{
+        band: BandSlug;
+        model: ModelSlug;
+        rows: AccuracyRow[];
+      }>;
+    }
+
+    const band = bandState.band;
     const model = normalizeModel(modelInput);
     const client = getSupabaseServerClient();
 
@@ -666,8 +757,7 @@ export const getRecentAccuracy = cache(
         return { status: "empty" };
       }
 
-      const idColumn = BAND_ID_COLUMNS[band];
-      const showsTable = BAND_CONFIG[band].showsTable;
+      const { idColumn, showsTable } = bandState.bandEntry;
       const showIds = [...new Set(accuracyRows.map((row) => row.showId).filter(Boolean))];
       const showDates = [...new Set(accuracyRows.map((row) => row.showDate).filter(Boolean))];
       const venueByShowId = new Map<string, string | null>();
@@ -752,7 +842,12 @@ export const getShowDetailsByDate = cache(
       return missingEnv;
     }
 
-    const band = normalizeBand(bandInput);
+    const bandState = await getBandContext(bandInput);
+    if (bandState.status !== "ready") {
+      return bandState as RouteState<{ band: BandSlug; show: ShowDetails }>;
+    }
+
+    const band = bandState.band;
     if (!showDate) {
       return { status: "empty" };
     }
@@ -763,7 +858,7 @@ export const getShowDetailsByDate = cache(
     }
 
     try {
-      const showsTable = BAND_CONFIG[band].showsTable;
+      const { showsTable } = bandState.bandEntry;
       const { data, error } = await client
         .from(showsTable)
         .select("*")
@@ -829,9 +924,18 @@ async function getSetlistForDate(
     return null;
   }
 
-  const idColumn = BAND_ID_COLUMNS[band];
+  const bandsState = await getBands();
+  if (bandsState.status !== "ready") {
+    return null;
+  }
+
+  const bandEntry = bandEntryBySlug(bandsState.bands, band);
+  if (!bandEntry) {
+    return null;
+  }
+
+  const { idColumn, showsTable } = bandEntry;
   const positionColumn = band === "phish" ? "position" : "song_position";
-  const showsTable = BAND_CONFIG[band].showsTable;
   const setlistTable = `${band}_setlists_raw`;
 
   const { data: showRows, error: showError } = await client
@@ -896,7 +1000,12 @@ export const getLastShowSetlist = cache(
       return missingEnv;
     }
 
-    const band = normalizeBand(bandInput);
+    const bandState = await getBandContext(bandInput);
+    if (bandState.status !== "ready") {
+      return bandState as RouteState<{ band: BandSlug; setlist: SetlistSnapshot }>;
+    }
+
+    const band = bandState.band;
     const client = getSupabaseServerClient();
 
     if (!client) {
@@ -904,7 +1013,7 @@ export const getLastShowSetlist = cache(
     }
 
     try {
-      const showsTable = BAND_CONFIG[band].showsTable;
+      const { showsTable } = bandState.bandEntry;
       const todayIso = new Date().toISOString().slice(0, 10);
 
       const { data: recentShows, error } = await client
@@ -996,31 +1105,21 @@ export const getGlobalSearchData = cache(
     if (!client) return { status: "missing_env" };
 
     try {
-      let bandSlugs: string[] = [];
-
-      try {
-        const { data: bandsData } = await client
-          .from("bands")
-          .select("slug")
-          .eq("is_active", true);
-        bandSlugs = (bandsData ?? [])
-          .map((row) => asRecord(row)?.slug)
-          .filter((s): s is string => typeof s === "string");
-      } catch {
-        bandSlugs = [];
+      const bandsState = await getBands();
+      if (bandsState.status !== "ready") {
+        return bandsState as RouteState<{
+          items: { band: BandSlug; songName: string; rank: number }[];
+        }>;
       }
 
-      if (bandSlugs.length === 0) {
-        bandSlugs = Object.keys(BAND_CONFIG);
-      }
-
+      const bandSlugs = bandsState.bands.map((band) => band.slug);
       const items: { band: BandSlug; songName: string; rank: number }[] = [];
 
       await Promise.all(
         bandSlugs.map(async (band) => {
           // Default to fetching Notebook model for search index for now
           const model: ModelSlug = "notebook";
-          const bandSlug = band as BandSlug;
+          const bandSlug = band;
           
           try {
             const projectionSnapshot = await fetchProjectedPredictionSnapshot(client, {

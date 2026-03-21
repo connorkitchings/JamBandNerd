@@ -1,30 +1,3 @@
-export const BAND_CONFIG = {
-  eggy: {
-    displayName: "Eggy",
-    showsTable: "eggy_shows_raw",
-  },
-  billy: {
-    displayName: "Billy Strings",
-    showsTable: "billy_shows_raw",
-  },
-  goose: {
-    displayName: "Goose",
-    showsTable: "goose_shows_raw",
-  },
-  phish: {
-    displayName: "Phish",
-    showsTable: "phish_shows_raw",
-  },
-  wsp: {
-    displayName: "Widespread Panic",
-    showsTable: "wsp_shows_raw",
-  },
-  um: {
-    displayName: "Umphrey's McGee",
-    showsTable: "um_shows_raw",
-  },
-} as const;
-
 export const MODEL_CONFIG = {
   notebook: {
     displayName: "Notebook",
@@ -38,19 +11,11 @@ export const MODEL_CONFIG = {
   },
 } as const;
 
-export const BAND_ID_COLUMNS: Record<BandSlug, string> = {
-  eggy: "show_id",
-  billy: "show_id",
-  goose: "show_id",
-  phish: "api_show_id",
-  wsp: "show_id",
-  um: "show_id",
-};
-
-export const ACTIVE_BANDS = Object.keys(BAND_CONFIG) as BandSlug[];
 export const ACTIVE_MODELS = Object.keys(MODEL_CONFIG) as ModelSlug[];
 
-export type BandSlug = keyof typeof BAND_CONFIG;
+export const DEFAULT_BAND_SLUG = "goose";
+
+export type BandSlug = string;
 export type ModelSlug = keyof typeof MODEL_CONFIG;
 
 export type LikelihoodTier = "expected" | "hot" | "likely" | "possible";
@@ -88,7 +53,8 @@ export const TIER_CONFIG: Record<
 export const TIER_ORDER: LikelihoodTier[] = ["expected", "hot", "likely", "possible"];
 
 export function normalizeBand(value?: string): BandSlug {
-  return ACTIVE_BANDS.includes(value as BandSlug) ? (value as BandSlug) : "goose";
+  const normalized = value?.trim().toLowerCase();
+  return normalized && normalized.length > 0 ? normalized : DEFAULT_BAND_SLUG;
 }
 
 export function normalizeModel(value?: string): ModelSlug {

@@ -6,13 +6,13 @@ import { FilterLinks } from "@/components/filter-links";
 import { SongBoard } from "@/components/song-board";
 import { SectionCard } from "@/components/section-card";
 import { SetlistTable } from "@/components/setlist-table";
-import { normalizeBand } from "@/lib/config";
 import {
   getBands,
   getLastShowSetlist,
   getPredictionsForDate,
   getShowDetailsByDate,
   bandEntryBySlug,
+  resolveBandSelection,
 } from "@/lib/data";
 import { buildLocationLabel, formatDateLabel } from "@/lib/format";
 
@@ -28,9 +28,8 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
   const params = await searchParams;
   const bandsResult = await getBands();
   const bands = bandsResult.status === "ready" ? bandsResult.bands : [];
-  const bandSlug = normalizeBand(params.band);
-  const bandEntry = bandEntryBySlug(bands, bandSlug);
-  const bandName = bandEntry?.displayName ?? bandSlug;
+  const bandSelection = resolveBandSelection(bands, params.band);
+  const bandName = bandSelection.bandEntry?.displayName ?? bandSelection.requestedSlug;
 
   return {
     title: `${bandName} Last Show Setlist | JamBandNerd`,
@@ -44,10 +43,21 @@ function normalizeSongName(value: string) {
 
 export default async function LastShowPage({ searchParams }: Props) {
   const params = await searchParams;
-  const [bandsResult, state] = await Promise.all([
-    getBands(),
-    getLastShowSetlist(params.band),
-  ]);
+  const bandsResult = await getBands();
+  const bands = bandsResult.status === "ready" ? bandsResult.bands : [];
+  const bandSelection = resolveBandSelection(bands, params.band);
+  if (bandsResult.status === "ready" && bandSelection.isInvalid) {
+    return (
+      <DataState
+        title="Band not found"
+        body={`No active band found for slug "${bandSelection.requestedSlug}". Select a supported band from the navigation.`}
+      />
+    );
+  }
+
+  const selectedBand =
+    bandsResult.status === "ready" ? bandSelection.bandEntry?.slug : params.band;
+  const state = await getLastShowSetlist(selectedBand);
 
   if (state.status === "missing_env") {
     return (
@@ -67,17 +77,6 @@ export default async function LastShowPage({ searchParams }: Props) {
       <DataState
         title="No last show available"
         body="No completed show with setlist data was found for the selected band."
-      />
-    );
-  }
-
-  const bands = bandsResult.status === "ready" ? bandsResult.bands : [];
-  const normalizedBand = normalizeBand(params.band);
-  if (!bands.some((b) => b.slug === normalizedBand)) {
-    return (
-      <DataState
-        title="Band not found"
-        body={`No active band found for slug "${normalizedBand}". Select a supported band from the navigation.`}
       />
     );
   }
