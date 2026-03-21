@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
@@ -74,16 +75,18 @@ export function SiteHeader({ searchItems }: Props) {
           )}
           <Link
             href="/"
-            className="hidden font-headline text-2xl font-bold tracking-[-0.08em] text-on-background md:block"
+            className="hidden items-center gap-3 font-headline text-2xl font-bold tracking-[-0.08em] text-on-background md:flex"
           >
+            <Image src="/logo.png" alt="JamBandNerd Logo" width={32} height={32} className="rounded-full" />
             JamBandNerd
           </Link>
         </div>
 
         <Link
           href="/"
-          className="absolute left-1/2 -translate-x-1/2 font-headline text-2xl font-bold tracking-[-0.08em] text-on-background md:hidden"
+          className="absolute left-1/2 flex -translate-x-1/2 items-center gap-2 font-headline text-2xl font-bold tracking-[-0.08em] text-on-background md:hidden"
         >
+          <Image src="/logo.png" alt="JamBandNerd" width={28} height={28} className="rounded-full" />
           JamBandNerd
         </Link>
 

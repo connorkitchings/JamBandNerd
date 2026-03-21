@@ -1,3 +1,4 @@
+import Image from "next/image";
 import type { PredictionRow, AccuracyRow } from "@/lib/data";
 
 type Props = {
@@ -67,9 +68,12 @@ export function PredictionHero({
             <span className="mb-4 inline-block bg-secondary-container px-3 py-1 font-label text-[10px] uppercase tracking-[0.18rem] text-on-secondary-container">
               {statusLabel}
             </span>
-            <h1 className="font-headline text-4xl font-bold uppercase tracking-[-0.08em] text-on-surface md:text-6xl">
-              {venueName}
-            </h1>
+            <div className="flex items-center gap-4">
+              <Image src="/logo.png" alt="JamBandNerd Logo" width={64} height={64} className="hidden rounded-full shadow-lg md:block" />
+              <h1 className="font-headline text-4xl font-bold uppercase tracking-[-0.08em] text-on-surface md:text-6xl">
+                {venueName}
+              </h1>
+            </div>
             <p className="mb-8 mt-2 font-headline text-lg uppercase tracking-tight text-primary">
               {dateLabel}
               {locationLabel ? ` • ${locationLabel}` : ""}
