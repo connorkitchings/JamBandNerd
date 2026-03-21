@@ -140,6 +140,8 @@ jobs:
           for DATE in $(echo "$DATES" | python -c "import json,sys; print(' '.join(json.load(sys.stdin)))"); do
             echo "Regenerating prediction for ${{ matrix.band }} / ${{ matrix.model }} on $DATE"
             python scripts/generate_predictions.py --band ${{ matrix.band }} --model ${{ matrix.model }} --date "$DATE"
+            echo "Verifying recent_avg_gap for $DATE:"
+            python scripts/check_recent_avg_gap.py --band ${{ matrix.band }} --model ${{ matrix.model }} --date "$DATE"
           done
 
           echo "::endgroup::"
