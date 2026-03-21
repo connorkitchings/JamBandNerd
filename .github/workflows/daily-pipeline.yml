@@ -414,7 +414,7 @@ jobs:
   notify-discord:
     name: Notify Discord
     needs: [daily-pipeline, pipeline-summary]
-    if: always()
+    if: failure()
     runs-on: ubuntu-latest
     env:
       DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
@@ -425,11 +425,7 @@ jobs:
           WORKFLOW_STATUS: ${{ needs.daily-pipeline.result }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          if [[ "$WORKFLOW_STATUS" == "success" ]]; then
-            STATUS_TEXT="✅ Daily pipeline succeeded"
-          else
-            STATUS_TEXT="⚠️ Daily pipeline completed with issues (check GitHub Actions)"
-          fi
+          STATUS_TEXT="⚠️ Daily pipeline completed with issues (check GitHub Actions)"
 
           payload=$(STATUS_TEXT="$STATUS_TEXT" python - <<'PY'
           import json, os

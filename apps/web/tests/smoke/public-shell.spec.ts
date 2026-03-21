@@ -6,8 +6,8 @@ test("desktop routes render the public shell", async ({ page }, testInfo) => {
   await page.goto("/");
 
   await expect(page.getByRole("navigation", { name: "Primary navigation" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Predictions" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Performance" })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Primary navigation" }).getByRole("link", { name: "Predictions" })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Primary navigation" }).getByRole("link", { name: "Performance" })).toBeVisible();
 
   await page.goto("/performance");
   await expect(page.getByRole("heading", { name: "Historical Performance" })).toBeVisible();
