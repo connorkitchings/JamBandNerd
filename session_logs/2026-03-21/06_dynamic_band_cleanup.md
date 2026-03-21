@@ -16,6 +16,11 @@ Finish the website dynamic-band migration so the `bands` Supabase registry is th
 - `npm run test:web:smoke:list`
 - `npm run test:web:smoke`
 - `PLAYWRIGHT_BROWSERS_PATH=/Users/connorkitchings/.cache/ms-playwright npm run test:web:smoke`
+- `git add ...`
+- `git commit -m "feat(web): finish dynamic band branch verification"`
+- `git push -u origin feat/web-dynamic-band-cleanup`
+- `gh api repos/connorkitchings/JamBandNerd/commits/fd4b2ff/status`
+- Protected preview verification via bypass cookie against `jambandnerd-git-feat-web-dynami-14cf69-connorkitchings-projects.vercel.app`
 
 ## Files Changed
 - `apps/web/src/lib/config.ts`
@@ -42,6 +47,14 @@ Finish the website dynamic-band migration so the `bands` Supabase registry is th
 - `npm run test:web:smoke:list`: passed
 - `npm run test:web:smoke`: failed in the sandbox before test execution because Playwright Chromium aborted on launch with `SIGABRT`
 - `PLAYWRIGHT_BROWSERS_PATH=/Users/connorkitchings/.cache/ms-playwright npm run test:web:smoke`: passed outside the sandbox
+- Vercel preview deployment for commit `fd4b2ff`: passed
+- Protected hosted route verification passed for `/`, `/explorer`, `/compare`, `/performance`, `/last-show`, `/about`, `/preview/tables`
+- `/predictions` returned the expected `307` redirect to `/`
+- Invalid `?band=definitely-not-a-band` on `/` rendered the explicit "Band not found" state on the preview
+- Non-default band route spot checks passed:
+  `/?band=phish&model=notebook`
+  `/explorer?band=billy&model=notebook`
+  `/performance?band=um&model=ckplus`
 
 ## Next Step
-Use this branch for preview-deploy verification and confirm the route checklist in `docs/operations/website_delivery.md` against a real hosted build.
+Open a PR from `feat/web-dynamic-band-cleanup`, let `Website Quality` finish, and merge once the GitHub/Vercel checks are green.
