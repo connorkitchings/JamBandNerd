@@ -108,7 +108,7 @@ jobs:
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
           uv venv
           source .venv/bin/activate
-          uv pip install .
+          uv pip install -e .
 
       - name: Get prediction dates
         id: get_dates
