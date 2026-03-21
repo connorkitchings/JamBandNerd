@@ -1,8 +1,10 @@
+import type { Metadata } from "next";
 import { AccuracyTable } from "@/components/accuracy-table";
 import { DataState } from "@/components/data-state";
 import { FilterLinks } from "@/components/filter-links";
+import { RecallChart } from "@/components/recall-chart";
 import { SectionCard } from "@/components/section-card";
-import { BAND_CONFIG, MODEL_CONFIG } from "@/lib/config";
+import { BAND_CONFIG, MODEL_CONFIG, normalizeBand, normalizeModel } from "@/lib/config";
 import { type AccuracyRow, getRecentAccuracy } from "@/lib/data";
 import { formatCompactDateLabel, formatPercent } from "@/lib/format";
 
@@ -14,6 +16,19 @@ type Props = {
     model?: string;
   }>;
 };
+
+export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
+  const params = await searchParams;
+  const band = normalizeBand(params.band);
+  const model = normalizeModel(params.model);
+  const bandName = BAND_CONFIG[band].displayName;
+  const modelName = MODEL_CONFIG[model].displayName;
+
+  return {
+    title: `${bandName} Performance Ledger | JamBandNerd`,
+    description: `Track historical prediction accuracy for ${bandName} using the ${modelName} model.`,
+  };
+}
 
 function average(values: Array<number | null>) {
   const filtered = values.filter((value): value is number => value !== null);
@@ -125,6 +140,10 @@ export default async function PerformancePage({ searchParams }: Props) {
           </p>
         </SectionCard>
       </section>
+
+      <SectionCard title="Recall Timeline" eyebrow="Top-10 accuracy over time">
+        <RecallChart rows={state.rows} />
+      </SectionCard>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(280px,0.85fr)]">
         <SectionCard title="Performance Read" eyebrow="Trend">

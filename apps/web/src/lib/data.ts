@@ -1,6 +1,7 @@
 import "server-only";
 
 import { cache } from "react";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 import {
   BAND_CONFIG,
@@ -14,6 +15,7 @@ import {
 import { getSupabaseServerClient, hasSupabaseEnv } from "@/lib/supabase/server";
 
 type JsonPrediction = Record<string, unknown>;
+type ProjectionRow = Record<string, unknown>;
 
 export type PredictionRow = {
   rank: number;
@@ -169,6 +171,195 @@ function normalizePredictionRows(rows: JsonPrediction[]): PredictionRow[] {
   });
 }
 
+function normalizeProjectedPredictionRows(rows: ProjectionRow[]): PredictionRow[] {
+  return rows.map((row, index) => {
+    const payload = asRecord(row.prediction_payload) ?? {};
+    const rank = parseNumber(row.rank) ?? parseNumber(payload.rank) ?? index + 1;
+    const probability = parseNumber(payload.probability);
+
+    return {
+      rank,
+      songName:
+        typeof row.song_name === "string"
+          ? row.song_name
+          : String(payload.song_name ?? "Unknown Song"),
+      lastPlayed:
+        typeof payload.LTP === "string"
+          ? payload.LTP
+          : typeof payload.last_played_date === "string"
+            ? payload.last_played_date
+            : null,
+      currentGap: parseNumber(payload.current_gap),
+      playsPastYear: parseNumber(payload.plays_past_year),
+      avgGap: parseNumber(payload.avg_gap),
+      gapRatio: parseNumber(payload.gap_ratio),
+      gapZScore: parseNumber(payload.gap_z_score),
+      ckplusScore: parseNumber(payload.ckplus_score),
+      probability,
+      tier: computeTier(rank, probability),
+    };
+  });
+}
+
+function buildPredictionSnapshotFromCanonicalRow(
+  row: Record<string, unknown>,
+): PredictionSnapshot {
+  return {
+    referenceDate:
+      typeof row.reference_date === "string" ? row.reference_date : null,
+    predictedAt:
+      typeof row.predicted_at === "string"
+        ? row.predicted_at
+        : typeof row.created_at === "string"
+          ? row.created_at
+          : null,
+    modelVersion: typeof row.model_version === "string" ? row.model_version : null,
+    predictions: normalizePredictionRows(parsePredictions(row.predictions)),
+    raw: row,
+  };
+}
+
+function buildPredictionSnapshotFromProjectionRows(rows: ProjectionRow[]): PredictionSnapshot {
+  const firstRow = rows[0] ?? null;
+
+  return {
+    referenceDate:
+      firstRow && typeof firstRow.reference_date === "string"
+        ? firstRow.reference_date
+        : null,
+    predictedAt:
+      firstRow && typeof firstRow.predicted_at === "string"
+        ? firstRow.predicted_at
+        : null,
+    modelVersion:
+      firstRow && typeof firstRow.model_version === "string"
+        ? firstRow.model_version
+        : null,
+    predictions: normalizeProjectedPredictionRows(rows),
+    raw: {
+      source: "prediction_songs",
+      rowCount: rows.length,
+      referenceDate:
+        firstRow && typeof firstRow.reference_date === "string"
+          ? firstRow.reference_date
+          : null,
+      predictedAt:
+        firstRow && typeof firstRow.predicted_at === "string"
+          ? firstRow.predicted_at
+          : null,
+      modelVersion:
+        firstRow && typeof firstRow.model_version === "string"
+          ? firstRow.model_version
+          : null,
+    },
+  };
+}
+
+async function fetchProjectedPredictionSnapshot(
+  client: SupabaseClient,
+  {
+    band,
+    model,
+    referenceDate,
+  }: {
+    band: BandSlug;
+    model: ModelSlug;
+    referenceDate?: string;
+  },
+): Promise<PredictionSnapshot | null> {
+  let seedQuery = client
+    .from("prediction_songs")
+    .select("reference_date, predicted_at, model_version")
+    .eq("band", band)
+    .eq("model_slug", model);
+
+  if (referenceDate) {
+    seedQuery = seedQuery.eq("reference_date", referenceDate);
+  }
+
+  const { data: seedRows, error: seedError } = await seedQuery
+    .order("predicted_at", { ascending: false })
+    .order("reference_date", { ascending: false })
+    .order("rank", { ascending: true })
+    .limit(1);
+
+  if (seedError) {
+    throw seedError;
+  }
+
+  const seedRow = asRecord(seedRows?.[0]);
+  const seedReferenceDate =
+    seedRow && typeof seedRow.reference_date === "string"
+      ? seedRow.reference_date
+      : null;
+  const seedModelVersion =
+    seedRow && typeof seedRow.model_version === "string"
+      ? seedRow.model_version
+      : null;
+
+  if (!seedReferenceDate || !seedModelVersion) {
+    return null;
+  }
+
+  const { data, error } = await client
+    .from("prediction_songs")
+    .select(
+      "reference_date, predicted_at, model_version, rank, song_name, prediction_payload",
+    )
+    .eq("band", band)
+    .eq("model_slug", model)
+    .eq("reference_date", seedReferenceDate)
+    .eq("model_version", seedModelVersion)
+    .order("rank", { ascending: true });
+
+  if (error) {
+    throw error;
+  }
+
+  const rows = (data ?? [])
+    .map((item) => asRecord(item))
+    .filter((item): item is ProjectionRow => item !== null);
+
+  if (rows.length === 0) {
+    return null;
+  }
+
+  return buildPredictionSnapshotFromProjectionRows(rows);
+}
+
+async function getCurrentModelVersion(
+  client: SupabaseClient,
+  band: BandSlug,
+  model: ModelSlug,
+): Promise<string> {
+  try {
+    const projectionSnapshot = await fetchProjectedPredictionSnapshot(client, {
+      band,
+      model,
+    });
+    if (projectionSnapshot?.modelVersion) {
+      return projectionSnapshot.modelVersion;
+    }
+  } catch (error) {
+    console.error("Failed to resolve model version from prediction_songs", error);
+  }
+
+  const { data } = await client
+    .from(`predictions_${model}`)
+    .select("model_version")
+    .eq("band", band)
+    .order("predicted_at", { ascending: false })
+    .order("reference_date", { ascending: false })
+    .limit(1);
+
+  const row = asRecord(data?.[0]);
+  if (row && typeof row.model_version === "string") {
+    return row.model_version;
+  }
+
+  return `${model}_v1`;
+}
+
 function getClientOrState<T>(): RouteState<T> | null {
   if (!hasSupabaseEnv()) {
     return { status: "missing_env" };
@@ -200,6 +391,18 @@ export const getLatestPredictions = cache(
     }
 
     try {
+      try {
+        const projectionSnapshot = await fetchProjectedPredictionSnapshot(client, {
+          band,
+          model,
+        });
+        if (projectionSnapshot) {
+          return { status: "ready", band, model, snapshot: projectionSnapshot };
+        }
+      } catch (error) {
+        console.error("Failed to load latest projected predictions", error);
+      }
+
       const { data, error } = await client
         .from(`predictions_${model}`)
         .select("*")
@@ -216,17 +419,12 @@ export const getLatestPredictions = cache(
         return { status: "empty" };
       }
 
-      const snapshot: PredictionSnapshot = {
-        referenceDate:
-          typeof row.reference_date === "string" ? row.reference_date : null,
-        predictedAt: typeof row.predicted_at === "string" ? row.predicted_at : null,
-        modelVersion:
-          typeof row.model_version === "string" ? row.model_version : null,
-        predictions: normalizePredictionRows(parsePredictions(row.predictions)),
-        raw: row,
+      return {
+        status: "ready",
+        band,
+        model,
+        snapshot: buildPredictionSnapshotFromCanonicalRow(row),
       };
-
-      return { status: "ready", band, model, snapshot };
     } catch (error) {
       return {
         status: "error",
@@ -235,6 +433,37 @@ export const getLatestPredictions = cache(
     }
   },
 );
+
+export function calculateModelAgreement(
+  primaryRows: PredictionRow[],
+  secondaryRows: PredictionRow[],
+  k = 25
+): { percentage: number; matchCount: number; k: number } | null {
+  if (!primaryRows.length || !secondaryRows.length) return null;
+
+  const primaryTopK = primaryRows.slice(0, k).map(r => r.songName.toLowerCase());
+  const secondaryTopK = secondaryRows.slice(0, k).map(r => r.songName.toLowerCase());
+  
+  const secondarySet = new Set(secondaryTopK);
+  let matchCount = 0;
+  
+  for (const song of primaryTopK) {
+    if (secondarySet.has(song)) {
+      matchCount++;
+    }
+  }
+
+  // Calculate percentage against the actual number of items we could compare 
+  // (in case a brand new band has fewer than K total songs predicted)
+  const actualK = Math.min(k, primaryTopK.length, secondaryTopK.length);
+  const percentage = actualK > 0 ? matchCount / actualK : 0;
+
+  return {
+    percentage,
+    matchCount,
+    k: actualK
+  };
+}
 
 export const getPredictionsForDate = cache(
   async (
@@ -260,6 +489,19 @@ export const getPredictionsForDate = cache(
     }
 
     try {
+      try {
+        const projectionSnapshot = await fetchProjectedPredictionSnapshot(client, {
+          band,
+          model,
+          referenceDate,
+        });
+        if (projectionSnapshot) {
+          return { status: "ready", band, model, snapshot: projectionSnapshot };
+        }
+      } catch (error) {
+        console.error("Failed to load projected predictions for date", error);
+      }
+
       const { data, error } = await client
         .from(`predictions_${model}`)
         .select("*")
@@ -276,22 +518,12 @@ export const getPredictionsForDate = cache(
         return { status: "empty" };
       }
 
-      const snapshot: PredictionSnapshot = {
-        referenceDate:
-          typeof row.reference_date === "string" ? row.reference_date : null,
-        predictedAt:
-          typeof row.created_at === "string"
-            ? row.created_at
-            : typeof row.predicted_at === "string"
-              ? row.predicted_at
-              : null,
-        modelVersion:
-          typeof row.model_version === "string" ? row.model_version : null,
-        predictions: normalizePredictionRows(parsePredictions(row.predictions)),
-        raw: row,
+      return {
+        status: "ready",
+        band,
+        model,
+        snapshot: buildPredictionSnapshotFromCanonicalRow(row),
       };
-
-      return { status: "ready", band, model, snapshot };
     } catch (error) {
       return {
         status: "error",
@@ -371,11 +603,12 @@ export const getRecentAccuracy = cache(
     }
 
     try {
+      const modelVersion = await getCurrentModelVersion(client, band, model);
       const { data, error } = await client
         .from("accuracy_per_show")
         .select("show_id, show_date, k10_recall, k25_recall, k50_recall")
         .eq("band", band)
-        .eq("model_version", `${model}_v1`)
+        .eq("model_version", modelVersion)
         .order("show_date", { ascending: false })
         .limit(limit);
 
@@ -719,3 +952,76 @@ export async function getExplorerSnapshot(
     },
   };
 }
+
+export const getGlobalSearchData = cache(
+  async (): Promise<RouteState<{ items: { band: BandSlug; songName: string; rank: number }[] }>> => {
+    const missingEnv = getClientOrState<{ items: { band: BandSlug; songName: string; rank: number }[] }>();
+    if (missingEnv) return missingEnv;
+
+    const client = getSupabaseServerClient();
+    if (!client) return { status: "missing_env" };
+
+    try {
+      const bands = Object.keys(BAND_CONFIG) as BandSlug[];
+      const items: { band: BandSlug; songName: string; rank: number }[] = [];
+
+      await Promise.all(
+        bands.map(async (band) => {
+          // Default to fetching Notebook model for search index for now
+          const model: ModelSlug = "notebook";
+          
+          try {
+            const projectionSnapshot = await fetchProjectedPredictionSnapshot(client, {
+              band,
+              model,
+            });
+            
+            if (projectionSnapshot && projectionSnapshot.predictions) {
+              for (const p of projectionSnapshot.predictions) {
+                items.push({
+                  band,
+                  songName: p.songName,
+                  rank: p.rank,
+                });
+              }
+              return;
+            }
+          } catch (error) {
+            console.error(`Failed to load search data for ${band} (projection)`, error);
+          }
+
+          const { data } = await client
+            .from(`predictions_${model}`)
+            .select("*")
+            .eq("band", band)
+            .order("reference_date", { ascending: false })
+            .limit(1);
+
+          const row = data?.[0];
+          if (row) {
+            const snapshot = buildPredictionSnapshotFromCanonicalRow(row);
+            for (const p of snapshot.predictions) {
+              items.push({
+                band,
+                songName: p.songName,
+                rank: p.rank,
+              });
+            }
+          }
+        })
+      );
+
+      if (items.length === 0) return { status: "empty" };
+
+      // Sort globally alphabetically
+      items.sort((a, b) => a.songName.localeCompare(b.songName));
+      return { status: "ready", items };
+      
+    } catch (error) {
+      return {
+        status: "error",
+        message: error instanceof Error ? error.message : "Unknown error",
+      };
+    }
+  }
+);

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 
 import { DataState } from "@/components/data-state";
@@ -5,8 +6,8 @@ import { FilterLinks } from "@/components/filter-links";
 import { SongBoard } from "@/components/song-board";
 import { SectionCard } from "@/components/section-card";
 import { SetlistTable } from "@/components/setlist-table";
-import { BAND_CONFIG, MODEL_CONFIG } from "@/lib/config";
-import { getExplorerSnapshot, getShowDetailsByDate } from "@/lib/data";
+import { BAND_CONFIG, MODEL_CONFIG, normalizeBand, normalizeModel } from "@/lib/config";
+import { getExplorerSnapshot, getShowDetailsByDate, calculateModelAgreement } from "@/lib/data";
 import {
   buildLocationLabel,
   formatCompactDateLabel,
@@ -24,13 +25,31 @@ type Props = {
   }>;
 };
 
+export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
+  const params = await searchParams;
+  const band = normalizeBand(params.band);
+  const bandName = BAND_CONFIG[band].displayName;
+  const dateStr = params.date ? ` (${formatCompactDateLabel(params.date)})` : "";
+
+  return {
+    title: `${bandName} Historical Explorer${dateStr} | JamBandNerd`,
+    description: `Replay past prediction snapshots and compare them against actual setlists for ${bandName}.`,
+  };
+}
+
 function normalizeSongName(value: string) {
   return value.trim().toLowerCase();
 }
 
 export default async function ExplorerPage({ searchParams }: Props) {
   const params = await searchParams;
-  const state = await getExplorerSnapshot(params.band, params.model, params.date);
+  const primaryModel = normalizeModel(params.model);
+  const secondaryModelSlug = primaryModel === "ckplus" ? "notebook" : "ckplus";
+
+  const [state, secondaryState] = await Promise.all([
+    getExplorerSnapshot(params.band, primaryModel, params.date),
+    getExplorerSnapshot(params.band, secondaryModelSlug, params.date),
+  ]);
 
   if (state.status === "missing_env") {
     return (
@@ -57,6 +76,9 @@ export default async function ExplorerPage({ searchParams }: Props) {
   const showState = await getShowDetailsByDate(state.band, state.explorer.selectedDate);
   const show = showState.status === "ready" ? showState.show : null;
   const predictions = state.explorer.predictions?.predictions ?? [];
+  const secondaryPredictions = secondaryState.status === "ready" ? secondaryState.explorer?.predictions?.predictions ?? [] : [];
+  const agreementScore = calculateModelAgreement(predictions, secondaryPredictions);
+
   const setlistSongs = state.explorer.setlist?.songs ?? [];
   const actualSongs = new Set(setlistSongs.map((song) => normalizeSongName(song.songName)));
   const matchedPredictions = predictions
@@ -146,9 +168,19 @@ export default async function ExplorerPage({ searchParams }: Props) {
                 <p className="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">
                   Selected model
                 </p>
-                <p className="mt-2 text-sm text-on-surface">
-                  {MODEL_CONFIG[state.model].displayName}
-                </p>
+                <div className="mt-2 flex items-center justify-between gap-2">
+                  <p className="text-sm text-on-surface">
+                    {MODEL_CONFIG[state.model].displayName}
+                  </p>
+                  {agreementScore && (
+                    <span 
+                      className="whitespace-nowrap rounded bg-primary/10 px-1.5 py-0.5 font-label text-[10px] font-bold uppercase tracking-wider text-primary ring-1 ring-inset ring-primary/20"
+                      title={`${agreementScore.matchCount}/${agreementScore.k} Top-${agreementScore.k} songs match across models`}
+                    >
+                      {Math.round(agreementScore.percentage * 100)}% Match
+                    </span>
+                  )}
+                </div>
               </div>
               <div className="rounded-xl border border-outline-variant/20 bg-surface-container-low p-4">
                 <p className="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">

@@ -11,6 +11,7 @@ type Props = {
   totalSongs: number;
   accuracyRows: AccuracyRow[];
   predictions: PredictionRow[];
+  agreementScore?: { percentage: number; matchCount: number; k: number } | null;
 };
 
 function getOutlookLabel(predictions: PredictionRow[]) {
@@ -52,6 +53,7 @@ export function PredictionHero({
   totalSongs,
   accuracyRows,
   predictions,
+  agreementScore,
 }: Props) {
   const outlookLabel = getOutlookLabel(predictions);
   const trackRecord = getTrackRecord(accuracyRows);
@@ -83,7 +85,17 @@ export function PredictionHero({
                 <p className="mb-1 font-label text-[10px] uppercase tracking-[0.18rem] text-on-surface-variant">
                   Model
                 </p>
-                <p className="font-headline text-lg font-semibold text-on-surface">{modelLabel}</p>
+                <div className="flex items-center gap-2">
+                  <p className="font-headline text-lg font-semibold text-on-surface">{modelLabel}</p>
+                  {agreementScore && (
+                    <span 
+                      className="rounded bg-primary/10 px-1.5 py-0.5 font-label text-[10px] font-bold uppercase tracking-wider text-primary ring-1 ring-inset ring-primary/20"
+                      title={`${agreementScore.matchCount}/${agreementScore.k} Top-${agreementScore.k} songs match across models`}
+                    >
+                      {Math.round(agreementScore.percentage * 100)}% Match
+                    </span>
+                  )}
+                </div>
               </div>
               <div>
                 <p className="mb-1 font-label text-[10px] uppercase tracking-[0.18rem] text-on-surface-variant">

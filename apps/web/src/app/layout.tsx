@@ -5,6 +5,7 @@ import { Inter, Space_Grotesk } from "next/font/google";
 
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
 import { SiteHeader } from "@/components/site-header";
+import { getGlobalSearchData } from "@/lib/data";
 
 import "./globals.css";
 
@@ -23,18 +24,21 @@ export const metadata: Metadata = {
   description: "Prediction dashboards, historical explorer views, and performance analysis for jam band setlists.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const searchData = await getGlobalSearchData();
+  const searchItems = searchData.status === "ready" ? searchData.items : [];
+
   return (
     <html className="dark" lang="en">
       <body
         className={`${spaceGrotesk.variable} ${inter.variable} font-body antialiased`}
       >
         <div className="min-h-screen">
-          <SiteHeader />
+          <SiteHeader searchItems={searchItems} />
           <main className="safe-bottom-content w-full px-6 pt-24 md:px-8 lg:px-10">
             {children}
           </main>

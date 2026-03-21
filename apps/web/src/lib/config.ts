@@ -42,7 +42,7 @@ export const BAND_ID_COLUMNS: Record<BandSlug, string> = {
   eggy: "show_id",
   billy: "show_id",
   goose: "show_id",
-  phish: "showid",
+  phish: "api_show_id",
   wsp: "show_id",
   um: "show_id",
 };

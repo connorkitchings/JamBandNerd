@@ -3,16 +3,8 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
+import { GlobalSearch, type GlobalSearchItem } from "@/components/global-search";
 import { DESKTOP_NAV_ITEMS, isActivePath, isDetailPath } from "@/lib/navigation";
-
-function SearchIcon() {
-  return (
-    <svg aria-hidden="true" className="size-4" fill="none" viewBox="0 0 24 24">
-      <circle cx="11" cy="11" r="6.5" stroke="currentColor" strokeWidth="1.5" />
-      <path d="M16 16L21 21" stroke="currentColor" strokeLinecap="round" strokeWidth="1.5" />
-    </svg>
-  );
-}
 
 function UserIcon() {
   return (
@@ -43,7 +35,11 @@ function BackIcon() {
   );
 }
 
-export function SiteHeader() {
+type Props = {
+  searchItems: GlobalSearchItem[];
+};
+
+export function SiteHeader({ searchItems }: Props) {
   const pathname = usePathname();
   const router = useRouter();
   const showMobileBackButton = isDetailPath(pathname);
@@ -111,13 +107,8 @@ export function SiteHeader() {
         </div>
 
         <div className="flex w-12 items-center justify-end text-on-background md:w-auto md:gap-4">
-          <button
-            aria-label="Search"
-            className="hidden text-on-background/60 transition-colors hover:text-primary md:inline-flex"
-            type="button"
-          >
-            <SearchIcon />
-          </button>
+          <GlobalSearch items={searchItems} />
+          
           <button
             aria-label="Account"
             className="text-on-background transition-colors hover:text-primary"

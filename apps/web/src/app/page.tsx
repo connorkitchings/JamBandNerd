@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 
 import { DashboardAnalysis } from "@/components/dashboard-analysis";
@@ -6,8 +7,8 @@ import { DataState } from "@/components/data-state";
 import { PredictionHero } from "@/components/prediction-hero";
 import { SongBoard } from "@/components/song-board";
 import { SongSearch } from "@/components/song-search";
-import { BAND_CONFIG, MODEL_CONFIG } from "@/lib/config";
-import { getLatestPredictions, getRecentAccuracy, getShowDetailsByDate } from "@/lib/data";
+import { BAND_CONFIG, MODEL_CONFIG, normalizeBand, normalizeModel } from "@/lib/config";
+import { getLatestPredictions, getRecentAccuracy, getShowDetailsByDate, calculateModelAgreement } from "@/lib/data";
 import {
   buildLocationLabel,
   formatDateLabel,
@@ -23,10 +24,26 @@ type Props = {
   }>;
 };
 
+export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
+  const params = await searchParams;
+  const band = normalizeBand(params.band);
+  const model = normalizeModel(params.model);
+  const bandName = BAND_CONFIG[band].displayName;
+  const modelName = MODEL_CONFIG[model].displayName;
+
+  return {
+    title: `${bandName} Setlist Predictions | JamBandNerd`,
+    description: `Latest ${modelName} model setlist predictions for ${bandName}, ranked by likelihood tier.`,
+  };
+}
+
 export default async function HomePage({ searchParams }: Props) {
   const params = await searchParams;
-  const [predictionState, accuracyState] = await Promise.all([
+  const secondaryModelSlug = normalizeModel(params.model) === "ckplus" ? "notebook" : "ckplus";
+
+  const [predictionState, secondaryPredictionState, accuracyState] = await Promise.all([
     getLatestPredictions(params.band, params.model),
+    getLatestPredictions(params.band, secondaryModelSlug),
     getRecentAccuracy(params.band, params.model, 10),
   ]);
 
@@ -86,6 +103,14 @@ export default async function HomePage({ searchParams }: Props) {
     lastPlayed: row.lastPlayed,
   }));
 
+  const agreementScore =
+    secondaryPredictionState.status === "ready"
+      ? calculateModelAgreement(
+          predictionState.snapshot.predictions,
+          secondaryPredictionState.snapshot.predictions,
+        )
+      : null;
+
   return (
     <div className="w-full pb-6 lg:pl-64">
       <DashboardSideNav band={predictionState.band} model={predictionState.model} />
@@ -103,6 +128,7 @@ export default async function HomePage({ searchParams }: Props) {
         totalSongs={predictionState.snapshot.predictions.length}
         accuracyRows={accuracyRows}
         predictions={predictionState.snapshot.predictions}
+        agreementScore={agreementScore}
       />
 
       <section>

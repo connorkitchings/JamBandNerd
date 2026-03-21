@@ -1,8 +1,9 @@
+import type { Metadata } from "next";
 import { DataState } from "@/components/data-state";
 import { FilterLinks } from "@/components/filter-links";
 import { SongBoard } from "@/components/song-board";
 import { SectionCard } from "@/components/section-card";
-import { BAND_CONFIG } from "@/lib/config";
+import { BAND_CONFIG, normalizeBand } from "@/lib/config";
 import { getLatestPredictions, getShowDetailsByDate } from "@/lib/data";
 import {
   buildLocationLabel,
@@ -17,6 +18,17 @@ type Props = {
     band?: string;
   }>;
 };
+
+export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
+  const params = await searchParams;
+  const band = normalizeBand(params.band);
+  const bandName = BAND_CONFIG[band].displayName;
+
+  return {
+    title: `${bandName} Model Compare | JamBandNerd`,
+    description: `Compare Notebook vs CK+ model predictions side-by-side for ${bandName}.`,
+  };
+}
 
 function normalizeSongName(value: string) {
   return value.trim().toLowerCase();

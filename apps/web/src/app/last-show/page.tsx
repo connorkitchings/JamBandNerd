@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 
 import { DataState } from "@/components/data-state";
@@ -5,7 +6,7 @@ import { FilterLinks } from "@/components/filter-links";
 import { SongBoard } from "@/components/song-board";
 import { SectionCard } from "@/components/section-card";
 import { SetlistTable } from "@/components/setlist-table";
-import { BAND_CONFIG } from "@/lib/config";
+import { BAND_CONFIG, normalizeBand } from "@/lib/config";
 import {
   getLastShowSetlist,
   getPredictionsForDate,
@@ -20,6 +21,17 @@ type Props = {
     band?: string;
   }>;
 };
+
+export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
+  const params = await searchParams;
+  const band = normalizeBand(params.band);
+  const bandName = BAND_CONFIG[band].displayName;
+
+  return {
+    title: `${bandName} Last Show Setlist | JamBandNerd`,
+    description: `View the setlist from the most recent ${bandName} show and compare it to the Notebook prediction snapshot.`,
+  };
+}
 
 function normalizeSongName(value: string) {
   return value.trim().toLowerCase();
