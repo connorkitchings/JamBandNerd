@@ -1,87 +1,87 @@
 # Architecture Overview
 
-This document defines JamBandNerd’s technical foundation. Update as architecture or standards evolve.
+This document provides the high-level system view. For the canonical ingestion,
+storage, sequencing, and prediction contract, use the
+[Data Strategy](../../reference/specifications/data_strategy.md) document.
 
-## 1. Overview
+## Overview
 
-**Project Goal:**
-A modular platform for collecting, processing, and predicting jam band setlists, with robust orchestration, analytics, and a website-first product surface. The design is extensible to add new bands and models.
+JamBandNerd is a show-centric data platform for jam band setlist collection,
+normalization, prediction, and evaluation. The public product target is a
+website-first experience backed by Supabase and the consolidated Python
+pipeline.
 
-**Repository:**
-`https://github.com/connorkitchings/JamBandNerd`
-
-## 2. Architecture
-
-### Data Flow Diagram
+## System Flow
 
 ```mermaid
 graph TD
-    subgraph " "
-        direction LR
-        A[External APIs &<br>Websites]
-    end
-
-    subgraph "GitHub Actions: Daily Pipeline"
-        B(run_optimized_pipeline.py)
-    end
-    
-    subgraph "Supabase Database"
-        C[fa:fa-database Raw Data<br><i>{band}_*_raw</i>]
-        D[fa:fa-database Prediction & Accuracy<br><i>predictions_*, accuracy_*</i>]
-    end
-
-    subgraph "In-Memory Processing"
-        E[pandas DataFrames]
-        F(ModelData Object)
-        G[Notebook & CK+<br>Predictors]
-    end
-    
-    subgraph "Presentation"
-        H[fa:fa-desktop Website<br><i>target</i>]
-    end
+    A[External APIs and Websites]
+    B[Band Collectors]
+    C[Supabase Raw Tables]
+    D[Shared Normalization]
+    E[ModelData]
+    F[Notebook and CK+ Models]
+    G[Predictions and Accuracy Tables]
+    H[Website]
 
     A --> B
-    B -- "1. Collect" --> C
-    C -- "2. Load" --> E
-    E -- "3. Transform (gaps.py)" --> F
-    F -- "4. Predict" --> G
-    G -- "5. Save" --> D
-    D -- "6. Display" --> H
+    B --> C
+    C --> D
+    D --> E
+    E --> F
+    F --> G
+    G --> H
 ```
 
-### Component Architecture
+## Layers
 
-#### Data Collection Layer
+### Collection
 
-- **Purpose**: Ingest raw data from external sources
-- **Components**: Band-specific collectors with unified interface. The design allows for easy addition of new bands by implementing new collector modules.
-- **Output**: Raw data tables in Supabase (`{band}_*_raw`)
-- **WSP Collector**: The collector for Widespread Panic (`everydaycompanion.com`) is a special case. To bypass sophisticated bot detection and IP blocking (especially in a CI/CD environment like GitHub Actions), the collector uses a browser automation strategy:
-  - **In CI/CD**: It uses **Playwright** with a headless **Firefox** browser to simulate a real user, executing JavaScript and handling complex site interactions.
-  - **Locally**: It defaults to the standard `requests` library for efficiency.
-  - This dual approach ensures both robust data collection in automated environments and fast, simple execution for local development.
+- Band-specific collectors handle source quirks and write to raw tables.
+- The standard raw families are `{band}_shows_raw`, `{band}_setlists_raw`, and
+  `{band}_songs_raw`.
+- Supporting tables such as venues or upcoming shows are allowed when the
+  source requires them.
+- WSP remains a special-case collector because CI reliability can require
+  browser automation.
 
-#### Transformation Layer
+### Normalization and Transformations
 
-- **Purpose**: Convert raw data to a standardized format for modeling
-- **Processing**: Reads from raw tables and transforms data in-memory before feeding to models.
-- **Output**: In-memory `ModelData` objects; no intermediate tables are written.
+- Shared code does not model directly from source-specific raw payloads.
+- The normalization boundary in `scripts/common.py` and
+  `src/jambandnerd/transformations/gaps.py` aligns bands onto a shared contract.
+- Historical ordering is deterministic: `show_date` first, then a stable
+  secondary key.
+- All downstream feature generation remains in memory; no intermediate
+  transformed Supabase tables are allowed.
 
-#### Model Layer
+### Models and Evaluation
 
-- **Purpose**: Generate predictions using standardized data
-- **Models**: Pluggable architecture supporting multiple algorithms (Notebook, CK+).
-- **Output**: Predictions stored in Supabase with confidence scores.
+- `ModelData` is the canonical handoff from transforms into models.
+- Notebook and CK+ both rely on the same ordered historical show sequence and
+  the same `reference_date` anti-leakage rule.
+- `accuracy_per_show` is the granular evaluation source; aggregate accuracy
+  tables are derived summaries.
 
-#### Presentation Layer
+### Delivery
 
-- **Purpose**: User interface for prediction exploration
-- **Framework**: Website-first architecture, with a monorepo frontend app as the target public surface.
-- **Current State**: The existing Streamlit app in `src/jambandnerd/web/` remains available as a legacy transition surface until website cutover.
-- **Data**: Server-side reads from Supabase are the preferred target architecture for the website.
+- The website in `apps/web` is the target public surface.
+- Supabase remains the shared storage and read layer for predictions and
+  accuracy data.
+- The Streamlit app remains a legacy transition surface only.
 
-#### Orchestration Layer
+### Orchestration
 
-- **Purpose**: Coordinate pipeline execution and automation
-- **Scheduling**: GitHub Actions for daily pipeline execution.
-- **Monitoring**: Error detection and logging.
+- `scripts/run_optimized_pipeline.py` is the canonical end-to-end local runner.
+- GitHub Actions executes the daily pipeline in production-like automation.
+- Band discovery is partially dynamic today: automation can discover collector
+  scripts, while some local entrypoints still maintain explicit supported-band
+  lists.
+
+## Non-Negotiable Rules
+
+- Shared prediction code must remain band-agnostic.
+- Collector-specific logic belongs in the collector and config layers.
+- `reference_date` must gate all transforms and backtests.
+- New data architecture work must preserve the two-stage contract:
+  source-faithful raw storage, shared normalized modeling inputs.

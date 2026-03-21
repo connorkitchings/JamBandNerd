@@ -13,7 +13,12 @@ from __future__ import annotations
 
 from .bands import BAND_DISPLAY_NAMES, BAND_ID_COLUMNS, EXCLUDED_SONGS, SUPPORTED_BANDS
 from .data_collection import DATE_FORMATS, DEFAULT_CHUNK_SIZE, FETCH_CHUNK_SIZE
-from .database import ACCURACY_TABLES, PREDICTION_TABLES, RAW_TABLE_SUFFIX
+from .database import (
+    ACCURACY_TABLES,
+    PREDICTION_SONGS_TABLE,
+    PREDICTION_TABLES,
+    RAW_TABLE_SUFFIX,
+)
 from .models import (
     BAND_EXCLUSION_WINDOWS,
     CKPLUS_ALPHA_DEFAULT,
@@ -38,6 +43,7 @@ __all__ = [
     # database.py
     "RAW_TABLE_SUFFIX",
     "PREDICTION_TABLES",
+    "PREDICTION_SONGS_TABLE",
     "ACCURACY_TABLES",
     # models.py
     "TOP_K_VALUES",

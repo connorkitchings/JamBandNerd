@@ -1,90 +1,169 @@
 # Predictions and Accuracy Schema
 
-This document defines the storage schemas for predictions and accuracy tracking.
+This document defines the current storage contract for predictions and
+evaluation data.
 
-## Table Names (Unified by Model)
+## Current Canonical Tables
 
-- Predictions: `predictions_{model_slug}`
-- Accuracy: `notebook_accuracy`, `accuracy_ckplus`
+Prediction tables:
 
-Examples: `predictions_notebook`, `predictions_ckplus`, `notebook_accuracy`, `accuracy_ckplus`.
+- `predictions_notebook`
+- `predictions_ckplus`
+- `prediction_songs` (derived per-song projection)
 
-Note:
+Accuracy tables:
 
-- Current implementation persists one row per prediction run in `predictions_{model}` with a nested
-  JSON `predictions` array keyed by rank. Accuracy summaries are stored in `{model}_accuracy` with
-  aggregate window metrics. The more granular per-song prediction schema below remains a future enhancement.
+- `accuracy_per_show`
+- `notebook_accuracy`
+- `accuracy_ckplus`
 
-## Predictions Table (current implementation -> band/model-specific)
+## Current Prediction Storage
 
-Granularity: one row per predicted song candidate for a given show and context, with rank and probability.
+JamBandNerd currently stores one canonical row per prediction run context in
+each `predictions_{model}` table and derives a shared per-song projection from
+those rows.
 
-Columns:
+Canonical columns:
 
-- `id` (serial) - Unique identifier for the row.
-- `band` (text) — e.g., `goose`, `phish`.
-- `model_slug` (text) — e.g., `notebook`, `ckplus`.
-- `model_version` (text) — semantic or date-based version string.
-- `run_id` (uuid) — identifier for the prediction run.
-- `generated_at` (timestamptz) — when the prediction was created.
-- `show_id` (bigint)
-- `show_date` (date)
-- `context` (jsonb, nullable) — optional, e.g., `{ "set_index": 1 }`.
-- `predicted_song_id` (bigint, nullable) — if available from standardized songs.
-- `predicted_song_name` (text)
-- `rank` (integer) — 1 is highest.
-- `probability` (double precision) — 0.0–1.0.
-- `explanations` (jsonb, nullable) — optional feature contributions/notes.
+- `band`
+- `reference_date`
+- `model_version`
+- `top_k`
+- `predictions`
+- `predicted_at`
 
-Indexes/Constraints:
+Uniqueness:
 
-- Primary key: `id`
-- Indexes: `(band, model_slug, show_id)`, `(run_id)`
+- `(band, reference_date, model_version)`
 
-## Accuracy Table (per-show) — planned
+The `predictions` column is a JSON array ordered by rank. The payload shape is
+model-specific.
 
-Granularity: accuracy metrics per show.
+## Derived Per-Song Projection
 
-Columns:
+`prediction_songs` stores one row per predicted song for the canonical
+prediction run.
 
-- `id` (serial) - Unique identifier for the row.
-- `band` (text)
-- `model_slug` (text)
-- `model_version` (text)
-- `run_id` (uuid) — correlates with the prediction run.
-- `evaluated_at` (timestamptz)
-- `show_id` (bigint)
-- `show_date` (date)
-- `top_1` (boolean) — whether the correct next song was rank 1.
-- `top_3` (boolean)
-- `top_5` (boolean)
-- `top_10` (boolean)
-- `top_25` (boolean)
-- `top_50` (boolean)
-- `notes` (text, nullable)
+Canonical columns:
 
-Indexes/Constraints:
+- `band`
+- `model_slug`
+- `model_version`
+- `reference_date`
+- `predicted_at`
+- `rank`
+- `song_name`
+- `top_k`
+- `prediction_payload`
 
-- Primary key: `id`
-- Unique constraint: `(band, show_id, model_slug, model_version, run_id)`
+Uniqueness:
 
-## Model Slug
+- `(band, model_version, reference_date, rank)`
 
-- Definition: short, lowercase identifier used in table names and rows (e.g., `notebook`, `ckplus`).
-- The slug appears in both the table name and the data to simplify queries and lineage.
+`prediction_payload` preserves the exact model-specific JSON object emitted for
+that ranked song.
+
+### Notebook payload fields
+
+Current payload entries contain:
+
+- `rank`
+- `song_name`
+- `plays_past_year`
+- `current_gap`
+- `last_played_date`
+
+### CK+ payload fields
+
+Current payload entries contain:
+
+- `rank`
+- `song_name`
+- `times_played`
+- `current_gap`
+- `avg_gap`
+- `gap_ratio`
+- `gap_z_score`
+- `ckplus_score`
+- `LTP`
+
+## Per-Show Accuracy Storage
+
+`accuracy_per_show` stores one row per evaluated completed show and model
+version.
+
+Canonical columns include:
+
+- `band`
+- `model_version`
+- `show_id`
+- `show_date`
+- `actual_song_count`
+- `evaluated_at`
+- `k10_*`, `k25_*`, `k50_*` metric families
+
+Uniqueness:
+
+- `(band, model_version, show_id)`
+
+This is the canonical evaluation source for historical performance analysis.
+
+## Aggregate Accuracy Storage
+
+Aggregate tables are derived from `accuracy_per_show`, not by rerunning
+predictions.
+
+Current aggregate tables:
+
+- `notebook_accuracy`
+- `accuracy_ckplus`
+
+Canonical fields include:
+
+- `band`
+- `model_version`
+- `window_start`
+- `window_end`
+- `num_shows`
+- `evaluated_at`
+- summary metrics for K=10, 25, and 50
 
 ## Versioning
 
-- `model_version` should reflect either semantic versioning (e.g., `1.0.0`) or a date tag (e.g., `2025-08-17`).
-- Changing features, parameters, or training data requires a new version.
+The current repo uses explicit model version strings such as:
 
-## Run Identity
+- `notebook_v1`
+- `ckplus_v1`
 
-- Each prediction execution emits a `run_id` and shared timestamps so predictions and accuracy rows
-  can be correlated.
+Changing output semantics, feature logic, or scoring behavior should produce a
+new `model_version`.
 
-## Data Quality & Validation
+## Current Decision and Deferred Option
 
-- Before insert, validate types and required columns.
-- Probabilities must be 0.0–1.0; ranks must be positive integers.
-- Ensure exactly one ground-truth label per show when evaluating.
+### Active design
+
+The active architecture is hybrid:
+
+- canonical per-run JSON row in `predictions_{model}`
+- derived per-song rows in `prediction_songs`
+
+Reasons:
+
+- simple canonical write path from the current pipeline
+- stable upsert semantics at the run level
+- SQL-friendly song-level reads without replacing the existing contract
+
+### Deferred alternative
+
+A future row-per-song-only prediction schema is still a valid option if
+JamBandNerd eventually wants to make the projection table itself the canonical
+write boundary.
+
+That alternative is not the current system and should not be documented as if
+it already exists.
+
+## Related Documents
+
+- [Data Strategy](data_strategy.md)
+- [Database](database.md)
+- [Unified Table Schemas](../schemas/unified_tables.md)

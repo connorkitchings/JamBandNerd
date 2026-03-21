@@ -67,6 +67,7 @@ def _prediction_rows(
                 "model_version": "notebook_v1",
                 "reference_date": "2026-03-25",
                 "predicted_at": stale_predicted_at.isoformat(),
+                "top_k": len(stale_predictions),
                 "predictions": json.dumps(stale_predictions),
             },
             {
@@ -74,6 +75,7 @@ def _prediction_rows(
                 "model_version": "notebook_v1",
                 "reference_date": "2026-03-20",
                 "predicted_at": latest_predicted_at.isoformat(),
+                "top_k": len(latest_predictions),
                 "predictions": json.dumps(latest_predictions),
             },
         ],
@@ -83,6 +85,7 @@ def _prediction_rows(
                 "model_version": "ckplus_v1",
                 "reference_date": "2026-03-25",
                 "predicted_at": stale_predicted_at.isoformat(),
+                "top_k": len(stale_predictions),
                 "predictions": json.dumps(stale_predictions),
             },
             {
@@ -90,6 +93,7 @@ def _prediction_rows(
                 "model_version": "ckplus_v1",
                 "reference_date": "2026-03-20",
                 "predicted_at": latest_predicted_at.isoformat(),
+                "top_k": len(latest_predictions),
                 "predictions": json.dumps(latest_predictions),
             },
         ],
@@ -104,6 +108,16 @@ def test_validate_predictions_uses_latest_predicted_at(monkeypatch, capsys):
     monkeypatch.setattr(
         "scripts.validate_prediction_tables.get_supabase_client",
         lambda: _ClientStub(rows),
+    )
+    monkeypatch.setattr(
+        "scripts.validate_prediction_tables.fetch_latest_prediction_songs",
+        lambda band, model_slug: [
+            {
+                "reference_date": "2026-03-20",
+                "song_name": "Fresh Song",
+                "rank": 1,
+            }
+        ],
     )
 
     failures = validate_predictions(bands=["goose"], max_age_hours=48)
@@ -125,6 +139,10 @@ def test_validate_predictions_fails_on_invalid_latest_json(monkeypatch, capsys):
         "scripts.validate_prediction_tables.get_supabase_client",
         lambda: _ClientStub(rows),
     )
+    monkeypatch.setattr(
+        "scripts.validate_prediction_tables.fetch_latest_prediction_songs",
+        lambda band, model_slug: [],
+    )
 
     failures = validate_predictions(bands=["goose"], max_age_hours=48)
 
@@ -141,9 +159,47 @@ def test_validate_predictions_warns_on_missing_latest_predicted_at(monkeypatch, 
         "scripts.validate_prediction_tables.get_supabase_client",
         lambda: _ClientStub(rows),
     )
+    monkeypatch.setattr(
+        "scripts.validate_prediction_tables.fetch_latest_prediction_songs",
+        lambda band, model_slug: [],
+    )
 
     failures = validate_predictions(bands=["goose"], max_age_hours=48)
 
     assert failures == 2
     captured = capsys.readouterr().out
     assert "[WARN] goose: missing predicted_at timestamp" in captured
+
+
+def test_validate_predictions_fails_on_projection_mismatch(monkeypatch, capsys):
+    rows = _prediction_rows(
+        latest_predictions=[
+            {"song_name": "Fresh Song"},
+            {"song_name": "Second Song"},
+        ]
+    )
+    monkeypatch.setattr(
+        "scripts.validate_prediction_tables.get_supabase_client",
+        lambda: _ClientStub(rows),
+    )
+    monkeypatch.setattr(
+        "scripts.validate_prediction_tables.fetch_latest_prediction_songs",
+        lambda band, model_slug: [
+            {
+                "reference_date": "2026-03-20",
+                "song_name": "Wrong Song",
+                "rank": 1,
+            },
+            {
+                "reference_date": "2026-03-20",
+                "song_name": "Second Song",
+                "rank": 2,
+            },
+        ],
+    )
+
+    failures = validate_predictions(bands=["goose"], max_age_hours=48)
+
+    assert failures == 2
+    captured = capsys.readouterr().out
+    assert "projection top_song=Wrong Song does not match canonical Fresh Song" in captured

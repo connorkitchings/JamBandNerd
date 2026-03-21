@@ -29,7 +29,11 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, project_root)
 
 from scripts.common import fetch_table, prepare_band_data, resolve_reference_date
-from src.jambandnerd.db.operations import upsert_dataframe
+from src.jambandnerd.config import MODEL_VERSIONS, PREDICTION_TABLES
+from src.jambandnerd.db.operations import (
+    replace_prediction_projection,
+    upsert_dataframe,
+)
 from src.jambandnerd.models.ckplus.model import CKPlusPredictor
 from src.jambandnerd.models.notebook.model import NotebookPredictor
 from src.jambandnerd.transformations.gaps import generate_model_data
@@ -76,7 +80,7 @@ def generate_predictions(
         print(f"{log_prefix} Error: Could not fetch raw data. Aborting.")
         return
 
-    shows_df, setlists_df = prepare_band_data(shows_df, setlists_df)
+    shows_df, setlists_df = prepare_band_data(shows_df, setlists_df, band=band)
     reference_date = resolve_reference_date(date_str, shows_df, upcoming_df=upcoming_df)
     print(
         f"{log_prefix} Generating predictions for reference date: {reference_date.isoformat()}"
@@ -122,8 +126,8 @@ def generate_predictions(
             }
             for i, p in enumerate(predictions)
         ]
-        table_name = "predictions_notebook"
-        model_version = "notebook_v1"
+        table_name = PREDICTION_TABLES["notebook"]
+        model_version = MODEL_VERSIONS["notebook"]
     elif model == "ckplus":
         predictions_list = [
             {
@@ -139,18 +143,19 @@ def generate_predictions(
             }
             for i, p in enumerate(predictions)
         ]
-        table_name = "predictions_ckplus"
-        model_version = "ckplus_v1"
+        table_name = PREDICTION_TABLES["ckplus"]
+        model_version = MODEL_VERSIONS["ckplus"]
     else:
         raise ValueError("Invalid model type")
 
+    predicted_at = datetime.now(timezone.utc).isoformat()
     output_row = {
         "band": band,
         "reference_date": reference_date.isoformat(),
         "model_version": model_version,
         "top_k": len(predictions_list),
         "predictions": json.loads(json.dumps(predictions_list, cls=NpEncoder)),
-        "predicted_at": datetime.now(timezone.utc).isoformat(),
+        "predicted_at": predicted_at,
     }
 
     output_df = pd.DataFrame([output_row])
@@ -162,6 +167,14 @@ def generate_predictions(
         table_name=table_name,
         df=output_df,
         conflict_columns=["band", "reference_date", "model_version"],
+    )
+    replace_prediction_projection(
+        band=band,
+        model_slug=model,
+        model_version=model_version,
+        reference_date=reference_date.isoformat(),
+        predicted_at=predicted_at,
+        predictions=output_row["predictions"],
     )
     print(f"{log_prefix} Successfully saved predictions.")
 

@@ -24,7 +24,7 @@ This documentation is organized into audience-focused sections:
 - **[TourWrangler Fallback](operations/tourwrangler_fallback.md)**: Backup ingestion runbook for WSP.
 
 ### 📚 Reference Library
-- **Specs**: [Technical Overview](reference/specifications/technical_overview.md) · [CLI](reference/specifications/cli.md) · [Transformations](reference/specifications/transformations.md).
+- **Specs**: [Technical Overview](reference/specifications/technical_overview.md) · [Data Strategy](reference/specifications/data_strategy.md) · [CLI](reference/specifications/cli.md) · [Transformations](reference/specifications/transformations.md).
 - **Schemas**: [Unified Tables](reference/schemas/unified_tables.md) · [Goose API](reference/schemas/goose_api.md) · [Phish API](reference/schemas/phish_api.md) · [WSP Webscrape](reference/schemas/wsp_webscrape.md) · [UM AllThings](reference/schemas/um_allthings.md).
 - **Models**: [Model Overview](reference/models/index.md) plus detailed pages for the [Notebook](reference/models/notebook.md) and [CK+](reference/models/ckplus.md) predictors.
 - **Supabase Helpers**: [API Guide](reference/guides/supabase_api_guide.md) and [Insert Recipes](reference/guides/supabase_inserts.md).

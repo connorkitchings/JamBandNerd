@@ -43,10 +43,28 @@ EXCLUDED_SONGS: Final[dict[str, list[str]]] = {
         "New Riders of the Purple Sage",
         "J.J. Cale",
         "The Doors",
-    ],  # WSP-specific exclusions
+    ],
     "goose": [],
     "eggy": [],
     "phish": [],
     "billy": [],
     "um": [],
 }
+
+# Case-insensitive excluded songs for faster lookup
+EXCLUDED_SONGS_LOWER: Final[dict[str, frozenset[str]]] = {
+    band: frozenset(song.lower().strip() for song in songs)
+    for band, songs in EXCLUDED_SONGS.items()
+}
+
+
+def get_excluded_songs(band: str) -> frozenset[str]:
+    """Get case-insensitive excluded songs for a band.
+
+    Args:
+        band: Band name
+
+    Returns:
+        Frozenset of lowercase song names to exclude
+    """
+    return EXCLUDED_SONGS_LOWER.get(band, frozenset())

@@ -6,7 +6,16 @@ Welcome to the JamBandNerd project! This guide will help you get set up and make
 
 JamBandNerd is a data platform for collecting, transforming, and predicting jam band setlists. The project is built around Python pipeline code and Supabase-backed storage, and it is now moving toward a website-first frontend strategy.
 
-The project is designed to be modular and extensible, so you can easily add new bands, models, or features.
+The project is designed to be modular and extensible, but the core data
+architecture is intentionally strict:
+
+- raw ingestion stays source-faithful
+- shared transforms and models consume a normalized internal contract
+- prediction logic is organized around ordered shows and setlists
+
+Read the [Architecture](developer_guide/architecture.md) page first, then use
+the [Data Strategy](../reference/specifications/data_strategy.md) page as the
+source of truth for ingestion/storage/prediction contracts.
 
 ## 2. Getting Started
 
@@ -89,15 +98,20 @@ Historical logs in `docs/logs/` remain available for reference, but they are no 
 To add a new band to the project, you will need to:
 
 1. Create a new data collector for the band in `src/jambandnerd/data_collection/`.
-2. Ensure the band is discoverable through the `run_{band}_collection.py` pattern in `scripts/`.
-3. Validate the band through the consolidated prediction and backtest scripts.
-4. Confirm the GitHub Actions workflow will pick it up through dynamic discovery.
+2. Persist the required raw entities: shows, setlists, and songs.
+3. Ensure normalization can expose a stable `show_id`, `show_date`, and
+   show-ordering contract to shared transforms.
+4. Wire the band into the current local orchestration paths and validate it
+   through the consolidated prediction and backtest scripts.
+5. Confirm automation can discover or execute the collector correctly.
 
 ## 6. How to Add a New Model
 
 To add a new prediction model, you will need to:
 
 1. Create a new model in `src/jambandnerd/models/`.
-2. Wire the model into the consolidated prediction and evaluation flow.
-3. Add tests and backtest validation for the new model.
-4. Update documentation if the model becomes a supported public option.
+2. Consume the existing `ModelData` contract rather than creating a
+   band-specific transform path.
+3. Wire the model into the consolidated prediction and evaluation flow.
+4. Add tests and backtest validation for the new model.
+5. Update storage/docs if the model becomes a supported public option.
