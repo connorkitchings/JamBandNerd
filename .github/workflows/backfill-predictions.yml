@@ -142,6 +142,8 @@ jobs:
             python scripts/generate_predictions.py --band ${{ matrix.band }} --model ${{ matrix.model }} --date "$DATE"
             echo "Verifying recent_avg_gap for $DATE:"
             python scripts/check_recent_avg_gap.py --band ${{ matrix.band }} --model ${{ matrix.model }} --date "$DATE"
+            echo "Python path debug:"
+            python -c "import src.jambandnerd.transformations.gaps as g; import inspect; src=inspect.getsource(g._stats_for_song); print('recent_avg_gap' in src)"
           done
 
           echo "::endgroup::"
