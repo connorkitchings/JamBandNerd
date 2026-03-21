@@ -41,7 +41,7 @@ export function FilterLinks({ pathname, band, model, date, bands }: Props) {
             return (
               <Link
                 key={item.slug}
-                href={buildHref(pathname, item.slug as BandSlug, model, date)}
+                href={buildHref(pathname, item.slug, model, date)}
                 className={`rounded-full border px-3 py-1.5 font-headline text-xs uppercase tracking-[0.14rem] transition ${
                   active
                     ? "border-primary-container bg-primary-container text-white"

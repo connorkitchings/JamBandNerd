@@ -4,8 +4,8 @@ import { DataState } from "@/components/data-state";
 import { FilterLinks } from "@/components/filter-links";
 import { RecallChart } from "@/components/recall-chart";
 import { SectionCard } from "@/components/section-card";
-import { MODEL_CONFIG, normalizeBand, normalizeModel } from "@/lib/config";
-import { type AccuracyRow, getBands, getRecentAccuracy, bandEntryBySlug } from "@/lib/data";
+import { MODEL_CONFIG, normalizeModel } from "@/lib/config";
+import { type AccuracyRow, getBands, getRecentAccuracy, bandEntryBySlug, resolveBandSelection } from "@/lib/data";
 import { formatCompactDateLabel, formatPercent } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
@@ -21,10 +21,9 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
   const params = await searchParams;
   const bandsResult = await getBands();
   const bands = bandsResult.status === "ready" ? bandsResult.bands : [];
-  const bandSlug = normalizeBand(params.band);
-  const bandEntry = bandEntryBySlug(bands, bandSlug);
+  const bandSelection = resolveBandSelection(bands, params.band);
   const model = normalizeModel(params.model);
-  const bandName = bandEntry?.displayName ?? bandSlug;
+  const bandName = bandSelection.bandEntry?.displayName ?? bandSelection.requestedSlug;
   const modelName = MODEL_CONFIG[model].displayName;
 
   return {
@@ -52,10 +51,21 @@ function getBestRecallRow(rows: AccuracyRow[]) {
 
 export default async function PerformancePage({ searchParams }: Props) {
   const params = await searchParams;
-  const [bandsResult, state] = await Promise.all([
-    getBands(),
-    getRecentAccuracy(params.band, params.model, 20),
-  ]);
+  const bandsResult = await getBands();
+  const bands = bandsResult.status === "ready" ? bandsResult.bands : [];
+  const bandSelection = resolveBandSelection(bands, params.band);
+  if (bandsResult.status === "ready" && bandSelection.isInvalid) {
+    return (
+      <DataState
+        title="Band not found"
+        body={`No active band found for slug "${bandSelection.requestedSlug}". Select a supported band from the navigation.`}
+      />
+    );
+  }
+
+  const selectedBand =
+    bandsResult.status === "ready" ? bandSelection.bandEntry?.slug : params.band;
+  const state = await getRecentAccuracy(selectedBand, params.model, 20);
 
   if (state.status === "missing_env") {
     return (
@@ -75,17 +85,6 @@ export default async function PerformancePage({ searchParams }: Props) {
       <DataState
         title="No accuracy rows available"
         body="No accuracy rows were returned from the unified accuracy table."
-      />
-    );
-  }
-
-  const bands = bandsResult.status === "ready" ? bandsResult.bands : [];
-  const normalizedBand = normalizeBand(params.band);
-  if (!bands.some((b) => b.slug === normalizedBand)) {
-    return (
-      <DataState
-        title="Band not found"
-        body={`No active band found for slug "${normalizedBand}". Select a supported band from the navigation.`}
       />
     );
   }

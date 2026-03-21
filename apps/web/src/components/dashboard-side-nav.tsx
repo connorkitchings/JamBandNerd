@@ -33,7 +33,7 @@ export function DashboardSideNav({ band, model, bands }: Props) {
               return (
                 <Link
                   key={item.slug}
-                  href={buildHref(item.slug as BandSlug, model)}
+                  href={buildHref(item.slug, model)}
                   className={`rounded-full border px-3 py-1.5 font-headline text-xs uppercase tracking-[0.14rem] transition ${
                     active
                       ? "border-primary-container bg-primary-container text-white"
@@ -90,7 +90,7 @@ export function DashboardSideNav({ band, model, bands }: Props) {
               return (
                 <Link
                   key={item.slug}
-                  href={buildHref(item.slug as BandSlug, model)}
+                  href={buildHref(item.slug, model)}
                   className={`flex items-center gap-3 px-3 py-3 font-headline text-xs font-medium uppercase transition-all ${
                     active
                       ? "border-l-4 border-primary-container bg-surface-container-high text-primary"

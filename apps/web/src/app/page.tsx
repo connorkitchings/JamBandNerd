@@ -7,8 +7,9 @@ import { DataState } from "@/components/data-state";
 import { PredictionHero } from "@/components/prediction-hero";
 import { SongBoard } from "@/components/song-board";
 import { SongSearch } from "@/components/song-search";
-import { MODEL_CONFIG, normalizeBand, normalizeModel } from "@/lib/config";
+import { MODEL_CONFIG, normalizeModel } from "@/lib/config";
 import {
+  resolveBandSelection,
   getBands,
   getLatestPredictions,
   getRecentAccuracy,
@@ -35,10 +36,9 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
   const params = await searchParams;
   const bandsResult = await getBands();
   const bands = bandsResult.status === "ready" ? bandsResult.bands : [];
-  const bandSlug = normalizeBand(params.band);
-  const bandEntry = bandEntryBySlug(bands, bandSlug);
+  const bandSelection = resolveBandSelection(bands, params.band);
   const model = normalizeModel(params.model);
-  const bandName = bandEntry?.displayName ?? bandSlug;
+  const bandName = bandSelection.bandEntry?.displayName ?? bandSelection.requestedSlug;
   const modelName = MODEL_CONFIG[model].displayName;
 
   return {
@@ -49,13 +49,28 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
 
 export default async function HomePage({ searchParams }: Props) {
   const params = await searchParams;
+  const bandsResult = await getBands();
+  const bands = bandsResult.status === "ready" ? bandsResult.bands : [];
+  const bandSelection = resolveBandSelection(bands, params.band);
+  if (bandsResult.status === "ready" && bandSelection.isInvalid) {
+    return (
+      <div className="mx-auto max-w-6xl">
+        <DataState
+          title="Band not found"
+          body={`No active band found for slug "${bandSelection.requestedSlug}". Select a supported band from the navigation.`}
+        />
+      </div>
+    );
+  }
+
+  const selectedBand =
+    bandsResult.status === "ready" ? bandSelection.bandEntry?.slug : params.band;
   const secondaryModelSlug = normalizeModel(params.model) === "ckplus" ? "notebook" : "ckplus";
 
-  const [bandsResult, predictionState, secondaryPredictionState, accuracyState] = await Promise.all([
-    getBands(),
-    getLatestPredictions(params.band, params.model),
-    getLatestPredictions(params.band, secondaryModelSlug),
-    getRecentAccuracy(params.band, params.model, 10),
+  const [predictionState, secondaryPredictionState, accuracyState] = await Promise.all([
+    getLatestPredictions(selectedBand, params.model),
+    getLatestPredictions(selectedBand, secondaryModelSlug),
+    getRecentAccuracy(selectedBand, params.model, 10),
   ]);
 
   if (predictionState.status === "missing_env") {
@@ -83,19 +98,6 @@ export default async function HomePage({ searchParams }: Props) {
         <DataState
           title="No predictions available"
           body="No latest prediction snapshot was found for the selected band and model."
-        />
-      </div>
-    );
-  }
-
-  const bands = bandsResult.status === "ready" ? bandsResult.bands : [];
-  const normalizedBand = normalizeBand(params.band);
-  if (!bands.some((b) => b.slug === normalizedBand)) {
-    return (
-      <div className="mx-auto max-w-6xl">
-        <DataState
-          title="Band not found"
-          body={`No active band found for slug "${normalizedBand}". Select a supported band from the navigation.`}
         />
       </div>
     );
