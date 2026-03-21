@@ -1,13 +1,13 @@
 export const MODEL_CONFIG = {
-  notebook: {
-    displayName: "Notebook",
-    explanation:
-      "Frequency-based model focused on songs active in the recent rotation while excluding the last three shows.",
-  },
   ckplus: {
     displayName: "CK+",
     explanation:
       "Gap-based model that ranks songs by how overdue they are relative to their historical cadence.",
+  },
+  notebook: {
+    displayName: "Notebook",
+    explanation:
+      "Frequency-based model focused on songs active in the recent rotation while excluding the last three shows.",
   },
 } as const;
 
