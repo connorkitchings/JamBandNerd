@@ -3,6 +3,7 @@ import { formatCompactDateLabel } from "@/lib/format";
 
 type Props = {
   rows: AccuracyRow[];
+  k?: 10 | 25 | 50;
 };
 
 const CHART_WIDTH = 800;
@@ -13,14 +14,14 @@ function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
 }
 
-export function RecallChart({ rows }: Props) {
+export function RecallChart({ rows, k = 10 }: Props) {
   // Reverse so chronological order is left→right
   const chronological = [...rows].reverse();
   const points = chronological
     .map((row, index) => ({
       index,
       date: row.showDate,
-      value: row.k10Recall,
+      value: k === 10 ? row.k10Recall : k === 25 ? row.k25Recall : row.k50Recall,
     }))
     .filter((point): point is { index: number; date: string | null; value: number } =>
       point.value !== null,
@@ -70,10 +71,12 @@ export function RecallChart({ rows }: Props) {
   const labelInterval = Math.max(1, Math.floor(points.length / 6));
   const xLabels = points.filter((_, i) => i % labelInterval === 0 || i === points.length - 1);
 
+  const kColor = k === 10 ? "var(--color-primary)" : k === 25 ? "var(--color-tertiary)" : "#c084fc";
+
   return (
     <div className="w-full overflow-x-auto">
       <svg
-        aria-label="Top-10 recall over time"
+        aria-label={`Top-${k} recall over time`}
         className="h-auto w-full"
         preserveAspectRatio="xMidYMid meet"
         role="img"
@@ -81,8 +84,8 @@ export function RecallChart({ rows }: Props) {
       >
         <defs>
           <linearGradient id="recall-fill-gradient" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stopColor="var(--color-primary)" stopOpacity="0.3" />
-            <stop offset="100%" stopColor="var(--color-primary)" stopOpacity="0.02" />
+            <stop offset="0%" stopColor={kColor} stopOpacity="0.3" />
+            <stop offset="100%" stopColor={kColor} stopOpacity="0.02" />
           </linearGradient>
         </defs>
 
@@ -118,7 +121,7 @@ export function RecallChart({ rows }: Props) {
         <path
           d={linePath}
           fill="none"
-          stroke="var(--color-primary)"
+          stroke={kColor}
           strokeLinecap="round"
           strokeLinejoin="round"
           strokeWidth="2.5"
@@ -132,7 +135,7 @@ export function RecallChart({ rows }: Props) {
               cy={yPos(point.value)}
               fill="var(--color-surface-container)"
               r="5"
-              stroke="var(--color-primary)"
+              stroke={kColor}
               strokeWidth="2"
             />
             {/* Show value label on every other point or if few points */}

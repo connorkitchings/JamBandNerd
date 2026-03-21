@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { AccuracyTable } from "@/components/accuracy-table";
 import { DataState } from "@/components/data-state";
 import { FilterLinks } from "@/components/filter-links";
+import { KToggle } from "@/components/k-toggle";
 import { RecallChart } from "@/components/recall-chart";
 import { SectionCard } from "@/components/section-card";
 import { MODEL_CONFIG, normalizeModel } from "@/lib/config";
@@ -14,6 +16,7 @@ type Props = {
   searchParams: Promise<{
     band?: string;
     model?: string;
+    k?: string;
   }>;
 };
 
@@ -40,13 +43,22 @@ function average(values: Array<number | null>) {
   return filtered.reduce((sum, value) => sum + value, 0) / filtered.length;
 }
 
-function getBestRecallRow(rows: AccuracyRow[]) {
+function getRecallForK(rows: AccuracyRow[], k: 10 | 25 | 50): Array<number | null> {
+  return rows.map((row) => (k === 10 ? row.k10Recall : k === 25 ? row.k25Recall : row.k50Recall));
+}
+
+function getBestRecallRow(rows: AccuracyRow[], k: 10 | 25 | 50) {
   return rows.reduce<AccuracyRow | null>((best, row) => {
-    if (!best) {
-      return row;
-    }
-    return (row.k10Recall ?? -1) > (best.k10Recall ?? -1) ? row : best;
+    const current = k === 10 ? row.k10Recall : k === 25 ? row.k25Recall : row.k50Recall;
+    if (!best) return current !== null ? row : null;
+    const bestVal = k === 10 ? best.k10Recall : k === 25 ? best.k25Recall : best.k50Recall;
+    return current !== null && bestVal !== null && current > bestVal ? row : best;
   }, null);
+}
+
+function normalizeK(value?: string): 10 | 25 | 50 {
+  const n = Number(value);
+  return n === 10 || n === 25 || n === 50 ? n : 10;
 }
 
 export default async function PerformancePage({ searchParams }: Props) {
@@ -91,16 +103,18 @@ export default async function PerformancePage({ searchParams }: Props) {
 
   const bandEntry = bandEntryBySlug(bands, state.band);
   const bandName = bandEntry?.displayName ?? state.band;
+  const k = normalizeK(params.k);
 
   const top10Average = average(state.rows.map((row) => row.k10Recall));
   const top25Average = average(state.rows.map((row) => row.k25Recall));
   const top50Average = average(state.rows.map((row) => row.k50Recall));
   const latestRow = state.rows[0] ?? null;
-  const recentWindow = average(state.rows.slice(0, 5).map((row) => row.k10Recall));
-  const priorWindow = average(state.rows.slice(5, 10).map((row) => row.k10Recall));
+  const currentKValues = getRecallForK(state.rows, k);
+  const recentWindow = average(currentKValues.slice(0, 5));
+  const priorWindow = average(currentKValues.slice(5, 10));
   const trendDelta =
     recentWindow !== null && priorWindow !== null ? recentWindow - priorWindow : null;
-  const bestRow = getBestRecallRow(state.rows);
+  const bestRow = getBestRecallRow(state.rows, k);
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
@@ -136,36 +150,60 @@ export default async function PerformancePage({ searchParams }: Props) {
               {latestRow?.venueName ?? "Venue unavailable"}
             </p>
             <p className="mt-4 text-sm text-primary">
-              Top 10 recall {formatPercent(latestRow?.k10Recall ?? null)}
+              Top {k} recall{" "}
+              {formatPercent(
+                k === 10
+                  ? latestRow?.k10Recall ?? null
+                  : k === 25
+                    ? latestRow?.k25Recall ?? null
+                    : latestRow?.k50Recall ?? null
+              )}
             </p>
           </div>
         </div>
       </section>
 
       <section className="grid gap-4 md:grid-cols-3">
-        <SectionCard title={formatPercent(top10Average)} eyebrow="Avg Top 10">
+        <SectionCard
+          title={formatPercent(top10Average)}
+          eyebrow="Avg Top 10"
+        >
           <p className="text-sm leading-6 text-on-surface-variant">
             Quick-hit prediction quality for the highest-confidence slice.
           </p>
         </SectionCard>
-        <SectionCard title={formatPercent(top25Average)} eyebrow="Avg Top 25">
+        <SectionCard
+          title={formatPercent(top25Average)}
+          eyebrow="Avg Top 25"
+        >
           <p className="text-sm leading-6 text-on-surface-variant">
             Broader board coverage across the mid-ranked prediction set.
           </p>
         </SectionCard>
-        <SectionCard title={formatPercent(top50Average)} eyebrow="Avg Top 50">
+        <SectionCard
+          title={formatPercent(top50Average)}
+          eyebrow="Avg Top 50"
+        >
           <p className="text-sm leading-6 text-on-surface-variant">
             Long-tail hit rate across the full recommendation window.
           </p>
         </SectionCard>
       </section>
 
-      <SectionCard title="Recall Timeline" eyebrow="Top-10 accuracy over time">
-        <RecallChart rows={state.rows} />
+      <SectionCard
+        title={`Recall Timeline`}
+        eyebrow={`Top-${k} accuracy over time`}
+      >
+        <div className="mb-4">
+          <Suspense fallback={null}>
+            <KToggle currentK={k} />
+          </Suspense>
+        </div>
+        <RecallChart rows={state.rows} k={k} />
       </SectionCard>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(280px,0.85fr)]">
-        <SectionCard title="Performance Read" eyebrow="Trend">
+        <SectionCard title="Performance Read" eyebrow={`Top-${k} trend`}>
           <div className="grid gap-4 md:grid-cols-3">
             <div className="rounded-xl border border-outline-variant/20 bg-surface-container-low p-4">
               <p className="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">
@@ -205,7 +243,7 @@ export default async function PerformancePage({ searchParams }: Props) {
           </div>
         </SectionCard>
 
-        <SectionCard title="Best Night" eyebrow="Peak recall">
+        <SectionCard title="Best Night" eyebrow={`Top-${k} peak`}>
           <div className="space-y-3">
             <p className="font-headline text-2xl font-semibold text-on-surface">
               {formatCompactDateLabel(bestRow?.showDate ?? null)}
@@ -214,7 +252,14 @@ export default async function PerformancePage({ searchParams }: Props) {
               {bestRow?.venueName ?? "Venue unavailable"}
             </p>
             <p className="text-sm text-primary">
-              Top 10 recall {formatPercent(bestRow?.k10Recall ?? null)}
+              Top {k} recall{" "}
+              {formatPercent(
+                k === 10
+                  ? bestRow?.k10Recall ?? null
+                  : k === 25
+                    ? bestRow?.k25Recall ?? null
+                    : bestRow?.k50Recall ?? null
+              )}
             </p>
             <p className="text-sm text-on-surface-variant">
               Use this as the fast benchmark for the current model and band pair.

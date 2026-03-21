@@ -14,6 +14,21 @@ export const metadata: Metadata = {
 
 const FAQ_ITEMS = [
   {
+    question: "What is Top-10 Recall?",
+    answer:
+      "Recall measures how well the model's top predictions matched the actual setlist. For example, 30% recall at Top-10 means 3 out of every 10 predicted songs in the top-10 appeared in the show. We track this across the last 100 scored shows for each band and model.",
+  },
+  {
+    question: "What drives the predictions?",
+    answer:
+      "Each model uses different signals:\n\nNotebook — Ranks songs by recent activity. Songs played most in the past year rise to the top, with songs that have larger gaps since their last performance ranked higher. Songs played in the last 3 shows are excluded.\n\nCK+ — Ranks songs by how overdue they are relative to their historical cadence. The score combines gap ratio (how much longer than average since last performance), gap z-score (how statistically unusual the current gap is), and reliability (songs with more consistent historical gaps and more plays get a boost). Songs played in the last 3 shows are excluded.",
+  },
+  {
+    question: "Does accuracy vary by band?",
+    answer:
+      "Yes. Each band has a different catalog size, rotation pattern, and setlist variability. We track accuracy separately for each band. Check the Performance page to see how each model performs for a specific band.",
+  },
+  {
     question: "How often are predictions updated?",
     answer:
       "The pipeline runs daily at 3 PM ET via GitHub Actions. Each run collects the latest setlist data, re-generates predictions for every supported band and model, and publishes them to Supabase.",
@@ -32,11 +47,6 @@ const FAQ_ITEMS = [
     question: "Can I use this data for my own projects?",
     answer:
       "The project is open-source under the MIT license. Check out the GitHub repository for the full codebase, documentation, and contribution guidelines.",
-  },
-  {
-    question: "How is accuracy measured?",
-    answer:
-      "After each show, the pipeline compares predictions against the actual setlist. Recall is measured at Top-10, Top-25, and Top-50 windows — meaning how many of the top-K predicted songs actually appeared.",
   },
 ];
 

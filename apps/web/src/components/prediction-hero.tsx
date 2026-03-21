@@ -148,7 +148,7 @@ export function PredictionHero({
             </div>
             <div className="rounded-xl border border-outline-variant/20 bg-surface-container-low p-5">
               <p className="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">
-                Model Track Record
+                Top-10 Recall
               </p>
               {trackRecord !== null ? (
                 <>
