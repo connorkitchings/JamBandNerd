@@ -1,19 +1,19 @@
 import Link from "next/link";
 
 import {
-  ACTIVE_BANDS,
   ACTIVE_MODELS,
-  BAND_CONFIG,
   MODEL_CONFIG,
   type BandSlug,
   type ModelSlug,
 } from "@/lib/config";
+import type { BandEntry } from "@/lib/data";
 
 type Props = {
   pathname: string;
   band: BandSlug;
   model?: ModelSlug;
   date?: string | null;
+  bands: BandEntry[];
 };
 
 function buildHref(pathname: string, band: BandSlug, model?: ModelSlug, date?: string | null) {
@@ -28,7 +28,7 @@ function buildHref(pathname: string, band: BandSlug, model?: ModelSlug, date?: s
   return `${pathname}?${params.toString()}`;
 }
 
-export function FilterLinks({ pathname, band, model, date }: Props) {
+export function FilterLinks({ pathname, band, model, date, bands }: Props) {
   return (
     <div className="space-y-4">
       <div>
@@ -36,19 +36,19 @@ export function FilterLinks({ pathname, band, model, date }: Props) {
           Band
         </p>
         <div className="flex flex-wrap gap-2">
-          {ACTIVE_BANDS.map((item) => {
-            const active = item === band;
+          {bands.map((item) => {
+            const active = item.slug === band;
             return (
               <Link
-                key={item}
-                href={buildHref(pathname, item, model, date)}
+                key={item.slug}
+                href={buildHref(pathname, item.slug as BandSlug, model, date)}
                 className={`rounded-full border px-3 py-1.5 font-headline text-xs uppercase tracking-[0.14rem] transition ${
                   active
                     ? "border-primary-container bg-primary-container text-white"
                     : "border-outline-variant bg-surface-container-low text-on-surface-variant hover:border-primary hover:text-on-surface"
                 }`}
               >
-                {BAND_CONFIG[item].displayName}
+                {item.displayName}
               </Link>
             );
           })}

@@ -7,8 +7,15 @@ import { DataState } from "@/components/data-state";
 import { PredictionHero } from "@/components/prediction-hero";
 import { SongBoard } from "@/components/song-board";
 import { SongSearch } from "@/components/song-search";
-import { BAND_CONFIG, MODEL_CONFIG, normalizeBand, normalizeModel } from "@/lib/config";
-import { getLatestPredictions, getRecentAccuracy, getShowDetailsByDate, calculateModelAgreement } from "@/lib/data";
+import { MODEL_CONFIG, normalizeBand, normalizeModel } from "@/lib/config";
+import {
+  getBands,
+  getLatestPredictions,
+  getRecentAccuracy,
+  getShowDetailsByDate,
+  calculateModelAgreement,
+  bandEntryBySlug,
+} from "@/lib/data";
 import {
   buildLocationLabel,
   formatDateLabel,
@@ -26,9 +33,12 @@ type Props = {
 
 export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
   const params = await searchParams;
-  const band = normalizeBand(params.band);
+  const bandsResult = await getBands();
+  const bands = bandsResult.status === "ready" ? bandsResult.bands : [];
+  const bandSlug = normalizeBand(params.band);
+  const bandEntry = bandEntryBySlug(bands, bandSlug);
   const model = normalizeModel(params.model);
-  const bandName = BAND_CONFIG[band].displayName;
+  const bandName = bandEntry?.displayName ?? bandSlug;
   const modelName = MODEL_CONFIG[model].displayName;
 
   return {
@@ -41,7 +51,8 @@ export default async function HomePage({ searchParams }: Props) {
   const params = await searchParams;
   const secondaryModelSlug = normalizeModel(params.model) === "ckplus" ? "notebook" : "ckplus";
 
-  const [predictionState, secondaryPredictionState, accuracyState] = await Promise.all([
+  const [bandsResult, predictionState, secondaryPredictionState, accuracyState] = await Promise.all([
+    getBands(),
     getLatestPredictions(params.band, params.model),
     getLatestPredictions(params.band, secondaryModelSlug),
     getRecentAccuracy(params.band, params.model, 10),
@@ -76,6 +87,22 @@ export default async function HomePage({ searchParams }: Props) {
       </div>
     );
   }
+
+  const bands = bandsResult.status === "ready" ? bandsResult.bands : [];
+  const normalizedBand = normalizeBand(params.band);
+  if (!bands.some((b) => b.slug === normalizedBand)) {
+    return (
+      <div className="mx-auto max-w-6xl">
+        <DataState
+          title="Band not found"
+          body={`No active band found for slug "${normalizedBand}". Select a supported band from the navigation.`}
+        />
+      </div>
+    );
+  }
+
+  const bandEntry = bandEntryBySlug(bands, predictionState.band) ?? { slug: predictionState.band, displayName: predictionState.band, showsTable: "", idColumn: "" };
+  const bandName = bandEntry.displayName;
 
   const showState = await getShowDetailsByDate(
     predictionState.band,
@@ -113,17 +140,17 @@ export default async function HomePage({ searchParams }: Props) {
 
   return (
     <div className="w-full pb-6 lg:pl-64">
-      <DashboardSideNav band={predictionState.band} model={predictionState.model} />
+      <DashboardSideNav band={predictionState.band} model={predictionState.model} bands={bands} />
 
       <PredictionHero
         venueName={
-          showDetails?.venueName ?? `${BAND_CONFIG[predictionState.band].displayName} Snapshot`
+          showDetails?.venueName ?? `${bandName} Snapshot`
         }
         dateLabel={dateLabel}
         locationLabel={locationLabel}
         statusLabel={statusLabel}
         modelLabel={MODEL_CONFIG[predictionState.model].displayName}
-        bandLabel={BAND_CONFIG[predictionState.band].displayName}
+        bandLabel={bandName}
         snapshotLabel={snapshotLabel}
         totalSongs={predictionState.snapshot.predictions.length}
         accuracyRows={accuracyRows}
@@ -138,7 +165,7 @@ export default async function HomePage({ searchParams }: Props) {
               Song Board
             </h2>
             <p className="text-xs text-on-surface-variant">
-              All ranked predictions for {BAND_CONFIG[predictionState.band].displayName} using{" "}
+              All ranked predictions for {bandName} using{" "}
               {MODEL_CONFIG[predictionState.model].displayName}. Tiers reflect relative likelihood, not guarantees.
             </p>
           </div>
@@ -168,7 +195,7 @@ export default async function HomePage({ searchParams }: Props) {
       <DashboardAnalysis
         rows={accuracyRows}
         predictions={predictionState.snapshot.predictions}
-        bandLabel={BAND_CONFIG[predictionState.band].displayName}
+        bandLabel={bandName}
         modelLabel={MODEL_CONFIG[predictionState.model].displayName}
       />
 

@@ -6,8 +6,8 @@ import { FilterLinks } from "@/components/filter-links";
 import { SongBoard } from "@/components/song-board";
 import { SectionCard } from "@/components/section-card";
 import { SetlistTable } from "@/components/setlist-table";
-import { BAND_CONFIG, MODEL_CONFIG, normalizeBand, normalizeModel } from "@/lib/config";
-import { getExplorerSnapshot, getShowDetailsByDate, calculateModelAgreement } from "@/lib/data";
+import { MODEL_CONFIG, normalizeBand, normalizeModel } from "@/lib/config";
+import { getBands, getExplorerSnapshot, getShowDetailsByDate, calculateModelAgreement, bandEntryBySlug } from "@/lib/data";
 import {
   buildLocationLabel,
   formatCompactDateLabel,
@@ -27,8 +27,11 @@ type Props = {
 
 export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
   const params = await searchParams;
-  const band = normalizeBand(params.band);
-  const bandName = BAND_CONFIG[band].displayName;
+  const bandsResult = await getBands();
+  const bands = bandsResult.status === "ready" ? bandsResult.bands : [];
+  const bandSlug = normalizeBand(params.band);
+  const bandEntry = bandEntryBySlug(bands, bandSlug);
+  const bandName = bandEntry?.displayName ?? bandSlug;
   const dateStr = params.date ? ` (${formatCompactDateLabel(params.date)})` : "";
 
   return {
@@ -46,7 +49,8 @@ export default async function ExplorerPage({ searchParams }: Props) {
   const primaryModel = normalizeModel(params.model);
   const secondaryModelSlug = primaryModel === "ckplus" ? "notebook" : "ckplus";
 
-  const [state, secondaryState] = await Promise.all([
+  const [bandsResult, state, secondaryState] = await Promise.all([
+    getBands(),
     getExplorerSnapshot(params.band, primaryModel, params.date),
     getExplorerSnapshot(params.band, secondaryModelSlug, params.date),
   ]);
@@ -73,6 +77,20 @@ export default async function ExplorerPage({ searchParams }: Props) {
     );
   }
 
+  const bands = bandsResult.status === "ready" ? bandsResult.bands : [];
+  const normalizedBand = normalizeBand(params.band);
+  if (!bands.some((b) => b.slug === normalizedBand)) {
+    return (
+      <DataState
+        title="Band not found"
+        body={`No active band found for slug "${normalizedBand}". Select a supported band from the navigation.`}
+      />
+    );
+  }
+
+  const bandEntry = bandEntryBySlug(bands, state.band);
+  const bandName = bandEntry?.displayName ?? state.band;
+
   const showState = await getShowDetailsByDate(state.band, state.explorer.selectedDate);
   const show = showState.status === "ready" ? showState.show : null;
   const predictions = state.explorer.predictions?.predictions ?? [];
@@ -93,7 +111,7 @@ export default async function ExplorerPage({ searchParams }: Props) {
     show?.state ?? show?.country ?? null,
   ]);
   const showLabel =
-    show?.venueName ?? `${BAND_CONFIG[state.band].displayName} archive replay`;
+    show?.venueName ?? `${bandName} archive replay`;
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
@@ -103,6 +121,7 @@ export default async function ExplorerPage({ searchParams }: Props) {
           band={state.band}
           model={state.model}
           date={state.explorer.selectedDate}
+          bands={bands}
         />
       </SectionCard>
 

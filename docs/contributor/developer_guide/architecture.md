@@ -74,9 +74,21 @@ graph TD
 
 - `scripts/run_optimized_pipeline.py` is the canonical end-to-end local runner.
 - GitHub Actions executes the daily pipeline in production-like automation.
-- Band discovery is partially dynamic today: automation can discover collector
-  scripts, while some local entrypoints still maintain explicit supported-band
-  lists.
+- Band metadata (slug, display name, raw table names, ID column) is managed in the
+  `bands` Supabase table as the single write point. The website reads it dynamically;
+  adding a new band requires only inserting a row into `bands` and creating a collector.
+
+### Model Platform
+
+New prediction models are added through a documented 4-step process (see
+`docs/contributor/model_development.md`). Each model:
+1. Inherits `PredictionModel` and consumes the same `ModelData` contract
+2. Is wired into `generate_predictions.py` with its own output formatting block
+3. Registers its version string and legacy table name in the config modules
+4. Adds an entry to `MODEL_CONFIG` in the website for UI display
+
+All models write to `prediction_songs` via `replace_prediction_projection()`, making
+them automatically available to the website's analytics and explorer routes.
 
 ## Non-Negotiable Rules
 
@@ -85,3 +97,7 @@ graph TD
 - `reference_date` must gate all transforms and backtests.
 - New data architecture work must preserve the two-stage contract:
   source-faithful raw storage, shared normalized modeling inputs.
+- Band metadata lives in the `bands` Supabase table — the website reads it
+  dynamically. Do not hardcode band lists in frontend code.
+- Models are wired via `MODEL_CONFIG` in the website and config modules — no
+  dynamic discovery required on the frontend.

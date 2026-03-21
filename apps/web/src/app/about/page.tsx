@@ -2,14 +2,15 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { SectionCard } from "@/components/section-card";
-import { BAND_CONFIG, MODEL_CONFIG, type BandSlug } from "@/lib/config";
+import { MODEL_CONFIG } from "@/lib/config";
+import { getBands } from "@/lib/data";
 
 export const metadata: Metadata = {
   title: "About | JamBandNerd",
   description: "Learn how JamBandNerd collects setlists, transforms data, and generates predictions.",
 };
 
-const BAND_SLUGS = Object.keys(BAND_CONFIG) as BandSlug[];
+
 
 const FAQ_ITEMS = [
   {
@@ -65,7 +66,9 @@ const PIPELINE_STEPS = [
   },
 ];
 
-export default function AboutPage() {
+export default async function AboutPage() {
+  const bandsResult = await getBands();
+  const bands = bandsResult.status === "ready" ? bandsResult.bands : [];
   return (
     <div className="mx-auto max-w-6xl space-y-8">
       {/* Hero */}
@@ -119,21 +122,21 @@ export default function AboutPage() {
       {/* Supported Bands */}
       <SectionCard
         title="Supported Bands"
-        eyebrow={`${BAND_SLUGS.length} bands tracked`}
+        eyebrow={`${bands.length} bands tracked`}
       >
         <p className="mb-6 text-sm leading-6 text-on-surface-variant">
           The pipeline dynamically discovers and runs for each supported band. Tap one
           to jump to its latest predictions.
         </p>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          {BAND_SLUGS.map((slug) => (
+          {bands.map((band) => (
             <Link
-              key={slug}
-              href={`/?band=${slug}`}
+              key={band.slug}
+              href={`/?band=${band.slug}`}
               className="rounded-xl border border-outline-variant/20 bg-surface-container-low p-4 transition hover:border-primary hover:bg-surface-container"
             >
               <p className="font-headline text-lg font-medium text-on-surface">
-                {BAND_CONFIG[slug].displayName}
+                {band.displayName}
               </p>
               <p className="mt-1 text-xs text-on-surface-variant">View predictions →</p>
             </Link>

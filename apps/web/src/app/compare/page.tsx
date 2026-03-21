@@ -3,8 +3,8 @@ import { DataState } from "@/components/data-state";
 import { FilterLinks } from "@/components/filter-links";
 import { SongBoard } from "@/components/song-board";
 import { SectionCard } from "@/components/section-card";
-import { BAND_CONFIG, normalizeBand } from "@/lib/config";
-import { getLatestPredictions, getShowDetailsByDate } from "@/lib/data";
+import { normalizeBand } from "@/lib/config";
+import { getBands, getLatestPredictions, getShowDetailsByDate, bandEntryBySlug } from "@/lib/data";
 import {
   buildLocationLabel,
   formatCompactDateLabel,
@@ -21,8 +21,11 @@ type Props = {
 
 export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
   const params = await searchParams;
-  const band = normalizeBand(params.band);
-  const bandName = BAND_CONFIG[band].displayName;
+  const bandsResult = await getBands();
+  const bands = bandsResult.status === "ready" ? bandsResult.bands : [];
+  const bandSlug = normalizeBand(params.band);
+  const bandEntry = bandEntryBySlug(bands, bandSlug);
+  const bandName = bandEntry?.displayName ?? bandSlug;
 
   return {
     title: `${bandName} Model Compare | JamBandNerd`,
@@ -36,7 +39,8 @@ function normalizeSongName(value: string) {
 
 export default async function ComparePage({ searchParams }: Props) {
   const params = await searchParams;
-  const [notebook, ckplus] = await Promise.all([
+  const [bandsResult, notebook, ckplus] = await Promise.all([
+    getBands(),
     getLatestPredictions(params.band, "notebook"),
     getLatestPredictions(params.band, "ckplus"),
   ]);
@@ -58,6 +62,20 @@ export default async function ComparePage({ searchParams }: Props) {
       />
     );
   }
+
+  const bands = bandsResult.status === "ready" ? bandsResult.bands : [];
+  const normalizedBand = normalizeBand(params.band);
+  if (!bands.some((b) => b.slug === normalizedBand)) {
+    return (
+      <DataState
+        title="Band not found"
+        body={`No active band found for slug "${normalizedBand}". Select a supported band from the navigation.`}
+      />
+    );
+  }
+
+  const bandEntry = bandEntryBySlug(bands, notebook.band);
+  const bandName = bandEntry?.displayName ?? notebook.band;
 
   const notebookTop = notebook.snapshot.predictions.slice(0, 10);
   const ckplusTop = ckplus.snapshot.predictions.slice(0, 10);
@@ -108,7 +126,7 @@ export default async function ComparePage({ searchParams }: Props) {
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <SectionCard title="Model Compare" eyebrow="Consensus Engine">
-        <FilterLinks pathname="/compare" band={notebook.band} />
+        <FilterLinks pathname="/compare" band={notebook.band} bands={bands} />
       </SectionCard>
 
       <section className="rounded-xl border border-outline-variant/30 bg-surface-container p-8 md:p-10">
@@ -118,7 +136,7 @@ export default async function ComparePage({ searchParams }: Props) {
               Model divergence
             </p>
             <h1 className="mt-3 font-headline text-4xl font-semibold uppercase tracking-[-0.04em] text-on-surface md:text-5xl">
-              {BAND_CONFIG[notebook.band].displayName} comparison board
+              {bandName} comparison board
             </h1>
             <p className="mt-3 font-headline text-base uppercase tracking-[0.08em] text-primary">
               {show?.venueName ?? "Latest prediction snapshot"}

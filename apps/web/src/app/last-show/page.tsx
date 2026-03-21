@@ -6,11 +6,13 @@ import { FilterLinks } from "@/components/filter-links";
 import { SongBoard } from "@/components/song-board";
 import { SectionCard } from "@/components/section-card";
 import { SetlistTable } from "@/components/setlist-table";
-import { BAND_CONFIG, normalizeBand } from "@/lib/config";
+import { normalizeBand } from "@/lib/config";
 import {
+  getBands,
   getLastShowSetlist,
   getPredictionsForDate,
   getShowDetailsByDate,
+  bandEntryBySlug,
 } from "@/lib/data";
 import { buildLocationLabel, formatDateLabel } from "@/lib/format";
 
@@ -24,8 +26,11 @@ type Props = {
 
 export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
   const params = await searchParams;
-  const band = normalizeBand(params.band);
-  const bandName = BAND_CONFIG[band].displayName;
+  const bandsResult = await getBands();
+  const bands = bandsResult.status === "ready" ? bandsResult.bands : [];
+  const bandSlug = normalizeBand(params.band);
+  const bandEntry = bandEntryBySlug(bands, bandSlug);
+  const bandName = bandEntry?.displayName ?? bandSlug;
 
   return {
     title: `${bandName} Last Show Setlist | JamBandNerd`,
@@ -39,7 +44,10 @@ function normalizeSongName(value: string) {
 
 export default async function LastShowPage({ searchParams }: Props) {
   const params = await searchParams;
-  const state = await getLastShowSetlist(params.band);
+  const [bandsResult, state] = await Promise.all([
+    getBands(),
+    getLastShowSetlist(params.band),
+  ]);
 
   if (state.status === "missing_env") {
     return (
@@ -62,6 +70,20 @@ export default async function LastShowPage({ searchParams }: Props) {
       />
     );
   }
+
+  const bands = bandsResult.status === "ready" ? bandsResult.bands : [];
+  const normalizedBand = normalizeBand(params.band);
+  if (!bands.some((b) => b.slug === normalizedBand)) {
+    return (
+      <DataState
+        title="Band not found"
+        body={`No active band found for slug "${normalizedBand}". Select a supported band from the navigation.`}
+      />
+    );
+  }
+
+  const bandEntry = bandEntryBySlug(bands, state.band);
+  const bandName = bandEntry?.displayName ?? state.band;
 
   const showDate =
     typeof state.setlist.showDetails?.show_date === "string"
@@ -88,7 +110,7 @@ export default async function LastShowPage({ searchParams }: Props) {
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <SectionCard title="Last Show" eyebrow="Completed Show Detail">
-        <FilterLinks pathname="/last-show" band={state.band} />
+        <FilterLinks pathname="/last-show" band={state.band} bands={bands} />
       </SectionCard>
 
       <section className="rounded-xl border border-outline-variant/30 bg-gradient-to-r from-surface to-surface-container p-8 md:p-10">
@@ -190,7 +212,7 @@ export default async function LastShowPage({ searchParams }: Props) {
                 <p className="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">
                   Band
                 </p>
-                <p className="mt-2 text-sm text-on-surface">{BAND_CONFIG[state.band].displayName}</p>
+                <p className="mt-2 text-sm text-on-surface">{bandName}</p>
               </div>
             </div>
             <SongBoard rows={replayRows} highlightSongs={actualSongs} compact />

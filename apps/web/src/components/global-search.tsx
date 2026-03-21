@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { BAND_CONFIG, type BandSlug } from "@/lib/config";
+import type { BandSlug } from "@/lib/config";
 
 export type GlobalSearchItem = {
   band: BandSlug;
@@ -13,6 +13,7 @@ export type GlobalSearchItem = {
 
 type Props = {
   items: GlobalSearchItem[];
+  bandDisplayNames: Record<string, string>;
 };
 
 function SearchIcon() {
@@ -24,7 +25,7 @@ function SearchIcon() {
   );
 }
 
-export function GlobalSearch({ items }: Props) {
+export function GlobalSearch({ items, bandDisplayNames }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -171,7 +172,7 @@ export function GlobalSearch({ items }: Props) {
                               {item.songName}
                             </p>
                             <p className="border-t-0 mt-0.5 text-xs text-on-surface-variant">
-                              {BAND_CONFIG[item.band].displayName} • Rank #{item.rank}
+                              {bandDisplayNames[item.band] ?? item.band} • Rank #{item.rank}
                             </p>
                           </div>
                           <span className="text-primary opacity-0 transition group-hover:opacity-100">

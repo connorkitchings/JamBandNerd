@@ -250,12 +250,20 @@ This remains a future implementation decision, not the active architecture.
 
 ## Current Gaps To Address Later
 
-- shared supported-band discovery is not fully aligned across all local scripts
-  and orchestration paths yet
-- ID normalization is still handled through aliases rather than one formal
-  registry-backed contract
 - prediction storage may later move to row-per-song tables if the website or
   analytics layer requires it
+
+## Band Registry
+
+Band metadata (slug, display name, raw table names, ID columns) is maintained in the `bands`
+Supabase table. This is the single write point for band metadata consumed by both the
+pipeline and the website. The website fetches active bands dynamically from this table
+rather than maintaining a hardcoded static list.
+
+New band onboarding workflow:
+1. Write the band's collector script → creates `{band}_shows_raw`, `{band}_setlists_raw`
+2. Insert a row into the `bands` table
+3. The website automatically discovers and surfaces the new band
 
 ## Files To Treat As Current References
 

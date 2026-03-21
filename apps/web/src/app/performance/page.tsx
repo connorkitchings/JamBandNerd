@@ -4,8 +4,8 @@ import { DataState } from "@/components/data-state";
 import { FilterLinks } from "@/components/filter-links";
 import { RecallChart } from "@/components/recall-chart";
 import { SectionCard } from "@/components/section-card";
-import { BAND_CONFIG, MODEL_CONFIG, normalizeBand, normalizeModel } from "@/lib/config";
-import { type AccuracyRow, getRecentAccuracy } from "@/lib/data";
+import { MODEL_CONFIG, normalizeBand, normalizeModel } from "@/lib/config";
+import { type AccuracyRow, getBands, getRecentAccuracy, bandEntryBySlug } from "@/lib/data";
 import { formatCompactDateLabel, formatPercent } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
@@ -19,9 +19,12 @@ type Props = {
 
 export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
   const params = await searchParams;
-  const band = normalizeBand(params.band);
+  const bandsResult = await getBands();
+  const bands = bandsResult.status === "ready" ? bandsResult.bands : [];
+  const bandSlug = normalizeBand(params.band);
+  const bandEntry = bandEntryBySlug(bands, bandSlug);
   const model = normalizeModel(params.model);
-  const bandName = BAND_CONFIG[band].displayName;
+  const bandName = bandEntry?.displayName ?? bandSlug;
   const modelName = MODEL_CONFIG[model].displayName;
 
   return {
@@ -49,7 +52,10 @@ function getBestRecallRow(rows: AccuracyRow[]) {
 
 export default async function PerformancePage({ searchParams }: Props) {
   const params = await searchParams;
-  const state = await getRecentAccuracy(params.band, params.model, 20);
+  const [bandsResult, state] = await Promise.all([
+    getBands(),
+    getRecentAccuracy(params.band, params.model, 20),
+  ]);
 
   if (state.status === "missing_env") {
     return (
@@ -73,6 +79,20 @@ export default async function PerformancePage({ searchParams }: Props) {
     );
   }
 
+  const bands = bandsResult.status === "ready" ? bandsResult.bands : [];
+  const normalizedBand = normalizeBand(params.band);
+  if (!bands.some((b) => b.slug === normalizedBand)) {
+    return (
+      <DataState
+        title="Band not found"
+        body={`No active band found for slug "${normalizedBand}". Select a supported band from the navigation.`}
+      />
+    );
+  }
+
+  const bandEntry = bandEntryBySlug(bands, state.band);
+  const bandName = bandEntry?.displayName ?? state.band;
+
   const top10Average = average(state.rows.map((row) => row.k10Recall));
   const top25Average = average(state.rows.map((row) => row.k25Recall));
   const top50Average = average(state.rows.map((row) => row.k50Recall));
@@ -86,7 +106,7 @@ export default async function PerformancePage({ searchParams }: Props) {
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <SectionCard title="Historical Performance" eyebrow="Model Recall">
-        <FilterLinks pathname="/performance" band={state.band} model={state.model} />
+        <FilterLinks pathname="/performance" band={state.band} model={state.model} bands={bands} />
       </SectionCard>
 
       <section className="rounded-xl border border-outline-variant/30 bg-surface-container p-8 md:p-10">
@@ -96,7 +116,7 @@ export default async function PerformancePage({ searchParams }: Props) {
               Rolling accuracy
             </p>
             <h1 className="mt-3 font-headline text-4xl font-semibold uppercase tracking-[-0.04em] text-on-surface md:text-5xl">
-              {BAND_CONFIG[state.band].displayName} performance ledger
+              {bandName} performance ledger
             </h1>
             <p className="mt-3 font-headline text-base uppercase tracking-[0.08em] text-primary">
               {MODEL_CONFIG[state.model].displayName} • last {state.rows.length} scored shows

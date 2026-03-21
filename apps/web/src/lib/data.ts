@@ -74,6 +74,13 @@ export type ExplorerSnapshot = {
   setlist: SetlistSnapshot | null;
 };
 
+export type BandEntry = {
+  slug: string;
+  displayName: string;
+  showsTable: string;
+  idColumn: string;
+};
+
 export type RouteState<T> =
   | { status: "missing_env" }
   | { status: "error"; message: string }
@@ -556,17 +563,44 @@ export const getPredictionDates = cache(
     }
 
     try {
-      const { data, error } = await client
-        .from(`predictions_${model}`)
-        .select("reference_date")
-        .eq("band", band)
-        .order("reference_date", { ascending: false });
+      let dates: string[] = [];
 
-      if (error) {
-        return { status: "error", message: error.message };
+      try {
+        const { data: projectionData, error: projectionError } = await client
+          .from("prediction_songs")
+          .select("reference_date")
+          .eq("band", band)
+          .eq("model_slug", model)
+          .order("reference_date", { ascending: false });
+
+        if (!projectionError && projectionData && projectionData.length > 0) {
+          dates = [...new Set(
+            projectionData
+              .map((row) => asRecord(row)?.reference_date)
+              .filter((d): d is string => typeof d === "string")
+          )];
+        }
+      } catch {
       }
 
-      const dates = [...new Set((data ?? []).map((row) => row.reference_date).filter(Boolean))];
+      if (dates.length === 0) {
+        const { data, error } = await client
+          .from(`predictions_${model}`)
+          .select("reference_date")
+          .eq("band", band)
+          .order("reference_date", { ascending: false });
+
+        if (error) {
+          return { status: "error", message: error.message };
+        }
+
+        dates = [...new Set(
+          (data ?? [])
+            .map((row) => asRecord(row)?.reference_date)
+            .filter((d): d is string => typeof d === "string")
+        )];
+      }
+
       return dates.length === 0
         ? { status: "empty" }
         : { status: "ready", band, model, dates };
@@ -962,24 +996,42 @@ export const getGlobalSearchData = cache(
     if (!client) return { status: "missing_env" };
 
     try {
-      const bands = Object.keys(BAND_CONFIG) as BandSlug[];
+      let bandSlugs: string[] = [];
+
+      try {
+        const { data: bandsData } = await client
+          .from("bands")
+          .select("slug")
+          .eq("is_active", true);
+        bandSlugs = (bandsData ?? [])
+          .map((row) => asRecord(row)?.slug)
+          .filter((s): s is string => typeof s === "string");
+      } catch {
+        bandSlugs = [];
+      }
+
+      if (bandSlugs.length === 0) {
+        bandSlugs = Object.keys(BAND_CONFIG);
+      }
+
       const items: { band: BandSlug; songName: string; rank: number }[] = [];
 
       await Promise.all(
-        bands.map(async (band) => {
+        bandSlugs.map(async (band) => {
           // Default to fetching Notebook model for search index for now
           const model: ModelSlug = "notebook";
+          const bandSlug = band as BandSlug;
           
           try {
             const projectionSnapshot = await fetchProjectedPredictionSnapshot(client, {
-              band,
+              band: bandSlug,
               model,
             });
             
             if (projectionSnapshot && projectionSnapshot.predictions) {
               for (const p of projectionSnapshot.predictions) {
                 items.push({
-                  band,
+                  band: bandSlug,
                   songName: p.songName,
                   rank: p.rank,
                 });
@@ -987,13 +1039,13 @@ export const getGlobalSearchData = cache(
               return;
             }
           } catch (error) {
-            console.error(`Failed to load search data for ${band} (projection)`, error);
+            console.error(`Failed to load search data for ${bandSlug} (projection)`, error);
           }
 
           const { data } = await client
             .from(`predictions_${model}`)
             .select("*")
-            .eq("band", band)
+            .eq("band", bandSlug)
             .order("reference_date", { ascending: false })
             .limit(1);
 
@@ -1002,7 +1054,7 @@ export const getGlobalSearchData = cache(
             const snapshot = buildPredictionSnapshotFromCanonicalRow(row);
             for (const p of snapshot.predictions) {
               items.push({
-                band,
+                band: bandSlug,
                 songName: p.songName,
                 rank: p.rank,
               });
@@ -1025,3 +1077,59 @@ export const getGlobalSearchData = cache(
     }
   }
 );
+
+export const getBands = cache(
+  async (): Promise<RouteState<{ bands: BandEntry[] }>> => {
+    const missingEnv = getClientOrState<{ bands: BandEntry[] }>();
+    if (missingEnv) {
+      return missingEnv;
+    }
+
+    const client = getSupabaseServerClient();
+    if (!client) {
+      return { status: "missing_env" };
+    }
+
+    try {
+      const { data, error } = await client
+        .from("bands")
+        .select("slug, display_name, shows_table, id_column")
+        .eq("is_active", true)
+        .order("display_name", { ascending: true });
+
+      if (error) {
+        return { status: "error", message: error.message };
+      }
+
+      const bands: BandEntry[] =
+        data?.map((row) => ({
+          slug: String(row.slug),
+          displayName: String(row.display_name),
+          showsTable: String(row.shows_table),
+          idColumn: String(row.id_column),
+        })) ?? [];
+
+      if (bands.length === 0) {
+        return { status: "empty" };
+      }
+
+      return { status: "ready", bands };
+    } catch (error) {
+      return {
+        status: "error",
+        message: error instanceof Error ? error.message : "Unknown error",
+      };
+    }
+  }
+);
+
+export function bandEntryBySlug(
+  bands: BandEntry[],
+  slug: string,
+): BandEntry | undefined {
+  return bands.find((b) => b.slug === slug);
+}
+
+export function isValidBandSlug(bands: BandEntry[], slug: string): boolean {
+  return bands.some((b) => b.slug === slug);
+}

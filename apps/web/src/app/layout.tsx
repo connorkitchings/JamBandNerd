@@ -5,7 +5,7 @@ import { Inter, Space_Grotesk } from "next/font/google";
 
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
 import { SiteHeader } from "@/components/site-header";
-import { getGlobalSearchData } from "@/lib/data";
+import { getBands, getGlobalSearchData } from "@/lib/data";
 
 import "./globals.css";
 
@@ -29,8 +29,17 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const searchData = await getGlobalSearchData();
+  const [bandsResult, searchData] = await Promise.all([
+    getBands(),
+    getGlobalSearchData(),
+  ]);
+
+  const bands = bandsResult.status === "ready" ? bandsResult.bands : [];
   const searchItems = searchData.status === "ready" ? searchData.items : [];
+  const bandDisplayNames: Record<string, string> = {};
+  for (const band of bands) {
+    bandDisplayNames[band.slug] = band.displayName;
+  }
 
   return (
     <html className="dark" lang="en">
@@ -38,7 +47,7 @@ export default async function RootLayout({
         className={`${spaceGrotesk.variable} ${inter.variable} font-body antialiased`}
       >
         <div className="min-h-screen">
-          <SiteHeader searchItems={searchItems} />
+          <SiteHeader searchItems={searchItems} bandDisplayNames={bandDisplayNames} />
           <main className="safe-bottom-content w-full px-6 pt-24 md:px-8 lg:px-10">
             {children}
           </main>

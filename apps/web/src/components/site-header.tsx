@@ -38,9 +38,10 @@ function BackIcon() {
 
 type Props = {
   searchItems: GlobalSearchItem[];
+  bandDisplayNames: Record<string, string>;
 };
 
-export function SiteHeader({ searchItems }: Props) {
+export function SiteHeader({ searchItems, bandDisplayNames }: Props) {
   const pathname = usePathname();
   const router = useRouter();
   const showMobileBackButton = isDetailPath(pathname);
@@ -110,7 +111,7 @@ export function SiteHeader({ searchItems }: Props) {
         </div>
 
         <div className="flex w-12 items-center justify-end text-on-background md:w-auto md:gap-4">
-          <GlobalSearch items={searchItems} />
+          <GlobalSearch items={searchItems} bandDisplayNames={bandDisplayNames} />
           
           <button
             aria-label="Account"
