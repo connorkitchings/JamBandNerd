@@ -33,6 +33,7 @@ This file stores persistent lessons and operating patterns that should survive a
 - Before retiring a legacy codebase (e.g. Streamlit app), delete its corresponding tests first so pytest doesn't fail during collection. Run `pytest` immediately after deletion to catch any remaining import references before committing.
 - When running a Next.js workspace (e.g. `npm run dev:web`) from the repository root, ensure the `.env.local` file is placed inside the workspace directory (`apps/web/.env.local`), not at the repository root, so that Next.js automatically loads it.
 - For Vercel monorepo deployments, set the project root to the actual Next.js workspace (here `apps/web`) or Vercel will build from the repo root and fail with “Couldn't find any `pages` or `app` directory.”
+- For Playwright smoke tests on pull requests, assume runtime secrets may be unavailable. Keep route coverage intact by accepting the app's explicit missing-env fallback state for secret-backed pages instead of requiring live Supabase data in PR CI.
 
 - When hardening data ingestion, add HTTP response caching at the collector base class level (not per-band) with configurable TTL via env vars. Use a circuit breaker pattern to disable failing bands after N consecutive failures.
 - ID column naming inconsistency (e.g., show_id vs api_show_id vs source_uuid) should be addressed via a formal migration strategy, not ad-hoc changes, since it affects the entire data pipeline.
