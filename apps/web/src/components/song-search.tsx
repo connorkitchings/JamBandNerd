@@ -50,7 +50,7 @@ export function SongSearch({ songs }: Props) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Will they play…?"
-          className="w-full rounded-xl border border-outline-variant/30 bg-surface-container py-3.5 pl-11 pr-4 font-headline text-sm text-on-surface placeholder:text-on-surface-variant/50 transition focus:border-primary focus:outline-none"
+          className="w-full rounded-xl border border-outline-variant/30 bg-surface-container py-3.5 pl-11 pr-4 font-headline text-sm text-on-surface placeholder:text-on-surface-variant/50 transition focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
           aria-label="Search for a song"
         />
         {query && (

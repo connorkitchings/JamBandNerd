@@ -139,7 +139,7 @@ export function GlobalSearch({ items, bandDisplayNames }: Props) {
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search songs across all bands..."
-                className="w-full bg-transparent py-4 pl-3 pr-4 font-headline text-base text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none"
+                className="w-full bg-transparent py-4 pl-3 pr-4 font-headline text-base text-on-surface placeholder:text-on-surface-variant/50 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset focus-visible:outline-none"
               />
               <button
                 type="button"
@@ -164,7 +164,7 @@ export function GlobalSearch({ items, bandDisplayNames }: Props) {
                     {results.map((item, i) => (
                       <li key={`${item.band}-${item.songName}-${i}`}>
                         <button
-                          className="flex w-full items-center justify-between rounded-lg px-4 py-3 text-left transition hover:bg-surface-container-highest/50 focus:bg-surface-container-highest/50 focus:outline-none"
+                          className="flex w-full items-center justify-between rounded-lg px-4 py-3 text-left transition hover:bg-surface-container-highest/50 focus-visible:bg-surface-container-highest/50 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
                           onClick={() => handleSelect(item.band)}
                         >
                           <div>

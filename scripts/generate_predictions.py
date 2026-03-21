@@ -136,6 +136,7 @@ def generate_predictions(
                 "times_played": p.times_played,
                 "current_gap": p.current_gap,
                 "avg_gap": p.avg_gap,
+                "recent_avg_gap": p.recent_avg_gap,
                 "gap_ratio": p.gap_ratio,
                 "gap_z_score": p.gap_z_score,
                 "ckplus_score": p.ckplus_score,

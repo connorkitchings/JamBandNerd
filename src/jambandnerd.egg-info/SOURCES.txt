@@ -15,6 +15,7 @@ src/jambandnerd/config/models.py
 src/jambandnerd/config/pipeline.py
 src/jambandnerd/data_collection/__init__.py
 src/jambandnerd/data_collection/base.py
+src/jambandnerd/data_collection/cache.py
 src/jambandnerd/data_collection/collect_data.py
 src/jambandnerd/data_collection/config.py
 src/jambandnerd/data_collection/setlist_reviewer.py
@@ -51,6 +52,7 @@ src/jambandnerd/models/notebook/model.py
 src/jambandnerd/predictions/__init__.py
 src/jambandnerd/transformations/__init__.py
 src/jambandnerd/transformations/gaps.py
+src/jambandnerd/transformations/normalization.py
 src/jambandnerd/utils/__init__.py
 src/jambandnerd/utils/logging.py
 tests/test_collectors.py
@@ -59,4 +61,6 @@ tests/test_data_diagnostics_scripts.py
 tests/test_db.py
 tests/test_db_operations.py
 tests/test_models.py
+tests/test_operational_recovery_scripts.py
+tests/test_validate_accuracy_tables.py
 tests/test_validate_prediction_tables.py

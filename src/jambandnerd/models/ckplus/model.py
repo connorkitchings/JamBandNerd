@@ -19,6 +19,7 @@ class CKPlusPrediction:
     times_played: int
     current_gap: int
     avg_gap: float
+    recent_avg_gap: float
     gap_ratio: float
     gap_z_score: float
     ckplus_score: float
@@ -159,6 +160,11 @@ class CKPlusPredictor(PredictionModel):
                     current_gap=int(row["current_gap"]),
                     avg_gap=float(
                         row.get("avg_gap") if pd.notna(row.get("avg_gap")) else 0.0
+                    ),
+                    recent_avg_gap=float(
+                        row.get("recent_avg_gap")
+                        if pd.notna(row.get("recent_avg_gap"))
+                        else 0.0
                     ),
                     gap_ratio=float(
                         row.get("gap_ratio") if pd.notna(row.get("gap_ratio")) else 0.0

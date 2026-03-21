@@ -46,9 +46,15 @@ export default async function RootLayout({
       <body
         className={`${spaceGrotesk.variable} ${inter.variable} font-body antialiased`}
       >
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[100] focus:rounded-lg focus:bg-surface-container-high focus:px-4 focus:py-2 focus:text-sm focus:text-primary focus:ring-2 focus:ring-primary"
+        >
+          Skip to main content
+        </a>
         <div className="min-h-screen">
           <SiteHeader searchItems={searchItems} bandDisplayNames={bandDisplayNames} />
-          <main className="safe-bottom-content w-full px-6 pt-24 md:px-8 lg:px-10">
+          <main id="main-content" className="safe-bottom-content w-full px-6 pt-24 md:px-8 lg:px-10">
             {children}
           </main>
           <MobileBottomNav />

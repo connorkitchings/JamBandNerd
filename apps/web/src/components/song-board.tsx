@@ -9,6 +9,7 @@ import { TierBadge } from "@/components/tier-badge";
 type Props = {
   rows: PredictionRow[];
   highlightSongs?: Set<string>;
+  secondarySongs?: Set<string>;
   compact?: boolean;
 };
 
@@ -50,6 +51,25 @@ function CheckIcon() {
   );
 }
 
+function ModelAgreeIcon() {
+  return (
+    <svg
+      aria-label="Both models predict this song"
+      className="size-3.5 text-tertiary"
+      fill="none"
+      viewBox="0 0 24 24"
+    >
+      <path
+        d="M9 12L11 14L15 10M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.75"
+      />
+    </svg>
+  );
+}
+
 function normalizeSongName(value: string) {
   return value.trim().toLowerCase();
 }
@@ -58,12 +78,14 @@ function TierSection({
   tier,
   rows,
   highlightSongs,
+  secondarySongs,
   defaultOpen,
   compact,
 }: {
   tier: LikelihoodTier;
   rows: PredictionRow[];
   highlightSongs?: Set<string>;
+  secondarySongs?: Set<string>;
   defaultOpen: boolean;
   compact?: boolean;
 }) {
@@ -76,7 +98,9 @@ function TierSection({
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className="flex w-full items-center justify-between px-4 py-3 transition hover:bg-surface-container"
+        aria-expanded={isOpen}
+        aria-controls={`tier-content-${tier}`}
+        className="flex w-full items-center justify-between px-4 py-3 transition hover:bg-surface-container focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
       >
         <div className="flex items-center gap-3">
           <TierBadge tier={tier} />
@@ -92,9 +116,12 @@ function TierSection({
         </div>
       </button>
 
-      {isOpen && (
-        <div className="border-t border-outline-variant/15">
-          {/* Desktop table view */}
+      <div
+        id={`tier-content-${tier}`}
+        className="border-t border-outline-variant/15"
+        hidden={!isOpen}
+      >
+        {/* Desktop table view */}
           <div className="hidden md:block">
             <table className="w-full border-collapse text-left text-sm">
               <thead>
@@ -118,11 +145,17 @@ function TierSection({
                       Played
                     </th>
                   )}
+                  {secondarySongs && (
+                    <th className="px-4 py-2.5 font-label text-[10px] font-medium uppercase tracking-[0.18rem] text-on-surface-variant">
+                      Both
+                    </th>
+                  )}
                 </tr>
               </thead>
               <tbody>
                 {rows.map((row, index) => {
                   const isHighlighted = highlightSongs?.has(normalizeSongName(row.songName));
+                  const agreesWithOtherModel = secondarySongs?.has(normalizeSongName(row.songName));
                   return (
                     <tr
                       key={`${row.rank}-${row.songName}`}
@@ -153,6 +186,11 @@ function TierSection({
                           {isHighlighted && <CheckIcon />}
                         </td>
                       )}
+                      {secondarySongs && (
+                        <td className="px-4 py-2.5">
+                          {agreesWithOtherModel && <ModelAgreeIcon />}
+                        </td>
+                      )}
                     </tr>
                   );
                 })}
@@ -164,6 +202,7 @@ function TierSection({
           <div className="divide-y divide-outline-variant/10 md:hidden">
             {rows.map((row) => {
               const isHighlighted = highlightSongs?.has(normalizeSongName(row.songName));
+              const agreesWithOtherModel = secondarySongs?.has(normalizeSongName(row.songName));
               return (
                 <div
                   key={`${row.rank}-${row.songName}`}
@@ -176,7 +215,8 @@ function TierSection({
                     <div>
                       <p className={`font-headline text-sm font-medium ${isHighlighted ? "text-green-300" : "text-on-surface"}`}>
                         {row.songName}
-                        {isHighlighted && <span className="ml-2"><CheckIcon /></span>}
+                        {isHighlighted && <span className="ml-1"><CheckIcon /></span>}
+                        {agreesWithOtherModel && <span className="ml-1"><ModelAgreeIcon /></span>}
                       </p>
                       <p className="text-xs text-on-surface-variant">
                         {row.currentGap !== null
@@ -190,12 +230,11 @@ function TierSection({
             })}
           </div>
         </div>
-      )}
     </div>
   );
 }
 
-export function SongBoard({ rows, highlightSongs, compact }: Props) {
+export function SongBoard({ rows, highlightSongs, secondarySongs, compact }: Props) {
   const grouped = TIER_ORDER.reduce(
     (acc, tier) => {
       acc[tier] = rows.filter((row) => row.tier === tier);
@@ -212,6 +251,7 @@ export function SongBoard({ rows, highlightSongs, compact }: Props) {
           tier={tier}
           rows={grouped[tier]}
           highlightSongs={highlightSongs}
+          secondarySongs={secondarySongs}
           defaultOpen={tier === "expected" || tier === "hot"}
           compact={compact}
         />

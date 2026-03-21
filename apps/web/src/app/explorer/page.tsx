@@ -195,9 +195,9 @@ export default async function ExplorerPage({ searchParams }: Props) {
                   {agreementScore && (
                     <span 
                       className="whitespace-nowrap rounded bg-primary/10 px-1.5 py-0.5 font-label text-[10px] font-bold uppercase tracking-wider text-primary ring-1 ring-inset ring-primary/20"
-                      title={`${agreementScore.matchCount}/${agreementScore.k} Top-${agreementScore.k} songs match across models`}
+                      title={`${Math.round(agreementScore.composite * 100)}% weighted agreement across models`}
                     >
-                      {Math.round(agreementScore.percentage * 100)}% Match
+                      {Math.round(agreementScore.composite * 100)}% Match
                     </span>
                   )}
                 </div>

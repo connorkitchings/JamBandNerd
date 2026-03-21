@@ -140,6 +140,15 @@ export default async function HomePage({ searchParams }: Props) {
         )
       : null;
 
+  const secondarySongs =
+    secondaryPredictionState.status === "ready"
+      ? new Set(
+          secondaryPredictionState.snapshot.predictions.map((row) =>
+            row.songName.trim().toLowerCase()
+          )
+        )
+      : undefined;
+
   return (
     <div className="w-full pb-6 lg:pl-64">
       <DashboardSideNav band={predictionState.band} model={predictionState.model} bands={bands} />
@@ -191,7 +200,7 @@ export default async function HomePage({ searchParams }: Props) {
           <SongSearch songs={searchSongs} />
         </div>
 
-        <SongBoard rows={predictionState.snapshot.predictions} />
+        <SongBoard rows={predictionState.snapshot.predictions} secondarySongs={secondarySongs} />
       </section>
 
       <DashboardAnalysis

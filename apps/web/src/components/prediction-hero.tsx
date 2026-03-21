@@ -1,5 +1,5 @@
 
-import type { PredictionRow, AccuracyRow } from "@/lib/data";
+import type { PredictionRow, AccuracyRow, ModelAgreement } from "@/lib/data";
 
 type Props = {
   venueName: string;
@@ -12,22 +12,25 @@ type Props = {
   totalSongs: number;
   accuracyRows: AccuracyRow[];
   predictions: PredictionRow[];
-  agreementScore?: { percentage: number; matchCount: number; k: number } | null;
+  agreementScore?: ModelAgreement | null;
 };
 
 function getOutlookLabel(predictions: PredictionRow[]) {
   if (predictions.length === 0) return "No signal";
 
   const top10 = predictions.slice(0, 10);
-  const avgGap =
-    top10.reduce((sum, row) => sum + (row.currentGap ?? 0), 0) / top10.length;
+  const avgRecentGap =
+    top10.reduce(
+      (sum, row) => sum + (row.recentAvgGap ?? row.avgGap ?? 0),
+      0
+    ) / top10.length;
   const hotCount = predictions.filter((row) => row.tier === "hot").length;
   const deepCutCount = predictions.filter((row) => row.tier === "possible").length;
 
-  if (avgGap >= 15) return "Deep catalog energy";
-  if (hotCount >= 4 && avgGap < 8) return "Heavy rotation night";
-  if (deepCutCount > predictions.length * 0.4) return "Bust-out potential building";
-  return "Mixed signals — balanced show expected";
+  if (avgRecentGap >= 15) return "Deep cuts expected";
+  if (hotCount >= 4 && avgRecentGap < 8) return "Heavy rotation";
+  if (deepCutCount > predictions.length * 0.4) return "Bust-out potential";
+  return "Balanced expectations";
 }
 
 function getTrackRecord(accuracyRows: AccuracyRow[]) {
@@ -91,12 +94,25 @@ export function PredictionHero({
                   {agreementScore && (
                     <span 
                       className="rounded bg-primary/10 px-1.5 py-0.5 font-label text-[10px] font-bold uppercase tracking-wider text-primary ring-1 ring-inset ring-primary/20"
-                      title={`${agreementScore.matchCount}/${agreementScore.k} Top-${agreementScore.k} songs match across models`}
+                      title={`${Math.round(agreementScore.composite * 100)}% weighted agreement across models`}
                     >
-                      {Math.round(agreementScore.percentage * 100)}% Match
+                      {Math.round(agreementScore.composite * 100)}% Match
                     </span>
                   )}
                 </div>
+                {agreementScore && (
+                  <div className="mt-2 flex gap-3">
+                    <span className="text-[10px] text-on-surface-variant">
+                      <span className="font-semibold">{agreementScore.top10.matchCount}/{agreementScore.top10.total}</span> top-10
+                    </span>
+                    <span className="text-[10px] text-on-surface-variant">
+                      <span className="font-semibold">{agreementScore.top25.matchCount}/{agreementScore.top25.total}</span> top-25
+                    </span>
+                    <span className="text-[10px] text-on-surface-variant">
+                      <span className="font-semibold">{agreementScore.top50.matchCount}/{agreementScore.top50.total}</span> top-50
+                    </span>
+                  </div>
+                )}
               </div>
               <div>
                 <p className="mb-1 font-label text-[10px] uppercase tracking-[0.18rem] text-on-surface-variant">
@@ -115,9 +131,17 @@ export function PredictionHero({
 
           <div className="flex flex-col gap-4 lg:col-span-4">
             <div className="rounded-xl border border-outline-variant/20 bg-surface-container-low p-5">
-              <p className="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">
-                Show Outlook
-              </p>
+              <div className="flex items-center gap-2">
+                <p className="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">
+                  Show Outlook
+                </p>
+                <span
+                  className="text-[10px] text-on-surface-variant"
+                  title="Based on songs in the top 10 predictions"
+                >
+                  ⓘ
+                </span>
+              </div>
               <p className="mt-2 font-headline text-lg font-semibold text-primary">
                 {outlookLabel}
               </p>

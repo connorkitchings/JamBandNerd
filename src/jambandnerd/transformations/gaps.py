@@ -21,12 +21,16 @@ def _stats_for_song(group: pd.DataFrame) -> pd.Series:
     # Use unique show indices to avoid counting reprises/encores as separate plays
     plays_idx = sorted(group["show_index"].unique().tolist())
     gaps = [plays_idx[i] - plays_idx[i - 1] for i in range(1, len(plays_idx))]
+    recent_gaps = gaps[-25:] if len(gaps) >= 25 else gaps
     return pd.Series(
         {
             "times_played": len(plays_idx),
             "last_played_index": plays_idx[-1],
             "last_played_date": group["show_date"].max(),
             "avg_gap": pd.Series(gaps).mean() if gaps else float("nan"),
+            "recent_avg_gap": pd.Series(recent_gaps).mean()
+            if recent_gaps
+            else float("nan"),
             "std_gap": pd.Series(gaps).std(ddof=0) if gaps else 0.0,
         }
     )
@@ -162,7 +166,9 @@ def generate_model_data(
     required_show_columns = {"show_id", "show_date"}
     required_setlist_columns = {"show_id", "song_name"}
     missing_show_columns = sorted(required_show_columns - set(shows_df.columns))
-    missing_setlist_columns = sorted(required_setlist_columns - set(setlists_df.columns))
+    missing_setlist_columns = sorted(
+        required_setlist_columns - set(setlists_df.columns)
+    )
     if missing_show_columns or missing_setlist_columns:
         problems = []
         if missing_show_columns:

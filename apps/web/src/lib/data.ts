@@ -23,6 +23,7 @@ export type PredictionRow = {
   currentGap: number | null;
   playsPastYear: number | null;
   avgGap: number | null;
+  recentAvgGap: number | null;
   gapRatio: number | null;
   gapZScore: number | null;
   ckplusScore: number | null;
@@ -168,6 +169,7 @@ function normalizePredictionRows(rows: JsonPrediction[]): PredictionRow[] {
       currentGap: parseNumber(row.current_gap),
       playsPastYear: parseNumber(row.plays_past_year),
       avgGap: parseNumber(row.avg_gap),
+      recentAvgGap: parseNumber(row.recent_avg_gap),
       gapRatio: parseNumber(row.gap_ratio),
       gapZScore: parseNumber(row.gap_z_score),
       ckplusScore: parseNumber(row.ckplus_score),
@@ -198,6 +200,7 @@ function normalizeProjectedPredictionRows(rows: ProjectionRow[]): PredictionRow[
       currentGap: parseNumber(payload.current_gap),
       playsPastYear: parseNumber(payload.plays_past_year),
       avgGap: parseNumber(payload.avg_gap),
+      recentAvgGap: parseNumber(payload.recent_avg_gap),
       gapRatio: parseNumber(payload.gap_ratio),
       gapZScore: parseNumber(payload.gap_z_score),
       ckplusScore: parseNumber(payload.ckplus_score),
@@ -505,35 +508,49 @@ export const getLatestPredictions = cache(
   },
 );
 
+export type ModelAgreementTier = {
+  matchCount: number;
+  total: number;
+  percentage: number;
+};
+
+export type ModelAgreement = {
+  top10: ModelAgreementTier;
+  top25: ModelAgreementTier;
+  top50: ModelAgreementTier;
+  composite: number;
+};
+
 export function calculateModelAgreement(
   primaryRows: PredictionRow[],
   secondaryRows: PredictionRow[],
-  k = 25
-): { percentage: number; matchCount: number; k: number } | null {
+): ModelAgreement | null {
   if (!primaryRows.length || !secondaryRows.length) return null;
 
-  const primaryTopK = primaryRows.slice(0, k).map(r => r.songName.toLowerCase());
-  const secondaryTopK = secondaryRows.slice(0, k).map(r => r.songName.toLowerCase());
-  
-  const secondarySet = new Set(secondaryTopK);
-  let matchCount = 0;
-  
-  for (const song of primaryTopK) {
-    if (secondarySet.has(song)) {
-      matchCount++;
-    }
+  const primaryNames = primaryRows.map((r) => r.songName.toLowerCase());
+  const secondaryNames = secondaryRows.map((r) => r.songName.toLowerCase());
+  const secondarySet = new Set(secondaryNames);
+
+  function computeTier(k: number): ModelAgreementTier {
+    const primaryTopK = primaryNames.slice(0, k);
+    const secondaryTopK = secondaryNames.slice(0, k);
+    const actualK = Math.min(k, primaryTopK.length, secondaryTopK.length);
+    const matchCount = primaryTopK.filter((song) => secondarySet.has(song)).length;
+    const percentage = actualK > 0 ? matchCount / actualK : 0;
+    return { matchCount, total: actualK, percentage };
   }
 
-  // Calculate percentage against the actual number of items we could compare 
-  // (in case a brand new band has fewer than K total songs predicted)
-  const actualK = Math.min(k, primaryTopK.length, secondaryTopK.length);
-  const percentage = actualK > 0 ? matchCount / actualK : 0;
+  const top10 = computeTier(10);
+  const top25 = computeTier(25);
+  const top50 = computeTier(50);
 
-  return {
-    percentage,
-    matchCount,
-    k: actualK
-  };
+  // Weighted composite: top-10 counts 2x, others count 1x
+  // Max possible: (10*2 + 25 + 50) = 95
+  const maxWeight = 10 * 2 + 25 + 50;
+  const composite =
+    (top10.matchCount * 2 + top25.matchCount + top50.matchCount) / maxWeight;
+
+  return { top10, top25, top50, composite };
 }
 
 export const getPredictionsForDate = cache(
@@ -653,7 +670,8 @@ export const getPredictionDates = cache(
           .select("reference_date")
           .eq("band", band)
           .eq("model_slug", model)
-          .order("reference_date", { ascending: false });
+          .order("reference_date", { ascending: false })
+          .limit(100);
 
         if (!projectionError && projectionData && projectionData.length > 0) {
           dates = [...new Set(
@@ -670,7 +688,8 @@ export const getPredictionDates = cache(
           .from(`predictions_${model}`)
           .select("reference_date")
           .eq("band", band)
-          .order("reference_date", { ascending: false });
+          .order("reference_date", { ascending: false })
+          .limit(100);
 
         if (error) {
           return { status: "error", message: error.message };

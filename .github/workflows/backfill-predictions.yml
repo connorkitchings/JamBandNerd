@@ -140,12 +140,6 @@ jobs:
           for DATE in $(echo "$DATES" | python -c "import json,sys; print(' '.join(json.load(sys.stdin)))"); do
             echo "Regenerating prediction for ${{ matrix.band }} / ${{ matrix.model }} on $DATE"
             python scripts/generate_predictions.py --band ${{ matrix.band }} --model ${{ matrix.model }} --date "$DATE"
-            echo "Verifying recent_avg_gap for $DATE:"
-            python scripts/check_recent_avg_gap.py --band ${{ matrix.band }} --model ${{ matrix.model }} --date "$DATE"
-          echo "Python path debug:"
-          python -c "import src.jambandnerd.transformations.gaps as g; import inspect; src=inspect.getsource(g._stats_for_song); print('recent_avg_gap' in src)"
-          echo "Source file check:"
-          grep recent_avg_gap src/jambandnerd/transformations/gaps.py || echo "NOT FOUND in source"
           done
 
           echo "::endgroup::"
