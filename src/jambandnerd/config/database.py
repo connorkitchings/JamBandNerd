@@ -13,6 +13,9 @@ PREDICTION_TABLES: Final[dict[str, str]] = {
     "ckplus": "predictions_ckplus",
 }
 
+# Derived per-song prediction projection table
+PREDICTION_SONGS_TABLE: Final[str] = "prediction_songs"
+
 # Unified accuracy table names
 ACCURACY_TABLES: Final[dict[str, str]] = {
     "notebook": "notebook_accuracy",

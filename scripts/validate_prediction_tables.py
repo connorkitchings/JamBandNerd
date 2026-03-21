@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from typing import Dict, Iterable, List
 
 from jambandnerd.db.connection import get_supabase_client
+from jambandnerd.db.operations import fetch_latest_prediction_songs
 
 
 def _parse_timestamp(value: str | None) -> datetime | None:
@@ -24,7 +25,7 @@ def _latest_prediction_row(client, *, table: str, band: str, model_version: str)
     """Fetch the most recently written prediction row for a band/model."""
     resp = (
         client.table(table)
-        .select("band, reference_date, predicted_at, predictions")
+        .select("band, reference_date, predicted_at, predictions, top_k")
         .eq("band", band)
         .eq("model_version", model_version)
         .order("predicted_at", desc=True)
@@ -36,21 +37,70 @@ def _latest_prediction_row(client, *, table: str, band: str, model_version: str)
     return rows[0] if rows else None
 
 
-def validate_predictions(bands: Iterable[str], max_age_hours: int) -> int:
+def _validate_projection(
+    *,
+    band: str,
+    model_slug: str,
+    top_k: int,
+    parsed_predictions: list[dict],
+    reference_date: str | None,
+) -> int:
+    projection_rows = fetch_latest_prediction_songs(band=band, model_slug=model_slug)
+    if not projection_rows:
+        print(f"[FAIL] {band}: no projected song rows found")
+        return 1
+
+    first_projection = projection_rows[0]
+    if reference_date and first_projection.get("reference_date") != reference_date:
+        print(
+            f"[FAIL] {band}: projection reference_date={first_projection.get('reference_date')} does not match canonical {reference_date}"
+        )
+        return 1
+
+    if len(projection_rows) != top_k:
+        print(
+            f"[FAIL] {band}: projection row count {len(projection_rows)} does not match top_k={top_k}"
+        )
+        return 1
+
+    top_song = parsed_predictions[0]["song_name"] if parsed_predictions else "<empty>"
+    projected_top_song = (
+        projection_rows[0].get("song_name") if projection_rows else "<empty>"
+    )
+    if projected_top_song != top_song:
+        print(
+            f"[FAIL] {band}: projection top_song={projected_top_song} does not match canonical {top_song}"
+        )
+        return 1
+
+    return 0
+
+
+def validate_predictions(
+    bands: Iterable[str], max_age_hours: int, *, validate_projection: bool = True
+) -> int:
     client = get_supabase_client()
 
     band_list = list(bands)
     if not band_list:
         band_list = ["goose", "eggy", "phish", "wsp", "billy", "um"]
     tables = {
-        "predictions_notebook": "notebook_v1",
-        "predictions_ckplus": "ckplus_v1",
+        "predictions_notebook": {
+            "model_slug": "notebook",
+            "model_version": "notebook_v1",
+        },
+        "predictions_ckplus": {
+            "model_slug": "ckplus",
+            "model_version": "ckplus_v1",
+        },
     }
 
     now = datetime.now(timezone.utc)
     failures = 0
 
-    for table, model_version in tables.items():
+    for table, config in tables.items():
+        model_slug = config["model_slug"]
+        model_version = config["model_version"]
         print(f"\n== Validating {table} ({model_version}) ==")
         for band in band_list:
             row = _latest_prediction_row(
@@ -96,6 +146,15 @@ def validate_predictions(bands: Iterable[str], max_age_hours: int) -> int:
                 f"[{status}] {band}: reference_date={row.get('reference_date')} predicted_at={predicted_at.isoformat()} age={age_display} top_song={top_song}"
             )
 
+            if validate_projection:
+                failures += _validate_projection(
+                    band=band,
+                    model_slug=model_slug,
+                    top_k=int(row.get("top_k") or len(parsed)),
+                    parsed_predictions=parsed,
+                    reference_date=row.get("reference_date"),
+                )
+
     return failures
 
 
@@ -115,10 +174,17 @@ def main() -> None:
         default=48,
         help="Maximum allowed staleness (hours) for predicted_at timestamps.",
     )
+    parser.add_argument(
+        "--skip-projection-check",
+        action="store_true",
+        help="Skip validation of the derived prediction_songs projection.",
+    )
     args = parser.parse_args()
 
     failures = validate_predictions(
-        bands=args.bands or [], max_age_hours=args.max_age_hours
+        bands=args.bands or [],
+        max_age_hours=args.max_age_hours,
+        validate_projection=not args.skip_projection_check,
     )
     if failures:
         raise SystemExit(f"Validation failed with {failures} issue(s)")

@@ -17,6 +17,7 @@ def main():
         "wsp_setlists_raw",
         "predictions_notebook",
         "predictions_ckplus",
+        "prediction_songs",
     ]
     schemas = {}
     for table in table_names:

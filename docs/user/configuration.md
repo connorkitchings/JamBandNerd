@@ -1,112 +1,83 @@
 # Configuration Guide
 
-This guide explains how to configure the JamBandNerd project, including how to add new bands and models, and how to set model parameters.
+This guide covers the main runtime and model configuration surfaces used by the
+current JamBandNerd pipeline.
 
-## Band Configuration
+For data architecture and extension rules, use:
 
-Adding a new band to the project requires changes in the data collection pipeline and the website config.
+- [Pipeline Usage](pipeline_usage.md)
+- [Architecture](../contributor/developer_guide/architecture.md)
+- [Data Strategy](../reference/specifications/data_strategy.md)
 
-### 1. Data Collection
+## Environment Configuration
 
-To add a new band, you need to create a new data collector and integrate it into the pipeline.
+Core pipeline environment variables:
 
-1. **Create Raw Tables**: In Supabase, create the necessary `_raw` tables for the new band (e.g., `wsp_shows_raw`, `wsp_setlists_raw`, etc.).
-2. **Create a New Collector**: Create a new file in `src/jambandnerd/data_collection/<band_name>/collector.py`. This file should contain a class that inherits from `BandCollector` and implements the required methods (`collect_shows`, `collect_setlists`, `collect_songs`, `collect_venues`).
-3. **Add to `run_optimized_pipeline.py`**: In `scripts/run_optimized_pipeline.py`, add a new `elif` block in the `run_band_pipeline` function to call your new collection script. You should also add a band-specific entry to the `CKPLUS_RETIREMENT_GAPS` dictionary.
-4. **Update GitHub Actions**: In `.github/workflows/daily-pipeline.yml`, add the new band to the `matrix.band` list in the `collect-data` job and add a corresponding `elif` block to handle its collection script.
-
-### 2. Website Config
-
-The product surface is the website app in `apps/web`. Add new bands to `apps/web/src/lib/config.ts`.
-
-```ts
-BAND_CONFIG = {
-  goose: {
-    displayName: "Goose",
-    showsTable: "goose_shows_raw",
-  },
-  phish: {
-    displayName: "Phish",
-    showsTable: "phish_shows_raw",
-  },
-  new_band: {
-    displayName: "New Band",
-    showsTable: "new_band_shows_raw",
-  },
-} as const;
+```bash
+SUPABASE_URL=your_supabase_url
+SUPABASE_SERVICE_ROLE_KEY=your_pipeline_service_role_key
+PHISH_API_KEY=your_phish_net_key
 ```
+
+Website environment variables live in `apps/web/.env.local`.
+
+## Collector Configuration
+
+Collector defaults live in:
+
+- `src/jambandnerd/data_collection/config.py`
+- `src/jambandnerd/data_collection/base.py`
+
+These settings control:
+
+- source base URLs
+- request timeouts
+- retry behavior
+- rate limiting
+- cache enablement and cache TTL
+
+Current cache-related environment variables:
+
+- `JAMBN_CACHE_DIR`
+- `JAMBN_CACHE_TTL`
+
+## Shared Project Configuration
+
+Shared constants live under `src/jambandnerd/config/`.
+
+Key modules:
+
+- `bands.py`: supported bands, display names, excluded-song config
+- `database.py`: prediction and accuracy table names
+- `models.py`: model versions, exclusion windows, CK+ thresholds, top-K values
+- `pipeline.py`: common retry/backoff defaults
 
 ## Model Configuration
 
-Adding a new model follows a similar pattern.
+### Notebook
 
-### 1. Model Implementation
+Relevant controls:
 
-1. **Create a new model**: Create a new file in `src/jambandnerd/models/<model_name>/model.py`. This file should contain a class that inherits from `PredictionModel` and implements the `predict` method.
-2. **Add prediction scripts**: Create new scripts in the `scripts/` directory to run your model and save the predictions and accuracy scores.
+- default exclusion window in `src/jambandnerd/config/models.py`
+- optional `--exclusion-window` override in prediction and backtest scripts
 
-### 2. Website Config
+### CK+
 
-The product surface is the website app in `apps/web`. Add new models to `apps/web/src/lib/config.ts`.
+Relevant controls in `src/jambandnerd/config/models.py`:
 
-```ts
-MODEL_CONFIG = {
-  notebook: {
-    displayName: "Notebook",
-    explanation: "Existing notebook model explanation.",
-  },
-  ckplus: {
-    displayName: "CK+",
-    explanation: "Existing CK+ model explanation.",
-  },
-  new_model: {
-    displayName: "New Model",
-    explanation: "A brief explanation of how the new model works.",
-  },
-} as const;
-```
+- `RETIREMENT_GAPS`
+- `MIN_PLAYS_THRESHOLD_DEFAULT`
+- `CKPLUS_ALPHA_DEFAULT`
+- `MODEL_VERSIONS`
 
-## Model Parameter Tuning
+These values should change only with care, because they affect prediction
+behavior and may require a new `model_version`.
 
-Some models have parameters that can be configured to adjust their behavior. These are primarily located in `scripts/run_optimized_pipeline.py` and `src/jambandnerd/models/ckplus/model.py`.
+## Adding Bands or Models
 
-### CK+ Model Parameters
+User-facing configuration is not the same as platform extension work.
 
-The CK+ model is highly configurable. The key parameters are:
+If you are adding a new band or model, use:
 
-#### 1. Retirement Gap Threshold
-
-This parameter, defined in the `CKPLUS_RETIREMENT_GAPS` dictionary in `scripts/run_optimized_pipeline.py`, sets the maximum `current_gap` a song can have before it is considered "retired" and excluded from predictions.
-
-- **Why Tune It?** Bands have different rotation patterns. A band like Phish with a vast catalog may have longer gaps for non-retired songs compared to a band like Goose. Setting this on a per-band basis improves the model's accuracy by not prematurely excluding songs.
-- **Example**:
-
-  ```python
-  CKPLUS_RETIREMENT_GAPS = {
-      "goose": 100,  # A smaller gap for a band with a more regular rotation
-      "phish": 150,  # A larger gap for a band with a deeper catalog
-  }
-  ```
-
-#### 2. Alpha (`alpha`)
-
-This parameter in the `CKPlusPredictor` class controls the weighting between the `gap_ratio` and the `gap_z_score` in the final score calculation.
-
-- **Why Tune It?** A higher alpha gives more weight to the simple ratio of current gap to average gap, while a lower alpha gives more weight to the statistical significance (z-score). The default is `0.7`.
-
-#### 3. Minimum Plays Threshold (`min_plays_threshold`)
-
-This parameter in the `CKPlusPredictor` class sets the minimum number of times a song must have been played in the five-year window to be considered for prediction.
-
-- **Why Tune It?** This prevents songs with very little historical data (and therefore unreliable gap statistics) from appearing in the predictions. The default is `5`.
-
-### Notebook Model Parameters
-
-The Notebook model has one key configurable parameter.
-
-#### 1. Exclusion Window
-
-This parameter, set via the `--exclusion-window` argument in the `generate_predictions.py` and `run_backtest.py` scripts, defines how many recent shows to look back when excluding songs from predictions.
-
-- **Why Tune It?** Some bands rarely repeat songs within a short window, while others might. Adjusting this value allows you to fine-tune the model's recency filter. For example, setting it to `1` would only exclude songs from the very last show, while setting it to `5` would create a more aggressive filter.
-- **Default**: `3`
+- [Extending the Platform](../contributor/developer_guide/extending_the_platform.md)
+- [Data Strategy](../reference/specifications/data_strategy.md)

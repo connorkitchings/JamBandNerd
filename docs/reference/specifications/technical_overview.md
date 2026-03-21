@@ -1,263 +1,56 @@
-# JamBandNerd v2 Technical Specifications
+# Technical Overview
 
-This living document defines JamBandNerd’s technical foundation. Update as architecture or standards
-evolve.
+This page is the compact reference view of the system. For the canonical data
+contract, use the [Data Strategy](data_strategy.md). For the contributor-facing
+system walkthrough, use the
+[Architecture Overview](../../contributor/developer_guide/architecture.md).
 
-## 1. Overview
+## Product Direction
 
-**Project Goal:**
-A modular platform for collecting, processing, and predicting jam band setlists, with robust
-orchestration, analytics, and a website-first product surface. The design is extensible to add new
-bands and models.
+JamBandNerd is a Python 3.12 data platform for jam band setlist collection,
+transformation, prediction, and website delivery. The public surface is the
+website; the Streamlit app remains a legacy transition surface.
 
-**Repository:**
-`https://github.com/connorkitchings/JamBandNerd`
+## Current Technical Shape
 
-## 2. Architecture
+- **Ingestion**: band-specific collectors write source-faithful rows into raw
+  Supabase tables.
+- **Normalization**: shared code aligns source-specific raw schemas onto one
+  internal contract for prediction.
+- **Transforms**: feature generation is centralized and in-memory.
+- **Models**: Notebook and CK+ consume the same `ModelData` object.
+- **Storage**: predictions and accuracy are stored in unified model-based
+  tables.
+- **Delivery**: the website reads from Supabase-backed prediction and accuracy
+  data.
 
-### Data Flow Diagram
+## Canonical Flow
 
-```mermaid
-graph TD
-    subgraph " "
-        direction LR
-        A[External APIs &<br>Websites]
-    end
-
-    subgraph "GitHub Actions: Daily Pipeline"
-        B(run_optimized_pipeline.py)
-    end
-    
-    subgraph "Supabase Database"
-        C[fa:fa-database Raw Data<br><i>{band}_*_raw</i>]
-        D[fa:fa-database Prediction & Accuracy<br><i>predictions_*, accuracy_*</i>]
-    end
-
-    subgraph "In-Memory Processing"
-        E[pandas DataFrames]
-        F(ModelData Object)
-        G[Notebook & CK+<br>Predictors]
-    end
-    
-    subgraph "Presentation"
-        H[fa:fa-desktop Website<br><i>target</i>]
-    end
-
-    A --> B
-    B -- "1. Collect" --> C
-    C -- "2. Load" --> E
-    E -- "3. Transform (gaps.py)" --> F
-    F -- "4. Predict" --> G
-    G -- "5. Save" --> D
-    D -- "6. Display" --> H
+```text
+collect raw data
+  -> normalize shows/setlists/songs
+  -> sort shows deterministically
+  -> apply reference_date cutoff
+  -> build ModelData
+  -> generate predictions
+  -> backtest and save accuracy
 ```
 
-### Component Architecture
+## Important Invariants
 
-#### Data Collection Layer
+- Shared transforms and models are band-agnostic.
+- `reference_date` is mandatory for feature generation and backtesting.
+- Historical sequence is ordered by `show_date` and a stable tiebreaker.
+- No intermediate transformed Supabase tables are allowed.
+- Aggregate accuracy tables are derived from `accuracy_per_show`, not vice
+  versa.
 
-- **Purpose**: Ingest raw data from external sources
-- **Components**: Band-specific collectors with unified interface. The design allows for easy
-  addition of new bands by implementing new collector modules.
-- **Output**: Raw data tables in Supabase (`{band}_*_raw`)
-- **Error Handling**: Continue pipeline with existing data on source failure
+## Where To Read Next
 
-#### Transformation Layer
-
-- **Purpose**: Convert raw data to a standardized format for modeling
-- **Processing**: Reads from raw tables and transforms data in-memory before feeding to models.
-- **Output**: In-memory DataFrames or objects; no intermediate tables are written.
-- **Validation**: Data quality checks and cleansing
-
-#### Model Layer
-
-- **Purpose**: Generate predictions using standardized data
-- **Models**: Pluggable architecture supporting multiple algorithms. New models can be easily
-  integrated by adhering to the common model interface.
-- **Output**: Predictions stored in Supabase with confidence scores
-- **Accuracy**: Real-time accuracy calculation and historical tracking
-
-#### Presentation Layer
-
-- **Purpose**: User interface for prediction exploration
-- **Framework**: Website-first architecture, with a monorepo frontend app as the target public surface
-- **Features**: Band/model selection, prediction display, historical explorer, and accuracy trends
-- **Data**: Server-side Supabase reads are the preferred target architecture for the website
-- **Current State**: The existing Streamlit app remains available as a legacy transition surface
-
-#### Orchestration Layer
-
-- **Purpose**: Coordinate pipeline execution and automation
-- **Scheduling**: GitHub Actions for daily pipeline execution
-- **Monitoring**: Error detection and email notification
-- **Modularity**: Independent component execution capabilities
-
----
-
-## 3. Standards & Practices
-
-- Python code uses type hints and docstrings
-- Formatting: black; Linting: ruff; Testing: pytest
-- Modular design with band-specific collectors and common interfaces
-
-## 4. Session Workflow
-
-1) Review `docs/overview/project/prd.md`, `docs/overview/project/schedule.md`, latest dev log
-2) Execute the smallest valuable task end-to-end within a session
-3) Update dev log and docs for handoff
-
-## 5. Phase 2 Direction (Goose-first)
-
-- Implement base abstractions
-- Build a single, full working pipeline for Goose (collect → transform → predict)
-- Add additional bands after Goose pipeline is verified
-
----
-
-## 6. Database Design
-
-### Supabase Schema
-
-#### Raw Data Tables (Band-Specific)
-
-**Show Tables**: `{band}_shows`
-
-```sql
-CREATE TABLE phish_shows (
-    id SERIAL PRIMARY KEY,
-    show_id VARCHAR(50) UNIQUE NOT NULL,
-    show_date DATE NOT NULL,
-    venue_name VARCHAR(255),
-    venue_city VARCHAR(100),
-    venue_state VARCHAR(50),
-    venue_country VARCHAR(50),
-    tour_name VARCHAR(100),
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW()
-);
-```
-
-**Setlist Tables**: `{band}_setlists`
-
-```sql
-CREATE TABLE phish_setlists (
-    id SERIAL PRIMARY KEY,
-    show_id VARCHAR(50) NOT NULL,
-    set_number INTEGER NOT NULL,
-    song_position INTEGER NOT NULL,
-    song_name VARCHAR(255) NOT NULL,
-    song_length INTEGER, -- seconds
-    encore BOOLEAN DEFAULT FALSE,
-    notes TEXT,
-    created_at TIMESTAMP DEFAULT NOW(),
-    FOREIGN KEY (show_id) REFERENCES phish_shows(show_id)
-);
-```
-
-**Song Tables**: `{band}_songs`
-
-```sql
-CREATE TABLE phish_songs (
-    id SERIAL PRIMARY KEY,
-    song_name VARCHAR(255) UNIQUE NOT NULL,
-    first_played DATE,
-    last_played DATE,
-    times_played INTEGER DEFAULT 0,
-    average_length INTEGER, -- seconds
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW()
-);
-```
-
-#### Prediction and Accuracy Tables (Unified by Model)
-
-Prediction and accuracy tables are unified by model slug (e.g., `predictions_notebook`, `accuracy_ckplus`). For the canonical `CREATE TABLE` statements for these tables, please see the [Unified Table Schemas](../schemas/unified_tables.md) document, which is the single source of truth.
-
-### Data Cleanup Policies
-
-#### Retention Rules
-
-- **Raw Data**: Keep all historical data (reference for model improvements)
-- **Predictions**: Keep predictions for last 2 years, archive older data quarterly
-- **Accuracy Tracking**: Keep all accuracy records (small table, valuable for trends)
-- **Logs**: Retain for 90 days, purge automatically
-
-#### Optimization
-
-- **Indexing**: Optimize for common queries (show_id, model_name, date ranges)
-- **Partitioning**: Consider date-based partitioning for large prediction tables
-- **Archival**: Move old predictions to separate archive tables
-
----
-
-## 7. API Specifications
-
-### Internal API Design
-
-#### Data Collection Interface
-
-```python
-class BandCollector(ABC):
-    """Abstract base class for band data collectors"""
-
-    @abstractmethod
-    def collect_shows(self, start_date: date, end_date: date) -> List[Dict]:
-        """Collect show data for date range"""
-        pass
-
-    @abstractmethod
-    def collect_setlists(self, show_ids: List[str]) -> List[Dict]:
-        """Collect setlist data for specific shows"""
-        pass
-
-    @abstractmethod
-    def collect_songs(self) -> List[Dict]:
-        """Collect comprehensive song catalog"""
-        pass
-```
-
-#### Transformation Interface
-
-```python
-class DataTransformer:
-    """Standardize raw data for model consumption"""
-
-    def transform_for_model(self,
-                           raw_data: Dict,
-                           model_type: str) -> StandardizedData:
-        """Transform raw data to model-specific format"""
-        pass
-
-    def validate_data(self, data: StandardizedData) -> ValidationResult:
-        """Validate data quality and completeness"""
-        pass
-```
-
-#### Model Interface
-
-```python
-class PredictionModel(ABC):
-    """Abstract base class for prediction models"""
-
-    @abstractmethod
-    def train(self, data: StandardizedData) -> None:
-        """Train model with historical data"""
-        pass
-
-    @abstractmethod
-    def predict(self,
-                current_setlist: List[str],
-                context: Dict) -> List[Prediction]:
-        """Generate next song predictions"""
-        pass
-
-    @abstractmethod
-    def calculate_accuracy(self,
-                          predictions: List[Prediction],
-                          actual_songs: List[str]) -> AccuracyMetrics:
-        """Calculate prediction accuracy"""
-        pass
-```
+- [Data Strategy](data_strategy.md)
+- [Database](database.md)
+- [Predictions Schema](predictions_schema.md)
+- [Transformations](transformations.md)
 
 ### External API Integrations
 

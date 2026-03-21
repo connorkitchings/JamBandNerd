@@ -34,6 +34,7 @@ from src.jambandnerd.models.accuracy import aggregate_metrics, compute_per_show_
 from src.jambandnerd.models.ckplus.model import CKPlusPredictor
 from src.jambandnerd.models.notebook.model import NotebookPredictor
 from src.jambandnerd.transformations.gaps import generate_model_data
+from src.jambandnerd.transformations.normalization import sort_normalized_shows
 
 
 def run_backtest(
@@ -43,6 +44,7 @@ def run_backtest(
     end: str | None,
     shows: int | None,
     exclusion_window: int,
+    all_history: bool = False,
 ) -> None:
     """Run a backtest for a given band and model."""
     log_prefix = f"[{band.upper()}/{model.upper()}]"
@@ -56,17 +58,22 @@ def run_backtest(
         print(f"{log_prefix} No data to backtest. Aborting.")
         return
 
-    shows_df, sets_df = prepare_band_data(shows_df, sets_df)
+    shows_df, sets_df = prepare_band_data(shows_df, sets_df, band=band)
 
     # 2. Determine target shows for backtesting
     completed_show_ids = sets_df["show_id"].dropna().astype(str).unique().tolist()
-    completed_shows = (
-        shows_df[shows_df["show_id"].isin(completed_show_ids)]
-        .copy()
-        .sort_values(["show_date", "show_id"])
+    completed_shows = sort_normalized_shows(
+        shows_df[shows_df["show_id"].isin(completed_show_ids)].copy()
     )
 
-    if shows and shows > 0:
+    if all_history:
+        target_shows = completed_shows
+        window_start = target_shows["show_date"].min()
+        window_end = target_shows["show_date"].max()
+        print(
+            f"{log_prefix} Backtesting across full completed-show history: {len(target_shows)} shows from {window_start} to {window_end}"
+        )
+    elif shows and shows > 0:
         target_shows = completed_shows.tail(shows)
         window_start = target_shows["show_date"].min()
         window_end = target_shows["show_date"].max()
@@ -155,19 +162,10 @@ def run_backtest(
             print(f"{log_prefix} Unexpected error for {ref_date}: {e}")
             continue
 
-        # Convert show_id safely - handle both numeric and string IDs
-        try:
-            show_id_int = int(show_id)
-        except (ValueError, TypeError):
-            # If show_id is non-numeric (e.g., date strings), hash it to an integer
-            import hashlib
-
-            show_id_int = int(hashlib.md5(show_id.encode()).hexdigest()[:8], 16)
-
         show_metrics = {
             "band": band,
             "model_version": model_version,
-            "show_id": show_id_int,
+            "show_id": show_id,
             "show_date": ref_date.isoformat(),
             "actual_song_count": len(actual_songs),
             "evaluated_at": pd.Timestamp.now(tz=timezone.utc).isoformat(),
@@ -251,6 +249,11 @@ def main() -> None:
         default=3,
         help="Number of recent shows to exclude songs from (default: 3).",
     )
+    parser.add_argument(
+        "--all-history",
+        action="store_true",
+        help="Backtest across all completed shows, ignoring --shows and date window arguments.",
+    )
     args = parser.parse_args()
 
     run_backtest(
@@ -260,6 +263,7 @@ def main() -> None:
         end=args.end,
         shows=args.shows,
         exclusion_window=args.exclusion_window,
+        all_history=args.all_history,
     )
 
 

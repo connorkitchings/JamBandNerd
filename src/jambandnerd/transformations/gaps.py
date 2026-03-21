@@ -13,6 +13,8 @@ from typing import Dict, List, Optional, Tuple
 
 import pandas as pd
 
+from .normalization import sort_normalized_shows
+
 
 def _stats_for_song(group: pd.DataFrame) -> pd.Series:
     """Helper function to calculate historical stats for a single song."""
@@ -92,11 +94,7 @@ def _compute_base_features(
         return pd.DataFrame(), pd.DataFrame(), 0, []
 
     # 2. Compute stable show index (normalize keys BEFORE building the index map)
-    historical_shows = historical_shows.sort_values(
-        by=["show_date", "show_id"]
-    ).reset_index(drop=True)
-    # Normalize ID types to strings for reliable joins
-    historical_shows["show_id"] = historical_shows["show_id"].astype(str).str.strip()
+    historical_shows = sort_normalized_shows(historical_shows)
     historical_shows["show_index"] = historical_shows.index + 1
     show_idx_map = historical_shows.set_index("show_id")["show_index"].to_dict()
 
@@ -161,15 +159,19 @@ def generate_model_data(
     """
     Orchestrates the full feature generation pipeline.
     """
-    # Clean and normalize column names first
-    if "api_show_id" in shows_df.columns and "show_id" not in shows_df.columns:
-        shows_df["show_id"] = shows_df["api_show_id"]
-    if "showdate" in shows_df.columns and "show_date" not in shows_df.columns:
-        shows_df["show_date"] = shows_df["showdate"]
-    if "api_show_id" in setlists_df.columns and "show_id" not in setlists_df.columns:
-        setlists_df["show_id"] = setlists_df["api_show_id"]
-    if "song" in setlists_df.columns and "song_name" not in setlists_df.columns:
-        setlists_df["song_name"] = setlists_df["song"]
+    required_show_columns = {"show_id", "show_date"}
+    required_setlist_columns = {"show_id", "song_name"}
+    missing_show_columns = sorted(required_show_columns - set(shows_df.columns))
+    missing_setlist_columns = sorted(required_setlist_columns - set(setlists_df.columns))
+    if missing_show_columns or missing_setlist_columns:
+        problems = []
+        if missing_show_columns:
+            problems.append(f"shows missing {missing_show_columns}")
+        if missing_setlist_columns:
+            problems.append(f"setlists missing {missing_setlist_columns}")
+        raise RuntimeError(
+            "generate_model_data requires normalized inputs: " + "; ".join(problems)
+        )
 
     # Get band-specific exclusion window if band is provided
     if band:

@@ -13,6 +13,7 @@ Supported bands:
 
 Core components:
 - base: Abstract BandCollector base class with rate limiting and error handling
+- cache: Disk-based HTTP response caching with TTL support
 - config: Band-specific configuration management
 - collect_data: Enhanced collection manager with comprehensive error handling
 """
@@ -44,6 +45,7 @@ __all__ = [
     "billy",
     "um",
     "base",
+    "cache",
     "config",
     "collect_data",
 ]

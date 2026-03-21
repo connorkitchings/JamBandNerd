@@ -22,6 +22,7 @@ This repository runs a daily data pipeline via GitHub Actions.
 - For WSP, the workflow installs Playwright (Firefox) to improve CI scraping reliability.
 - The pipeline validates prediction table freshness (`scripts/validate_prediction_tables.py`) after generation, using the latest written prediction row by `predicted_at`.
 - Accuracy backtesting excludes shows with 5 or fewer unique songs.
+- For manual recovery or migration workflows, use `scripts/audit_raw_data.py` before any targeted re-ingestion and `scripts/rebuild_derived_data.py` after schema changes.
 
 ## Optional Notifications
 

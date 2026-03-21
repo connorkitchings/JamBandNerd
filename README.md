@@ -158,6 +158,8 @@ Key sections include:
 - 🚀 **[User Guide](docs/user/getting_started.md)**: For users who want to install, configure, and run the project.
 - 🧑‍💻 **[Contributor Guide](docs/contributor/onboarding.md)**: For contributors who want the development workflow, architecture, and agentic operating model.
 - 📚 **[Reference](docs/reference/)**: Detailed technical specifications, schemas, and guides.
+  The canonical end-to-end data contract now lives in
+  [Data Strategy](docs/reference/specifications/data_strategy.md).
 - 📈 **[Reports](docs/reports/)**: Summaries of improvements and validation testing.
 
 Generate and serve documentation locally:
@@ -169,14 +171,21 @@ mkdocs serve
 
 ## Architecture
 
-**Modular Pipeline Design**: Data Sources -> Raw Storage -> In-Memory Transform -> Models -> Predictions -> Website
+**Show-Centric Pipeline Design**: Data Sources -> Raw Storage -> Shared
+Normalization -> In-Memory Transform -> Models -> Predictions/Accuracy ->
+Website
 
-**Supported Bands**: The pipeline dynamically discovers supported bands by looking for `run_*_collection.py` scripts in the `scripts/` directory. To add a new band, simply create a new collection script following the existing pattern.
+**Supported Bands**: Collector discovery is partially dynamic today. Automation
+can discover `run_*_collection.py` scripts, while some local entrypoints still
+maintain an explicit supported-band list. New bands should follow the collector
+script pattern and then be wired through the remaining orchestration paths until
+that registry is fully unified.
 
 **Key Components**:
 
-- Band-agnostic data collectors with unified interfaces.
-- In-memory transformation pipeline (no intermediate tables).
+- Band-specific raw collectors with unified downstream contracts.
+- Show-centric normalization of shows, setlists, and songs before modeling.
+- In-memory transformation pipeline (no intermediate transformed tables).
 - Pluggable prediction models (Notebook, CK+).
 - Unified cross-band prediction and accuracy storage.
 - Supabase backend with automated validation.

@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from datetime import timedelta
 from typing import Any, Dict, List
 
+from src.jambandnerd.config.bands import get_excluded_songs
 from src.jambandnerd.models.base import PredictionModel
 from src.jambandnerd.transformations.gaps import ModelData
 
@@ -78,9 +79,11 @@ class NotebookPredictor(PredictionModel):
             ascending=[False, False, True],
         ).head(top_k)
 
-        if self.band == "wsp":
+        # 7. Apply centralized exclusion filter
+        excluded_songs = get_excluded_songs(self.band or "")
+        if excluded_songs:
             ranked = ranked[
-                ~ranked["song_name"].str.lower().str.strip().isin(["jam", "drums"])
+                ~ranked["song_name"].str.lower().str.strip().isin(excluded_songs)
             ]
 
         # Format output

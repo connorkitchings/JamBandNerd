@@ -7,6 +7,7 @@ from typing import Any, Dict, List
 import numpy as np
 import pandas as pd
 
+from src.jambandnerd.config.bands import get_excluded_songs
 from src.jambandnerd.transformations.gaps import ModelData
 
 from ..base import PredictionModel
@@ -143,8 +144,10 @@ class CKPlusPredictor(PredictionModel):
         )
         top = f.head(top_k)
 
-        if self.band == "wsp":
-            top = top[~top["song_name"].str.lower().str.strip().isin(["jam", "drums"])]
+        # 6. Apply centralized exclusion filter
+        excluded_songs = get_excluded_songs(self.band)
+        if excluded_songs:
+            top = top[~top["song_name"].str.lower().str.strip().isin(excluded_songs)]
 
         # Format output
         results: List[CKPlusPrediction] = []

@@ -119,6 +119,7 @@ For debugging or granular control, you can use the consolidated individual scrip
 ### Storage
 
 - Predictions: `predictions_notebook` (upserted by `(band, reference_date, model_version)`).
+- Per-song projection: `prediction_songs` (derived from canonical prediction rows).
 - Accuracy summaries: `notebook_accuracy` (band, model_version, window_start/window_end, metrics at K=10/25/50).
 
 ### Next Steps

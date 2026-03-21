@@ -1,90 +1,129 @@
-# DB Utilities Specification
+# Database Utilities and Storage Contract
 
-Purpose: Define the database utility interfaces and behaviors used by the CLI/API orchestration.
-These utilities target Supabase (Postgres) and are designed for reliability, clarity, and testability.
+This page documents the current Supabase-facing utilities and how JamBandNerd
+uses the database in the active pipeline.
 
-## Environment & Credentials
+## Environment
 
-- Required env vars (read from `.env` or process env):
-  - `SUPABASE_URL`
-  - `SUPABASE_SERVICE_ROLE_KEY` (preferred)
-- Behavior:
-  - Validate presence at process start when first DB interaction occurs.
-  - Provide clear error messages if missing.
+Required environment variables:
 
-## Modules and Responsibilities
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY`
 
-- `src/jambandnerd/db/connection.py`
-  - `get_supabase_client() -> SupabaseClient`
-    - Validates env, constructs, and returns a singleton client.
-  - `validate_environment() -> None`
-    - Raises descriptive error if required env missing.
+Database access is validated lazily when the first Supabase interaction occurs.
 
-- `src/jambandnerd/db/operations.py`
-  - `get_table_schema(table_name: str) -> TableSchema`
-    - Returns column metadata: name, data_type, nullable, default, primary_key.
-  - `fetch_existing_ids(table_name: str, id_column: str, since: Optional[str] = None) -> set[str | int]`
-    - Optional date filter for incremental checks.
-  - `bulk_insert_dataframe(table_name: str, df: pandas.DataFrame, chunk_size: int = 5000) -> InsertResult`
-    - Inserts all rows; caller ensures schema compatibility.
-  - `upsert_dataframe(table_name: str, df: pandas.DataFrame, conflict_columns: list[str],
-     chunk_size: int = 5000) -> UpsertResult`
-    - Upserts rows using provided conflict target(s).
-  - `begin_run(model_slug: Optional[str]) -> RunContext`
-    - Returns a `run_id` (uuid) and `generated_at` timestamp for consistent auditing.
+## Storage Shape
 
-- `src/jambandnerd/db/validation.py`
-  - `ValidationReport` (dataclass)
-    - `missing_columns: list[str]`
-    - `extra_columns: list[str]`
-    - `type_mismatches: list[TypeMismatch]`
-    - `nullable_violations: list[str]`
-    - `row_count: int`
-    - `is_valid: bool`
-  - `TypeMismatch` (dataclass)
-    - `column: str`
-    - `expected_type: str`
-    - `observed_type: str`
-    - `example_values: list[str]`
-  - `validate_dataframe_against_table(df: pandas.DataFrame, table_name: str) -> ValidationReport`
-    - Compares df columns/types/nullability to target table.
-  - `coerce_df_types(df: pandas.DataFrame, schema: TableSchema) -> pandas.DataFrame`
-    - Applies safe coercions where possible (e.g., strings like "true"/"false"/"" to booleans;
-      numeric-like strings to integers), returning a new DataFrame.
+JamBandNerd uses Supabase for raw ingestion, predictions, and evaluation.
 
-## Data Type Conventions (pandas ↔ Postgres)
+### Raw tables
 
-- Strings: Postgres `text` ←→ pandas `object[string]`
-- Integers: Postgres `integer/bigint` ←→ pandas nullable `Int64`
-- Booleans: Postgres `boolean` ←→ pandas nullable `boolean`
-- Timestamps: Postgres `timestamptz` ←→ pandas `datetime64[ns, UTC]`
+Canonical raw table families:
 
-Coercion rules:
+- `{band}_shows_raw`
+- `{band}_setlists_raw`
+- `{band}_songs_raw`
 
-- Empty strings in integer/boolean columns → NULL
-- Boolean-like strings {"true","false","1","0","yes","no"} → boolean
-- Non-coercible values are left as-is; they appear in `type_mismatches`.
+Allowed supporting raw tables:
 
-## Table Naming (summary)
+- `{band}_venues_raw`
+- source-specific helpers such as `um_upcoming_shows`
 
-- Raw: `{band}_songs_raw`, `{band}_shows_raw`, `{band}_setlists_raw`
-- Predictions: `predictions_{model_slug}`
-- Accuracy: `notebook_accuracy`, `accuracy_ckplus`
+Raw tables remain source-faithful. Shared code normalizes them after read, not
+by writing derived tables back to Supabase.
 
-## Error Handling & Retries
+### Prediction tables
 
-- Network/HTTP errors: retry with exponential backoff (up to 3 attempts) where safe.
-- Validation failures: raise with actionable message including `ValidationReport` summary.
-- All operations log: start/end, row counts, and timing.
+- `predictions_notebook`
+- `predictions_ckplus`
+- `prediction_songs` (derived)
 
-## Logging & Observability
+`predictions_notebook` and `predictions_ckplus` store one canonical row per
+`(band, reference_date, model_version)` with a JSON predictions payload.
+`prediction_songs` stores one derived row per predicted song.
 
-- Log shape: `[timestamp] LEVEL module.function: message`
-- Include `run_id` and `model_slug` (when applicable) in logs for correlation.
+### Accuracy tables
 
-## Testing Guidelines (docs only)
+- `accuracy_per_show`
+- `notebook_accuracy`
+- `accuracy_ckplus`
 
-- Unit tests mock Supabase client and verify:
-  - Correct chunking and upsert behavior.
-  - Validation reports for representative schemas.
-  - Coercion logic on mixed-type columns.
+`accuracy_per_show` is the canonical granular evaluation store. Aggregate
+accuracy tables are derived summaries.
+
+## Utility Modules
+
+### `src/jambandnerd/db/connection.py`
+
+- validates environment configuration
+- creates and returns the shared Supabase client
+
+### `src/jambandnerd/db/operations.py`
+
+Current high-level operations include:
+
+- `get_table_schema()`
+- `prepare_dataframe_for_upsert()`
+- `validate_and_upsert_dataframe()`
+- `bulk_insert_dataframe()`
+- `upsert_dataframe()`
+- `replace_prediction_projection()`
+- `fetch_existing_ids()`
+- `fetch_existing_values()`
+- `fetch_rows_by_column_values()`
+- `fetch_latest_prediction_songs()`
+- `check_prediction_staleness()`
+
+These helpers are the write/read boundary used by collection scripts and
+pipeline scripts.
+
+### `src/jambandnerd/db/validation.py`
+
+Validation and coercion are performed against the live or cached table schema.
+
+Current behavior:
+
+- safe type coercions are attempted first
+- missing required columns fail the write
+- nullability violations fail the write
+- extra columns are logged as warnings
+- non-critical type mismatches are logged as warnings after coercion
+
+This matches the project rule that ingestion should be resilient without
+silently accepting structurally broken writes.
+
+## Data Type Conventions
+
+- Postgres `text` -> pandas string/object
+- Postgres `integer` and `bigint` -> pandas nullable `Int64`
+- Postgres `boolean` -> pandas nullable boolean
+- Postgres `timestamptz` -> timezone-aware pandas datetimes
+
+Common coercions:
+
+- empty strings in numeric/boolean columns become `NULL`
+- boolean-like strings such as `true`, `false`, `1`, `0`, `yes`, `no` are
+  coerced where possible
+
+## Schema Introspection
+
+Schema validation depends on the `get_table_schema` RPC in Supabase. If that
+RPC is unavailable, callers degrade gracefully and skip live-schema validation
+instead of blocking unrelated reads.
+
+The repo also ships the migration that restricts schema RPC execution to
+server-side contexts.
+
+## Operational Expectations
+
+- writes should use explicit conflict targets
+- large writes should be chunked
+- raw writes should preserve enough source information for reprocessing and
+  traceability
+- prediction freshness should be validated using `predicted_at`
+
+## Related Documents
+
+- [Data Strategy](data_strategy.md)
+- [Predictions Schema](predictions_schema.md)
+- [Unified Table Schemas](../schemas/unified_tables.md)

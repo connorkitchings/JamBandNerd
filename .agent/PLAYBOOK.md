@@ -33,3 +33,8 @@ This file stores persistent lessons and operating patterns that should survive a
 - Before retiring a legacy codebase (e.g. Streamlit app), delete its corresponding tests first so pytest doesn't fail during collection. Run `pytest` immediately after deletion to catch any remaining import references before committing.
 - When running a Next.js workspace (e.g. `npm run dev:web`) from the repository root, ensure the `.env.local` file is placed inside the workspace directory (`apps/web/.env.local`), not at the repository root, so that Next.js automatically loads it.
 - For Vercel monorepo deployments, set the project root to the actual Next.js workspace (here `apps/web`) or Vercel will build from the repo root and fail with “Couldn't find any `pages` or `app` directory.”
+
+- When hardening data ingestion, add HTTP response caching at the collector base class level (not per-band) with configurable TTL via env vars. Use a circuit breaker pattern to disable failing bands after N consecutive failures.
+- ID column naming inconsistency (e.g., show_id vs api_show_id vs source_uuid) should be addressed via a formal migration strategy, not ad-hoc changes, since it affects the entire data pipeline.
+- Keep band-specific exclusion filters (like WSP jam/drums) in a centralized config (config/bands.py) rather than hardcoded in model files.
+- When prediction storage needs song-level SQL access, keep the run-level JSON tables as the canonical write path and add a rebuildable per-song projection; otherwise reruns with smaller `top_k` values will leave stale projected rows unless the projection is deleted and rewritten per `(band, reference_date, model_version)`.

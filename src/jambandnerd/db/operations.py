@@ -217,6 +217,82 @@ def upsert_dataframe(
         ).execute()
 
 
+def replace_prediction_projection(
+    *,
+    band: str,
+    model_slug: str,
+    model_version: str,
+    reference_date: str,
+    predicted_at: str,
+    predictions: Sequence[dict[str, Any]],
+    table_name: str = "prediction_songs",
+) -> None:
+    """Replace the per-song projection for a canonical prediction row."""
+    client = get_supabase_client()
+
+    (
+        client.table(table_name)
+        .delete()
+        .eq("band", band)
+        .eq("model_version", model_version)
+        .eq("reference_date", reference_date)
+        .execute()
+    )
+
+    if not predictions:
+        return
+
+    rows = [
+        {
+            "band": band,
+            "model_slug": model_slug,
+            "model_version": model_version,
+            "reference_date": reference_date,
+            "predicted_at": predicted_at,
+            "rank": prediction["rank"],
+            "song_name": prediction["song_name"],
+            "top_k": len(predictions),
+            "prediction_payload": prediction,
+        }
+        for prediction in predictions
+    ]
+    bulk_insert_dataframe(table_name, pd.DataFrame(rows))
+
+
+def fetch_latest_prediction_songs(
+    *, band: str, model_slug: str, table_name: str = "prediction_songs"
+) -> list[dict[str, Any]]:
+    """Fetch the latest projected songs for a band/model ordered by rank."""
+    client = get_supabase_client()
+    latest_response = (
+        client.table(table_name)
+        .select("reference_date, model_version")
+        .eq("band", band)
+        .eq("model_slug", model_slug)
+        .order("predicted_at", desc=True)
+        .order("reference_date", desc=True)
+        .order("rank")
+        .limit(1)
+        .execute()
+    )
+    latest_rows = latest_response.data or []
+    if not latest_rows:
+        return []
+
+    latest = latest_rows[0]
+    response = (
+        client.table(table_name)
+        .select("*")
+        .eq("band", band)
+        .eq("model_slug", model_slug)
+        .eq("model_version", latest["model_version"])
+        .eq("reference_date", latest["reference_date"])
+        .order("rank")
+        .execute()
+    )
+    return response.data or []
+
+
 def get_table_schema(
     table_name: str, *, use_cache: bool = True
 ) -> List[Dict[str, Any]]:
@@ -301,3 +377,82 @@ def fetch_existing_values(
         if value is not None:
             existing.add(str(value))
     return existing
+
+
+def check_prediction_staleness(
+    band: str,
+    model_version: str,
+    max_age_hours: int = 48,
+) -> tuple[bool, Optional[datetime]]:
+    """Check if predictions for a band/model are stale.
+
+    Args:
+        band: Band name (e.g., 'goose')
+        model_version: Model version (e.g., 'notebook_v1', 'ckplus_v1')
+        max_age_hours: Maximum allowed staleness in hours
+
+    Returns:
+        Tuple of (is_fresh, last_predicted_at)
+        - is_fresh: True if predictions are within max_age_hours
+        - last_predicted_at: Timestamp of last prediction, or None if no predictions exist
+    """
+    from datetime import timezone as tz
+
+    client = get_supabase_client()
+
+    prediction_tables = [
+        "predictions_notebook",
+        "predictions_ckplus",
+    ]
+
+    table = None
+    for t in prediction_tables:
+        if model_version.startswith("notebook") and t == "predictions_notebook":
+            table = t
+            break
+        if model_version.startswith("ckplus") and t == "predictions_ckplus":
+            table = t
+            break
+
+    if not table:
+        logger.warning(f"Unknown model version: {model_version}")
+        return False, None
+
+    try:
+        response = (
+            client.table(table)
+            .select("predicted_at")
+            .eq("band", band)
+            .eq("model_version", model_version)
+            .order("predicted_at", desc=True)
+            .limit(1)
+            .execute()
+        )
+
+        if not response.data:
+            return False, None
+
+        last_predicted_at_str = response.data[0].get("predicted_at")
+        if not last_predicted_at_str:
+            return False, None
+
+        last_predicted_at = datetime.fromisoformat(
+            last_predicted_at_str.replace("Z", "+00:00")
+        )
+        now = datetime.now(tz.utc)
+        age_hours = (now - last_predicted_at).total_seconds() / 3600
+        is_fresh = age_hours <= max_age_hours
+
+        if not is_fresh:
+            logger.warning(
+                f"Predictions for {band}/{model_version} are stale: "
+                f"{age_hours:.1f}h old (max: {max_age_hours}h)"
+            )
+
+        return is_fresh, last_predicted_at
+
+    except Exception as e:
+        logger.error(
+            f"Error checking prediction staleness for {band}/{model_version}: {e}"
+        )
+        return False, None

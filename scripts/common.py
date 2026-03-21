@@ -13,6 +13,7 @@ from src.jambandnerd.data_collection.config import get_collector_config
 
 # Local imports
 from src.jambandnerd.db.connection import get_supabase_client
+from src.jambandnerd.transformations.normalization import normalize_prediction_inputs
 
 
 def ensure_source_reachable(band: str, *, timeout: int = 15) -> None:
@@ -55,37 +56,14 @@ def assert_required_columns(
 
 
 def prepare_band_data(
-    shows_df: pd.DataFrame, setlists_df: pd.DataFrame
+    shows_df: pd.DataFrame, setlists_df: pd.DataFrame, *, band: str | None = None
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     Clean and normalize shows and setlists data for a band.
 
-    - Handles different column names for show_id and song_name.
-    - Converts show_date to datetime.date objects.
-    - Drops rows with null essential values.
-    - Converts IDs to strings for consistency.
+    This is the shared normalization boundary for prediction scripts.
     """
-    # Normalize column names
-    if "api_show_id" in shows_df.columns and "show_id" not in shows_df.columns:
-        shows_df["show_id"] = shows_df["api_show_id"]
-    if "showdate" in shows_df.columns and "show_date" not in shows_df.columns:
-        shows_df["show_date"] = shows_df["showdate"]
-    if "api_show_id" in setlists_df.columns and "show_id" not in setlists_df.columns:
-        setlists_df["show_id"] = setlists_df["api_show_id"]
-    if "song" in setlists_df.columns and "song_name" not in setlists_df.columns:
-        setlists_df["song_name"] = setlists_df["song"]
-
-    # Data cleaning and type conversion
-    shows_df["show_date"] = pd.to_datetime(
-        shows_df["show_date"], errors="coerce"
-    ).dt.date
-    shows_df.dropna(subset=["show_date", "show_id"], inplace=True)
-    setlists_df.dropna(subset=["show_id", "song_name"], inplace=True)
-
-    shows_df["show_id"] = shows_df["show_id"].astype(str)
-    setlists_df["show_id"] = setlists_df["show_id"].astype(str)
-
-    return shows_df, setlists_df
+    return normalize_prediction_inputs(shows_df, setlists_df, band=band)
 
 
 def resolve_reference_date(

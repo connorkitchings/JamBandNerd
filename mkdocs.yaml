@@ -59,6 +59,7 @@ nav:
       - Agentic Development: contributor/developer_guide/ai_sessions.md
   - Operations:
       - Daily Pipeline: operations/github_actions.md
+      - Data Recovery & Rebuild: operations/data_recovery_rebuild.md
       - Pipeline Optimization: operations/pipeline_optimization.md
       - Streamlit Deployment: operations/streamlit_deploy.md
       - TourWrangler Fallback (WSP): operations/tourwrangler_fallback.md
@@ -67,6 +68,7 @@ nav:
           - WSP Improvements: reference/collectors/wsp_improvements.md
       - Specifications:
           - Technical Overview: reference/specifications/technical_overview.md
+          - Data Strategy: reference/specifications/data_strategy.md
           - CLI & Scripts: reference/specifications/cli.md
           - Database: reference/specifications/database.md
           - Goose Pipeline: reference/specifications/goose_pipeline.md

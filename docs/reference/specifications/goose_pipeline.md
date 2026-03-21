@@ -1,91 +1,82 @@
-# Goose Pipeline Specification (Phase 2)
+# Goose Pipeline Specification
 
-Scope: Define the end-to-end Goose pipeline for initial backfill and daily runs: collect →
-transform → predict. No automation yet; CLI is designed to be schedulable later.
+This page describes Goose as a worked example of the current JamBandNerd
+pipeline. It should be read alongside the canonical
+[Data Strategy](data_strategy.md), not as a separate architecture.
 
-## Data Sources
+## Source
 
 - API: elgoose.net
-- Reference: `documents/data/goose_api_schema.md`
 - Endpoints:
-  - Songs: `/api/v2/songs.json`
-  - Shows: `/api/v2/shows.json`
-  - Setlists: `/api/v1/setlists.json`
+  - songs
+  - shows
+  - setlists
 
-## Raw Tables (Supabase)
+## Raw Tables
 
 - `goose_songs_raw`
-  - Primary key: `id`
-  - Notable fields: `id`, `name`, `slug`, `isoriginal`, `original_artist`, `created_at`, `updated_at`
 - `goose_shows_raw`
-  - Primary key: `show_id`
-  - Notable fields: `show_id`, `show_date`, `permalink`, `venue_id`, `venuename`, `city`,
-    `state`, `country`, `tour_id`, `updated_at`, `created_at`
+- `goose_venues_raw`
 - `goose_setlists_raw`
-  - Primary key: `uniqueid`
-  - Notable fields: `uniqueid`, `show_id`, `song_id`, `songname`, `settype`,
-    `setnumber`, `position`, `transition_id`, `transition`, `footnote`, `isjam`, `isreprise`,
-    `isjamchart`, `tracktime`, `tour_id`, `venuename`, `city`, `state`, `country`, `shownotes`
 
 Notes:
 
-- Use `updated_at` (when present) for incremental detection; otherwise rely on unique keys and
-  existence checks.
-- Store API response hash (optional) for future change detection.
+- Goose follows the standard raw pattern of songs, shows, and setlists.
+- Venues are stored as a supporting raw table.
+- Shared prediction code still consumes normalized shows/setlists/songs rather
+  than reading source-specific Goose fields directly.
 
-## Standardized Data (In-Memory)
+## Normalization
 
-The transformation from raw data to a standardized format occurs in-memory.
-The resulting DataFrames are used directly by the prediction models and are
-not persisted to the database.
+Goose participates in the same shared normalization boundary as the other bands.
 
-Transformation rules:
+Current normalization expectations:
 
-- Normalize booleans (0/1, strings) to true/false with NULL for empties.
-- Normalize integers; coerce numeric-like strings; NULL on empty.
-- Standardize set labels: map `settype`/`setnumber` to `set_name` and `set_index`.
-- Parse `tracktime` (`MM:SS`) to seconds (int) when possible.
-- Ensure consistent `show_date` as `date`.
+- expose `show_id`
+- expose `show_date`
+- expose `song_name`
+- preserve set and song ordering fields
+- support deterministic show ordering by `show_date`, then `show_id`
 
-## Orchestration
+The normalized Goose data is then transformed into `ModelData` in memory.
 
-- Initial backfill (no dates):
-  - `jbn collect goose` → fetch all and load into raw tables.
-  - `jbn transform goose` → (In-memory step, no command needed)
-  - `jbn predict goose --model notebook` → compute predictions for all eligible shows.
+## Current Commands
 
-- Daily run (incremental):
-  - `jbn run goose --stages collect,predict --model notebook --incremental`
-  - Collect: filter by `updated_at`/latest known showdate if available; otherwise deduplicate using keys.
-  - Transform: performed in-memory by the predict step.
-  - Predict: run for new/changed shows; can recompute recent window if needed.
+Recommended end-to-end pipeline:
 
-## Idempotency & Integrity
+```bash
+uv run python scripts/run_optimized_pipeline.py --band goose
+```
 
-- Use upserts with conflict targets on primary keys for raw and standardized tables.
-- Maintain a `run_id` and `generated_at` for predict stage rows.
-- Validation step before writes: compare DataFrame schema to table schema; coerce types where safe.
+Granular commands:
 
-## Error Handling
+```bash
+uv run python scripts/run_goose_collection.py
+uv run python scripts/generate_predictions.py --band goose --model notebook
+uv run python scripts/generate_predictions.py --band goose --model ckplus
+uv run python scripts/run_backtest.py --band goose --model notebook --shows 50
+uv run python scripts/save_aggregate_accuracy.py --band goose --model notebook --shows 50
+```
 
-- API failures: retry (exponential backoff, 3 attempts); on persistent failure, skip endpoint and
-  continue others.
-- Partial failures: collect and report; ensure pipeline returns non-zero exit code when critical.
-- Logging: stage start/end, counts, durations, failure summaries.
+## Prediction and Storage
 
-## Inputs/Outputs (per stage)
+- live predictions are stored in `predictions_notebook` and
+  `predictions_ckplus`
+- per-show evaluation is stored in `accuracy_per_show`
+- aggregate summaries are stored in `notebook_accuracy` and `accuracy_ckplus`
 
-- Collect
-  - Input: none (API)
-  - Output: `goose_songs_raw`, `goose_shows_raw`, `goose_setlists_raw`
-- Transform
-  - Input: `goose_*_raw` tables
-  - Output: In-memory pandas DataFrames for the predict step.
-- Predict
-  - Input: In-memory pandas DataFrames from the transform step.
-  - Output: `predictions_notebook`, `notebook_accuracy`, `predictions_ckplus`, `accuracy_ckplus`
+The current design stores one prediction row per
+`(band, reference_date, model_version)`, with a ranked JSON predictions array.
 
-## Open Questions
+## Integrity Expectations
 
-- Do we maintain a lightweight change-log table for API pulls (for auditing)?
-- Prediction scope: next-song vs multiple contexts (e.g., set position)? MVP assumes next-song.
+- collection writes use explicit conflict targets
+- transforms remain in memory
+- `reference_date` gates all feature generation and backtests
+- Goose-specific source quirks stop at the normalization boundary
+
+## Related Documents
+
+- [Data Strategy](data_strategy.md)
+- [Transformations](transformations.md)
+- [Predictions Schema](predictions_schema.md)
