@@ -1,6 +1,7 @@
 from src.jambandnerd.data_collection.wsp.orchestration import (
     _assign_show_ids,
     _dedupe_show_batch,
+    classify_missing_recent_setlists,
 )
 
 
@@ -133,3 +134,62 @@ def test_assign_show_ids_falls_back_to_date_and_normalized_venue_when_url_missin
     assert resolved[0]["show_id"] == 22454
     assert stats["reused_by_fallback_key"] == 1
     assert stats["new_ids_assigned"] == 0
+
+
+def test_classify_missing_recent_setlists_marks_upstream_missing(monkeypatch):
+    monkeypatch.setattr(
+        "src.jambandnerd.data_collection.wsp.orchestration._probe_everydaycompanion_setlist_status",
+        lambda source_url, show_id: "upstream_missing_setlist",
+    )
+    monkeypatch.setattr(
+        "src.jambandnerd.data_collection.wsp.orchestration.fetch_setlist_from_tourwrangler",
+        lambda *_args, **_kwargs: [],
+    )
+
+    diagnostics = classify_missing_recent_setlists(
+        client=None,
+        missing_shows=[
+            {
+                "show_id": 22455,
+                "show_date": "2026-03-20",
+                "city": "St. Augustine",
+                "state": "FL",
+                "source_url": "https://www.everydaycompanion.com/setlists/20260320a.asp",
+            }
+        ],
+    )
+
+    assert diagnostics == [
+        {
+            "show_id": "22455",
+            "show_date": "2026-03-20",
+            "diagnosis": "upstream_missing_setlist",
+            "detail": "Everyday Companion page has no setlist table",
+        }
+    ]
+
+
+def test_classify_missing_recent_setlists_marks_fallback_available(monkeypatch):
+    monkeypatch.setattr(
+        "src.jambandnerd.data_collection.wsp.orchestration._probe_everydaycompanion_setlist_status",
+        lambda source_url, show_id: "ec_request_failed",
+    )
+    monkeypatch.setattr(
+        "src.jambandnerd.data_collection.wsp.orchestration.fetch_setlist_from_tourwrangler",
+        lambda *_args, **_kwargs: [{"song_name": "Surprise Valley"}],
+    )
+
+    diagnostics = classify_missing_recent_setlists(
+        client=None,
+        missing_shows=[
+            {
+                "show_id": 22455,
+                "show_date": "2026-03-20",
+                "city": "St. Augustine",
+                "state": "FL",
+                "source_url": "https://www.everydaycompanion.com/setlists/20260320a.asp",
+            }
+        ],
+    )
+
+    assert diagnostics[0]["diagnosis"] == "fallback_data_available"

@@ -21,6 +21,7 @@ This repository runs a daily data pipeline via GitHub Actions.
 - Secrets required: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`; `PHISH_API_KEY` is required only for the Phish collector.
 - For WSP, the workflow installs Playwright (Firefox) to improve CI scraping reliability.
 - The pipeline validates prediction table freshness (`scripts/validate_prediction_tables.py`) after generation, using the latest written prediction row by `predicted_at`.
+- After backtests run, the workflow validates accuracy freshness and aggregate presence with `scripts/validate_accuracy_tables.py`, using the latest `evaluated_at` rows.
 - Accuracy backtesting excludes shows with 5 or fewer unique songs.
 - For manual recovery or migration workflows, use `scripts/audit_raw_data.py` before any targeted re-ingestion and `scripts/rebuild_derived_data.py` after schema changes.
 

@@ -7,9 +7,12 @@ WSP data from various sources.
 import logging
 import os
 import re
+from collections import Counter
 from datetime import date, datetime, timedelta
 
 import pandas as pd
+import requests
+from bs4 import BeautifulSoup
 
 from jambandnerd.db.connection import get_supabase_client
 from jambandnerd.db.operations import (
@@ -26,12 +29,116 @@ from .normalizer import (
     normalize_songs,
     normalize_venues,
 )
+from .parser import parse_setlist_from_text
+from .session import cleanup_playwright, create_enhanced_session, decode_ec_response
 from .status import CollectionStatus
 from .tourwrangler import fetch_setlist_from_tourwrangler
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
+
+
+def _page_has_setlist_table(page_html: str, show_id: str) -> bool:
+    """Return True when an EC page appears to expose a parseable setlist."""
+    soup = BeautifulSoup(page_html, "html.parser")
+
+    if parse_setlist_from_text(soup, show_id):
+        return True
+
+    tables = soup.find_all("table")
+    if len(tables) < 5:
+        return False
+
+    for table in tables[4:8]:
+        table_text = table.get_text()
+        if (
+            ("0:" in table_text or "1:" in table_text or "2:" in table_text)
+            and "Song Stats" not in table_text
+        ):
+            return True
+
+    return False
+
+
+def _probe_everydaycompanion_setlist_status(source_url: str, show_id: str) -> str:
+    """Classify whether an EC page has a setlist or is simply unpublished."""
+    session = create_enhanced_session()
+    try:
+        response = session.get(source_url, timeout=30, allow_redirects=True)
+        response.raise_for_status()
+        page_html = decode_ec_response(response)
+        if _page_has_setlist_table(page_html, show_id):
+            return "collector_missed_setlist"
+        return "upstream_missing_setlist"
+    except requests.exceptions.RequestException:
+        return "ec_request_failed"
+    finally:
+        session.close()
+        cleanup_playwright()
+
+
+def classify_missing_recent_setlists(
+    client, missing_shows: list[dict[str, object]]
+) -> list[dict[str, object]]:
+    """Classify recent missing WSP setlists as upstream lag or system issues."""
+    diagnostics: list[dict[str, object]] = []
+
+    for record in missing_shows:
+        show_id = str(record.get("show_id") or "").strip()
+        show_date = str(record.get("show_date") or "").strip()
+        source_url = _normalize_source_url(record.get("source_url"))
+        city = record.get("city")
+        state = record.get("state")
+
+        if not show_id or not show_date:
+            continue
+
+        if not source_url:
+            diagnostics.append(
+                {
+                    "show_id": show_id,
+                    "show_date": show_date,
+                    "diagnosis": "missing_source_url",
+                    "detail": "show row has no source_url",
+                }
+            )
+            continue
+
+        diagnosis = _probe_everydaycompanion_setlist_status(source_url, show_id)
+        if diagnosis in {"upstream_missing_setlist", "ec_request_failed"}:
+            try:
+                backup_rows = fetch_setlist_from_tourwrangler(
+                    pd.to_datetime(show_date).date(), show_id, city, state
+                )
+            except Exception as exc:
+                backup_rows = []
+                detail = f"{diagnosis}; TourWrangler lookup failed: {exc}"
+            else:
+                detail = (
+                    "Everyday Companion page has no setlist table"
+                    if diagnosis == "upstream_missing_setlist"
+                    else "Everyday Companion request failed and fallback was empty"
+                )
+
+            if backup_rows:
+                diagnosis = "fallback_data_available"
+                detail = "TourWrangler returned backup rows for this show"
+        elif diagnosis == "collector_missed_setlist":
+            detail = "Everyday Companion page appears to contain a setlist"
+        else:
+            detail = diagnosis
+
+        diagnostics.append(
+            {
+                "show_id": show_id,
+                "show_date": show_date,
+                "diagnosis": diagnosis,
+                "detail": detail,
+            }
+        )
+
+    return diagnostics
 
 
 def _normalize_source_url(value: object) -> str | None:
@@ -431,6 +538,58 @@ def process_wsp_data(
     status.fallback_setlists_collected = fallback_rows
     status.fallback_shows_filled = fallback_shows
     status.setlists_collected += fallback_rows
+
+    try:
+        today = date.today()
+        window_days = int(os.environ.get("WSP_BACKUP_WINDOW_DAYS", "3"))
+        window_start = today - timedelta(days=window_days)
+        recent_resp = (
+            client.table("wsp_shows_raw")
+            .select("show_id, show_date, city, state, source_url")
+            .gte("show_date", window_start.isoformat())
+            .lt("show_date", today.isoformat())
+            .execute()
+        )
+        recent_rows = recent_resp.data or []
+        show_ids = [str(row.get("show_id")) for row in recent_rows if row.get("show_id")]
+        if show_ids:
+            setlists_resp = (
+                client.table("wsp_setlists_raw")
+                .select("show_id")
+                .in_("show_id", show_ids)
+                .execute()
+            )
+            completed_ids = {
+                str(row.get("show_id"))
+                for row in (setlists_resp.data or [])
+                if row.get("show_id")
+            }
+            missing_rows = [
+                row for row in recent_rows if str(row.get("show_id")) not in completed_ids
+            ]
+            diagnostics = classify_missing_recent_setlists(client, missing_rows)
+            if diagnostics:
+                counts = Counter(
+                    str(item.get("diagnosis", "unknown")) for item in diagnostics
+                )
+                logging.warning(
+                    "Recent WSP missing-setlist diagnostics: %s",
+                    ", ".join(f"{key}={value}" for key, value in sorted(counts.items())),
+                )
+                for item in diagnostics[:5]:
+                    logging.warning(
+                        "WSP missing-setlist detail: show_id=%s show_date=%s diagnosis=%s detail=%s",
+                        item.get("show_id"),
+                        item.get("show_date"),
+                        item.get("diagnosis"),
+                        item.get("detail"),
+                    )
+                for item in diagnostics:
+                    status.record_missing_setlist_diagnostic(
+                        str(item.get("diagnosis", "unknown"))
+                    )
+    except Exception as exc:
+        logging.warning(f"Missing-setlist diagnostic step encountered an error: {exc}")
 
     # 8. Log collection run
     try:

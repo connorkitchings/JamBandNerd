@@ -14,6 +14,7 @@ sys.path.insert(0, project_root)
 from scripts.generate_predictions import generate_predictions
 from scripts.run_backtest import run_backtest
 from scripts.save_aggregate_accuracy import save_aggregate_accuracy
+from scripts.validate_accuracy_tables import validate_accuracy
 from scripts.validate_prediction_tables import validate_predictions
 from src.jambandnerd.config import (
     ACCURACY_TABLES,
@@ -31,6 +32,56 @@ def _selected_bands(band: str) -> list[str]:
     return list(SUPPORTED_BANDS) if band == "all" else [band]
 
 
+def clear_model_outputs(
+    *,
+    band: str,
+    model: str,
+    clear_predictions: bool = True,
+    clear_accuracy: bool = True,
+) -> None:
+    """Delete derived outputs for one band/model pair."""
+    client = get_supabase_client()
+    model_version = MODEL_VERSIONS[model]
+
+    if clear_predictions:
+        prediction_table = PREDICTION_TABLES[model]
+        print(
+            f"[{band.upper()}/{model.upper()}] Clearing existing predictions from {prediction_table}..."
+        )
+        (
+            client.table(prediction_table)
+            .delete()
+            .eq("band", band)
+            .eq("model_version", model_version)
+            .execute()
+        )
+        (
+            client.table(PREDICTION_SONGS_TABLE)
+            .delete()
+            .eq("band", band)
+            .eq("model_version", model_version)
+            .execute()
+        )
+
+    if clear_accuracy:
+        aggregate_table = ACCURACY_TABLES[model]
+        print(f"[{band.upper()}/{model.upper()}] Clearing existing accuracy rows...")
+        (
+            client.table("accuracy_per_show")
+            .delete()
+            .eq("band", band)
+            .eq("model_version", model_version)
+            .execute()
+        )
+        (
+            client.table(aggregate_table)
+            .delete()
+            .eq("band", band)
+            .eq("model_version", model_version)
+            .execute()
+        )
+
+
 def clear_existing_outputs(
     *,
     bands: list[str],
@@ -38,75 +89,64 @@ def clear_existing_outputs(
     clear_accuracy: bool = True,
 ) -> None:
     """Delete existing derived outputs for the selected bands/models."""
-    client = get_supabase_client()
-
     for band in bands:
         for model in MODELS:
-            model_version = MODEL_VERSIONS[model]
-
-            if clear_predictions:
-                prediction_table = PREDICTION_TABLES[model]
-                print(
-                    f"[{band.upper()}/{model.upper()}] Clearing existing predictions from {prediction_table}..."
-                )
-                (
-                    client.table(prediction_table)
-                    .delete()
-                    .eq("band", band)
-                    .eq("model_version", model_version)
-                    .execute()
-                )
-                (
-                    client.table(PREDICTION_SONGS_TABLE)
-                    .delete()
-                    .eq("band", band)
-                    .eq("model_version", model_version)
-                    .execute()
-                )
-
-            if clear_accuracy:
-                aggregate_table = ACCURACY_TABLES[model]
-                print(
-                    f"[{band.upper()}/{model.upper()}] Clearing existing accuracy rows..."
-                )
-                (
-                    client.table("accuracy_per_show")
-                    .delete()
-                    .eq("band", band)
-                    .eq("model_version", model_version)
-                    .execute()
-                )
-                (
-                    client.table(aggregate_table)
-                    .delete()
-                    .eq("band", band)
-                    .eq("model_version", model_version)
-                    .execute()
-                )
+            clear_model_outputs(
+                band=band,
+                model=model,
+                clear_predictions=clear_predictions,
+                clear_accuracy=clear_accuracy,
+            )
 
 
-def rebuild_band_outputs(
+def _rebuild_model_outputs(
     *,
     band: str,
+    model: str,
     rebuild_predictions: bool,
     rebuild_accuracy: bool,
+    clear_existing: bool,
     start: str | None,
     end: str | None,
     recent_shows: int | None,
     aggregate_shows: int,
-    max_age_hours: int,
 ) -> None:
-    """Rebuild derived outputs for a single band."""
-    for model in MODELS:
-        if rebuild_predictions:
+    """Rebuild derived outputs for one band/model pair with explicit phase logging."""
+    log_prefix = f"[{band.upper()}/{model.upper()}]"
+
+    if clear_existing:
+        print(
+            f"{log_prefix} Pre-clearing selected derived rows immediately before rebuild."
+        )
+        clear_model_outputs(
+            band=band,
+            model=model,
+            clear_predictions=rebuild_predictions,
+            clear_accuracy=rebuild_accuracy,
+        )
+
+    if rebuild_predictions:
+        print(f"{log_prefix} Phase 1/3: regenerate predictions")
+        try:
             generate_predictions(
                 band=band,
                 model=model,
                 date_str=None,
                 exclusion_window=3,
             )
+        except Exception as exc:
+            state = (
+                "after clearing existing prediction rows"
+                if clear_existing
+                else "with existing prediction rows left intact"
+            )
+            raise RuntimeError(
+                f"{log_prefix} Prediction rebuild failed {state}: {exc}"
+            ) from exc
 
-        if rebuild_accuracy:
+    if rebuild_accuracy:
+        print(f"{log_prefix} Phase 2/3: rebuild per-show accuracy")
+        try:
             run_backtest(
                 band=band,
                 model=model,
@@ -118,17 +158,68 @@ def rebuild_band_outputs(
                     recent_shows is None and start is None and end is None
                 ),
             )
+        except Exception as exc:
+            state = (
+                "after clearing existing accuracy rows"
+                if clear_existing
+                else "with existing accuracy rows left intact"
+            )
+            raise RuntimeError(
+                f"{log_prefix} Per-show accuracy rebuild failed {state}: {exc}"
+            ) from exc
+
+        print(f"{log_prefix} Phase 3/3: rebuild aggregate accuracy")
+        try:
             save_aggregate_accuracy(
                 band=band,
                 model=model,
                 shows=aggregate_shows,
             )
+        except Exception as exc:
+            raise RuntimeError(
+                f"{log_prefix} Aggregate accuracy rebuild failed after per-show "
+                f"accuracy completed: {exc}"
+            ) from exc
+
+
+def rebuild_band_outputs(
+    *,
+    band: str,
+    rebuild_predictions: bool,
+    rebuild_accuracy: bool,
+    clear_existing: bool,
+    start: str | None,
+    end: str | None,
+    recent_shows: int | None,
+    aggregate_shows: int,
+    max_age_hours: int,
+) -> None:
+    """Rebuild derived outputs for a single band."""
+    for model in MODELS:
+        _rebuild_model_outputs(
+            band=band,
+            model=model,
+            rebuild_predictions=rebuild_predictions,
+            rebuild_accuracy=rebuild_accuracy,
+            clear_existing=clear_existing,
+            start=start,
+            end=end,
+            recent_shows=recent_shows,
+            aggregate_shows=aggregate_shows,
+        )
 
     if rebuild_predictions:
         failures = validate_predictions(bands=[band], max_age_hours=max_age_hours)
         if failures:
             raise RuntimeError(
                 f"Prediction validation failed for {band}: {failures} issue(s)"
+            )
+
+    if rebuild_accuracy:
+        failures = validate_accuracy(bands=[band], max_age_hours=max_age_hours)
+        if failures:
+            raise RuntimeError(
+                f"Accuracy validation failed for {band}: {failures} issue(s)"
             )
 
 
@@ -191,13 +282,6 @@ def main() -> None:
     if not rebuild_predictions and not rebuild_accuracy:
         raise SystemExit("Nothing to do: predictions and accuracy are both skipped")
 
-    if args.clear_existing:
-        clear_existing_outputs(
-            bands=bands,
-            clear_predictions=rebuild_predictions,
-            clear_accuracy=rebuild_accuracy,
-        )
-
     for band in bands:
         print("=" * 60)
         print(f"Rebuilding derived outputs for {band.upper()}")
@@ -206,6 +290,7 @@ def main() -> None:
             band=band,
             rebuild_predictions=rebuild_predictions,
             rebuild_accuracy=rebuild_accuracy,
+            clear_existing=args.clear_existing,
             start=args.start,
             end=args.end,
             recent_shows=args.recent_shows,

@@ -25,6 +25,10 @@ class CollectionStatus:
         self.setlists_collected = 0
         self.fallback_setlists_collected = 0
         self.fallback_shows_filled = 0
+        self.upstream_missing_setlists = 0
+        self.collector_missing_setlists = 0
+        self.request_blocked_missing_setlists = 0
+        self.fallback_available_missing_setlists = 0
         self.critical_failures: List[str] = []
 
     def record_403_error(self, context: str) -> None:
@@ -47,6 +51,17 @@ class CollectionStatus:
         self.other_http_errors += 1
         self.critical_failures.append(f"HTTP {status_code}: {context}")
         logger.debug(f"Recorded HTTP {status_code} error: {context}")
+
+    def record_missing_setlist_diagnostic(self, diagnosis: str) -> None:
+        """Record how a recent missing setlist was classified."""
+        if diagnosis == "upstream_missing_setlist":
+            self.upstream_missing_setlists += 1
+        elif diagnosis == "collector_missed_setlist":
+            self.collector_missing_setlists += 1
+        elif diagnosis == "ec_request_failed":
+            self.request_blocked_missing_setlists += 1
+        elif diagnosis == "fallback_data_available":
+            self.fallback_available_missing_setlists += 1
 
     def should_fail(self) -> bool:
         """Determine if collection should be considered a failure.
@@ -124,4 +139,26 @@ class CollectionStatus:
             lines.append("  - Some errors occurred but data was still collected:")
             lines.append(f"    - 403 errors: {self.http_403_errors}")
             lines.append(f"    - Other HTTP errors: {self.other_http_errors}")
+        if (
+            self.upstream_missing_setlists > 0
+            or self.collector_missing_setlists > 0
+            or self.request_blocked_missing_setlists > 0
+            or self.fallback_available_missing_setlists > 0
+        ):
+            lines.append("  - Recent missing-setlist diagnostics:")
+            lines.append(
+                f"    - Upstream pages without setlists: {self.upstream_missing_setlists}"
+            )
+            lines.append(
+                "    - Collector-visible pages still missing in raw tables: "
+                f"{self.collector_missing_setlists}"
+            )
+            lines.append(
+                "    - EC request failures without fallback: "
+                f"{self.request_blocked_missing_setlists}"
+            )
+            lines.append(
+                "    - TourWrangler data available but not stored: "
+                f"{self.fallback_available_missing_setlists}"
+            )
         return "\n".join(lines)

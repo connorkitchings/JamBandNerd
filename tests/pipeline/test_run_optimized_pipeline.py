@@ -47,6 +47,11 @@ def pipeline_recorder(monkeypatch):
         "_validate_band_predictions",
         record("validate_predictions"),
     )
+    monkeypatch.setattr(
+        run_optimized_pipeline,
+        "_validate_band_accuracy",
+        record("validate_accuracy"),
+    )
 
     return events
 
@@ -65,6 +70,7 @@ def test_run_band_pipeline_executes_full_orchestrator_path(band, pipeline_record
         "run_backtest",
         "save_aggregate_accuracy",
         "validate_predictions",
+        "validate_accuracy",
     ]
 
     notebook_prediction = pipeline_recorder[1][1]["kwargs"]
@@ -105,6 +111,7 @@ def test_run_band_pipeline_executes_full_orchestrator_path(band, pipeline_record
     assert notebook_accuracy == {"band": band, "model": "notebook", "shows": 100}
     assert ckplus_accuracy == {"band": band, "model": "ckplus", "shows": 100}
     assert pipeline_recorder[7][1]["kwargs"] == {"band": band, "max_age_hours": 72}
+    assert pipeline_recorder[8][1]["kwargs"] == {"band": band, "max_age_hours": 72}
 
 
 @pytest.mark.parametrize("band", BANDS)
@@ -184,6 +191,11 @@ def test_run_band_pipeline_stops_after_prediction_failure(band, monkeypatch):
         run_optimized_pipeline,
         "_validate_band_predictions",
         lambda *args, **kwargs: events.append(("validate", "done")),
+    )
+    monkeypatch.setattr(
+        run_optimized_pipeline,
+        "_validate_band_accuracy",
+        lambda *args, **kwargs: events.append(("validate_accuracy", "done")),
     )
 
     success = run_optimized_pipeline.run_band_pipeline(band)

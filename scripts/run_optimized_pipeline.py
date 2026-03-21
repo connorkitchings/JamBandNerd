@@ -38,6 +38,7 @@ from scripts.run_phish_collection import run_phish_collection
 from scripts.run_um_collection import run_um_collection
 from scripts.run_wsp_collection import run_wsp_collection
 from scripts.save_aggregate_accuracy import save_aggregate_accuracy
+from scripts.validate_accuracy_tables import validate_accuracy
 from scripts.validate_prediction_tables import validate_predictions
 
 # Suppress noisy httpx logs
@@ -77,6 +78,13 @@ def _validate_band_predictions(*, band: str, max_age_hours: int = 72) -> None:
         raise RuntimeError(
             f"Prediction validation failed for {band}: {failures} issue(s)"
         )
+
+
+def _validate_band_accuracy(*, band: str, max_age_hours: int = 72) -> None:
+    failures = validate_accuracy(bands=[band], max_age_hours=max_age_hours)
+
+    if failures:
+        raise RuntimeError(f"Accuracy validation failed for {band}: {failures} issue(s)")
 
 
 def run_band_pipeline(band: str, skip_accuracy: bool = False) -> bool:
@@ -150,6 +158,11 @@ def run_band_pipeline(band: str, skip_accuracy: bool = False) -> bool:
 
     if not run_step(
         _validate_band_predictions, band, "Prediction Validation", max_age_hours=72
+    ):
+        return False
+
+    if not skip_accuracy and not run_step(
+        _validate_band_accuracy, band, "Accuracy Validation", max_age_hours=72
     ):
         return False
 

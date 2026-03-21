@@ -17,6 +17,7 @@ from __future__ import annotations
 import argparse
 import os
 import sys
+from collections import Counter
 from datetime import date, timedelta
 
 import pandas as pd
@@ -61,6 +62,37 @@ def _fetch_setlist_ids_for_shows(
     return setlist_ids
 
 
+def _summarize_missing_setlist_diagnostics(
+    band: str, diagnostics: list[dict[str, object]]
+) -> tuple[str | None, str | None]:
+    """Convert classified missing-setlist diagnostics into issue/warning text."""
+    if not diagnostics:
+        return None, None
+
+    if band != "wsp":
+        return f"{len(diagnostics)} shows without setlist data", None
+
+    counts = Counter(str(item.get("diagnosis", "unknown")) for item in diagnostics)
+    issue_statuses = {
+        "collector_missed_setlist",
+        "ec_request_failed",
+        "fallback_data_available",
+        "missing_source_url",
+        "unknown",
+    }
+    if set(counts).issubset({"upstream_missing_setlist"}):
+        return None, (
+            f"{len(diagnostics)} WSP shows are blocked by upstream setlist pages "
+            "that have not published a setlist yet"
+        )
+
+    detail = ", ".join(f"{status}={count}" for status, count in sorted(counts.items()))
+    if set(counts) & issue_statuses:
+        return f"{len(diagnostics)} WSP shows without setlist data ({detail})", None
+
+    return f"{len(diagnostics)} shows without setlist data", None
+
+
 def diagnose_band(band: str, verbose: bool = False) -> dict[str, any]:
     """Run comprehensive diagnostics on band data.
 
@@ -74,7 +106,13 @@ def diagnose_band(band: str, verbose: bool = False) -> dict[str, any]:
     client = get_supabase_client()
     id_col = BAND_ID_COLUMNS.get(band, "show_id")
 
-    results = {"band": band, "id_column": id_col, "issues": [], "stats": {}}
+    results = {
+        "band": band,
+        "id_column": id_col,
+        "issues": [],
+        "warnings": [],
+        "stats": {},
+    }
 
     # Print header
     print(f"\n{'=' * 60}")
@@ -200,7 +238,6 @@ def diagnose_band(band: str, verbose: bool = False) -> dict[str, any]:
         results["stats"]["orphaned_shows"] = len(orphaned)
 
         if orphaned:
-            results["issues"].append(f"{len(orphaned)} shows without setlist data")
             print("\nFirst 10 orphaned shows:")
             for show_id in list(orphaned)[:10]:
                 show = shows_df[shows_df[id_col].astype(str) == show_id].iloc[0]
@@ -215,6 +252,39 @@ def diagnose_band(band: str, verbose: bool = False) -> dict[str, any]:
 
             if verbose and len(orphaned) > 10:
                 print(f"\n  ... and {len(orphaned) - 10} more")
+
+            diagnostics: list[dict[str, object]] = []
+            if band == "wsp":
+                try:
+                    from src.jambandnerd.data_collection.wsp.orchestration import (
+                        classify_missing_recent_setlists,
+                    )
+
+                    diagnostics = classify_missing_recent_setlists(
+                        client,
+                        shows_df[shows_df[id_col].astype(str).isin(orphaned)].to_dict(
+                            "records"
+                        ),
+                    )
+                    if diagnostics:
+                        print("\nWSP missing-setlist diagnostics:")
+                        for item in diagnostics[:10]:
+                            print(
+                                "  - "
+                                f"{item.get('show_date')} (ID: {item.get('show_id')}): "
+                                f"{item.get('diagnosis')} - {item.get('detail')}"
+                            )
+                except Exception as exc:
+                    print(f"⚠️  Could not classify WSP missing setlists: {exc}")
+
+            issue, warning = _summarize_missing_setlist_diagnostics(
+                band,
+                diagnostics or [{"diagnosis": "unknown"} for _ in orphaned],
+            )
+            if issue:
+                results["issues"].append(issue)
+            if warning:
+                results["warnings"].append(warning)
         else:
             print("✅ All recent shows have setlist data")
 
@@ -255,6 +325,14 @@ def diagnose_band(band: str, verbose: bool = False) -> dict[str, any]:
         print(f"❌ Found {len(results['issues'])} issue(s)")
         for i, issue in enumerate(results["issues"], 1):
             print(f"  {i}. {issue}")
+        if results["warnings"]:
+            print(f"⚠️  Additional warnings: {len(results['warnings'])}")
+            for i, warning in enumerate(results["warnings"], 1):
+                print(f"  {i}. {warning}")
+    elif results["warnings"]:
+        print(f"⚠️  Warnings only ({len(results['warnings'])})")
+        for i, warning in enumerate(results["warnings"], 1):
+            print(f"  {i}. {warning}")
     else:
         print("✅ No issues found - data looks good!")
     print(f"{'=' * 60}\n")

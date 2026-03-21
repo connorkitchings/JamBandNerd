@@ -240,6 +240,14 @@ jobs:
           
           echo "::endgroup::"
 
+      - name: Validate Accuracy Tables
+        if: steps.check.outputs.should_run == 'true' && (github.event.inputs.skip_accuracy != 'true')
+        run: |
+          source .venv/bin/activate
+          echo "::group::Validating accuracy tables for ${{ matrix.band }}"
+          python scripts/validate_accuracy_tables.py --band ${{ matrix.band }} --max-age-hours 72
+          echo "::endgroup::"
+
       - name: Set Job Status Output
         id: set_status
         if: always()

@@ -3,6 +3,7 @@ from datetime import date
 from scripts.diagnose_band_data import (
     _completed_show_bounds,
     _fetch_setlist_ids_for_shows,
+    _summarize_missing_setlist_diagnostics,
 )
 from scripts.verify_data_freshness import _completed_show_window
 
@@ -71,3 +72,31 @@ def test_fetch_setlist_ids_for_shows_limits_lookup_to_target_ids():
 
     assert result == {"1", "2"}
     assert client.calls == ["um_setlists_raw"]
+
+
+def test_summarize_missing_setlist_diagnostics_treats_wsp_upstream_lag_as_warning():
+    issue, warning = _summarize_missing_setlist_diagnostics(
+        "wsp",
+        [
+            {
+                "diagnosis": "upstream_missing_setlist",
+                "detail": "Everyday Companion page has no setlist table",
+            }
+        ],
+    )
+
+    assert issue is None
+    assert warning == (
+        "1 WSP shows are blocked by upstream setlist pages that have not "
+        "published a setlist yet"
+    )
+
+
+def test_summarize_missing_setlist_diagnostics_treats_wsp_collector_gap_as_issue():
+    issue, warning = _summarize_missing_setlist_diagnostics(
+        "wsp",
+        [{"diagnosis": "collector_missed_setlist"}],
+    )
+
+    assert issue == "1 WSP shows without setlist data (collector_missed_setlist=1)"
+    assert warning is None

@@ -13,6 +13,7 @@ These are the canonical scripts used by docs and GitHub Actions:
 - `save_aggregate_accuracy.py` — compute aggregate accuracy from per-show results
 - `verify_data_freshness.py` — CI data-quality check for recent missing setlists
 - `validate_prediction_tables.py` — prediction freshness/JSON integrity check using the latest row by `predicted_at`, plus `prediction_songs` consistency checks
+- `validate_accuracy_tables.py` — per-show and aggregate accuracy freshness/presence check using the latest row by `evaluated_at`
 
 Band collection scripts (kept at top-level to support dynamic discovery):
 
@@ -23,7 +24,7 @@ Band collection scripts (kept at top-level to support dynamic discovery):
 
 - `diagnose_band_data.py` — diagnose raw table completeness/consistency for a band
 - `audit_raw_data.py` — run the raw-data audit across one band or all supported bands
-- `rebuild_derived_data.py` — rebuild predictions, `prediction_songs`, and/or accuracy tables band by band
+- `rebuild_derived_data.py` — rebuild predictions, `prediction_songs`, and/or accuracy tables band by band with per-model phase logging and just-in-time clearing
 
 ## Admin scripts
 

@@ -41,11 +41,18 @@ def test_rebuild_band_outputs_runs_predictions_accuracy_and_validation(monkeypat
         "validate_predictions",
         lambda bands, max_age_hours: events.append(("validate", bands[0])) or 0,
     )
+    monkeypatch.setattr(
+        rebuild_derived_data,
+        "validate_accuracy",
+        lambda bands, max_age_hours: events.append(("validate_accuracy", bands[0]))
+        or 0,
+    )
 
     rebuild_derived_data.rebuild_band_outputs(
         band="goose",
         rebuild_predictions=True,
         rebuild_accuracy=True,
+        clear_existing=False,
         start=None,
         end=None,
         recent_shows=None,
@@ -61,6 +68,7 @@ def test_rebuild_band_outputs_runs_predictions_accuracy_and_validation(monkeypat
         ("backtest", "ckplus"),
         ("aggregate", "ckplus"),
         ("validate", "goose"),
+        ("validate_accuracy", "goose"),
     ]
 
 
@@ -82,11 +90,18 @@ def test_rebuild_band_outputs_skips_validation_when_predictions_skipped(monkeypa
         "validate_predictions",
         lambda bands, max_age_hours: events.append(("validate", bands[0])) or 0,
     )
+    monkeypatch.setattr(
+        rebuild_derived_data,
+        "validate_accuracy",
+        lambda bands, max_age_hours: events.append(("validate_accuracy", bands[0]))
+        or 0,
+    )
 
     rebuild_derived_data.rebuild_band_outputs(
         band="goose",
         rebuild_predictions=False,
         rebuild_accuracy=True,
+        clear_existing=False,
         start=None,
         end=None,
         recent_shows=50,
@@ -97,6 +112,57 @@ def test_rebuild_band_outputs_skips_validation_when_predictions_skipped(monkeypa
     assert events == [
         ("backtest", "notebook"),
         ("aggregate", "notebook"),
+        ("backtest", "ckplus"),
+        ("aggregate", "ckplus"),
+        ("validate_accuracy", "goose"),
+    ]
+
+
+def test_rebuild_band_outputs_clears_one_model_at_a_time(monkeypatch):
+    events: list[tuple[str, str]] = []
+
+    monkeypatch.setattr(
+        rebuild_derived_data,
+        "clear_model_outputs",
+        lambda **kwargs: events.append(("clear", kwargs["model"])),
+    )
+    monkeypatch.setattr(
+        rebuild_derived_data,
+        "generate_predictions",
+        lambda **kwargs: events.append(("predict", kwargs["model"])),
+    )
+    monkeypatch.setattr(
+        rebuild_derived_data,
+        "run_backtest",
+        lambda **kwargs: events.append(("backtest", kwargs["model"])),
+    )
+    monkeypatch.setattr(
+        rebuild_derived_data,
+        "save_aggregate_accuracy",
+        lambda **kwargs: events.append(("aggregate", kwargs["model"])),
+    )
+    monkeypatch.setattr(rebuild_derived_data, "validate_predictions", lambda *args, **kwargs: 0)
+    monkeypatch.setattr(rebuild_derived_data, "validate_accuracy", lambda *args, **kwargs: 0)
+
+    rebuild_derived_data.rebuild_band_outputs(
+        band="goose",
+        rebuild_predictions=True,
+        rebuild_accuracy=True,
+        clear_existing=True,
+        start=None,
+        end=None,
+        recent_shows=25,
+        aggregate_shows=25,
+        max_age_hours=72,
+    )
+
+    assert events[:8] == [
+        ("clear", "notebook"),
+        ("predict", "notebook"),
+        ("backtest", "notebook"),
+        ("aggregate", "notebook"),
+        ("clear", "ckplus"),
+        ("predict", "ckplus"),
         ("backtest", "ckplus"),
         ("aggregate", "ckplus"),
     ]
