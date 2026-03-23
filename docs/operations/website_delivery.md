@@ -112,6 +112,11 @@ The repo should verify the website in GitHub Actions before relying on Vercel pr
 
 This keeps deployment triggering in Vercel while GitHub Actions acts as the verification gate.
 
+For Vercel preview URLs protected by Deployment Protection, configure the
+`VERCEL_PROTECTION_BYPASS_TOKEN` GitHub secret and let the hosted smoke workflow
+bootstrap the preview URL with Vercel's documented bypass query parameters
+before running the normal route assertions.
+
 ## Deployment Expectations
 
 - Preview deployments for pull requests/branches
@@ -127,7 +132,18 @@ After a preview or production deploy, run hosted smoke verification against the 
 SMOKE_BASE_URL=https://jambandnerd.com npm run test:web:smoke:hosted
 ```
 
-Use the `Hosted Website Smoke` GitHub Actions workflow for scheduled production checks or ad hoc preview verification by overriding the `base_url` workflow input.
+For a protected preview deployment, provide the bypass token in the environment:
+
+```bash
+SMOKE_BASE_URL=https://your-preview-url.vercel.app \
+VERCEL_PROTECTION_BYPASS_TOKEN=your-bypass-secret \
+npm run test:web:smoke:hosted
+```
+
+Use the `Hosted Website Smoke` GitHub Actions workflow for scheduled production
+checks or ad hoc preview verification by overriding the `base_url` workflow
+input. Preview workflow runs require the `VERCEL_PROTECTION_BYPASS_TOKEN`
+GitHub secret.
 
 After smoke verification, manually verify:
 

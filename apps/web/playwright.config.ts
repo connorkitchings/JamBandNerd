@@ -1,7 +1,8 @@
 import { defineConfig, devices } from "@playwright/test";
+import { normalizeHostedBaseUrl } from "./tests/smoke/hosted-target";
 
 const PORT = 3101;
-const hostedBaseUrl = process.env.SMOKE_BASE_URL?.replace(/\/+$/, "");
+const hostedBaseUrl = normalizeHostedBaseUrl(process.env.SMOKE_BASE_URL);
 const useHostedBaseUrl = Boolean(hostedBaseUrl);
 
 export default defineConfig({

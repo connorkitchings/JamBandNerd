@@ -22,6 +22,7 @@ jobs:
 
     env:
       SMOKE_BASE_URL: ${{ github.event.inputs.base_url || 'https://jambandnerd.com' }}
+      VERCEL_PROTECTION_BYPASS_TOKEN: ${{ secrets.VERCEL_PROTECTION_BYPASS_TOKEN }}
 
     steps:
       - name: Checkout repository
@@ -38,6 +39,13 @@ jobs:
 
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
+
+      - name: Validate preview bypass configuration
+        run: |
+          if [[ "$SMOKE_BASE_URL" == https://*.vercel.app* ]] && [[ -z "$VERCEL_PROTECTION_BYPASS_TOKEN" ]]; then
+            echo "::error::Preview hosted smoke requires the VERCEL_PROTECTION_BYPASS_TOKEN GitHub secret."
+            exit 1
+          fi
 
       - name: Run hosted website smoke tests
         run: npm run test:web:smoke:hosted
