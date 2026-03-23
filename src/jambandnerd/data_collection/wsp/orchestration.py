@@ -471,6 +471,11 @@ def process_wsp_data(
         setlists_data = collector.collect_setlists(records_for_scrape)
         if setlists_data:
             setlists_df = normalize_setlists(setlists_data)
+
+            schema = get_table_schema("wsp_setlists_raw")
+            if any(str(col.get("column_name", "")).lower() == "source" for col in schema):
+                setlists_df["source"] = "everydaycompanion"
+
             validate_and_upsert_dataframe(
                 table_name="wsp_setlists_raw",
                 df=setlists_df,
