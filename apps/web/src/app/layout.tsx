@@ -24,6 +24,10 @@ export const metadata: Metadata = {
   description: "Prediction dashboards, historical explorer views, and performance analysis for jam band setlists.",
 };
 
+export const viewport = {
+  themeColor: "#111316",
+};
+
 export default async function RootLayout({
   children,
 }: Readonly<{

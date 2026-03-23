@@ -7,21 +7,6 @@ import { usePathname, useRouter } from "next/navigation";
 import { GlobalSearch, type GlobalSearchItem } from "@/components/global-search";
 import { DESKTOP_NAV_ITEMS, isActivePath, isDetailPath } from "@/lib/navigation";
 
-function UserIcon() {
-  return (
-    <svg aria-hidden="true" className="size-5" fill="none" viewBox="0 0 24 24">
-      <circle cx="12" cy="8" r="3.25" stroke="currentColor" strokeWidth="1.5" />
-      <path
-        d="M5.5 19.5C6.4 16.8 8.76 15 12 15s5.6 1.8 6.5 4.5"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeWidth="1.5"
-      />
-      <circle cx="12" cy="12" r="9.25" stroke="currentColor" strokeWidth="1.5" />
-    </svg>
-  );
-}
-
 function BackIcon() {
   return (
     <svg aria-hidden="true" className="size-5" fill="none" viewBox="0 0 24 24">
@@ -112,14 +97,6 @@ export function SiteHeader({ searchItems, bandDisplayNames }: Props) {
 
         <div className="flex w-12 items-center justify-end text-on-background md:w-auto md:gap-4">
           <GlobalSearch items={searchItems} bandDisplayNames={bandDisplayNames} />
-          
-          <button
-            aria-label="Account"
-            className="text-on-background transition-colors hover:text-primary"
-            type="button"
-          >
-            <UserIcon />
-          </button>
         </div>
       </div>
     </nav>

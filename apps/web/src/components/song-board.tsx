@@ -219,6 +219,7 @@ function TierSection({
                         {agreesWithOtherModel && <span className="ml-1"><ModelAgreeIcon /></span>}
                       </p>
                       <p className="text-xs text-on-surface-variant">
+                        {row.lastPlayed ? `${row.lastPlayed} · ` : ""}
                         {row.currentGap !== null
                           ? `${row.currentGap} ${row.currentGap === 1 ? "show" : "shows"} ago`
                           : "Gap unknown"}

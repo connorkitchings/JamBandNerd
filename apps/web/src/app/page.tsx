@@ -214,7 +214,7 @@ export default async function HomePage({ searchParams }: Props) {
         <div className="flex flex-col gap-4 text-xs text-on-surface/40 md:flex-row md:items-center md:justify-between">
           <p>© 2026 JamBandNerd Archivist Labs</p>
           <div className="flex gap-6">
-            <a className="underline decoration-dotted transition hover:text-primary" href="https://github.com/" rel="noopener noreferrer" target="_blank">
+            <a className="underline decoration-dotted transition hover:text-primary" href="https://github.com/connorkitchings/JamBandNerd" rel="noopener noreferrer" target="_blank">
               GitHub
             </a>
             <Link className="underline decoration-dotted transition hover:text-primary" href="/about">

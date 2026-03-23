@@ -138,7 +138,7 @@ export function GlobalSearch({ items, bandDisplayNames }: Props) {
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search songs across all bands..."
+                placeholder="Search songs across bands…"
                 className="w-full bg-transparent py-4 pl-3 pr-4 font-headline text-base text-on-surface placeholder:text-on-surface-variant/50 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset focus-visible:outline-none"
               />
               <button

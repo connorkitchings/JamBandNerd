@@ -33,13 +33,13 @@ export function AccuracyTable({ rows }: Props) {
             <tr key={`${row.showDate}-${index}`} className={index % 2 === 1 ? "bg-surface-container-low/40" : ""}>
               <td className={`${TABLE_CELL_CLASS} whitespace-nowrap`}>{row.showDate ?? "—"}</td>
               <td className={`${TABLE_CELL_CLASS} text-on-surface-variant`}>{row.venueName ?? "—"}</td>
-              <td className={`${TABLE_CELL_CLASS} whitespace-nowrap font-headline text-primary`}>
+              <td className={`${TABLE_CELL_CLASS} whitespace-nowrap font-headline tabular-nums text-primary`}>
                 {formatPercent(row.k10Recall)}
               </td>
-              <td className={`${TABLE_CELL_CLASS} whitespace-nowrap`}>
+              <td className={`${TABLE_CELL_CLASS} whitespace-nowrap tabular-nums`}>
                 {formatPercent(row.k25Recall)}
               </td>
-              <td className={`${TABLE_CELL_CLASS} whitespace-nowrap`}>
+              <td className={`${TABLE_CELL_CLASS} whitespace-nowrap tabular-nums`}>
                 {formatPercent(row.k50Recall)}
               </td>
             </tr>
