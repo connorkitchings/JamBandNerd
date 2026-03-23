@@ -104,7 +104,7 @@ npm run lint:web
 npm run build:web
 ```
 
-The legacy Streamlit app remains in the repo only as an internal fallback during cutover. Its local run instructions now live in `docs/operations/streamlit_deploy.md` rather than the primary README path.
+The legacy Streamlit app remains in the repo only for internal legacy/debugging use. Its local run instructions now live in `docs/operations/streamlit_deploy.md` rather than the primary README path.
 
 The website delivery path now uses Vercel’s native GitHub integration model. Treat `main` as the production branch and use preview deployments for feature branches and pull requests.
 
@@ -189,7 +189,7 @@ that registry is fully unified.
 - Pluggable prediction models (Notebook, CK+).
 - Unified cross-band prediction and accuracy storage.
 - Supabase backend with automated validation.
-- Website-first product delivery with the current Streamlit app retained only as a legacy transition surface.
+- Website-first product delivery through the live `apps/web` surface.
 - **GitHub Actions automation** with daily pipeline execution.
 
 ### Widespread Panic Data & Fallback

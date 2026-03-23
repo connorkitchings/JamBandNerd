@@ -65,10 +65,10 @@ graph TD
 
 ### Delivery
 
-- The website in `apps/web` is the target public surface.
+- The website in `apps/web` is the current public surface.
 - Supabase remains the shared storage and read layer for predictions and
   accuracy data.
-- The Streamlit app remains a legacy transition surface only.
+- Streamlit has been retired and is not part of the active delivery path.
 
 ### Orchestration
 

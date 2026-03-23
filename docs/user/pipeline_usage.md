@@ -38,7 +38,7 @@ npm run dev:web
 npm run build:web
 ```
 
-The legacy Streamlit app remains available only as an internal fallback during cutover. Its run instructions live in `docs/operations/streamlit_deploy.md`, not in the main pipeline workflow.
+The legacy Streamlit app remains available only for internal legacy/debugging use. Its run instructions live in `docs/operations/streamlit_deploy.md`, not in the main pipeline workflow.
 
 ## Advanced Usage: Individual Scripts
 
