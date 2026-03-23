@@ -1,11 +1,11 @@
 from datetime import date
 
+from scripts.common import completed_show_window
 from scripts.diagnose_band_data import (
     _completed_show_bounds,
     _fetch_setlist_ids_for_shows,
     _summarize_missing_setlist_diagnostics,
 )
-from scripts.verify_data_freshness import _completed_show_window
 
 
 class _ResponseStub:
@@ -43,7 +43,7 @@ class _ClientStub:
 
 
 def test_completed_show_window_excludes_today():
-    cutoff, end_date = _completed_show_window(today=date(2026, 3, 17), days=7)
+    cutoff, end_date = completed_show_window(today=date(2026, 3, 17), days=7)
     assert cutoff == "2026-03-10"
     assert end_date == "2026-03-16"
 
