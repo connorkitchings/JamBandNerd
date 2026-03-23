@@ -1,18 +1,17 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { DashboardAnalysis } from "@/components/dashboard-analysis";
 import { DashboardSideNav } from "@/components/dashboard-side-nav";
 import { DataState } from "@/components/data-state";
 import { PredictionHero } from "@/components/prediction-hero";
 import { SongBoard } from "@/components/song-board";
 import { SongSearch } from "@/components/song-search";
+import { LiveTracker } from "@/components/live-tracker";
 import { MODEL_CONFIG, normalizeModel } from "@/lib/config";
 import {
   resolveBandSelection,
   getBands,
   getLatestPredictions,
-  getRecentAccuracy,
   getShowDetailsByDate,
   calculateModelAgreement,
   bandEntryBySlug,
@@ -67,10 +66,9 @@ export default async function HomePage({ searchParams }: Props) {
     bandsResult.status === "ready" ? bandSelection.bandEntry?.slug : params.band;
   const secondaryModelSlug = normalizeModel(params.model) === "ckplus" ? "notebook" : "ckplus";
 
-  const [predictionState, secondaryPredictionState, accuracyState] = await Promise.all([
+  const [predictionState, secondaryPredictionState] = await Promise.all([
     getLatestPredictions(selectedBand, params.model),
     getLatestPredictions(selectedBand, secondaryModelSlug),
-    getRecentAccuracy(selectedBand, params.model, 10),
   ]);
 
   if (predictionState.status === "missing_env") {
@@ -120,9 +118,8 @@ export default async function HomePage({ searchParams }: Props) {
   ]);
   const today = new Date().toISOString().slice(0, 10);
   const statusLabel =
-    referenceDate && referenceDate >= today ? "Pre-Show" : "Latest Snapshot";
+    referenceDate === today ? "🔴 LIVE" : referenceDate && referenceDate > today ? "Pre-Show" : "Latest Snapshot";
   const snapshotLabel = formatTimestampLabel(predictionState.snapshot.predictedAt);
-  const accuracyRows = accuracyState.status === "ready" ? accuracyState.rows : [];
 
   const searchSongs = predictionState.snapshot.predictions.map((row) => ({
     rank: row.rank,
@@ -153,6 +150,13 @@ export default async function HomePage({ searchParams }: Props) {
     <div className="w-full pb-6 lg:pl-64">
       <DashboardSideNav band={predictionState.band} model={predictionState.model} bands={bands} />
 
+      {process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY && (
+        <LiveTracker 
+          supabaseUrl={process.env.SUPABASE_URL}
+          supabaseAnonKey={process.env.SUPABASE_ANON_KEY}
+        />
+      )}
+
       <PredictionHero
         venueName={
           showDetails?.venueName ?? `${bandName} Snapshot`
@@ -164,7 +168,6 @@ export default async function HomePage({ searchParams }: Props) {
         bandLabel={bandName}
         snapshotLabel={snapshotLabel}
         totalSongs={predictionState.snapshot.predictions.length}
-        accuracyRows={accuracyRows}
         predictions={predictionState.snapshot.predictions}
         agreementScore={agreementScore}
       />
@@ -202,13 +205,6 @@ export default async function HomePage({ searchParams }: Props) {
 
         <SongBoard rows={predictionState.snapshot.predictions} secondarySongs={secondarySongs} />
       </section>
-
-      <DashboardAnalysis
-        rows={accuracyRows}
-        predictions={predictionState.snapshot.predictions}
-        bandLabel={bandName}
-        modelLabel={MODEL_CONFIG[predictionState.model].displayName}
-      />
 
       <footer className="mt-16 border-t border-white/10 py-10">
         <div className="flex flex-col gap-4 text-xs text-on-surface/40 md:flex-row md:items-center md:justify-between">

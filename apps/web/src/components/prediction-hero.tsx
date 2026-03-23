@@ -1,5 +1,4 @@
-
-import type { PredictionRow, AccuracyRow, ModelAgreement } from "@/lib/data";
+import type { PredictionRow, ModelAgreement } from "@/lib/data";
 
 type Props = {
   venueName: string;
@@ -10,7 +9,6 @@ type Props = {
   bandLabel: string;
   snapshotLabel: string;
   totalSongs: number;
-  accuracyRows: AccuracyRow[];
   predictions: PredictionRow[];
   agreementScore?: ModelAgreement | null;
 };
@@ -33,19 +31,6 @@ function getOutlookLabel(predictions: PredictionRow[]) {
   return "Balanced expectations";
 }
 
-function getTrackRecord(accuracyRows: AccuracyRow[]) {
-  if (accuracyRows.length === 0) return null;
-
-  const k10Values = accuracyRows
-    .map((row) => row.k10Recall)
-    .filter((v): v is number => v !== null);
-
-  if (k10Values.length === 0) return null;
-
-  const avg = k10Values.reduce((sum, v) => sum + v, 0) / k10Values.length;
-  return Math.round(avg * 100);
-}
-
 export function PredictionHero({
   venueName,
   dateLabel,
@@ -55,12 +40,10 @@ export function PredictionHero({
   bandLabel,
   snapshotLabel,
   totalSongs,
-  accuracyRows,
   predictions,
   agreementScore,
 }: Props) {
   const outlookLabel = getOutlookLabel(predictions);
-  const trackRecord = getTrackRecord(accuracyRows);
 
   return (
     <section className="mb-10">
@@ -78,41 +61,20 @@ export function PredictionHero({
               {dateLabel}
               {locationLabel ? ` • ${locationLabel}` : ""}
             </p>
-            <div className="grid grid-cols-2 gap-6 md:grid-cols-4">
-              <div>
+            <div className="grid grid-cols-2 gap-6">
+              <div className="md:hidden">
                 <p className="mb-1 font-label text-[10px] uppercase tracking-[0.18rem] text-on-surface-variant">
                   Band
                 </p>
                 <p className="font-headline text-lg font-semibold text-on-surface">{bandLabel}</p>
               </div>
-              <div>
+              <div className="md:hidden">
                 <p className="mb-1 font-label text-[10px] uppercase tracking-[0.18rem] text-on-surface-variant">
                   Model
                 </p>
                 <div className="flex items-center gap-2">
                   <p className="font-headline text-lg font-semibold text-on-surface">{modelLabel}</p>
-                  {agreementScore && (
-                    <span 
-                      className="rounded bg-primary/10 px-1.5 py-0.5 font-label text-[10px] font-bold uppercase tracking-wider text-primary ring-1 ring-inset ring-primary/20"
-                      title={`${Math.round(agreementScore.composite * 100)}% weighted agreement across models`}
-                    >
-                      {Math.round(agreementScore.composite * 100)}% Match
-                    </span>
-                  )}
                 </div>
-                {agreementScore && (
-                  <div className="mt-2 flex gap-3">
-                    <span className="text-[10px] text-on-surface-variant">
-                      <span className="font-semibold">{agreementScore.top10.matchCount}/{agreementScore.top10.total}</span> top-10
-                    </span>
-                    <span className="text-[10px] text-on-surface-variant">
-                      <span className="font-semibold">{agreementScore.top25.matchCount}/{agreementScore.top25.total}</span> top-25
-                    </span>
-                    <span className="text-[10px] text-on-surface-variant">
-                      <span className="font-semibold">{agreementScore.top50.matchCount}/{agreementScore.top50.total}</span> top-50
-                    </span>
-                  </div>
-                )}
               </div>
               <div>
                 <p className="mb-1 font-label text-[10px] uppercase tracking-[0.18rem] text-on-surface-variant">
@@ -145,24 +107,32 @@ export function PredictionHero({
               <p className="mt-2 font-headline text-lg font-semibold text-primary">
                 {outlookLabel}
               </p>
-            </div>
-            <div className="rounded-xl border border-outline-variant/20 bg-surface-container-low p-5">
-              <p className="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">
-                Top-10 Recall
-              </p>
-              {trackRecord !== null ? (
-                <>
-                  <p className="mt-2 font-headline text-lg font-semibold text-on-surface">
-                    {trackRecord}% top-10 recall
-                  </p>
-                  <p className="mt-1 text-xs text-on-surface-variant">
-                    Average across {accuracyRows.length} recent scored shows
-                  </p>
-                </>
-              ) : (
-                <p className="mt-2 text-sm text-on-surface-variant">
-                  No scored shows yet for this model
-                </p>
+
+              {agreementScore && (
+                <div className="mt-4 border-t border-outline-variant/20 pt-4">
+                  <div className="mb-2 flex items-center gap-2">
+                    <p className="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">
+                      Model Agreement
+                    </p>
+                    <span 
+                      className="rounded bg-primary/10 px-1.5 py-0.5 font-label text-[10px] font-bold uppercase tracking-wider text-primary ring-1 ring-inset ring-primary/20"
+                      title={`${Math.round(agreementScore.composite * 100)}% weighted agreement across models`}
+                    >
+                      {Math.round(agreementScore.composite * 100)}% Match
+                    </span>
+                  </div>
+                  <div className="flex gap-3">
+                    <span className="text-[10px] text-on-surface-variant">
+                      <span className="font-semibold">{agreementScore.top10.matchCount}/{agreementScore.top10.total}</span> top-10
+                    </span>
+                    <span className="text-[10px] text-on-surface-variant">
+                      <span className="font-semibold">{agreementScore.top25.matchCount}/{agreementScore.top25.total}</span> top-25
+                    </span>
+                    <span className="text-[10px] text-on-surface-variant">
+                      <span className="font-semibold">{agreementScore.top50.matchCount}/{agreementScore.top50.total}</span> top-50
+                    </span>
+                  </div>
+                </div>
               )}
             </div>
           </div>
