@@ -1,7 +1,7 @@
 # Frontend Strategy
 
 This document defines the frontend strategy for JamBandNerd, complementing the existing
-[Data Strategy](./reference/specifications/data_strategy.md) and Backend Strategy. It covers
+[Data Strategy](../reference/specifications/data_strategy.md) and Backend Strategy. It covers
 how the website communicates predictions to users, UI/UX principles, component conventions,
 accessibility standards, and the data contract between Supabase and the frontend.
 
