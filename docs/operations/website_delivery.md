@@ -108,6 +108,7 @@ The repo should verify the website in GitHub Actions before relying on Vercel pr
 1. `npm run lint:web`
 2. `npm run build:web`
 3. `npm run test:web:smoke`
+4. `Hosted Website Smoke` for deployed preview or production URLs when you need hosted verification
 
 This keeps deployment triggering in Vercel while GitHub Actions acts as the verification gate.
 
@@ -120,7 +121,15 @@ This keeps deployment triggering in Vercel while GitHub Actions acts as the veri
 
 ## Post-Deploy Verification
 
-After a preview or production deploy, manually verify:
+After a preview or production deploy, run hosted smoke verification against the deployed URL:
+
+```bash
+SMOKE_BASE_URL=https://jambandnerd.com npm run test:web:smoke:hosted
+```
+
+Use the `Hosted Website Smoke` GitHub Actions workflow for scheduled production checks or ad hoc preview verification by overriding the `base_url` workflow input.
+
+After smoke verification, manually verify:
 
 - `/`
 - `/explorer`

@@ -9,6 +9,7 @@
     "build:web": "npm run build --workspace @jambandnerd/web",
     "lint:web": "npm run lint --workspace @jambandnerd/web",
     "test:web:smoke": "npm run test:smoke --workspace @jambandnerd/web",
+    "test:web:smoke:hosted": "npm run test:smoke:hosted --workspace @jambandnerd/web",
     "test:web:smoke:list": "npm run test:smoke:list --workspace @jambandnerd/web"
   }
 }
