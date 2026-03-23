@@ -1,7 +1,7 @@
 # Website Delivery Strategy
 
-This document defines the current product target for JamBandNerd: the website in `apps/web`, not
-the legacy Streamlit deployment.
+This document defines the current delivery model for JamBandNerd: the website in `apps/web` is the
+active product surface and operating path.
 
 ## Target Architecture
 
@@ -39,22 +39,22 @@ The website should become the primary public surface for:
 - Accuracy and performance views
 - Last-show details and explanatory content
 
-The website is now the default local and contributor-facing product surface. Remaining work is deployment hardening, final cutover, and eventual removal of the Streamlit fallback.
+The website is now the default local, contributor-facing, and public product surface. Remaining
+work is deployment hardening, hosted verification, and product refinement on the live website.
 
-## Migration Constraints
+## Operating Constraints
 
 - Keep `scripts/run_optimized_pipeline.py` as the canonical pipeline entrypoint.
 - Preserve existing Supabase prediction and accuracy tables unless the website exposes a real gap.
-- Treat the current Streamlit app as a legacy transition surface, not the destination architecture.
 - Avoid introducing a public API unless external-consumer requirements justify it later.
-- Keep legacy Streamlit run instructions out of primary onboarding docs.
+- Do not reintroduce Streamlit-specific guidance into primary onboarding or operations docs.
 
-## Delivery Order
+## Current Priorities
 
 1. Keep the website routes and shared shell production-ready.
 2. Make the website the default path in docs, onboarding, and workflow messaging.
 3. Harden Vercel deployment, preview verification, and production env management.
-4. Remove Streamlit from the primary operations path, then retire the fallback code in a later phase.
+4. Revisit public API work only after the website creates real external-consumer demand.
 
 ## Branch Strategy
 

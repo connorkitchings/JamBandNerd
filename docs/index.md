@@ -34,5 +34,5 @@ This documentation is organized into audience-focused sections:
 - **Product Docs**: [PRD](overview/project/prd.md) · [Architecture Decisions](overview/project/adr.md) · [Schedule](overview/project/schedule.md).
 
 ### 🛠️ Troubleshooting & Reports
-- **Guides**: [Data Ingestion & Streamlit Issues](troubleshooting/data_ingestion_and_streamlit_issues.md) · [Validation Fix Log](troubleshooting/VALIDATION_FIX_2025-10-04.md) · [Data Quality Checklist](troubleshooting/troubleshooting_data_quality.md).
+- **Guides**: [Data Ingestion & Legacy Streamlit Issues](troubleshooting/data_ingestion_and_streamlit_issues.md) · [Validation Fix Log](troubleshooting/VALIDATION_FIX_2025-10-04.md) · [Data Quality Checklist](troubleshooting/troubleshooting_data_quality.md).
 - **Reports**: [Improvements Summary](reports/IMPROVEMENTS_SUMMARY.md) · [Validation Improvements](reports/VALIDATION_IMPROVEMENTS.md) · [Validation Test Report](reports/TEST_REPORT_VALIDATION.md).
