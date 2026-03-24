@@ -106,45 +106,45 @@ export default async function VenueAnalyticsPage({ searchParams }: Props) {
         <FilterLinks pathname="/venues" band={state.band} bands={bands} />
       </SectionCard>
 
-      <section className="rounded-xl border border-outline-variant/30 bg-surface-container p-8 md:p-10">
+      <section className="relative overflow-hidden rounded-xl border border-outline-variant/30 bg-surface-container px-6 py-6 shadow-[0_24px_80px_rgba(0,0,0,0.08)] md:px-10 md:py-8">
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(280px,0.8fr)]">
-          <div>
+          <div className="flex flex-col justify-center text-center lg:text-left">
             <p className="font-label text-[10px] uppercase tracking-[0.24em] text-on-surface-variant">
               Venue-specific patterns
             </p>
-            <h1 className="mt-3 font-headline text-4xl font-semibold uppercase tracking-[-0.04em] text-on-surface md:text-5xl">
+            <h1 className="mt-2 font-headline text-3xl font-bold uppercase tracking-[-0.04em] text-on-surface md:text-5xl">
               {snapshot?.venueName ?? "Venue Analytics"}
             </h1>
-            <p className="mt-3 font-headline text-base uppercase tracking-[0.08em] text-primary">
+            <p className="mt-2 font-headline text-base uppercase tracking-[0.08em] text-primary">
               {locationLabel ? `${locationLabel} • ` : ""}
               {bandName}
             </p>
-            <p className="mt-4 max-w-3xl text-sm leading-6 text-on-surface-variant">
+            <p className="mt-4 max-w-3xl text-sm leading-6 text-on-surface-variant mx-auto lg:mx-0">
               Read the rooms where {bandName} repeats history. This view surfaces venue frequency,
               common songs, and direct links back into the Explorer for show-level replay.
             </p>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
-            <div className="rounded-xl border border-outline-variant/20 bg-surface-container-low p-5">
+            <div className="rounded-xl border border-outline-variant/20 bg-surface-container-low p-5 text-center">
               <p className="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">
                 Selected venue
               </p>
-              <p className="mt-3 font-headline text-2xl font-semibold text-on-surface">
+              <p className="mt-3 font-headline text-2xl font-bold text-on-surface">
                 {snapshot ? snapshot.showCount : "—"}
               </p>
-              <p className="mt-2 text-sm text-on-surface-variant">
+              <p className="mt-1 text-[10px] font-medium text-on-surface-variant">
                 {snapshot ? "historical shows with this venue key" : "choose a valid venue from the rail"}
               </p>
             </div>
-            <div className="rounded-xl border border-outline-variant/20 bg-surface-container-low p-5">
+            <div className="rounded-xl border border-outline-variant/20 bg-surface-container-low p-5 text-center">
               <p className="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">
                 Venue options
               </p>
-              <p className="mt-3 font-headline text-2xl font-semibold text-on-surface">
+              <p className="mt-3 font-headline text-2xl font-bold text-on-surface">
                 {state.venues.length}
               </p>
-              <p className="mt-2 text-sm text-on-surface-variant">
+              <p className="mt-1 text-[10px] font-medium text-on-surface-variant">
                 ranked by historical show count
               </p>
             </div>

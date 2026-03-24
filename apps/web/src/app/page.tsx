@@ -21,24 +21,6 @@ const HOME_TEASER_BANDS = [
   { slug: "goose", label: "Goose", fallbackName: "Goose" },
 ] as const;
 
-const ENTRY_CARDS = [
-  {
-    title: "Predictions",
-    href: "/predictions",
-    body: "Open the full next-show board with live rankings, search, and model switching.",
-  },
-  {
-    title: "Performance",
-    href: "/performance",
-    body: "Review historical recall and see how each model has been scoring over time.",
-  },
-  {
-    title: "Deep-Dive",
-    href: "/venues",
-    body: "Open explorer, venue patterns, and model comparison tools for deeper analysis.",
-  },
-] as const;
-
 const HOW_IT_WORKS = [
   {
     step: "01",
@@ -115,80 +97,55 @@ export default async function HomePage({ searchParams }: Props) {
   ]);
 
   return (
-    <div className="mx-auto max-w-6xl space-y-8 pb-10">
-      <section className="relative overflow-hidden rounded-[32px] border border-outline-variant/30 bg-surface-container px-6 py-8 shadow-[0_24px_80px_rgba(0,0,0,0.08)] md:px-10 md:py-12">
+    <div className="mx-auto max-w-6xl space-y-12 pb-10">
+      <section className="relative overflow-hidden rounded-[32px] border border-outline-variant/30 bg-surface-container px-6 py-8 shadow-[0_24px_80px_rgba(0,0,0,0.08)] md:px-10 md:py-16">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,205,110,0.22),transparent_32%),radial-gradient(circle_at_bottom_right,rgba(255,140,80,0.16),transparent_30%),linear-gradient(135deg,rgba(255,255,255,0.04),transparent_55%)]" />
-        <div className="relative grid gap-8 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)] lg:items-stretch">
+        <div className="relative grid gap-10 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)] lg:items-center">
           <div className="flex h-full flex-col justify-center">
-            <div className="flex flex-col gap-10">
+            <div className="flex flex-col gap-8">
               <div>
-              <p className="font-label text-[10px] uppercase tracking-[0.24em] text-primary">
-                Setlist predictions for the next show
-              </p>
-              <h1 className="mt-4 max-w-3xl font-headline text-5xl font-bold uppercase tracking-[-0.08em] text-on-surface md:text-7xl">
-                JamBandNerd
-              </h1>
-              <p className="mt-4 max-w-2xl text-base leading-7 text-on-surface-variant">
-                Get next-show setlist predictions for jam bands, with performance,
-                explorer, and venue tools to help explain the board.
-              </p>
-              <div className="mt-6 grid gap-3 sm:grid-cols-2">
-              <Link
-                href="/predictions"
-                className="rounded-full border border-outline-variant/30 bg-surface/70 px-5 py-3 text-center font-headline text-sm uppercase tracking-[0.14rem] text-on-surface transition hover:border-primary hover:text-primary"
-              >
-                View Predictions
-              </Link>
-                <Link
-                  href="/performance"
-                  className="rounded-full border border-outline-variant/30 bg-surface/70 px-5 py-3 text-center font-headline text-sm uppercase tracking-[0.14rem] text-on-surface transition hover:border-primary hover:text-primary"
-                >
-                  See Performance
-                </Link>
-              </div>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-3">
-                <div className="rounded-2xl border border-outline-variant/20 bg-surface/75 px-4 py-4 text-center">
-                  <p className="font-label text-[10px] uppercase tracking-[0.18rem] text-on-surface-variant">
-                    Bands tracked
-                  </p>
-                  <p className="mt-2 font-headline text-2xl text-on-surface">
-                    {bands.length || "—"}
-                  </p>
-                </div>
-                <div className="rounded-2xl border border-outline-variant/20 bg-surface/75 px-4 py-4 text-center">
-                  <p className="font-label text-[10px] uppercase tracking-[0.18rem] text-on-surface-variant">
-                    Prediction models
-                  </p>
-                  <p className="mt-2 font-headline text-2xl text-on-surface">
-                    {ACTIVE_MODELS.length}
-                  </p>
-                </div>
-                <div className="rounded-2xl border border-outline-variant/20 bg-surface/75 px-4 py-4 text-center">
-                  <p className="font-label text-[10px] uppercase tracking-[0.18rem] text-on-surface-variant">
-                    Refresh cadence
-                  </p>
-                  <p className="mt-2 font-headline text-2xl text-on-surface">Daily</p>
+                <p className="font-label text-[11px] font-bold uppercase tracking-[0.24em] text-primary">
+                  JamBandNerd
+                </p>
+                <h1 className="mt-4 max-w-3xl font-headline text-4xl font-bold uppercase tracking-[-0.04em] text-on-surface md:text-6xl lg:text-7xl leading-tight">
+                  What are they playing next?
+                </h1>
+                <p className="mt-5 max-w-2xl text-lg leading-relaxed text-on-surface-variant">
+                  Data-driven setlist predictions for your favorite jam bands. Track historical performance, explore venue trends, and see what the models think is coming.
+                </p>
+                <div className="mt-8 flex flex-wrap gap-4">
+                  <Link
+                    href="/predictions"
+                    className="inline-flex items-center justify-center rounded-full border border-outline-variant/40 bg-surface/70 px-6 py-3.5 text-center font-headline text-sm font-medium uppercase tracking-[0.14rem] text-on-surface transition hover:border-primary hover:text-primary hover:bg-surface-container-low"
+                  >
+                    View Predictions
+                  </Link>
+                  <Link
+                    href="/performance"
+                    className="inline-flex items-center justify-center rounded-full border border-outline-variant/40 bg-surface/70 px-6 py-3.5 text-center font-headline text-sm font-medium uppercase tracking-[0.14rem] text-on-surface transition hover:border-primary hover:text-primary hover:bg-surface-container-low"
+                  >
+                    See Performance
+                  </Link>
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="rounded-[28px] border border-outline-variant/25 bg-surface/82 p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-sm">
-            <p className="font-label text-[10px] uppercase tracking-[0.24em] text-primary">
-              Teasers
+          <div className="rounded-[28px] border border-outline-variant/30 bg-surface/85 p-6 shadow-xl backdrop-blur-md">
+            <p className="mb-4 font-label text-[10px] font-bold uppercase tracking-[0.24em] text-primary/80">
+              Live Teasers
             </p>
-            <div className="mt-4 grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-4 gap-2">
               {HOME_TEASER_BANDS.map((band) => {
                 const isActive = band.slug === teaserBandSlug;
                 return (
                   <Link
                     key={band.slug}
                     href={`/?teaser=${band.slug}`}
-                    className={`rounded-full border px-2 py-1.5 text-center font-headline text-xs uppercase tracking-[0.12rem] transition ${
+                    className={`rounded-full border px-2.5 py-1 flex items-center justify-center text-center font-headline text-[10px] font-bold uppercase tracking-[0.12rem] transition ${
                       isActive
-                        ? "border-primary bg-primary/12 text-primary"
-                        : "border-outline-variant/30 bg-surface-container-low text-on-surface-variant hover:border-primary hover:text-on-surface"
+                        ? "border-primary bg-primary/15 text-primary"
+                        : "border-transparent bg-surface-container-low text-on-surface-variant hover:bg-outline-variant/20 hover:text-on-surface"
                     }`}
                   >
                     {band.label}
@@ -196,83 +153,73 @@ export default async function HomePage({ searchParams }: Props) {
                 );
               })}
             </div>
-            <h2 className="mt-4 text-center font-headline text-2xl font-semibold uppercase tracking-[-0.05em] text-on-surface">
-              {teaserBandEntry.displayName}
-            </h2>
 
             {teaserPredictionState.status === "ready" ? (
               <>
-                <div className="mt-5 rounded-2xl border border-outline-variant/20 bg-surface-container-low px-4 py-4">
-                  <p className="text-center font-label text-[10px] uppercase tracking-[0.18rem] text-on-surface-variant">
-                    Next show
+                <div className="mt-5 rounded-2xl border border-outline-variant/20 bg-surface/50 p-4">
+                  <p className="font-label text-[10px] font-medium uppercase tracking-[0.18rem] text-on-surface-variant/70">
+                    Next Show
                   </p>
-                  <p className="mt-3 text-center font-headline text-2xl text-on-surface md:text-3xl">
+                  <p className="mt-1.5 font-headline text-xl font-bold text-primary md:text-2xl">
                     {formatDateLabel(
                       teaserNextShow?.showDate ??
                         teaserPredictionState.snapshot.referenceDate,
                     )}
                   </p>
-                  <p className="mt-2 text-center font-headline text-lg text-on-surface">
-                    {teaserNextShow?.venueName ?? `${teaserBandEntry.displayName} next show`}
+                  <p className="mt-1 font-headline text-base text-on-surface">
+                    {teaserNextShow?.venueName ?? "Venue TBA"}
                   </p>
-                  <p className="mt-1 text-center text-sm text-on-surface-variant">
+                  <p className="mt-0.5 text-xs text-on-surface-variant">
                     {teaserLocationLabel ?? "Location unavailable"}
                   </p>
                 </div>
 
-                <div className="mt-4 rounded-2xl border border-outline-variant/20 bg-surface-container-low px-4 py-4">
-                  <p className="text-center font-label text-[10px] uppercase tracking-[0.18rem] text-on-surface-variant">
-                    Top predictions
-                  </p>
-                  <div className="mt-3 flex items-center justify-between gap-4 border-b border-outline-variant/15 pb-2">
-                    <div className="flex items-center gap-3">
-                      <span className="w-4" aria-hidden="true" />
-                      <p className="font-label text-[10px] uppercase tracking-[0.16rem] text-on-surface-variant">
-                        Song
-                      </p>
-                    </div>
-                    <p className="font-label text-[10px] uppercase tracking-[0.16rem] text-on-surface-variant">
+                <div className="mt-4 rounded-2xl border border-outline-variant/20 bg-surface/50 p-4">
+                  <div className="flex items-center justify-between mb-3 border-b border-outline-variant/15 pb-2">
+                    <p className="font-label text-[10px] font-medium uppercase tracking-[0.16rem] text-on-surface-variant/70">
+                      Top Picks (Notebook)
+                    </p>
+                    <p className="font-label text-[10px] font-medium uppercase tracking-[0.16rem] text-on-surface-variant/70">
                       Current Gap
                     </p>
                   </div>
-                  <div className="mt-3 space-y-3">
+                  <div className="space-y-2.5">
                     {teaserSongs.map((row) => (
                       <div
                         key={`${row.rank}-${row.songName}`}
-                        className="flex items-center justify-between gap-4"
+                        className="flex items-center justify-between group"
                       >
                         <div className="flex items-center gap-3">
-                          <span className="w-4 text-center font-headline text-sm tabular-nums text-on-surface/55">
+                          <span className="flex h-5 w-5 items-center justify-center rounded bg-surface-container font-headline text-xs font-bold text-on-surface-variant">
                             {row.rank}
                           </span>
-                          <span className="font-headline text-sm text-on-surface">
+                          <span className="font-headline text-sm font-medium text-on-surface group-hover:text-primary transition-colors">
                             {row.songName}
                           </span>
                         </div>
-                        <span className="text-xs text-on-surface-variant">
-                          {row.currentGap !== null
-                            ? `${row.currentGap} ${row.currentGap === 1 ? "show" : "shows"}`
-                            : "gap unknown"}
-                        </span>
+                        <div className="flex items-center">
+                          <span className="rounded bg-surface-container px-2 py-0.5 font-mono text-xs font-medium text-on-surface-variant">
+                            {row.currentGap !== null ? row.currentGap : "-"}
+                          </span>
+                        </div>
                       </div>
                     ))}
                   </div>
                 </div>
               </>
             ) : (
-              <div className="mt-5 rounded-2xl border border-dashed border-outline-variant/20 bg-surface-container-low px-4 py-5">
+              <div className="mt-5 rounded-2xl border border-dashed border-outline-variant/30 bg-surface/50 p-6 text-center">
                 <p className="font-headline text-lg text-on-surface">
                   Live preview unavailable
                 </p>
                 <p className="mt-2 text-sm leading-6 text-on-surface-variant">
-                  The homepage still works without live prediction data, but the live teaser
-                  will appear only when server-side prediction reads are available.
+                  The teaser requires server-side data access.
                 </p>
                 <Link
                   href="/predictions"
-                  className="mt-4 inline-flex rounded-full border border-outline-variant/30 px-4 py-2 font-headline text-xs uppercase tracking-[0.14rem] text-on-surface transition hover:border-primary hover:text-primary"
+                  className="mt-4 inline-block rounded-full border border-outline-variant/40 bg-surface-container-low px-4 py-2 font-headline text-xs font-bold uppercase tracking-[0.14rem] text-on-surface transition hover:border-primary hover:text-primary"
                 >
-                  Open predictions
+                  Open full board
                 </Link>
               </div>
             )}
@@ -280,33 +227,46 @@ export default async function HomePage({ searchParams }: Props) {
         </div>
       </section>
 
-      <SectionCard title="Start Here" centered>
-        <div className="grid gap-4 md:grid-cols-3">
-          {ENTRY_CARDS.map((item) => (
-            <Link
-              key={item.title}
-              href={item.href}
-              className="rounded-2xl border border-outline-variant/20 bg-surface-container-low p-5 transition hover:border-primary hover:bg-surface-container"
-            >
-              <p className="font-headline text-xl font-medium text-on-surface">{item.title}</p>
-              <p className="mt-3 text-sm leading-6 text-on-surface-variant">{item.body}</p>
-            </Link>
-          ))}
+      {/* Stats Ribbon */}
+      <section className="grid grid-cols-2 gap-4 md:grid-cols-3">
+        <div className="flex flex-col justify-center rounded-2xl border border-outline-variant/20 bg-surface-container px-6 py-5 text-center">
+          <p className="font-headline text-3xl font-bold text-on-surface">
+            {bands.length || "—"}
+          </p>
+          <p className="mt-1 font-label text-[10px] font-bold uppercase tracking-[0.18rem] text-on-surface-variant">
+            Bands Tracked
+          </p>
         </div>
-      </SectionCard>
+        <div className="flex flex-col justify-center rounded-2xl border border-outline-variant/20 bg-surface-container px-6 py-5 text-center">
+          <p className="font-headline text-3xl font-bold text-on-surface">
+            {ACTIVE_MODELS.length}
+          </p>
+          <p className="mt-1 font-label text-[10px] font-bold uppercase tracking-[0.18rem] text-on-surface-variant">
+            Prediction Models
+          </p>
+        </div>
+        <div className="col-span-2 flex flex-col justify-center rounded-2xl border border-outline-variant/20 bg-surface-container px-6 py-5 text-center md:col-span-1">
+          <p className="font-headline text-3xl font-bold text-on-surface">Daily</p>
+          <p className="mt-1 font-label text-[10px] font-bold uppercase tracking-[0.18rem] text-on-surface-variant">
+            Refresh Cadence
+          </p>
+        </div>
+      </section>
 
-      <SectionCard title="How Predictions Work" centered>
-        <div className="grid gap-4 md:grid-cols-3">
+      <SectionCard title="How It Works">
+        <div className="grid gap-6 md:grid-cols-3">
           {HOW_IT_WORKS.map((item) => (
             <div
               key={item.step}
-              className="rounded-2xl border border-outline-variant/20 bg-surface-container-low p-5"
+              className="flex flex-col rounded-2xl border border-outline-variant/15 bg-surface/50 p-6 transition-colors hover:border-primary/30 hover:bg-surface-container-low"
             >
-              <p className="font-headline text-3xl text-primary/30">{item.step}</p>
-              <p className="mt-3 font-headline text-lg font-medium text-on-surface">
+              <div className="mb-4 inline-flex h-8 w-8 items-center justify-center rounded-full bg-surface-container font-mono text-sm font-bold text-primary/80">
+                {item.step}
+              </div>
+              <p className="font-headline text-lg font-bold text-on-surface">
                 {item.title}
               </p>
-              <p className="mt-3 text-sm leading-6 text-on-surface-variant">
+              <p className="mt-2 text-sm leading-relaxed text-on-surface-variant">
                 {item.body}
               </p>
             </div>
@@ -314,17 +274,17 @@ export default async function HomePage({ searchParams }: Props) {
         </div>
       </SectionCard>
 
-      <SectionCard title="Supported Bands" centered>
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+      <SectionCard title="Supported Bands">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {bands.map((band) => (
             <Link
               key={band.slug}
               href={`/predictions?band=${band.slug}`}
-              className="rounded-2xl border border-outline-variant/20 bg-surface-container-low p-4 text-center transition hover:border-primary hover:bg-surface-container"
+              className="flex items-center justify-center rounded-2xl border border-outline-variant/20 bg-surface-container p-5 text-center transition-all hover:border-primary hover:bg-surface-container-high hover:shadow-md"
             >
-              <p className="font-headline text-lg font-medium text-on-surface">
+              <span className="font-headline text-lg font-bold text-on-surface transition-colors hover:text-primary">
                 {band.displayName}
-              </p>
+              </span>
             </Link>
           ))}
         </div>

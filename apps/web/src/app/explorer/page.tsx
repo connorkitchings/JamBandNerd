@@ -126,47 +126,46 @@ export default async function ExplorerPage({ searchParams }: Props) {
         />
       </SectionCard>
 
-      <section className="relative overflow-hidden rounded-xl border border-outline-variant/30 bg-surface-container p-8 md:p-10">
+      <section className="relative overflow-hidden rounded-xl border border-outline-variant/30 bg-surface-container px-6 py-6 shadow-[0_24px_80px_rgba(0,0,0,0.08)] md:px-10 md:py-8">
         <div className="absolute inset-y-0 right-0 hidden w-1/3 bg-gradient-to-l from-primary-container/15 to-transparent lg:block" />
         <div className="relative grid gap-8 lg:grid-cols-[minmax(0,1.6fr)_minmax(280px,0.9fr)]">
-          <div>
+          <div className="flex flex-col justify-center text-center lg:text-left">
             <p className="font-label text-[10px] uppercase tracking-[0.24em] text-on-surface-variant">
               Historical replay
             </p>
-            <h1 className="mt-3 font-headline text-4xl font-semibold uppercase tracking-[-0.04em] text-on-surface md:text-5xl">
+            <h1 className="mt-2 font-headline text-3xl font-bold uppercase tracking-[-0.04em] text-on-surface md:text-5xl">
               {showLabel}
             </h1>
-            <p className="mt-3 font-headline text-base uppercase tracking-[0.08em] text-primary">
+            <p className="mt-2 font-headline text-base uppercase tracking-[0.08em] text-primary">
               {dateLabel}
               {locationLabel ? ` • ${locationLabel}` : ""}
             </p>
-            <p className="mt-4 max-w-3xl text-sm leading-6 text-on-surface-variant">
-              Rewind a published prediction snapshot and line it up against the actual setlist for
-              the selected show date. This is the main archive workflow for understanding where each
-              model was early, late, or exactly right.
+            <p className="mt-4 max-w-3xl text-sm leading-6 text-on-surface-variant mx-auto lg:mx-0">
+              Rewind a published prediction snapshot and line it up against the actual setlist. 
+              Understand where each model was early, late, or exactly right.
             </p>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
-            <div className="rounded-xl border border-primary/20 bg-surface-container-low p-5">
+            <div className="rounded-xl border border-primary/20 bg-surface-container-low p-5 text-center">
               <p className="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">
                 Top prediction
               </p>
-              <p className="mt-3 font-headline text-2xl font-semibold text-on-surface">
+              <p className="mt-3 font-headline text-2xl font-bold text-on-surface">
                 {topPrediction?.songName ?? "No songs"}
               </p>
-              <p className="mt-2 text-sm text-on-surface-variant">
+              <p className="mt-1 text-[10px] font-medium text-on-surface-variant">
                 {topPrediction?.currentGap ?? "—"} show gap • snapshot {snapshotLabel}
               </p>
             </div>
-            <div className="rounded-xl border border-outline-variant/30 bg-surface-container-low p-5">
+            <div className="rounded-xl border border-outline-variant/30 bg-surface-container-low p-5 text-center">
               <p className="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">
                 Hit rate
               </p>
-              <p className="mt-3 font-headline text-2xl font-semibold text-primary">
+              <p className="mt-3 font-headline text-2xl font-bold text-primary">
                 {matchedPredictions.length}/{Math.min(10, predictions.length || 10)}
               </p>
-              <p className="mt-2 text-sm text-on-surface-variant">
+              <p className="mt-1 text-[10px] font-medium text-on-surface-variant">
                 Top-10 calls found in the actual setlist
               </p>
             </div>

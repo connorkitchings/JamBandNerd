@@ -96,7 +96,7 @@ function getModelSpecificMetric(predictions: PredictionRow[], modelSlug: ModelSl
 }
 
 const CARD_CLASS =
-  "relative rounded-2xl border border-outline-variant/20 bg-surface/82 px-5 py-4 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-sm";
+  "relative rounded-2xl border border-outline-variant/20 bg-surface/82 px-5 py-4 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-sm flex flex-col justify-center min-h-[100px]";
 
 export function PredictionHero({
   venueName,
@@ -113,34 +113,44 @@ export function PredictionHero({
 
   return (
     <section className="mb-10">
-      <div className="relative overflow-visible rounded-[28px] border border-outline-variant/30 bg-surface-container px-6 py-8 shadow-[0_24px_80px_rgba(0,0,0,0.08)] md:px-10 md:py-10">
+      <div className="relative overflow-visible rounded-[28px] border border-outline-variant/30 bg-surface-container px-6 py-6 shadow-[0_24px_80px_rgba(0,0,0,0.08)] md:px-10 md:py-8">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,205,110,0.20),transparent_36%),linear-gradient(140deg,rgba(255,255,255,0.05),transparent_58%)]" />
         <div className="absolute inset-y-0 right-0 w-2/5 bg-gradient-to-l from-primary-container/16 via-primary-container/6 to-transparent opacity-90" />
 
         <div className="relative z-10 mx-auto max-w-5xl">
           <div className="mx-auto max-w-4xl text-center">
-            <span className="inline-flex items-center rounded-full bg-secondary-container px-3 py-1 font-label text-[10px] uppercase tracking-[0.18rem] text-on-secondary-container">
-              {statusLabel}
-            </span>
-            <p className="mt-5 font-headline text-lg uppercase tracking-[0.04em] text-primary md:text-xl">
+            {statusLabel === "LIVE" ? (
+              <span className="inline-flex items-center gap-2 rounded-full bg-red-500/10 px-3 py-1 font-label text-[10px] font-bold uppercase tracking-[0.18rem] text-red-500 border border-red-500/20">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                </span>
+                LIVE
+              </span>
+            ) : (
+              <span className="inline-flex items-center rounded-full bg-secondary-container px-3 py-1 font-label text-[10px] uppercase tracking-[0.18rem] text-on-secondary-container">
+                {statusLabel}
+              </span>
+            )}
+            <p className="mt-4 font-headline text-base uppercase tracking-[0.04em] text-primary md:text-lg">
               {dateLabel}
               {locationLabel ? ` • ${locationLabel}` : ""}
             </p>
-            <h1 className="mx-auto mt-3 max-w-4xl text-balance font-headline text-4xl font-bold uppercase tracking-[-0.08em] text-on-surface md:text-6xl">
+            <h1 className="mx-auto mt-2 max-w-4xl text-balance font-headline text-3xl font-bold uppercase tracking-[-0.04em] text-on-surface md:text-5xl">
               {venueName}
             </h1>
           </div>
 
-          <div className="relative z-20 mx-auto mt-8 grid max-w-4xl gap-3 overflow-visible md:grid-cols-2">
+          <div className="relative z-20 mx-auto mt-8 grid max-w-4xl gap-3 overflow-visible md:grid-cols-4">
             <div className={`${CARD_CLASS} z-30 overflow-visible hover:z-40 focus-within:z-40`}>
-              <div className="flex items-center justify-center gap-2">
-                <p className="font-label text-[10px] uppercase tracking-[0.18rem] text-on-surface-variant">
-                  Show Outlook
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <p className="font-label text-[10px] font-bold uppercase tracking-[0.18rem] text-on-surface-variant/80">
+                  Outlook
                 </p>
                 <div className="group relative z-40">
                   <button
                     aria-label="Explain show outlook"
-                    className="flex size-5 items-center justify-center rounded-full border border-outline-variant/30 text-[10px] text-on-surface-variant transition hover:border-primary hover:text-primary focus-visible:border-primary focus-visible:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    className="flex size-4 items-center justify-center rounded-full border border-outline-variant/30 text-[9px] text-on-surface-variant transition hover:border-primary hover:text-primary focus-visible:border-primary focus-visible:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                     type="button"
                   >
                     i
@@ -173,48 +183,48 @@ export function PredictionHero({
                   </div>
                 </div>
               </div>
-              <p className="mt-2 font-headline text-lg font-semibold text-primary md:text-xl">
+              <p className="font-headline text-xl font-bold text-primary md:text-2xl">
                 {outlook.label}
               </p>
             </div>
 
-            <div className={CARD_CLASS}>
-              <p className="font-label text-[10px] uppercase tracking-[0.18rem] text-on-surface-variant">
+            <div className={`${CARD_CLASS} flex flex-col justify-center`}>
+              <p className="mb-2 font-label text-[10px] font-bold uppercase tracking-[0.18rem] text-on-surface-variant/80">
                 Rotation Core - Top 10
               </p>
-              <div className="mt-2 flex items-baseline justify-center gap-2">
-                <p className="font-headline text-lg font-semibold text-on-surface md:text-xl">
-                  {outlook.rotationCoreTop10}/10
+              <div className="flex flex-col items-center justify-center gap-1">
+                <p className="font-headline text-2xl font-bold text-on-surface">
+                  {outlook.rotationCoreTop10}<span className="text-base font-medium text-on-surface-variant/50">/10</span>
                 </p>
-                <p className="text-[11px] text-on-surface-variant">
-                  songs played within the last 8 shows
+                <p className="text-[11px] font-medium text-on-surface-variant text-center">
+                  played last 8 shows
                 </p>
               </div>
             </div>
 
-            <div className={CARD_CLASS}>
-              <p className="font-label text-[10px] uppercase tracking-[0.18rem] text-on-surface-variant">
+            <div className={`${CARD_CLASS} flex flex-col justify-center`}>
+              <p className="mb-2 font-label text-[10px] font-bold uppercase tracking-[0.18rem] text-on-surface-variant/80">
                 Long-Gap Watch - Top 50
               </p>
-              <div className="mt-2 flex items-baseline justify-center gap-2">
-                <p className="font-headline text-lg font-semibold text-on-surface md:text-xl">
-                  {outlook.longGapCountTop50}/50
+              <div className="flex flex-col items-center justify-center gap-1">
+                <p className="font-headline text-2xl font-bold text-on-surface">
+                  {outlook.longGapCountTop50}<span className="text-base font-medium text-on-surface-variant/50">/50</span>
                 </p>
-                <p className="text-[11px] text-on-surface-variant">
-                  songs carrying 20+ show gaps
+                <p className="text-[11px] font-medium text-on-surface-variant text-center">
+                  20+ show gaps
                 </p>
               </div>
             </div>
 
-            <div className={CARD_CLASS}>
-              <p className="font-label text-[10px] uppercase tracking-[0.18rem] text-on-surface-variant">
+            <div className={`${CARD_CLASS} flex flex-col justify-center`}>
+              <p className="mb-2 font-label text-[10px] font-bold uppercase tracking-[0.18rem] text-on-surface-variant/80">
                 {modelMetric.label}
               </p>
-              <div className="mt-2 flex items-baseline justify-center gap-2">
-                <p className="font-headline text-lg font-semibold text-on-surface md:text-xl">
+              <div className="flex flex-col items-center justify-center gap-1">
+                <p className="font-headline text-2xl font-bold text-on-surface">
                   {modelMetric.value}
                 </p>
-                <p className="text-[11px] text-on-surface-variant">
+                <p className="text-[11px] font-medium text-on-surface-variant text-center">
                   {modelMetric.description}
                 </p>
               </div>

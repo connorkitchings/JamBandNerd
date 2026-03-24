@@ -77,7 +77,7 @@ export default async function PerformancePage({ searchParams }: Props) {
 
   const selectedBand =
     bandsResult.status === "ready" ? bandSelection.bandEntry?.slug : params.band;
-  const state = await getRecentAccuracy(selectedBand, params.model, 20);
+  const state = await getRecentAccuracy(selectedBand, params.model, 25);
 
   if (state.status === "missing_env") {
     return (
@@ -135,30 +135,42 @@ export default async function PerformancePage({ searchParams }: Props) {
               {MODEL_CONFIG[state.model].displayName} • last {state.rows.length} scored shows
             </p>
             <p className="mt-4 max-w-3xl text-sm leading-6 text-on-surface-variant">
-              Track how often the current model landed songs inside the Top 10, Top 25, and Top 50
-              windows. The goal here is fast read quality, not exhaustive backtest detail.
+              Tracking the percentage of songs played in a given setlist that were correctly predicted within the model's Top 10, Top 25, and Top 50 tiers.
             </p>
           </div>
-          <div className="rounded-xl border border-outline-variant/20 bg-surface-container-low p-5">
-            <p className="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">
-              Latest scored show
-            </p>
-            <p className="mt-3 font-headline text-2xl font-semibold text-on-surface">
-              {formatCompactDateLabel(latestRow?.showDate ?? null)}
-            </p>
-            <p className="mt-2 text-sm text-on-surface-variant">
-              {latestRow?.venueName ?? "Venue unavailable"}
-            </p>
-            <p className="mt-4 text-sm text-primary">
-              Top {k} recall{" "}
-              {formatPercent(
-                k === 10
-                  ? latestRow?.k10Recall ?? null
-                  : k === 25
-                    ? latestRow?.k25Recall ?? null
-                    : latestRow?.k50Recall ?? null
-              )}
-            </p>
+          <div className="rounded-xl border border-outline-variant/20 bg-surface-container-low p-5 flex flex-col justify-between text-center">
+            <div className="flex flex-col items-center">
+              <p className="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">
+                Latest scored show
+              </p>
+              <p className="mt-3 font-headline text-2xl font-semibold text-on-surface">
+                {formatCompactDateLabel(latestRow?.showDate ?? null)}
+              </p>
+              <p className="mt-2 text-sm text-on-surface-variant">
+                {latestRow?.venueName ?? "Venue unavailable"}
+              </p>
+            </div>
+            
+            <div className="mt-6 flex flex-wrap justify-center gap-x-6 gap-y-4 border-t border-outline-variant/15 pt-4">
+              <div className="flex flex-col items-center">
+                <p className="font-label text-[9px] uppercase tracking-[0.16rem] text-on-surface-variant">Top 10</p>
+                <p className={`mt-1 font-headline text-lg font-bold ${k === 10 ? "text-primary" : "text-on-surface"}`}>
+                  {formatPercent(latestRow?.k10Recall ?? null)}
+                </p>
+              </div>
+              <div className="flex flex-col items-center">
+                <p className="font-label text-[9px] uppercase tracking-[0.16rem] text-on-surface-variant">Top 25</p>
+                <p className={`mt-1 font-headline text-lg font-bold ${k === 25 ? "text-primary" : "text-on-surface"}`}>
+                  {formatPercent(latestRow?.k25Recall ?? null)}
+                </p>
+              </div>
+              <div className="flex flex-col items-center">
+                <p className="font-label text-[9px] uppercase tracking-[0.16rem] text-on-surface-variant">Top 50</p>
+                <p className={`mt-1 font-headline text-lg font-bold ${k === 50 ? "text-primary" : "text-on-surface"}`}>
+                  {formatPercent(latestRow?.k50Recall ?? null)}
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -167,27 +179,18 @@ export default async function PerformancePage({ searchParams }: Props) {
         <SectionCard
           title={formatPercent(top10Average)}
           eyebrow="Avg Top 10"
-        >
-          <p className="text-sm leading-6 text-on-surface-variant">
-            Quick-hit prediction quality for the highest-confidence slice.
-          </p>
-        </SectionCard>
+          centered
+        />
         <SectionCard
           title={formatPercent(top25Average)}
           eyebrow="Avg Top 25"
-        >
-          <p className="text-sm leading-6 text-on-surface-variant">
-            Broader board coverage across the mid-ranked prediction set.
-          </p>
-        </SectionCard>
+          centered
+        />
         <SectionCard
           title={formatPercent(top50Average)}
           eyebrow="Avg Top 50"
-        >
-          <p className="text-sm leading-6 text-on-surface-variant">
-            Long-tail hit rate across the full recommendation window.
-          </p>
-        </SectionCard>
+          centered
+        />
       </section>
 
       <SectionCard
@@ -244,26 +247,39 @@ export default async function PerformancePage({ searchParams }: Props) {
         </SectionCard>
 
         <SectionCard title="Best Night" eyebrow={`Top-${k} peak`}>
-          <div className="space-y-3">
-            <p className="font-headline text-2xl font-semibold text-on-surface">
-              {formatCompactDateLabel(bestRow?.showDate ?? null)}
-            </p>
-            <p className="text-sm text-on-surface-variant">
-              {bestRow?.venueName ?? "Venue unavailable"}
-            </p>
-            <p className="text-sm text-primary">
-              Top {k} recall{" "}
-              {formatPercent(
-                k === 10
-                  ? bestRow?.k10Recall ?? null
-                  : k === 25
-                    ? bestRow?.k25Recall ?? null
-                    : bestRow?.k50Recall ?? null
-              )}
-            </p>
-            <p className="text-sm text-on-surface-variant">
-              Use this as the fast benchmark for the current model and band pair.
-            </p>
+          <div className="flex h-full flex-col justify-between text-center">
+            <div className="flex flex-col items-center">
+              <p className="font-headline text-2xl font-semibold text-on-surface">
+                {formatCompactDateLabel(bestRow?.showDate ?? null)}
+              </p>
+              <p className="mt-2 text-sm text-on-surface-variant">
+                {bestRow?.venueName ?? "Venue unavailable"}
+              </p>
+              <p className="mt-4 text-sm text-on-surface-variant">
+                Use this as the fast benchmark for the current model and band pair.
+              </p>
+            </div>
+            
+            <div className="mt-6 flex flex-wrap justify-center gap-x-6 gap-y-4 border-t border-outline-variant/15 pt-4">
+              <div className="flex flex-col items-center">
+                <p className="font-label text-[9px] uppercase tracking-[0.16rem] text-on-surface-variant">Top 10</p>
+                <p className={`mt-1 font-headline text-lg font-bold ${k === 10 ? "text-primary" : "text-on-surface"}`}>
+                  {formatPercent(bestRow?.k10Recall ?? null)}
+                </p>
+              </div>
+              <div className="flex flex-col items-center">
+                <p className="font-label text-[9px] uppercase tracking-[0.16rem] text-on-surface-variant">Top 25</p>
+                <p className={`mt-1 font-headline text-lg font-bold ${k === 25 ? "text-primary" : "text-on-surface"}`}>
+                  {formatPercent(bestRow?.k25Recall ?? null)}
+                </p>
+              </div>
+              <div className="flex flex-col items-center">
+                <p className="font-label text-[9px] uppercase tracking-[0.16rem] text-on-surface-variant">Top 50</p>
+                <p className={`mt-1 font-headline text-lg font-bold ${k === 50 ? "text-primary" : "text-on-surface"}`}>
+                  {formatPercent(bestRow?.k50Recall ?? null)}
+                </p>
+              </div>
+            </div>
           </div>
         </SectionCard>
       </div>

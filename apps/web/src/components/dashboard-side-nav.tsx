@@ -20,24 +20,27 @@ function buildHref(band: BandSlug, model: ModelSlug) {
 
 export function DashboardSideNav({ band, model, bands }: Props) {
   return (
-    <>
-      {/* Mobile filter strip */}
-      <div className="mb-6 space-y-3 lg:hidden">
-        <div>
-          <p className="mb-2 font-label text-[10px] font-semibold uppercase tracking-[0.24em] text-on-surface-variant">
-            Band
-          </p>
-          <div className="flex flex-wrap gap-2">
+    <div className="mb-8 flex flex-col gap-5 rounded-2xl border border-outline-variant/20 bg-surface-container-low p-4 lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:gap-8">
+        
+        {/* Band Selector */}
+        <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
+          <div className="flex items-center lg:h-[72px]">
+            <span className="font-label text-[10px] font-semibold uppercase tracking-[0.24em] text-on-surface-variant">
+              Band
+            </span>
+          </div>
+          <div className="grid grid-cols-3 gap-2 2xl:flex 2xl:flex-wrap 2xl:items-center">
             {bands.map((item) => {
               const active = item.slug === band;
               return (
                 <Link
                   key={item.slug}
                   href={buildHref(item.slug, model)}
-                  className={`rounded-full border px-3 py-1.5 font-headline text-xs uppercase tracking-[0.14rem] transition ${
+                  className={`flex items-center justify-center rounded-full border px-3 py-1.5 text-center font-headline text-[11px] font-bold uppercase tracking-[0.12rem] transition ${
                     active
                       ? "border-primary-container bg-primary-container text-white"
-                      : "border-outline-variant bg-surface-container-low text-on-surface-variant hover:border-primary hover:text-on-surface"
+                      : "border-outline-variant/50 bg-surface text-on-surface-variant hover:border-primary hover:text-on-surface"
                   }`}
                 >
                   {item.displayName}
@@ -46,21 +49,28 @@ export function DashboardSideNav({ band, model, bands }: Props) {
             })}
           </div>
         </div>
-        <div>
-          <p className="mb-2 font-label text-[10px] font-semibold uppercase tracking-[0.24em] text-on-surface-variant">
-            Model
-          </p>
-          <div className="flex flex-wrap gap-2">
+        
+        {/* Desktop Divider */}
+        <div className="hidden h-6 w-px bg-outline-variant/30 lg:block" />
+
+        {/* Model Selector */}
+        <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
+          <div className="flex items-center lg:h-[72px]">
+            <span className="font-label text-[10px] font-semibold uppercase tracking-[0.24em] text-on-surface-variant">
+              Model
+            </span>
+          </div>
+          <div className="grid grid-cols-2 gap-2 2xl:flex 2xl:flex-wrap 2xl:items-center">
             {ACTIVE_MODELS.map((item) => {
               const active = item === model;
               return (
                 <Link
                   key={item}
                   href={buildHref(band, item)}
-                  className={`rounded-full border px-3 py-1.5 font-headline text-xs uppercase tracking-[0.14rem] transition ${
+                  className={`flex items-center justify-center rounded-full border px-3 py-1.5 text-center font-headline text-[11px] font-bold uppercase tracking-[0.12rem] transition ${
                     active
-                      ? "border-primary bg-primary text-[#002d6e]"
-                      : "border-outline-variant bg-surface-container-low text-on-surface-variant hover:border-primary hover:text-on-surface"
+                      ? "border-primary bg-primary/15 text-primary"
+                      : "border-outline-variant/50 bg-surface text-on-surface-variant hover:border-primary hover:text-on-surface"
                   }`}
                 >
                   {MODEL_CONFIG[item].displayName}
@@ -71,65 +81,14 @@ export function DashboardSideNav({ band, model, bands }: Props) {
         </div>
       </div>
 
-      {/* Desktop sidebar */}
-      <aside className="fixed left-0 top-0 hidden h-screen w-72 flex-col border-r border-white/15 bg-surface-container py-8 pt-24 lg:flex">
-        <div className="space-y-8 px-3">
-          <div className="space-y-1">
-            <p className="px-3 font-label text-[11px] font-semibold uppercase tracking-[0.24rem] text-primary/80">
-              Band
-            </p>
-            {bands.map((item) => {
-              const active = item.slug === band;
-              return (
-                <Link
-                  key={item.slug}
-                  href={buildHref(item.slug, model)}
-                  className={`flex items-center gap-3 px-3 py-3 font-headline text-xs font-medium uppercase transition-all ${
-                    active
-                      ? "border-l-4 border-primary-container bg-surface-container-high text-primary"
-                      : "text-on-surface/50 hover:bg-surface-container-high/60 hover:text-on-surface"
-                  }`}
-                >
-                  <span className="text-sm">{active ? "◉" : "○"}</span>
-                  {item.displayName}
-                </Link>
-              );
-            })}
-          </div>
-
-          <div className="space-y-1">
-            <p className="px-3 font-label text-[11px] font-semibold uppercase tracking-[0.24rem] text-primary/80">
-              Model
-            </p>
-            {ACTIVE_MODELS.map((item) => {
-              const active = item === model;
-              return (
-                <Link
-                  key={item}
-                  href={buildHref(band, item)}
-                  className={`flex items-center gap-3 px-3 py-3 font-headline text-xs font-medium uppercase transition-all ${
-                    active
-                      ? "border-l-4 border-primary-container bg-surface-container-high text-primary"
-                      : "text-on-surface/50 hover:bg-surface-container-high/60 hover:text-on-surface"
-                  }`}
-                >
-                  <span className="text-sm">{active ? "◆" : "◇"}</span>
-                  {MODEL_CONFIG[item].displayName}
-                </Link>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="mt-auto px-6">
-          <Link
-            href={`/compare?band=${band}`}
-            className="block w-full rounded-lg bg-primary-container px-4 py-3 text-center font-headline text-xs uppercase tracking-[0.18rem] text-white transition hover:opacity-90"
-          >
-            Compare Models
-          </Link>
-        </div>
-      </aside>
-    </>
+      <div className="mt-1 lg:mt-0">
+        <Link
+          href={`/compare?band=${band}`}
+          className="inline-flex w-full items-center justify-center rounded-lg border border-outline-variant/40 bg-surface px-4 py-2 text-center font-headline text-[11px] font-bold uppercase tracking-[0.18rem] text-on-surface transition hover:border-primary hover:bg-surface-container hover:text-primary lg:w-auto"
+        >
+          Compare Models
+        </Link>
+      </div>
+    </div>
   );
 }

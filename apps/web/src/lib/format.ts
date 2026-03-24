@@ -16,6 +16,22 @@ export function formatDateLabel(value: string | null) {
   }).format(parsed);
 }
 
+export function formatMMDDYYYY(value: string | null) {
+  if (!value) return "—";
+  
+  const parsed = new Date(`${value}T12:00:00Z`);
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat("en-US", {
+    month: "2-digit",
+    day: "2-digit",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(parsed);
+}
+
 export function formatCompactDateLabel(value: string | null) {
   if (!value) {
     return "Unknown";

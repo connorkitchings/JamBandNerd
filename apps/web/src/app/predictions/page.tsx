@@ -128,7 +128,7 @@ export default async function PredictionsPage({ searchParams }: Props) {
   }));
 
   return (
-    <div className="w-full pb-6 lg:pl-72">
+    <div className="w-full max-w-6xl mx-auto">
       <DashboardSideNav
         band={predictionState.band}
         model={predictionState.model}
@@ -171,7 +171,7 @@ export default async function PredictionsPage({ searchParams }: Props) {
           <SongSearch songs={searchSongs} />
         </div>
 
-        <SongBoard rows={predictionState.snapshot.predictions} />
+        <SongBoard rows={predictionState.snapshot.predictions} modelSlug={predictionState.model} />
       </section>
     </div>
   );

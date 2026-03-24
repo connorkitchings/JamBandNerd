@@ -3,14 +3,16 @@
 import { useState } from "react";
 
 import type { PredictionRow } from "@/lib/data";
-import { TIER_ORDER, type LikelihoodTier } from "@/lib/config";
+import { TIER_ORDER, type LikelihoodTier, type ModelSlug } from "@/lib/config";
 import { TierBadge } from "@/components/tier-badge";
+import { formatMMDDYYYY } from "@/lib/format";
 
 type Props = {
   rows: PredictionRow[];
   highlightSongs?: Set<string>;
   secondarySongs?: Set<string>;
   compact?: boolean;
+  modelSlug?: ModelSlug | string;
 };
 
 function ChevronIcon({ open }: { open: boolean }) {
@@ -81,6 +83,7 @@ function TierSection({
   secondarySongs,
   defaultOpen,
   compact,
+  modelSlug,
 }: {
   tier: LikelihoodTier;
   rows: PredictionRow[];
@@ -88,10 +91,13 @@ function TierSection({
   secondarySongs?: Set<string>;
   defaultOpen: boolean;
   compact?: boolean;
+  modelSlug?: string;
 }) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
   if (rows.length === 0) return null;
+
+  const isCkPlus = modelSlug === "ckplus";
 
   return (
     <div className="rounded-xl border border-outline-variant/20 bg-surface-container-low overflow-hidden">
@@ -118,30 +124,40 @@ function TierSection({
 
       <div
         id={`tier-content-${tier}`}
-        className="border-t border-outline-variant/15"
+        className="border-t border-outline-variant/15 w-full bg-surface-container-low"
         hidden={!isOpen}
       >
         {/* Desktop table view */}
-          <div className="hidden md:block">
+          <div className="hidden md:block overflow-x-auto w-full">
             <table className="w-full border-collapse text-left text-sm">
               <thead>
                 <tr>
-                  <th className="px-4 py-2.5 font-label text-[10px] font-medium uppercase tracking-[0.18rem] text-on-surface-variant">
+                  <th className="w-16 px-4 py-2.5 font-label text-[10px] font-medium uppercase tracking-[0.18rem] text-on-surface-variant">
                     Rank
                   </th>
                   <th className="px-4 py-2.5 font-label text-[10px] font-medium uppercase tracking-[0.18rem] text-on-surface-variant">
                     Song
                   </th>
-                  <th className="px-4 py-2.5 font-label text-[10px] font-medium uppercase tracking-[0.18rem] text-on-surface-variant">
+                  <th className="w-28 px-4 py-2.5 font-label text-[10px] font-medium uppercase tracking-[0.18rem] text-on-surface-variant text-right">
                     Current Gap
                   </th>
+                  {isCkPlus && (
+                    <>
+                      <th className="w-28 px-4 py-2.5 font-label text-[10px] font-medium uppercase tracking-[0.18rem] text-on-surface-variant text-right">
+                        Avg Gap
+                      </th>
+                      <th className="w-28 px-4 py-2.5 font-label text-[10px] font-medium uppercase tracking-[0.18rem] text-on-surface-variant text-right">
+                        Gap Ratio
+                      </th>
+                    </>
+                  )}
                   {!compact && (
-                    <th className="px-4 py-2.5 font-label text-[10px] font-medium uppercase tracking-[0.18rem] text-on-surface-variant">
+                    <th className="w-32 px-4 py-2.5 font-label text-[10px] font-medium uppercase tracking-[0.18rem] text-on-surface-variant text-right">
                       Last Played
                     </th>
                   )}
                   {highlightSongs && (
-                    <th className="px-4 py-2.5 font-label text-[10px] font-medium uppercase tracking-[0.18rem] text-on-surface-variant">
+                    <th className="w-24 px-4 py-2.5 font-label text-[10px] font-medium uppercase tracking-[0.18rem] text-on-surface-variant text-center">
                       Played
                     </th>
                   )}
@@ -153,30 +169,38 @@ function TierSection({
                   return (
                     <tr
                       key={`${row.rank}-${row.songName}`}
-                      className={`transition-colors hover:bg-surface-container ${
-                        index % 2 === 1 ? "bg-surface-container-low/50" : ""
-                      } ${isHighlighted ? "bg-green-950/20" : ""}`}
+                      className={`transition-colors hover:bg-surface-container border-t border-outline-variant/5 ${isHighlighted ? "bg-green-950/20" : ""}`}
                     >
-                      <td className="whitespace-nowrap px-4 py-2.5 font-headline text-sm font-bold tabular-nums text-on-surface-variant">
+                      <td className="whitespace-nowrap px-4 py-3.5 font-headline text-sm font-bold tabular-nums text-on-surface-variant">
                         {row.rank}
                       </td>
-                      <td className="px-4 py-2.5">
-                        <span className={`font-headline font-medium ${isHighlighted ? "text-green-300" : "text-on-surface"}`}>
+                      <td className="px-4 py-3.5">
+                        <span className={`font-headline font-medium ${isHighlighted ? "text-green-300" : "text-on-surface"}`} title={row.songName}>
                           {row.songName}
                         </span>
                       </td>
-                      <td className="whitespace-nowrap px-4 py-2.5 font-headline text-sm text-on-surface-variant">
-                        {row.currentGap !== null
-                          ? `${row.currentGap} ${row.currentGap === 1 ? "show" : "shows"}`
-                          : "—"}
+                      <td className="whitespace-nowrap px-4 py-3.5 text-right">
+                        <span className="rounded bg-surface-container px-2 py-1 font-mono text-xs font-medium text-on-surface-variant">
+                          {row.currentGap !== null ? row.currentGap : "—"}
+                        </span>
                       </td>
+                      {isCkPlus && (
+                        <>
+                          <td className="whitespace-nowrap px-4 py-3.5 text-right text-sm tabular-nums text-on-surface-variant">
+                            {row.avgGap !== null ? row.avgGap.toFixed(1) : "—"}
+                          </td>
+                          <td className="whitespace-nowrap px-4 py-3.5 text-right text-sm tabular-nums text-on-surface-variant">
+                            {row.gapRatio !== null ? `${row.gapRatio.toFixed(1)}x` : "—"}
+                          </td>
+                        </>
+                      )}
                       {!compact && (
-                        <td className="whitespace-nowrap px-4 py-2.5 text-sm text-on-surface-variant">
-                          {row.lastPlayed ?? "—"}
+                        <td className="whitespace-nowrap px-4 py-3.5 text-right text-sm text-on-surface-variant">
+                          {row.lastPlayed ? formatMMDDYYYY(row.lastPlayed) : "—"}
                         </td>
                       )}
                       {highlightSongs && (
-                        <td className="px-4 py-2.5">
+                        <td className="px-4 py-3.5 text-center">
                           {isHighlighted && <CheckIcon />}
                         </td>
                       )}
@@ -187,7 +211,7 @@ function TierSection({
             </table>
           </div>
 
-          {/* Mobile card view */}
+        {/* Mobile card view */}
           <div className="divide-y divide-outline-variant/10 md:hidden">
             {rows.map((row) => {
               const isHighlighted = highlightSongs?.has(normalizeSongName(row.songName));
@@ -224,7 +248,7 @@ function TierSection({
   );
 }
 
-export function SongBoard({ rows, highlightSongs, secondarySongs, compact }: Props) {
+export function SongBoard({ rows, highlightSongs, secondarySongs, compact, modelSlug }: Props) {
   const grouped = TIER_ORDER.reduce(
     (acc, tier) => {
       acc[tier] = rows.filter((row) => row.tier === tier);
@@ -244,9 +268,10 @@ export function SongBoard({ rows, highlightSongs, secondarySongs, compact }: Pro
           secondarySongs={secondarySongs}
           defaultOpen
           compact={compact}
+          modelSlug={modelSlug}
         />
       ))}
-      <p className="text-center font-label text-[10px] uppercase tracking-[0.16rem] text-on-surface-variant/50">
+      <p className="pt-2 text-center font-label text-[10px] uppercase tracking-[0.16rem] text-on-surface-variant/50">
         {rows.length} songs ranked · Tiers reflect relative model signal, not guaranteed outcomes
       </p>
     </div>

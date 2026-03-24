@@ -35,13 +35,6 @@ export const DESKTOP_NAV_ITEMS: NavItem[] = [
     icon: "◎",
     matches: ["/explorer", "/compare", "/venues"],
   },
-  {
-    href: "/about",
-    label: "About",
-    mobileLabel: "About",
-    icon: "○",
-    matches: ["/about"],
-  },
 ];
 
 export const MOBILE_NAV_ITEMS: NavItem[] = [
@@ -72,13 +65,6 @@ export const MOBILE_NAV_ITEMS: NavItem[] = [
     mobileLabel: "Last Show",
     icon: "◧",
     matches: ["/last-show"],
-  },
-  {
-    href: "/about",
-    label: "About",
-    mobileLabel: "About",
-    icon: "○",
-    matches: ["/about"],
   },
 ];
 

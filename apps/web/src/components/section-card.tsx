@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 type Props = {
   title: string;
   eyebrow?: string;
-  children: ReactNode;
+  children?: ReactNode;
   centered?: boolean;
 };
 
@@ -26,7 +26,7 @@ export function SectionCard({ title, eyebrow, children, centered = false }: Prop
       >
         {title}
       </h2>
-      <div className="mt-5">{children}</div>
+      {children && <div className="mt-5">{children}</div>}
     </section>
   );
 }
