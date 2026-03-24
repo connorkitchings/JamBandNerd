@@ -53,9 +53,8 @@ def _page_has_setlist_table(page_html: str, show_id: str) -> bool:
     for table in tables[4:8]:
         table_text = table.get_text()
         if (
-            ("0:" in table_text or "1:" in table_text or "2:" in table_text)
-            and "Song Stats" not in table_text
-        ):
+            "0:" in table_text or "1:" in table_text or "2:" in table_text
+        ) and "Song Stats" not in table_text:
             return True
 
     return False
@@ -471,11 +470,6 @@ def process_wsp_data(
         setlists_data = collector.collect_setlists(records_for_scrape)
         if setlists_data:
             setlists_df = normalize_setlists(setlists_data)
-
-            schema = get_table_schema("wsp_setlists_raw")
-            if any(str(col.get("column_name", "")).lower() == "source" for col in schema):
-                setlists_df["source"] = "everydaycompanion"
-
             validate_and_upsert_dataframe(
                 table_name="wsp_setlists_raw",
                 df=setlists_df,
@@ -556,7 +550,9 @@ def process_wsp_data(
             .execute()
         )
         recent_rows = recent_resp.data or []
-        show_ids = [str(row.get("show_id")) for row in recent_rows if row.get("show_id")]
+        show_ids = [
+            str(row.get("show_id")) for row in recent_rows if row.get("show_id")
+        ]
         if show_ids:
             setlists_resp = (
                 client.table("wsp_setlists_raw")
@@ -570,7 +566,9 @@ def process_wsp_data(
                 if row.get("show_id")
             }
             missing_rows = [
-                row for row in recent_rows if str(row.get("show_id")) not in completed_ids
+                row
+                for row in recent_rows
+                if str(row.get("show_id")) not in completed_ids
             ]
             diagnostics = classify_missing_recent_setlists(client, missing_rows)
             if diagnostics:
@@ -579,7 +577,9 @@ def process_wsp_data(
                 )
                 logging.warning(
                     "Recent WSP missing-setlist diagnostics: %s",
-                    ", ".join(f"{key}={value}" for key, value in sorted(counts.items())),
+                    ", ".join(
+                        f"{key}={value}" for key, value in sorted(counts.items())
+                    ),
                 )
                 for item in diagnostics[:5]:
                     logging.warning(
