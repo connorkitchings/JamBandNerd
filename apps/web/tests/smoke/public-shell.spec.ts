@@ -39,6 +39,9 @@ test("desktop routes render the public shell", async ({ page }, testInfo) => {
   await expect(page.getByRole("navigation", { name: "Primary navigation" })).toBeVisible();
   await expect(page.getByRole("navigation", { name: "Primary navigation" }).getByRole("link", { name: "Predictions" })).toBeVisible();
   await expect(page.getByRole("navigation", { name: "Primary navigation" }).getByRole("link", { name: "Performance" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "JamBandNerd" }),
+  ).toBeVisible();
 
   await page.goto("/performance");
   await expectPageHeadingOrMissingEnv(page, "Historical Performance");
@@ -46,15 +49,24 @@ test("desktop routes render the public shell", async ({ page }, testInfo) => {
   await page.goto("/explorer");
   await expectPageHeadingOrMissingEnv(page, "Historical Explorer");
 
+  await page.goto("/venues");
+  await expectPageHeadingOrMissingEnv(page, "Venue Analytics");
+
   await page.goto("/compare");
   await expectPageHeadingOrMissingEnv(page, "Model Compare");
 
-  // /predictions now redirects to /
   await page.goto("/predictions");
+  await expectPageHeadingOrMissingEnv(page, "Song Board");
+
+  await page.goto("/?band=goose&model=notebook");
+  await page.waitForURL(/\/predictions\?band=goose&model=notebook$/);
   await expectPageHeadingOrMissingEnv(page, "Song Board");
 
   await page.goto("/about");
   await expect(page.getByRole("heading", { name: "About JamBandNerd" })).toBeVisible();
+
+  await page.goto("/data-use");
+  await expect(page.getByRole("heading", { name: "Data Use" })).toBeVisible();
 });
 
 test("mobile navigation uses thumb-first ordering", async ({ page }, testInfo) => {

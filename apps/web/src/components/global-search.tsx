@@ -78,7 +78,7 @@ export function GlobalSearch({ items, bandDisplayNames }: Props) {
   function handleSelect(band: string) {
     setIsOpen(false);
     setQuery("");
-    router.push(`/?band=${band}`);
+    router.push(`/predictions?band=${band}`);
   }
 
   return (

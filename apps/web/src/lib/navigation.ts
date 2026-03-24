@@ -9,10 +9,17 @@ export type NavItem = {
 export const DESKTOP_NAV_ITEMS: NavItem[] = [
   {
     href: "/",
+    label: "Home",
+    mobileLabel: "Home",
+    icon: "◉",
+    matches: ["/"],
+  },
+  {
+    href: "/predictions",
     label: "Predictions",
     mobileLabel: "Predict",
     icon: "◈",
-    matches: ["/", "/predictions"],
+    matches: ["/predictions"],
   },
   {
     href: "/performance",
@@ -22,11 +29,11 @@ export const DESKTOP_NAV_ITEMS: NavItem[] = [
     matches: ["/performance"],
   },
   {
-    href: "/explorer",
-    label: "Analysis",
-    mobileLabel: "Explore",
+    href: "/venues",
+    label: "Deep-Dive",
+    mobileLabel: "Deep-Dive",
     icon: "◎",
-    matches: ["/explorer", "/compare"],
+    matches: ["/explorer", "/compare", "/venues"],
   },
   {
     href: "/about",
@@ -39,11 +46,11 @@ export const DESKTOP_NAV_ITEMS: NavItem[] = [
 
 export const MOBILE_NAV_ITEMS: NavItem[] = [
   {
-    href: "/explorer",
-    label: "Analysis",
-    mobileLabel: "Explore",
+    href: "/venues",
+    label: "Deep-Dive",
+    mobileLabel: "Deep-Dive",
     icon: "◎",
-    matches: ["/explorer", "/compare"],
+    matches: ["/explorer", "/compare", "/venues"],
   },
   {
     href: "/performance",
@@ -53,11 +60,11 @@ export const MOBILE_NAV_ITEMS: NavItem[] = [
     matches: ["/performance"],
   },
   {
-    href: "/",
+    href: "/predictions",
     label: "Predictions",
     mobileLabel: "Predict",
     icon: "◈",
-    matches: ["/", "/predictions"],
+    matches: ["/predictions"],
   },
   {
     href: "/last-show",

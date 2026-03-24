@@ -1,140 +1,233 @@
-import type { PredictionRow, ModelAgreement } from "@/lib/data";
+import type { ModelSlug } from "@/lib/config";
+import type { PredictionRow } from "@/lib/data";
 
 type Props = {
   venueName: string;
   dateLabel: string;
   locationLabel: string;
   statusLabel: string;
-  modelLabel: string;
-  bandLabel: string;
+  modelSlug: ModelSlug;
   snapshotLabel: string;
   totalSongs: number;
   predictions: PredictionRow[];
-  agreementScore?: ModelAgreement | null;
 };
 
-function getOutlookLabel(predictions: PredictionRow[]) {
-  if (predictions.length === 0) return "No signal";
+function getOutlookSummary(predictions: PredictionRow[]) {
+  if (predictions.length === 0) {
+    return {
+      label: "No signal",
+      rotationCoreTop10: 0,
+      longGapCountTop50: 0,
+    };
+  }
 
   const top10 = predictions.slice(0, 10);
-  const avgRecentGap =
-    top10.reduce(
-      (sum, row) => sum + (row.recentAvgGap ?? row.avgGap ?? 0),
-      0
-    ) / top10.length;
-  const hotCount = predictions.filter((row) => row.tier === "hot").length;
-  const deepCutCount = predictions.filter((row) => row.tier === "possible").length;
+  const top50 = predictions.slice(0, 50);
+  const avgCurrentGap =
+    top10.reduce((sum, row) => sum + (row.currentGap ?? 0), 0) /
+    Math.max(top10.length, 1);
+  const recentCount = top10.filter(
+    (row) => (row.currentGap ?? Number.POSITIVE_INFINITY) <= 8,
+  ).length;
+  const longGapCountTop50 = top50.filter(
+    (row) => (row.currentGap ?? 0) >= 20,
+  ).length;
 
-  if (avgRecentGap >= 15) return "Deep cuts expected";
-  if (hotCount >= 4 && avgRecentGap < 8) return "Heavy rotation";
-  if (deepCutCount > predictions.length * 0.4) return "Bust-out potential";
-  return "Balanced expectations";
+  if (avgCurrentGap >= 15) {
+    return {
+      label: "Deep cuts expected",
+      rotationCoreTop10: recentCount,
+      longGapCountTop50,
+    };
+  }
+
+  if (recentCount >= 4 && avgCurrentGap < 8) {
+    return {
+      label: "Heavy rotation",
+      rotationCoreTop10: recentCount,
+      longGapCountTop50,
+    };
+  }
+
+  if (longGapCountTop50 >= 8) {
+    return {
+      label: "Bust-out potential",
+      rotationCoreTop10: recentCount,
+      longGapCountTop50,
+    };
+  }
+
+  return {
+    label: "Balanced expectations",
+    rotationCoreTop10: recentCount,
+    longGapCountTop50,
+  };
 }
+
+function getModelSpecificMetric(predictions: PredictionRow[], modelSlug: ModelSlug) {
+  const top10 = predictions.slice(0, 10);
+
+  if (modelSlug === "ckplus") {
+    const gapRatios = top10
+      .map((row) => row.gapRatio)
+      .filter((value): value is number => value !== null);
+    const avgGapRatio =
+      gapRatios.length > 0
+        ? gapRatios.reduce((sum, value) => sum + value, 0) / gapRatios.length
+        : null;
+
+    return {
+      label: "Overdue Signal - Top 10",
+      value: avgGapRatio !== null ? `${avgGapRatio.toFixed(1)}x` : "—",
+      description: "avg overdue vs usual cadence",
+    };
+  }
+
+  const returnWindowCount = top10.filter((row) => {
+    const currentGap = row.currentGap;
+    return currentGap !== null && currentGap >= 4 && currentGap <= 8;
+  }).length;
+
+  return {
+    label: "Return Window - Top 10",
+    value: `${returnWindowCount}/10`,
+    description: "songs last played 4-8 shows ago",
+  };
+}
+
+const CARD_CLASS =
+  "relative rounded-2xl border border-outline-variant/20 bg-surface/82 px-5 py-4 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-sm";
 
 export function PredictionHero({
   venueName,
   dateLabel,
   locationLabel,
   statusLabel,
-  modelLabel,
-  bandLabel,
+  modelSlug,
   snapshotLabel,
   totalSongs,
   predictions,
-  agreementScore,
 }: Props) {
-  const outlookLabel = getOutlookLabel(predictions);
+  const outlook = getOutlookSummary(predictions);
+  const modelMetric = getModelSpecificMetric(predictions, modelSlug);
 
   return (
     <section className="mb-10">
-      <div className="relative min-h-[280px] overflow-hidden rounded-lg border-l-4 border-primary bg-surface-container p-8 md:p-12">
-        <div className="absolute inset-y-0 right-0 w-1/3 bg-gradient-to-l from-primary-container/20 to-transparent opacity-70" />
-        <div className="relative z-10 grid grid-cols-1 items-center gap-8 lg:grid-cols-12">
-          <div className="lg:col-span-8">
-            <span className="mb-4 inline-block bg-secondary-container px-3 py-1 font-label text-[10px] uppercase tracking-[0.18rem] text-on-secondary-container">
+      <div className="relative overflow-visible rounded-[28px] border border-outline-variant/30 bg-surface-container px-6 py-8 shadow-[0_24px_80px_rgba(0,0,0,0.08)] md:px-10 md:py-10">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,205,110,0.20),transparent_36%),linear-gradient(140deg,rgba(255,255,255,0.05),transparent_58%)]" />
+        <div className="absolute inset-y-0 right-0 w-2/5 bg-gradient-to-l from-primary-container/16 via-primary-container/6 to-transparent opacity-90" />
+
+        <div className="relative z-10 mx-auto max-w-5xl">
+          <div className="mx-auto max-w-4xl text-center">
+            <span className="inline-flex items-center rounded-full bg-secondary-container px-3 py-1 font-label text-[10px] uppercase tracking-[0.18rem] text-on-secondary-container">
               {statusLabel}
             </span>
-            <h1 className="mb-8 mt-2 font-headline text-4xl font-bold uppercase tracking-[-0.08em] text-on-surface md:text-6xl">
-              {venueName}
-            </h1>
-            <p className="mb-8 mt-2 font-headline text-lg uppercase tracking-tight text-primary">
+            <p className="mt-5 font-headline text-lg uppercase tracking-[0.04em] text-primary md:text-xl">
               {dateLabel}
               {locationLabel ? ` • ${locationLabel}` : ""}
             </p>
-            <div className="grid grid-cols-2 gap-6">
-              <div className="md:hidden">
-                <p className="mb-1 font-label text-[10px] uppercase tracking-[0.18rem] text-on-surface-variant">
-                  Band
+            <h1 className="mx-auto mt-3 max-w-4xl text-balance font-headline text-4xl font-bold uppercase tracking-[-0.08em] text-on-surface md:text-6xl">
+              {venueName}
+            </h1>
+          </div>
+
+          <div className="relative z-20 mx-auto mt-8 grid max-w-4xl gap-3 overflow-visible md:grid-cols-2">
+            <div className={`${CARD_CLASS} z-30 overflow-visible hover:z-40 focus-within:z-40`}>
+              <div className="flex items-center justify-center gap-2">
+                <p className="font-label text-[10px] uppercase tracking-[0.18rem] text-on-surface-variant">
+                  Show Outlook
                 </p>
-                <p className="font-headline text-lg font-semibold text-on-surface">{bandLabel}</p>
-              </div>
-              <div className="md:hidden">
-                <p className="mb-1 font-label text-[10px] uppercase tracking-[0.18rem] text-on-surface-variant">
-                  Model
-                </p>
-                <div className="flex items-center gap-2">
-                  <p className="font-headline text-lg font-semibold text-on-surface">{modelLabel}</p>
+                <div className="group relative z-40">
+                  <button
+                    aria-label="Explain show outlook"
+                    className="flex size-5 items-center justify-center rounded-full border border-outline-variant/30 text-[10px] text-on-surface-variant transition hover:border-primary hover:text-primary focus-visible:border-primary focus-visible:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    type="button"
+                  >
+                    i
+                  </button>
+                  <div className="pointer-events-none absolute left-1/2 top-full z-50 mt-2 w-80 max-w-[calc(100vw-2rem)] -translate-x-1/2 rounded-xl border border-outline-variant/30 bg-surface px-3 py-3 text-left text-xs leading-5 text-on-surface-variant opacity-0 shadow-xl transition group-hover:opacity-100 group-focus-within:opacity-100 md:w-72">
+                    <p>A plain-language read of the current top 10 prediction board.</p>
+                    <p className="mt-2">
+                      <span className="font-semibold text-on-surface">Heavy rotation:</span>{" "}
+                      top songs were played recently and the board leans familiar.
+                    </p>
+                    <p>
+                      <span className="font-semibold text-on-surface">
+                        Deep cuts expected:
+                      </span>{" "}
+                      top songs have been missing longer and the board leans less
+                      frequent.
+                    </p>
+                    <p>
+                      <span className="font-semibold text-on-surface">
+                        Bust-out potential:
+                      </span>{" "}
+                      the wider ranked list includes more long-gap songs than usual.
+                    </p>
+                    <p>
+                      <span className="font-semibold text-on-surface">
+                        Balanced expectations:
+                      </span>{" "}
+                      a mix of active rotation songs and longer-gap reach candidates.
+                    </p>
+                  </div>
                 </div>
               </div>
-              <div>
-                <p className="mb-1 font-label text-[10px] uppercase tracking-[0.18rem] text-on-surface-variant">
-                  Songs Ranked
+              <p className="mt-2 font-headline text-lg font-semibold text-primary md:text-xl">
+                {outlook.label}
+              </p>
+            </div>
+
+            <div className={CARD_CLASS}>
+              <p className="font-label text-[10px] uppercase tracking-[0.18rem] text-on-surface-variant">
+                Rotation Core - Top 10
+              </p>
+              <div className="mt-2 flex items-baseline justify-center gap-2">
+                <p className="font-headline text-lg font-semibold text-on-surface md:text-xl">
+                  {outlook.rotationCoreTop10}/10
                 </p>
-                <p className="font-headline text-lg font-semibold text-on-surface">{totalSongs}</p>
+                <p className="text-[11px] text-on-surface-variant">
+                  songs played within the last 8 shows
+                </p>
               </div>
-              <div>
-                <p className="mb-1 font-label text-[10px] uppercase tracking-[0.18rem] text-on-surface-variant">
-                  Snapshot
+            </div>
+
+            <div className={CARD_CLASS}>
+              <p className="font-label text-[10px] uppercase tracking-[0.18rem] text-on-surface-variant">
+                Long-Gap Watch - Top 50
+              </p>
+              <div className="mt-2 flex items-baseline justify-center gap-2">
+                <p className="font-headline text-lg font-semibold text-on-surface md:text-xl">
+                  {outlook.longGapCountTop50}/50
                 </p>
-                <p className="font-headline text-lg font-semibold text-on-surface">{snapshotLabel}</p>
+                <p className="text-[11px] text-on-surface-variant">
+                  songs carrying 20+ show gaps
+                </p>
+              </div>
+            </div>
+
+            <div className={CARD_CLASS}>
+              <p className="font-label text-[10px] uppercase tracking-[0.18rem] text-on-surface-variant">
+                {modelMetric.label}
+              </p>
+              <div className="mt-2 flex items-baseline justify-center gap-2">
+                <p className="font-headline text-lg font-semibold text-on-surface md:text-xl">
+                  {modelMetric.value}
+                </p>
+                <p className="text-[11px] text-on-surface-variant">
+                  {modelMetric.description}
+                </p>
               </div>
             </div>
           </div>
 
-          <div className="flex flex-col gap-4 lg:col-span-4">
-            <div className="rounded-xl border border-outline-variant/20 bg-surface-container-low p-5">
-              <div className="flex items-center gap-2">
-                <p className="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">
-                  Show Outlook
-                </p>
-                <span
-                  className="text-[10px] text-on-surface-variant"
-                  title="Based on songs in the top 10 predictions"
-                >
-                  ⓘ
-                </span>
-              </div>
-              <p className="mt-2 font-headline text-lg font-semibold text-primary">
-                {outlookLabel}
-              </p>
-
-              {agreementScore && (
-                <div className="mt-4 border-t border-outline-variant/20 pt-4">
-                  <div className="mb-2 flex items-center gap-2">
-                    <p className="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">
-                      Model Agreement
-                    </p>
-                    <span 
-                      className="rounded bg-primary/10 px-1.5 py-0.5 font-label text-[10px] font-bold uppercase tracking-wider text-primary ring-1 ring-inset ring-primary/20"
-                      title={`${Math.round(agreementScore.composite * 100)}% weighted agreement across models`}
-                    >
-                      {Math.round(agreementScore.composite * 100)}% Match
-                    </span>
-                  </div>
-                  <div className="flex gap-3">
-                    <span className="text-[10px] text-on-surface-variant">
-                      <span className="font-semibold">{agreementScore.top10.matchCount}/{agreementScore.top10.total}</span> top-10
-                    </span>
-                    <span className="text-[10px] text-on-surface-variant">
-                      <span className="font-semibold">{agreementScore.top25.matchCount}/{agreementScore.top25.total}</span> top-25
-                    </span>
-                    <span className="text-[10px] text-on-surface-variant">
-                      <span className="font-semibold">{agreementScore.top50.matchCount}/{agreementScore.top50.total}</span> top-50
-                    </span>
-                  </div>
-                </div>
-              )}
-            </div>
+          <div className="mx-auto mt-5 grid max-w-4xl grid-cols-1 gap-2 border-t border-outline-variant/15 pt-4 text-[10px] uppercase tracking-[0.16rem] text-on-surface-variant md:grid-cols-2">
+            <p className="text-center md:text-left">
+              Songs Ranked: <span className="text-on-surface/70">{totalSongs}</span>
+            </p>
+            <p className="text-center md:text-right">
+              Prediction Run: <span className="text-on-surface/70">{snapshotLabel}</span>
+            </p>
           </div>
         </div>
       </div>

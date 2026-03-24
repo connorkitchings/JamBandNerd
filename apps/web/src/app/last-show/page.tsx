@@ -173,7 +173,7 @@ export default async function LastShowPage({ searchParams }: Props) {
               </p>
             </Link>
             <Link
-              href={`/?band=${state.band}&model=notebook`}
+              href={`/predictions?band=${state.band}&model=notebook`}
               className="block rounded-xl border border-outline-variant/20 bg-surface-container-low p-4 transition hover:border-primary"
             >
               <p className="font-headline text-lg font-medium text-on-surface">
