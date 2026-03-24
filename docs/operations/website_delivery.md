@@ -3,6 +3,12 @@
 This document defines the current delivery model for JamBandNerd: the website in `apps/web` is the
 active product surface and operating path.
 
+Current route split:
+
+- `/` is the public homepage and product entry page
+- `/predictions` is the primary live dashboard for repeat use
+- `/?band=...&model=...` redirects to `/predictions?...` for compatibility
+
 ## Target Architecture
 
 - **Frontend**: Monorepo website application
@@ -36,6 +42,7 @@ The website should become the primary public surface for:
 - Multi-band prediction browsing
 - Model comparison
 - Historical explorer workflows
+- Venue-specific historical analytics
 - Accuracy and performance views
 - Last-show details and explanatory content
 
@@ -72,6 +79,22 @@ npm run lint:web
 npm run build:web
 npm run test:web:smoke
 ```
+
+## Release Versioning
+
+JamBandNerd should use a single public product version across the repo and website.
+
+- Current public version: `0.1.0`
+- Versioning style: Semantic Versioning (`MAJOR.MINOR.PATCH`)
+- Scope rule: keep `pyproject.toml`, `src/jambandnerd/__init__.py`, `apps/web/package.json`, and the website footer version in sync
+
+Use these bump rules:
+
+- Patch (`0.1.x`): UI polish, bug fixes, copy edits, test-only work, and non-breaking internal cleanup
+- Minor (`0.x.0`): new user-facing pages/features, notable analytics additions, or meaningful model/product improvements that do not break expected workflows
+- Major (`x.0.0`): breaking product changes, major route/navigation resets, incompatible data contracts, or the first stable public `1.0.0`
+
+Until the product is stable, stay on the `0.x` line. Treat `0.1.0` as the first visible website version rather than a finished general-availability release.
 
 ## Environment Variables
 
@@ -149,6 +172,7 @@ After smoke verification, manually verify:
 
 - `/`
 - `/explorer`
+- `/venues`
 - `/compare`
 - `/performance`
 - `/last-show`

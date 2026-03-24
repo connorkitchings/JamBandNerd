@@ -132,22 +132,17 @@ function TierSection({
                   <th className="px-4 py-2.5 font-label text-[10px] font-medium uppercase tracking-[0.18rem] text-on-surface-variant">
                     Song
                   </th>
+                  <th className="px-4 py-2.5 font-label text-[10px] font-medium uppercase tracking-[0.18rem] text-on-surface-variant">
+                    Current Gap
+                  </th>
                   {!compact && (
                     <th className="px-4 py-2.5 font-label text-[10px] font-medium uppercase tracking-[0.18rem] text-on-surface-variant">
                       Last Played
                     </th>
                   )}
-                  <th className="px-4 py-2.5 font-label text-[10px] font-medium uppercase tracking-[0.18rem] text-on-surface-variant">
-                    Gap
-                  </th>
                   {highlightSongs && (
                     <th className="px-4 py-2.5 font-label text-[10px] font-medium uppercase tracking-[0.18rem] text-on-surface-variant">
                       Played
-                    </th>
-                  )}
-                  {secondarySongs && (
-                    <th className="px-4 py-2.5 font-label text-[10px] font-medium uppercase tracking-[0.18rem] text-on-surface-variant">
-                      Both
                     </th>
                   )}
                 </tr>
@@ -155,7 +150,6 @@ function TierSection({
               <tbody>
                 {rows.map((row, index) => {
                   const isHighlighted = highlightSongs?.has(normalizeSongName(row.songName));
-                  const agreesWithOtherModel = secondarySongs?.has(normalizeSongName(row.songName));
                   return (
                     <tr
                       key={`${row.rank}-${row.songName}`}
@@ -171,24 +165,19 @@ function TierSection({
                           {row.songName}
                         </span>
                       </td>
-                      {!compact && (
-                        <td className="whitespace-nowrap px-4 py-2.5 text-sm text-on-surface-variant">
-                          {row.lastPlayed ?? "—"}
-                        </td>
-                      )}
                       <td className="whitespace-nowrap px-4 py-2.5 font-headline text-sm text-on-surface-variant">
                         {row.currentGap !== null
                           ? `${row.currentGap} ${row.currentGap === 1 ? "show" : "shows"}`
                           : "—"}
                       </td>
+                      {!compact && (
+                        <td className="whitespace-nowrap px-4 py-2.5 text-sm text-on-surface-variant">
+                          {row.lastPlayed ?? "—"}
+                        </td>
+                      )}
                       {highlightSongs && (
                         <td className="px-4 py-2.5">
                           {isHighlighted && <CheckIcon />}
-                        </td>
-                      )}
-                      {secondarySongs && (
-                        <td className="px-4 py-2.5">
-                          {agreesWithOtherModel && <ModelAgreeIcon />}
                         </td>
                       )}
                     </tr>
@@ -219,10 +208,10 @@ function TierSection({
                         {agreesWithOtherModel && <span className="ml-1"><ModelAgreeIcon /></span>}
                       </p>
                       <p className="text-xs text-on-surface-variant">
-                        {row.lastPlayed ? `${row.lastPlayed} · ` : ""}
                         {row.currentGap !== null
                           ? `${row.currentGap} ${row.currentGap === 1 ? "show" : "shows"} ago`
-                          : "Gap unknown"}
+                          : "Current gap unknown"}
+                        {row.lastPlayed ? ` · ${row.lastPlayed}` : ""}
                       </p>
                     </div>
                   </div>
@@ -253,7 +242,7 @@ export function SongBoard({ rows, highlightSongs, secondarySongs, compact }: Pro
           rows={grouped[tier]}
           highlightSongs={highlightSongs}
           secondarySongs={secondarySongs}
-          defaultOpen={tier === "expected" || tier === "hot"}
+          defaultOpen
           compact={compact}
         />
       ))}

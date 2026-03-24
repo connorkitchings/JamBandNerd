@@ -15,7 +15,7 @@ type Props = {
 };
 
 function buildHref(band: BandSlug, model: ModelSlug) {
-  return `/?band=${band}&model=${model}`;
+  return `/predictions?band=${band}&model=${model}`;
 }
 
 export function DashboardSideNav({ band, model, bands }: Props) {
@@ -72,18 +72,11 @@ export function DashboardSideNav({ band, model, bands }: Props) {
       </div>
 
       {/* Desktop sidebar */}
-      <aside className="fixed left-0 top-0 hidden h-screen w-64 flex-col border-r border-white/15 bg-surface-container py-8 pt-24 lg:flex">
-        <div className="px-6">
-          <h3 className="font-headline text-lg font-bold text-on-surface">Global Filters</h3>
-          <p className="font-label text-[10px] font-medium uppercase tracking-[0.24em] text-on-surface/50">
-            Archivist Parameters
-          </p>
-        </div>
-
-        <div className="mt-6 space-y-8 px-3">
+      <aside className="fixed left-0 top-0 hidden h-screen w-72 flex-col border-r border-white/15 bg-surface-container py-8 pt-24 lg:flex">
+        <div className="space-y-8 px-3">
           <div className="space-y-1">
-            <p className="px-3 font-label text-[10px] uppercase tracking-[0.2rem] text-on-surface/40">
-              Bands
+            <p className="px-3 font-label text-[11px] font-semibold uppercase tracking-[0.24rem] text-primary/80">
+              Band
             </p>
             {bands.map((item) => {
               const active = item.slug === band;
@@ -105,8 +98,8 @@ export function DashboardSideNav({ band, model, bands }: Props) {
           </div>
 
           <div className="space-y-1">
-            <p className="px-3 font-label text-[10px] uppercase tracking-[0.2rem] text-on-surface/40">
-              Models
+            <p className="px-3 font-label text-[11px] font-semibold uppercase tracking-[0.24rem] text-primary/80">
+              Model
             </p>
             {ACTIVE_MODELS.map((item) => {
               const active = item === model;

@@ -4,7 +4,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
-import { GlobalSearch, type GlobalSearchItem } from "@/components/global-search";
 import { DESKTOP_NAV_ITEMS, isActivePath, isDetailPath } from "@/lib/navigation";
 
 function BackIcon() {
@@ -21,12 +20,7 @@ function BackIcon() {
   );
 }
 
-type Props = {
-  searchItems: GlobalSearchItem[];
-  bandDisplayNames: Record<string, string>;
-};
-
-export function SiteHeader({ searchItems, bandDisplayNames }: Props) {
+export function SiteHeader() {
   const pathname = usePathname();
   const router = useRouter();
   const showMobileBackButton = isDetailPath(pathname);
@@ -37,7 +31,7 @@ export function SiteHeader({ searchItems, bandDisplayNames }: Props) {
       return;
     }
 
-    router.push("/");
+    router.push("/predictions");
   }
 
   return (
@@ -95,9 +89,7 @@ export function SiteHeader({ searchItems, bandDisplayNames }: Props) {
           })}
         </div>
 
-        <div className="flex w-12 items-center justify-end text-on-background md:w-auto md:gap-4">
-          <GlobalSearch items={searchItems} bandDisplayNames={bandDisplayNames} />
-        </div>
+        <div className="w-12 md:w-[180px]" aria-hidden="true" />
       </div>
     </nav>
   );

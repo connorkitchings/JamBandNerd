@@ -142,7 +142,7 @@ export default async function AboutPage() {
           {bands.map((band) => (
             <Link
               key={band.slug}
-              href={`/?band=${band.slug}`}
+              href={`/predictions?band=${band.slug}`}
               className="rounded-xl border border-outline-variant/20 bg-surface-container-low p-4 transition hover:border-primary hover:bg-surface-container"
             >
               <p className="font-headline text-lg font-medium text-on-surface">
@@ -192,26 +192,26 @@ export default async function AboutPage() {
       {/* Links */}
       <SectionCard title="Links" eyebrow="Resources">
         <div className="grid gap-3 sm:grid-cols-2">
-          <a
-            href="https://github.com/connorkitchings/JamBandNerd"
-            rel="noopener noreferrer"
-            target="_blank"
-            className="rounded-xl border border-outline-variant/20 bg-surface-container-low p-5 transition hover:border-primary"
-          >
-            <p className="font-headline text-base font-medium text-on-surface">GitHub</p>
-            <p className="mt-1 text-xs text-on-surface-variant">
-              Source code, docs, and contribution guidelines
-            </p>
-          </a>
           <Link
-            href="/performance"
-            className="rounded-xl border border-outline-variant/20 bg-surface-container-low p-5 transition hover:border-primary"
+            href="/data-use"
+            className="block rounded-xl border border-outline-variant/20 bg-surface-container-low p-5 transition hover:border-primary"
           >
             <p className="font-headline text-base font-medium text-on-surface">
-              Performance Ledger
+              Data Use
             </p>
             <p className="mt-1 text-xs text-on-surface-variant">
-              Track historical accuracy across models and bands
+              Read how the site uses public factual information and derived analytics
+            </p>
+          </Link>
+          <Link
+            href="/contact"
+            className="block rounded-xl border border-outline-variant/20 bg-surface-container-low p-5 transition hover:border-primary"
+          >
+            <p className="font-headline text-base font-medium text-on-surface">
+              Contact
+            </p>
+            <p className="mt-1 text-xs text-on-surface-variant">
+              Reach out with feedback, corrections, or feature ideas
             </p>
           </Link>
         </div>

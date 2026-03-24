@@ -12,6 +12,17 @@ import {
   normalizeModel,
 } from "@/lib/config";
 import { getSupabaseServerClient, hasSupabaseEnv } from "@/lib/supabase/server";
+import {
+  buildVenueAnalyticsSnapshot,
+  buildVenueKey,
+  summarizeVenueOptions,
+  type VenueAnalyticsSnapshot,
+  type VenueOption,
+  type VenueSetlistEntry,
+  type VenueShow,
+} from "@/lib/venue-analytics";
+export type { ModelAgreement, ModelAgreementTier } from "@/lib/model-agreement";
+export { calculateModelAgreement } from "@/lib/model-agreement";
 
 type JsonPrediction = Record<string, unknown>;
 type ProjectionRow = Record<string, unknown>;
@@ -135,6 +146,112 @@ function getVenueNameFromRow(row: Record<string, unknown> | null): string | null
   }
 
   return null;
+}
+
+function getVenueCityFromRow(row: Record<string, unknown> | null): string | null {
+  if (!row) {
+    return null;
+  }
+
+  if (typeof row.venue_city === "string") {
+    return row.venue_city;
+  }
+
+  if (typeof row.city === "string") {
+    return row.city;
+  }
+
+  return null;
+}
+
+function getVenueRegionFromRow(row: Record<string, unknown> | null): string | null {
+  if (!row) {
+    return null;
+  }
+
+  if (typeof row.venue_state === "string") {
+    return row.venue_state;
+  }
+
+  if (typeof row.state === "string") {
+    return row.state;
+  }
+
+  if (typeof row.venue_country === "string") {
+    return row.venue_country;
+  }
+
+  if (typeof row.country === "string") {
+    return row.country;
+  }
+
+  return null;
+}
+
+function buildShowDetails(row: Record<string, unknown>): ShowDetails {
+  return {
+    venueName:
+      typeof row.venue_name === "string"
+        ? row.venue_name
+        : typeof row.venue === "string"
+          ? row.venue
+          : null,
+    city:
+      typeof row.venue_city === "string"
+        ? row.venue_city
+        : typeof row.city === "string"
+          ? row.city
+          : null,
+    state:
+      typeof row.venue_state === "string"
+        ? row.venue_state
+        : typeof row.state === "string"
+          ? row.state
+          : null,
+    country:
+      typeof row.venue_country === "string"
+        ? row.venue_country
+        : typeof row.country === "string"
+          ? row.country
+          : null,
+    showDate: typeof row.show_date === "string" ? row.show_date : null,
+    raw: row,
+  };
+}
+
+const SUPABASE_PAGE_SIZE = 1000;
+const SHOW_ID_CHUNK_SIZE = 100;
+type SupabaseSelectQuery = ReturnType<ReturnType<SupabaseClient["from"]>["select"]>;
+
+async function fetchAllRecords(
+  client: SupabaseClient,
+  tableName: string,
+  selectClause: string,
+  configureQuery: (query: SupabaseSelectQuery) => SupabaseSelectQuery,
+): Promise<Record<string, unknown>[]> {
+  const rows: Record<string, unknown>[] = [];
+
+  for (let offset = 0; ; offset += SUPABASE_PAGE_SIZE) {
+    const { data, error } = await configureQuery(
+      client.from(tableName).select(selectClause),
+    ).range(offset, offset + SUPABASE_PAGE_SIZE - 1);
+
+    if (error) {
+      throw error;
+    }
+
+    const pageRows =
+      (data ?? [])
+        .map((row: unknown) => asRecord(row))
+        .filter((row): row is Record<string, unknown> => row !== null);
+    rows.push(...pageRows);
+
+    if (pageRows.length < SUPABASE_PAGE_SIZE) {
+      break;
+    }
+  }
+
+  return rows;
 }
 
 function computeTier(rank: number, probability: number | null): LikelihoodTier {
@@ -508,51 +625,6 @@ export const getLatestPredictions = cache(
   },
 );
 
-export type ModelAgreementTier = {
-  matchCount: number;
-  total: number;
-  percentage: number;
-};
-
-export type ModelAgreement = {
-  top10: ModelAgreementTier;
-  top25: ModelAgreementTier;
-  top50: ModelAgreementTier;
-  composite: number;
-};
-
-export function calculateModelAgreement(
-  primaryRows: PredictionRow[],
-  secondaryRows: PredictionRow[],
-): ModelAgreement | null {
-  if (!primaryRows.length || !secondaryRows.length) return null;
-
-  const primaryNames = primaryRows.map((r) => r.songName.toLowerCase());
-  const secondaryNames = secondaryRows.map((r) => r.songName.toLowerCase());
-  const secondarySet = new Set(secondaryNames);
-
-  function computeTier(k: number): ModelAgreementTier {
-    const primaryTopK = primaryNames.slice(0, k);
-    const secondaryTopK = secondaryNames.slice(0, k);
-    const actualK = Math.min(k, primaryTopK.length, secondaryTopK.length);
-    const matchCount = primaryTopK.filter((song) => secondarySet.has(song)).length;
-    const percentage = actualK > 0 ? matchCount / actualK : 0;
-    return { matchCount, total: actualK, percentage };
-  }
-
-  const top10 = computeTier(10);
-  const top25 = computeTier(25);
-  const top50 = computeTier(50);
-
-  // Weighted composite: top-10 counts 2x, others count 1x
-  // Max possible: (10*2 + 25 + 50) = 95
-  const maxWeight = 10 * 2 + 25 + 50;
-  const composite =
-    (top10.matchCount * 2 + top25.matchCount + top50.matchCount) / maxWeight;
-
-  return { top10, top25, top50, composite };
-}
-
 export const getPredictionsForDate = cache(
   async (
     bandInput: string | undefined,
@@ -851,6 +923,163 @@ export const getRecentAccuracy = cache(
   },
 );
 
+export const getVenueAnalytics = cache(
+  async (
+    bandInput: string | undefined,
+    venueKeyInput: string | undefined,
+  ): Promise<
+    RouteState<{
+      band: BandSlug;
+      venues: VenueOption[];
+      selectedVenueKey: string | null;
+      snapshot: VenueAnalyticsSnapshot | null;
+      selectionError: string | null;
+    }>
+  > => {
+    const missingEnv = getClientOrState<{
+      band: BandSlug;
+      venues: VenueOption[];
+      selectedVenueKey: string | null;
+      snapshot: VenueAnalyticsSnapshot | null;
+      selectionError: string | null;
+    }>();
+    if (missingEnv) {
+      return missingEnv;
+    }
+
+    const bandState = await getBandContext(bandInput);
+    if (bandState.status !== "ready") {
+      return bandState as RouteState<{
+        band: BandSlug;
+        venues: VenueOption[];
+        selectedVenueKey: string | null;
+        snapshot: VenueAnalyticsSnapshot | null;
+        selectionError: string | null;
+      }>;
+    }
+
+    const client = getSupabaseServerClient();
+    if (!client) {
+      return { status: "missing_env" };
+    }
+
+    try {
+      const { band, bandEntry } = bandState;
+      const todayIso = new Date().toISOString().slice(0, 10);
+      const historicalShowRows = await fetchAllRecords(
+        client,
+        bandEntry.showsTable,
+        "*",
+        (query) =>
+          query
+            .lt("show_date", todayIso)
+            .order("show_date", { ascending: false }),
+      );
+      const shows: VenueShow[] = historicalShowRows.flatMap((row) => {
+        const showId = row[bandEntry.idColumn];
+        const venueName = getVenueNameFromRow(row);
+        const showDate = typeof row.show_date === "string" ? row.show_date : null;
+
+        if (
+          !(typeof showId === "string" || typeof showId === "number") ||
+          !venueName ||
+          !showDate
+        ) {
+          return [];
+        }
+
+        return [
+          {
+            showId: String(showId),
+            showDate,
+            venueName,
+            city: getVenueCityFromRow(row),
+            region: getVenueRegionFromRow(row),
+          },
+        ];
+      });
+
+      const venues = summarizeVenueOptions(shows);
+      if (venues.length === 0) {
+        return { status: "empty" };
+      }
+
+      const selectedVenueKey = venueKeyInput?.trim() || venues[0].key;
+      const matchingVenue = venues.find((venue) => venue.key === selectedVenueKey) ?? null;
+
+      if (!matchingVenue) {
+        return {
+          status: "ready",
+          band,
+          venues,
+          selectedVenueKey,
+          snapshot: null,
+          selectionError: `No venue analytics were found for "${selectedVenueKey}".`,
+        };
+      }
+
+      const selectedShows = shows.filter(
+        (show) =>
+          buildVenueKey({
+            venueName: show.venueName,
+            city: show.city,
+            region: show.region,
+          }) === selectedVenueKey,
+      );
+      const showIds = selectedShows.map((show) => show.showId);
+      const positionColumn = band === "phish" ? "position" : "song_position";
+      const setlistTable = `${band}_setlists_raw`;
+      const setlistRows: VenueSetlistEntry[] = [];
+
+      for (let index = 0; index < showIds.length; index += SHOW_ID_CHUNK_SIZE) {
+        const showIdChunk = showIds.slice(index, index + SHOW_ID_CHUNK_SIZE);
+        const chunkRows = await fetchAllRecords(
+          client,
+          setlistTable,
+          `${bandEntry.idColumn}, song_name, set_number, ${positionColumn}`,
+          (query) =>
+            query
+              .in(bandEntry.idColumn, showIdChunk)
+              .order(bandEntry.idColumn, { ascending: true })
+              .order("set_number", { ascending: true })
+              .order(positionColumn, { ascending: true }),
+        );
+
+        for (const row of chunkRows) {
+          const showId = row[bandEntry.idColumn];
+          const songName =
+            typeof row.song_name === "string" ? row.song_name.trim() : "";
+
+          if (!(typeof showId === "string" || typeof showId === "number") || !songName) {
+            continue;
+          }
+
+          setlistRows.push({
+            showId: String(showId),
+            songName,
+            setNumber: parseNumber(row.set_number),
+            position: parseNumber(row[positionColumn]),
+          });
+        }
+      }
+
+      return {
+        status: "ready",
+        band,
+        venues,
+        selectedVenueKey,
+        snapshot: buildVenueAnalyticsSnapshot(selectedShows, setlistRows),
+        selectionError: null,
+      };
+    } catch (error) {
+      return {
+        status: "error",
+        message: error instanceof Error ? error.message : "Unknown error",
+      };
+    }
+  },
+);
+
 export const getShowDetailsByDate = cache(
   async (
     bandInput: string | undefined,
@@ -896,34 +1125,58 @@ export const getShowDetailsByDate = cache(
       return {
         status: "ready",
         band,
-        show: {
-          venueName:
-            typeof row.venue_name === "string"
-              ? row.venue_name
-              : typeof row.venue === "string"
-                ? row.venue
-                : null,
-          city:
-            typeof row.venue_city === "string"
-              ? row.venue_city
-              : typeof row.city === "string"
-                ? row.city
-                : null,
-          state:
-            typeof row.venue_state === "string"
-              ? row.venue_state
-              : typeof row.state === "string"
-                ? row.state
-                : null,
-          country:
-            typeof row.venue_country === "string"
-              ? row.venue_country
-              : typeof row.country === "string"
-                ? row.country
-                : null,
-          showDate: typeof row.show_date === "string" ? row.show_date : null,
-          raw: row,
-        },
+        show: buildShowDetails(row),
+      };
+    } catch (error) {
+      return {
+        status: "error",
+        message: error instanceof Error ? error.message : "Unknown error",
+      };
+    }
+  },
+);
+
+export const getNextShowDetails = cache(
+  async (
+    bandInput: string | undefined,
+  ): Promise<RouteState<{ band: BandSlug; show: ShowDetails }>> => {
+    const missingEnv = getClientOrState<{ band: BandSlug; show: ShowDetails }>();
+    if (missingEnv) {
+      return missingEnv;
+    }
+
+    const bandState = await getBandContext(bandInput);
+    if (bandState.status !== "ready") {
+      return bandState as RouteState<{ band: BandSlug; show: ShowDetails }>;
+    }
+
+    const client = getSupabaseServerClient();
+    if (!client) {
+      return { status: "missing_env" };
+    }
+
+    try {
+      const todayIso = new Date().toISOString().slice(0, 10);
+      const { data, error } = await client
+        .from(bandState.bandEntry.showsTable)
+        .select("*")
+        .gte("show_date", todayIso)
+        .order("show_date", { ascending: true })
+        .limit(1);
+
+      if (error) {
+        return { status: "error", message: error.message };
+      }
+
+      const row = asRecord(data?.[0]);
+      if (!row) {
+        return { status: "empty" };
+      }
+
+      return {
+        status: "ready",
+        band: bandState.band,
+        show: buildShowDetails(row),
       };
     } catch (error) {
       return {
