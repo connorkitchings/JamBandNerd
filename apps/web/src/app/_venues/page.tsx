@@ -102,12 +102,11 @@ export default async function VenueAnalyticsPage({ searchParams }: Props) {
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
-      <SectionCard title="Venue Analytics" eyebrow="Room History">
-        <FilterLinks pathname="/venues" band={state.band} bands={bands} />
-      </SectionCard>
+      <FilterLinks pathname="/venues" band={state.band} bands={bands} />
 
       <section className="relative overflow-hidden rounded-xl border border-outline-variant/30 bg-surface-container px-6 py-6 shadow-[0_24px_80px_rgba(0,0,0,0.08)] md:px-10 md:py-8">
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(280px,0.8fr)]">
+        <div className="absolute inset-y-0 right-0 hidden w-1/3 bg-gradient-to-l from-primary-container/15 to-transparent lg:block" />
+        <div className="relative grid gap-8 lg:grid-cols-[minmax(0,1.4fr)_minmax(280px,0.8fr)]">
           <div className="flex flex-col justify-center text-center lg:text-left">
             <p className="font-label text-[10px] uppercase tracking-[0.24em] text-on-surface-variant">
               Venue-specific patterns
@@ -190,8 +189,8 @@ export default async function VenueAnalyticsPage({ searchParams }: Props) {
                   <thead>
                     <tr className="border-b border-outline-variant/20 bg-surface-container-low">
                       <th className={TABLE_HEAD_CLASS}>Song</th>
-                      <th className={TABLE_HEAD_CLASS}>Venue Shows</th>
-                      <th className={TABLE_HEAD_CLASS}>Hit Rate</th>
+                      <th className={`${TABLE_HEAD_CLASS} text-right`}>Venue Shows</th>
+                      <th className={`${TABLE_HEAD_CLASS} text-right`}>Hit Rate</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -203,11 +202,11 @@ export default async function VenueAnalyticsPage({ searchParams }: Props) {
                         <td className={`${TABLE_CELL_CLASS} font-headline text-on-surface`}>
                           {song.songName}
                         </td>
-                        <td className={`${TABLE_CELL_CLASS} text-on-surface-variant`}>
+                        <td className={`${TABLE_CELL_CLASS} text-right text-on-surface-variant`}>
                           {song.showCount} / {snapshot.showCount}
                         </td>
                         <td
-                          className={`${TABLE_CELL_CLASS} font-medium tabular-nums text-primary`}
+                          className={`${TABLE_CELL_CLASS} text-right font-medium tabular-nums text-primary`}
                         >
                           {formatPercent(song.percentOfShows)}
                         </td>

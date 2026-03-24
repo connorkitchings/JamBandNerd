@@ -21,7 +21,7 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: "JamBandNerd",
-  description: "Prediction dashboards, historical explorer views, and performance analysis for jam band setlists.",
+  description: "Prediction dashboards, historical analysis views, and performance analysis for jam band setlists.",
 };
 
 export const viewport = {

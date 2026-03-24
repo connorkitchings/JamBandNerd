@@ -13,6 +13,7 @@ import {
   formatCompactDateLabel,
   formatDateLabel,
   formatTimestampLabel,
+  formatPercent,
 } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
@@ -34,7 +35,7 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
   const dateStr = params.date ? ` (${formatCompactDateLabel(params.date)})` : "";
 
   return {
-    title: `${bandName} Historical Explorer${dateStr} | JamBandNerd`,
+    title: `${bandName} Historical Analysis${dateStr} | JamBandNerd`,
     description: `Replay past prediction snapshots and compare them against actual setlists for ${bandName}.`,
   };
 }
@@ -103,6 +104,34 @@ export default async function ExplorerPage({ searchParams }: Props) {
   const matchedPredictions = predictions
     .slice(0, 10)
     .filter((row) => actualSongs.has(normalizeSongName(row.songName)));
+
+  function computeRecall(k: number) {
+    if (actualSongs.size === 0) return null;
+    let hits = 0;
+    for (let i = 0; i < Math.min(k, predictions.length); i++) {
+      if (actualSongs.has(normalizeSongName(predictions[i].songName))) {
+        hits++;
+      }
+    }
+    return hits / actualSongs.size;
+  }
+
+  function computePrecision(k: number) {
+    if (predictions.length === 0) return null;
+    let hits = 0;
+    const limit = Math.min(k, predictions.length);
+    for (let i = 0; i < limit; i++) {
+      if (actualSongs.has(normalizeSongName(predictions[i].songName))) {
+        hits++;
+      }
+    }
+    return hits / limit;
+  }
+
+  const k10Recall = computeRecall(10);
+  const k25Recall = computeRecall(25);
+  const k50Recall = computeRecall(50);
+
   const bustOutCandidates = predictions.filter((row) => (row.currentGap ?? 0) >= 20).slice(0, 3);
   const topPrediction = predictions[0] ?? null;
   const snapshotLabel = formatTimestampLabel(state.explorer.predictions?.predictedAt ?? null);
@@ -116,15 +145,13 @@ export default async function ExplorerPage({ searchParams }: Props) {
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
-      <SectionCard title="Historical Explorer" eyebrow="Archive Navigator">
-        <FilterLinks
-          pathname="/explorer"
-          band={state.band}
-          model={state.model}
-          date={state.explorer.selectedDate}
-          bands={bands}
-        />
-      </SectionCard>
+      <FilterLinks
+        pathname="/explorer"
+        band={state.band}
+        model={state.model}
+        date={state.explorer.selectedDate}
+        bands={bands}
+      />
 
       <section className="relative overflow-hidden rounded-xl border border-outline-variant/30 bg-surface-container px-6 py-6 shadow-[0_24px_80px_rgba(0,0,0,0.08)] md:px-10 md:py-8">
         <div className="absolute inset-y-0 right-0 hidden w-1/3 bg-gradient-to-l from-primary-container/15 to-transparent lg:block" />
@@ -158,15 +185,39 @@ export default async function ExplorerPage({ searchParams }: Props) {
                 {topPrediction?.currentGap ?? "—"} show gap • snapshot {snapshotLabel}
               </p>
             </div>
-            <div className="rounded-xl border border-outline-variant/30 bg-surface-container-low p-5 text-center">
-              <p className="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">
-                Hit rate
-              </p>
-              <p className="mt-3 font-headline text-2xl font-bold text-primary">
-                {matchedPredictions.length}/{Math.min(10, predictions.length || 10)}
-              </p>
-              <p className="mt-1 text-[10px] font-medium text-on-surface-variant">
-                Top-10 calls found in the actual setlist
+            <div className="rounded-xl border border-outline-variant/30 bg-surface-container-low p-5 flex flex-col justify-between text-center">
+              <p className="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">Accuracy Metrics</p>
+              <div className="mt-4 flex flex-wrap justify-center gap-x-6 gap-y-4">
+                <div className="flex flex-col items-center">
+                  <p className="font-label text-[9px] uppercase tracking-[0.16rem] text-on-surface-variant">Top 10</p>
+                  <p className="mt-1 font-headline text-lg font-bold text-primary">
+                    {formatPercent(k10Recall)}
+                  </p>
+                  <p className="mt-0.5 text-[9px] font-medium text-on-surface-variant" title="Precision">
+                    {formatPercent(computePrecision(10))} Prec
+                  </p>
+                </div>
+                <div className="flex flex-col items-center">
+                  <p className="font-label text-[9px] uppercase tracking-[0.16rem] text-on-surface-variant">Top 25</p>
+                  <p className="mt-1 font-headline text-lg font-bold text-on-surface">
+                    {formatPercent(k25Recall)}
+                  </p>
+                  <p className="mt-0.5 text-[9px] font-medium text-on-surface-variant" title="Precision">
+                    {formatPercent(computePrecision(25))} Prec
+                  </p>
+                </div>
+                <div className="flex flex-col items-center">
+                  <p className="font-label text-[9px] uppercase tracking-[0.16rem] text-on-surface-variant">Top 50</p>
+                  <p className="mt-1 font-headline text-lg font-bold text-on-surface">
+                    {formatPercent(k50Recall)}
+                  </p>
+                  <p className="mt-0.5 text-[9px] font-medium text-on-surface-variant" title="Precision">
+                    {formatPercent(computePrecision(50))} Prec
+                  </p>
+                </div>
+              </div>
+              <p className="mt-3 text-[10px] font-medium text-on-surface-variant">
+                Actual setlist recall / Hit rate
               </p>
             </div>
           </div>

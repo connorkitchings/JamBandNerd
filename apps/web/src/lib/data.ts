@@ -56,6 +56,9 @@ export type AccuracyRow = {
   k10Recall: number | null;
   k25Recall: number | null;
   k50Recall: number | null;
+  k10Precision: number | null;
+  k25Precision: number | null;
+  k50Precision: number | null;
 };
 
 export type SetlistSong = {
@@ -822,7 +825,7 @@ export const getRecentAccuracy = cache(
       const modelVersion = await getCurrentModelVersion(client, band, model);
       const { data, error } = await client
         .from("accuracy_per_show")
-        .select("show_id, show_date, k10_recall, k25_recall, k50_recall")
+        .select("show_id, show_date, k10_recall, k25_recall, k50_recall, k10_precision, k25_precision, k50_precision")
         .eq("band", band)
         .eq("model_version", modelVersion)
         .order("show_date", { ascending: false })
@@ -842,6 +845,9 @@ export const getRecentAccuracy = cache(
           k10Recall: parseNumber(row.k10_recall),
           k25Recall: parseNumber(row.k25_recall),
           k50Recall: parseNumber(row.k50_recall),
+          k10Precision: parseNumber(row.k10_precision),
+          k25Precision: parseNumber(row.k25_precision),
+          k50Precision: parseNumber(row.k50_precision),
         })) ?? [];
 
       if (accuracyRows.length === 0) {
@@ -909,6 +915,9 @@ export const getRecentAccuracy = cache(
         k10Recall: row.k10Recall,
         k25Recall: row.k25Recall,
         k50Recall: row.k50Recall,
+        k10Precision: row.k10Precision,
+        k25Precision: row.k25Precision,
+        k50Precision: row.k50Precision,
       }));
 
       return rows.length === 0

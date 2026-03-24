@@ -43,15 +43,15 @@ function average(values: Array<number | null>) {
   return filtered.reduce((sum, value) => sum + value, 0) / filtered.length;
 }
 
-function getRecallForK(rows: AccuracyRow[], k: 10 | 25 | 50): Array<number | null> {
-  return rows.map((row) => (k === 10 ? row.k10Recall : k === 25 ? row.k25Recall : row.k50Recall));
+function getPrecisionForK(rows: AccuracyRow[], k: 10 | 25 | 50): Array<number | null> {
+  return rows.map((row) => (k === 10 ? row.k10Precision : k === 25 ? row.k25Precision : row.k50Precision));
 }
 
-function getBestRecallRow(rows: AccuracyRow[], k: 10 | 25 | 50) {
+function getBestPrecisionRow(rows: AccuracyRow[], k: 10 | 25 | 50) {
   return rows.reduce<AccuracyRow | null>((best, row) => {
-    const current = k === 10 ? row.k10Recall : k === 25 ? row.k25Recall : row.k50Recall;
+    const current = k === 10 ? row.k10Precision : k === 25 ? row.k25Precision : row.k50Precision;
     if (!best) return current !== null ? row : null;
-    const bestVal = k === 10 ? best.k10Recall : k === 25 ? best.k25Recall : best.k50Recall;
+    const bestVal = k === 10 ? best.k10Precision : k === 25 ? best.k25Precision : best.k50Precision;
     return current !== null && bestVal !== null && current > bestVal ? row : best;
   }, null);
 }
@@ -105,20 +105,20 @@ export default async function PerformancePage({ searchParams }: Props) {
   const bandName = bandEntry?.displayName ?? state.band;
   const k = normalizeK(params.k);
 
-  const top10Average = average(state.rows.map((row) => row.k10Recall));
-  const top25Average = average(state.rows.map((row) => row.k25Recall));
-  const top50Average = average(state.rows.map((row) => row.k50Recall));
+  const top10Average = average(state.rows.map((row) => row.k10Precision));
+  const top25Average = average(state.rows.map((row) => row.k25Precision));
+  const top50Average = average(state.rows.map((row) => row.k50Precision));
   const latestRow = state.rows[0] ?? null;
-  const currentKValues = getRecallForK(state.rows, k);
+  const currentKValues = getPrecisionForK(state.rows, k);
   const recentWindow = average(currentKValues.slice(0, 5));
   const priorWindow = average(currentKValues.slice(5, 10));
   const trendDelta =
     recentWindow !== null && priorWindow !== null ? recentWindow - priorWindow : null;
-  const bestRow = getBestRecallRow(state.rows, k);
+  const bestRow = getBestPrecisionRow(state.rows, k);
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
-      <SectionCard title="Historical Performance" eyebrow="Model Recall">
+      <SectionCard title="Historical Performance" eyebrow="Model Precision (Hit Rate)">
         <FilterLinks pathname="/performance" band={state.band} model={state.model} bands={bands} />
       </SectionCard>
 
@@ -135,7 +135,7 @@ export default async function PerformancePage({ searchParams }: Props) {
               {MODEL_CONFIG[state.model].displayName} • last {state.rows.length} scored shows
             </p>
             <p className="mt-4 max-w-3xl text-sm leading-6 text-on-surface-variant">
-              Tracking the percentage of songs played in a given setlist that were correctly predicted within the model's Top 10, Top 25, and Top 50 tiers.
+              Tracking the percentage of the model's Top 10, Top 25, and Top 50 predictions that were actually played in the setlist. Use this space for hit-rate auditing.
             </p>
           </div>
           <div className="rounded-xl border border-outline-variant/20 bg-surface-container-low p-5 flex flex-col justify-between text-center">
@@ -155,19 +155,19 @@ export default async function PerformancePage({ searchParams }: Props) {
               <div className="flex flex-col items-center">
                 <p className="font-label text-[9px] uppercase tracking-[0.16rem] text-on-surface-variant">Top 10</p>
                 <p className={`mt-1 font-headline text-lg font-bold ${k === 10 ? "text-primary" : "text-on-surface"}`}>
-                  {formatPercent(latestRow?.k10Recall ?? null)}
+                  {formatPercent(latestRow?.k10Precision ?? null)}
                 </p>
               </div>
               <div className="flex flex-col items-center">
                 <p className="font-label text-[9px] uppercase tracking-[0.16rem] text-on-surface-variant">Top 25</p>
                 <p className={`mt-1 font-headline text-lg font-bold ${k === 25 ? "text-primary" : "text-on-surface"}`}>
-                  {formatPercent(latestRow?.k25Recall ?? null)}
+                  {formatPercent(latestRow?.k25Precision ?? null)}
                 </p>
               </div>
               <div className="flex flex-col items-center">
                 <p className="font-label text-[9px] uppercase tracking-[0.16rem] text-on-surface-variant">Top 50</p>
                 <p className={`mt-1 font-headline text-lg font-bold ${k === 50 ? "text-primary" : "text-on-surface"}`}>
-                  {formatPercent(latestRow?.k50Recall ?? null)}
+                  {formatPercent(latestRow?.k50Precision ?? null)}
                 </p>
               </div>
             </div>
@@ -194,7 +194,7 @@ export default async function PerformancePage({ searchParams }: Props) {
       </section>
 
       <SectionCard
-        title={`Recall Timeline`}
+        title={`Precision Timeline`}
         eyebrow={`Top-${k} accuracy over time`}
       >
         <div className="mb-4">
@@ -239,8 +239,8 @@ export default async function PerformancePage({ searchParams }: Props) {
                 {trendDelta === null
                   ? "Need at least 10 rows for a trend comparison."
                   : trendDelta >= 0
-                    ? "Recent recall is improving."
-                    : "Recent recall has slipped versus the prior window."}
+                    ? "Recent precision is improving."
+                    : "Recent precision has slipped versus the prior window."}
               </p>
             </div>
           </div>
@@ -264,19 +264,19 @@ export default async function PerformancePage({ searchParams }: Props) {
               <div className="flex flex-col items-center">
                 <p className="font-label text-[9px] uppercase tracking-[0.16rem] text-on-surface-variant">Top 10</p>
                 <p className={`mt-1 font-headline text-lg font-bold ${k === 10 ? "text-primary" : "text-on-surface"}`}>
-                  {formatPercent(bestRow?.k10Recall ?? null)}
+                  {formatPercent(bestRow?.k10Precision ?? null)}
                 </p>
               </div>
               <div className="flex flex-col items-center">
                 <p className="font-label text-[9px] uppercase tracking-[0.16rem] text-on-surface-variant">Top 25</p>
                 <p className={`mt-1 font-headline text-lg font-bold ${k === 25 ? "text-primary" : "text-on-surface"}`}>
-                  {formatPercent(bestRow?.k25Recall ?? null)}
+                  {formatPercent(bestRow?.k25Precision ?? null)}
                 </p>
               </div>
               <div className="flex flex-col items-center">
                 <p className="font-label text-[9px] uppercase tracking-[0.16rem] text-on-surface-variant">Top 50</p>
                 <p className={`mt-1 font-headline text-lg font-bold ${k === 50 ? "text-primary" : "text-on-surface"}`}>
-                  {formatPercent(bestRow?.k50Recall ?? null)}
+                  {formatPercent(bestRow?.k50Precision ?? null)}
                 </p>
               </div>
             </div>

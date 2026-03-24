@@ -126,7 +126,7 @@ export default async function LastShowPage({ searchParams }: Props) {
               {locationLabel ? ` • ${locationLabel}` : ""}
             </p>
             <p className="mt-4 max-w-3xl text-sm leading-6 text-on-surface-variant">
-              Use this page as the bridge between the live dashboard and the archive explorer. It
+              Use this page as the bridge between the live dashboard and the historical analysis. It
               shows the latest completed setlist, then replays the notebook snapshot for the same
               show date when that prediction history exists.
             </p>
@@ -166,7 +166,7 @@ export default async function LastShowPage({ searchParams }: Props) {
               className="block rounded-xl border border-outline-variant/20 bg-surface-container-low p-4 transition hover:border-primary"
             >
               <p className="font-headline text-lg font-medium text-on-surface">
-                Replay in Explorer
+                Replay in Historical Analysis
               </p>
               <p className="mt-2 text-sm leading-6 text-on-surface-variant">
                 Open the notebook prediction snapshot for this exact show date.

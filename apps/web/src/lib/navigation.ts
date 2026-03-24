@@ -29,21 +29,21 @@ export const DESKTOP_NAV_ITEMS: NavItem[] = [
     matches: ["/performance"],
   },
   {
-    href: "/venues",
+    href: "/compare",
     label: "Deep-Dive",
     mobileLabel: "Deep-Dive",
     icon: "◎",
-    matches: ["/explorer", "/compare", "/venues"],
+    matches: ["/explorer", "/compare"],
   },
 ];
 
 export const MOBILE_NAV_ITEMS: NavItem[] = [
   {
-    href: "/venues",
+    href: "/compare",
     label: "Deep-Dive",
     mobileLabel: "Deep-Dive",
     icon: "◎",
-    matches: ["/explorer", "/compare", "/venues"],
+    matches: ["/explorer", "/compare"],
   },
   {
     href: "/performance",
