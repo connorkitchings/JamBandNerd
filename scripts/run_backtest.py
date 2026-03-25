@@ -29,10 +29,15 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, project_root)
 
 from scripts.common import fetch_table, prepare_band_data
-from src.jambandnerd.db.operations import upsert_dataframe
+from src.jambandnerd.config import HISTORICAL_PREDICTION_RUNS_TABLE, MODEL_VERSIONS
+from src.jambandnerd.db.operations import (
+    upsert_dataframe,
+    upsert_historical_prediction_run,
+)
 from src.jambandnerd.models.accuracy import aggregate_metrics, compute_per_show_metrics
 from src.jambandnerd.models.ckplus.model import CKPlusPredictor
 from src.jambandnerd.models.notebook.model import NotebookPredictor
+from src.jambandnerd.models.serialization import serialize_predictions
 from src.jambandnerd.transformations.gaps import generate_model_data
 from src.jambandnerd.transformations.normalization import sort_normalized_shows
 
@@ -102,12 +107,11 @@ def run_backtest(
     # 3. Initialize predictor
     if model == "notebook":
         predictor = NotebookPredictor()
-        model_version = "notebook_v1"
     elif model == "ckplus":
         predictor = CKPlusPredictor(band=band)
-        model_version = "ckplus_v1"
     else:
         raise ValueError(f"Invalid model: {model}")
+    model_version = MODEL_VERSIONS[model]
 
     # 4. Run backtest loop
     per_show_results: List[Dict[str, Any]] = []
@@ -154,7 +158,12 @@ def run_backtest(
                 print(f"{log_prefix} No predictions generated for {ref_date}, skipping")
                 continue
 
-            pred_songs = [p.song_name for p in preds]
+            serialized_predictions = serialize_predictions(
+                model_slug=model, predictions=preds
+            )
+            pred_songs = [
+                prediction["song_name"] for prediction in serialized_predictions
+            ]
         except (ValueError, AttributeError, KeyError, TypeError) as e:
             print(f"{log_prefix} Error generating predictions for {ref_date}: {e}")
             continue
@@ -162,13 +171,28 @@ def run_backtest(
             print(f"{log_prefix} Unexpected error for {ref_date}: {e}")
             continue
 
+        generated_at = pd.Timestamp.now(tz=timezone.utc).isoformat()
+        prediction_run_id = upsert_historical_prediction_run(
+            band=band,
+            model_slug=model,
+            model_version=model_version,
+            reference_date=prediction_date.isoformat(),
+            target_show_id=show_id,
+            target_show_date=ref_date.isoformat(),
+            generated_at=generated_at,
+            predictions=serialized_predictions,
+            actual_songs=actual_songs,
+            table_name=HISTORICAL_PREDICTION_RUNS_TABLE,
+        )
+
         show_metrics = {
             "band": band,
             "model_version": model_version,
             "show_id": show_id,
             "show_date": ref_date.isoformat(),
             "actual_song_count": len(actual_songs),
-            "evaluated_at": pd.Timestamp.now(tz=timezone.utc).isoformat(),
+            "prediction_run_id": prediction_run_id,
+            "evaluated_at": generated_at,
         }
 
         for k in [10, 25, 50]:

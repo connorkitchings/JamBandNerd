@@ -35,6 +35,7 @@ This file stores persistent lessons and operating patterns that should survive a
 - For Vercel monorepo deployments, set the project root to the actual Next.js workspace (here `apps/web`) or Vercel will build from the repo root and fail with “Couldn't find any `pages` or `app` directory.”
 - For Playwright smoke tests on pull requests, assume runtime secrets may be unavailable. Keep route coverage intact by accepting the app's explicit missing-env fallback state for secret-backed pages instead of requiring live Supabase data in PR CI.
 - When moving a Next.js dashboard off `/` onto a dedicated route like `/predictions`, keep old root query links working with a compatibility redirect and update shared nav/link builders in the same pass; otherwise stale `/?band=...` links linger across the site.
+- When backfilling a “last N replayable shows” product surface, do not rebuild exactly `N` completed shows. Use a buffered window (for example, `75` to guarantee `50`) because sparse recent shows may be intentionally skipped during scoring, and validate replay lineage per `show_date` rather than per raw accuracy row when duplicates can coexist.
 
 - When hardening data ingestion, add HTTP response caching at the collector base class level (not per-band) with configurable TTL via env vars. Use a circuit breaker pattern to disable failing bands after N consecutive failures.
 - ID column naming inconsistency (e.g., show_id vs api_show_id vs source_uuid) should be addressed via a formal migration strategy, not ad-hoc changes, since it affects the entire data pipeline.

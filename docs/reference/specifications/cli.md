@@ -34,7 +34,10 @@ Generates and saves predictions for a given band and model.
 
 ### `run_backtest.py`
 
-Runs a historical backtest, calculating and saving per-show accuracy metrics to the `accuracy_per_show` table.
+Runs a historical backtest, storing the scored ranked board in
+`historical_prediction_runs`, and saving linked per-show accuracy metrics to the
+`accuracy_per_show` table. Replay readiness is validated from those linked
+`prediction_run_id` rows through `validate_accuracy_tables.py`.
 
 - `--band {goose,phish,wsp}`: (Required) The band to process.
 - `--model {notebook,ckplus}`: (Required) The model to backtest.

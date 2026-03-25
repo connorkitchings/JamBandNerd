@@ -226,3 +226,124 @@ def test_fetch_latest_prediction_songs_returns_ranked_rows(monkeypatch):
     )
 
     assert [row["song_name"] for row in latest] == ["Song One", "Song Two"]
+
+
+def test_upsert_historical_prediction_run_returns_inserted_id(monkeypatch):
+    class _ResponseStub:
+        def __init__(self, data):
+            self.data = data
+
+    class _QueryStub:
+        def __init__(self):
+            self.upsert_payload = None
+            self.upsert_conflict = None
+
+        def upsert(self, payload, on_conflict=None):
+            self.upsert_payload = payload
+            self.upsert_conflict = on_conflict
+            return self
+
+        def execute(self):
+            return _ResponseStub([{"id": 42}])
+
+    class _ClientStub:
+        def __init__(self):
+            self.query = _QueryStub()
+
+        def table(self, _name: str):
+            return self.query
+
+    client = _ClientStub()
+    monkeypatch.setattr(operations, "get_supabase_client", lambda: client)
+
+    run_id = operations.upsert_historical_prediction_run(
+        band="goose",
+        model_slug="notebook",
+        model_version="notebook_v1",
+        reference_date="2026-03-20",
+        target_show_id="goose-show-1",
+        target_show_date="2026-03-21",
+        generated_at="2026-03-20T12:00:00+00:00",
+        predictions=[{"rank": 1, "song_name": "Arcadia"}],
+        actual_songs=["Arcadia", "Madhuvan"],
+    )
+
+    assert run_id == 42
+    assert client.query.upsert_conflict == (
+        "band,model_slug,model_version,reference_date,target_show_id"
+    )
+    assert client.query.upsert_payload["top_k"] == 1
+    assert client.query.upsert_payload["actual_song_count"] == 2
+
+
+def test_upsert_historical_prediction_run_falls_back_to_lookup(monkeypatch):
+    class _ResponseStub:
+        def __init__(self, data):
+            self.data = data
+
+    class _QueryStub:
+        def __init__(self, rows):
+            self._rows = rows
+            self._filters = []
+            self._mode = "upsert"
+
+        def upsert(self, payload, on_conflict=None):  # noqa: ARG002
+            self._mode = "upsert"
+            return self
+
+        def select(self, *_args, **_kwargs):
+            self._mode = "select"
+            return self
+
+        def eq(self, column, value):
+            self._filters.append((column, value))
+            return self
+
+        def limit(self, _value):
+            return self
+
+        def execute(self):
+            if self._mode == "upsert":
+                return _ResponseStub([])
+            rows = list(self._rows)
+            for column, value in self._filters:
+                rows = [row for row in rows if row.get(column) == value]
+            return _ResponseStub(rows[:1])
+
+    class _ClientStub:
+        def __init__(self, rows):
+            self.rows = rows
+
+        def table(self, _name: str):
+            return _QueryStub(self.rows)
+
+    monkeypatch.setattr(
+        operations,
+        "get_supabase_client",
+        lambda: _ClientStub(
+            [
+                {
+                    "id": 77,
+                    "band": "goose",
+                    "model_slug": "notebook",
+                    "model_version": "notebook_v1",
+                    "reference_date": "2026-03-20",
+                    "target_show_id": "goose-show-1",
+                }
+            ]
+        ),
+    )
+
+    run_id = operations.upsert_historical_prediction_run(
+        band="goose",
+        model_slug="notebook",
+        model_version="notebook_v1",
+        reference_date="2026-03-20",
+        target_show_id="goose-show-1",
+        target_show_date="2026-03-21",
+        generated_at="2026-03-20T12:00:00+00:00",
+        predictions=[{"rank": 1, "song_name": "Arcadia"}],
+        actual_songs=["Arcadia", "Madhuvan"],
+    )
+
+    assert run_id == 77

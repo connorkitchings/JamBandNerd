@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { DataState } from "@/components/data-state";
 import { FilterLinks } from "@/components/filter-links";
+import { PageHero } from "@/components/page-hero";
 import { SongBoard } from "@/components/song-board";
 import { SectionCard } from "@/components/section-card";
 import { SetlistTable } from "@/components/setlist-table";
@@ -108,31 +109,17 @@ export default async function LastShowPage({ searchParams }: Props) {
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
-      <SectionCard title="Last Show" eyebrow="Completed Show Detail">
-        <FilterLinks pathname="/last-show" band={state.band} bands={bands} />
-      </SectionCard>
+      <FilterLinks pathname="/last-show" band={state.band} bands={bands} />
 
-      <section className="rounded-xl border border-outline-variant/30 bg-gradient-to-r from-surface to-surface-container p-8 md:p-10">
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(280px,0.8fr)]">
-          <div>
-            <p className="font-label text-[10px] uppercase tracking-[0.24em] text-on-surface-variant">
-              Last completed set
-            </p>
-            <h1 className="mt-3 font-headline text-4xl font-semibold uppercase tracking-[-0.04em] text-on-surface md:text-5xl">
-              {venue}
-            </h1>
-            <p className="mt-3 font-headline text-base uppercase tracking-[0.08em] text-primary">
-              {formatDateLabel(showDate)}
-              {locationLabel ? ` • ${locationLabel}` : ""}
-            </p>
-            <p className="mt-4 max-w-3xl text-sm leading-6 text-on-surface-variant">
-              Use this page as the bridge between the live dashboard and the historical analysis. It
-              shows the latest completed setlist, then replays the notebook snapshot for the same
-              show date when that prediction history exists.
-            </p>
-          </div>
+      <PageHero
+        kicker="After the show"
+        eyebrow="Last completed set"
+        title={venue}
+        meta={`${formatDateLabel(showDate)}${locationLabel ? ` • ${locationLabel}` : ""}`}
+        description="Use this page as the bridge between the live dashboard and the historical analysis. It anchors the latest finished setlist, then replays the notebook snapshot for the same night when history exists."
+        aside={
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
-            <div className="rounded-xl border border-outline-variant/20 bg-surface-container-low p-5">
+            <div className="editorial-panel p-5">
               <p className="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">
                 Songs logged
               </p>
@@ -140,7 +127,7 @@ export default async function LastShowPage({ searchParams }: Props) {
                 {state.setlist.songs.length}
               </p>
             </div>
-            <div className="rounded-xl border border-outline-variant/20 bg-surface-container-low p-5">
+            <div className="editorial-panel p-5">
               <p className="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">
                 Replay hits
               </p>
@@ -151,8 +138,8 @@ export default async function LastShowPage({ searchParams }: Props) {
               </p>
             </div>
           </div>
-        </div>
-      </section>
+        }
+      />
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(280px,0.85fr)]">
         <SectionCard title="Setlist" eyebrow="Completed show">
@@ -162,14 +149,14 @@ export default async function LastShowPage({ searchParams }: Props) {
         <SectionCard title="Jump Back In" eyebrow="Related routes">
           <div className="space-y-4">
             <Link
-              href={`/explorer?band=${state.band}&model=notebook&date=${showDate}`}
+              href={`/replay?band=${state.band}&date=${showDate}`}
               className="block rounded-xl border border-outline-variant/20 bg-surface-container-low p-4 transition hover:border-primary"
             >
               <p className="font-headline text-lg font-medium text-on-surface">
-                Replay in Historical Analysis
+                Open Prediction Replay
               </p>
               <p className="mt-2 text-sm leading-6 text-on-surface-variant">
-                Open the notebook prediction snapshot for this exact show date.
+                Open both retained model boards for this exact show date.
               </p>
             </Link>
             <Link

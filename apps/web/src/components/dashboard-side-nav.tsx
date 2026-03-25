@@ -12,84 +12,150 @@ type Props = {
   band: BandSlug;
   model: ModelSlug;
   bands: BandEntry[];
+  pathname?: string;
+  compareHref?: string | null;
+  bandLinks?: Array<{
+    href: string;
+    label: string;
+    active: boolean;
+  }>;
+  hideSecondary?: boolean;
+  secondaryLabel?: string;
+  secondaryTone?: "primary" | "tertiary";
+  secondaryLinks?: Array<{
+    href: string;
+    label: string;
+    active: boolean;
+  }>;
 };
 
-function buildHref(band: BandSlug, model: ModelSlug) {
-  return `/predictions?band=${band}&model=${model}`;
+function buildHref(pathname: string, band: BandSlug, model: ModelSlug) {
+  return `${pathname}?band=${band}&model=${model}`;
 }
 
-export function DashboardSideNav({ band, model, bands }: Props) {
+export function DashboardSideNav({
+  band,
+  model,
+  bands,
+  pathname = "/predictions",
+  compareHref = `/compare?band=${band}`,
+  bandLinks,
+  hideSecondary = false,
+  secondaryLabel = "Model",
+  secondaryTone = "tertiary",
+  secondaryLinks,
+}: Props) {
+  const showModelButtons = !secondaryLinks;
+  const renderedBandLinks =
+    bandLinks ??
+    bands.map((item) => ({
+      href: buildHref(pathname, item.slug, model),
+      label: item.displayName,
+      active: item.slug === band,
+    }));
+
   return (
-    <div className="mb-8 flex flex-col gap-5 rounded-2xl border border-outline-variant/20 bg-surface-container-low p-4 lg:flex-row lg:items-center lg:justify-between">
-      <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:gap-8">
-        
-        {/* Band Selector */}
-        <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
-          <div className="flex items-center lg:h-[72px]">
-            <span className="font-label text-[10px] font-semibold uppercase tracking-[0.24em] text-on-surface-variant">
+    <div className="editorial-panel mb-8 flex flex-col gap-4 p-4 md:p-5">
+      <div
+        className={`grid items-stretch gap-4 ${
+          hideSecondary
+            ? "lg:grid-cols-1"
+            : "lg:grid-cols-[minmax(0,1.6fr)_minmax(17rem,0.95fr)]"
+        }`}
+      >
+        <div className="editorial-chip flex h-full flex-col rounded-[1.35rem] p-3 md:p-4">
+          <div className="mb-2 flex items-center justify-center text-center">
+            <span className="font-label text-[10px] font-semibold uppercase tracking-[0.24em] text-primary/85">
               Band
             </span>
           </div>
-          <div className="grid grid-cols-3 gap-2 2xl:flex 2xl:flex-wrap 2xl:items-center">
-            {bands.map((item) => {
-              const active = item.slug === band;
+          <div className="grid auto-rows-fr grid-cols-2 gap-2 lg:grid-cols-3">
+            {renderedBandLinks.map((item) => {
               return (
                 <Link
-                  key={item.slug}
-                  href={buildHref(item.slug, model)}
-                  aria-current={active ? "page" : undefined}
-                  className={`flex items-center justify-center rounded-full border px-3 py-1.5 text-center font-headline text-[11px] font-bold uppercase tracking-[0.12rem] transition ${
-                    active
-                      ? "border-primary-container bg-primary-container text-white"
-                      : "border-outline-variant/50 bg-surface text-on-surface-variant hover:border-primary hover:text-on-surface"
+                  key={item.href}
+                  href={item.href}
+                  aria-current={item.active ? "page" : undefined}
+                  className={`flex min-h-11 items-center justify-center rounded-full border px-3 py-2 text-center font-headline text-[10px] font-bold uppercase tracking-[0.14rem] transition sm:text-[11px] ${
+                    item.active
+                      ? "border-primary/25 bg-primary/12 text-primary"
+                      : "border-outline-variant/40 bg-surface/75 text-on-surface-variant hover:border-primary/35 hover:text-on-surface"
                   }`}
                 >
-                  {item.displayName}
+                  {item.label}
                 </Link>
               );
             })}
           </div>
         </div>
-        
-        {/* Desktop Divider */}
-        <div className="hidden h-6 w-px bg-outline-variant/30 lg:block" />
 
-        {/* Model Selector */}
-        <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
-          <div className="flex items-center lg:h-[72px]">
-            <span className="font-label text-[10px] font-semibold uppercase tracking-[0.24em] text-on-surface-variant">
-              Model
-            </span>
-          </div>
-          <div className="grid grid-cols-2 gap-2 2xl:flex 2xl:flex-wrap 2xl:items-center">
-            {ACTIVE_MODELS.map((item) => {
-              const active = item === model;
-              return (
+        {!hideSecondary ? (
+          <div className="editorial-chip flex h-full flex-col rounded-[1.35rem] p-3 md:p-4">
+            <div className="mb-2 flex items-center justify-center text-center">
+              <span
+                className={`font-label text-[10px] font-semibold uppercase tracking-[0.24em] ${
+                  secondaryTone === "primary"
+                    ? "text-primary/85"
+                    : "text-tertiary/85"
+                }`}
+              >
+                {secondaryLabel}
+              </span>
+            </div>
+            <div
+              className={`grid flex-1 gap-2 ${
+                compareHref ? "content-start" : "content-center"
+              }`}
+            >
+              <div className="grid grid-cols-2 gap-2">
+                {showModelButtons
+                  ? ACTIVE_MODELS.map((item) => {
+                      const active = item === model;
+                      return (
+                        <Link
+                          key={item}
+                          href={buildHref(pathname, band, item)}
+                          aria-current={item === model ? "page" : undefined}
+                          className={`flex min-h-11 items-center justify-center rounded-full border px-3 py-2 text-center font-headline text-[10px] font-bold uppercase tracking-[0.14rem] transition sm:text-[11px] ${
+                            active
+                              ? "border-primary/25 bg-primary/12 text-primary"
+                              : "border-outline-variant/40 bg-surface/75 text-on-surface-variant hover:border-primary/35 hover:text-on-surface"
+                          }`}
+                        >
+                          {MODEL_CONFIG[item].displayName}
+                        </Link>
+                      );
+                    })
+                  : secondaryLinks.map((item) => (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        aria-current={item.active ? "page" : undefined}
+                        className={`flex min-h-11 items-center justify-center rounded-full border px-3 py-2 text-center font-headline text-[10px] font-bold uppercase tracking-[0.14rem] transition sm:text-[11px] ${
+                          item.active
+                            ? secondaryTone === "primary"
+                              ? "border-primary/25 bg-primary/12 text-primary"
+                              : "border-tertiary/45 bg-tertiary/10 text-tertiary"
+                            : secondaryTone === "primary"
+                              ? "border-outline-variant/40 bg-surface/75 text-on-surface-variant hover:border-primary/35 hover:text-on-surface"
+                              : "border-outline-variant/40 bg-surface/75 text-on-surface-variant hover:border-tertiary/45 hover:text-tertiary"
+                        }`}
+                      >
+                        {item.label}
+                      </Link>
+                    ))}
+              </div>
+              {showModelButtons && compareHref ? (
                 <Link
-                  key={item}
-                  href={buildHref(band, item)}
-                  aria-current={item === model ? "page" : undefined}
-                  className={`flex items-center justify-center rounded-full border px-3 py-1.5 text-center font-headline text-[11px] font-bold uppercase tracking-[0.12rem] transition ${
-                    active
-                      ? "border-primary bg-primary/15 text-primary"
-                      : "border-outline-variant/50 bg-surface text-on-surface-variant hover:border-primary hover:text-on-surface"
-                  }`}
+                  href={compareHref}
+                  className="inline-flex min-h-11 w-full items-center justify-center rounded-full border border-outline-variant/35 bg-surface/80 px-4 py-3 text-center font-headline text-[10px] font-bold uppercase tracking-[0.18rem] text-on-surface transition hover:border-primary/35 hover:bg-surface-container hover:text-primary sm:text-[11px]"
                 >
-                  {MODEL_CONFIG[item].displayName}
+                  Compare Models
                 </Link>
-              );
-            })}
+              ) : null}
+            </div>
           </div>
-        </div>
-      </div>
-
-      <div className="mt-1 lg:mt-0">
-        <Link
-          href={`/compare?band=${band}`}
-          className="inline-flex w-full items-center justify-center rounded-lg border border-outline-variant/40 bg-surface px-4 py-2 text-center font-headline text-[11px] font-bold uppercase tracking-[0.18rem] text-on-surface transition hover:border-primary hover:bg-surface-container hover:text-primary lg:w-auto"
-        >
-          Compare Models
-        </Link>
+        ) : null}
       </div>
     </div>
   );

@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { DataState } from "@/components/data-state";
 import { FilterLinks } from "@/components/filter-links";
+import { PageHero } from "@/components/page-hero";
 import {
   ResponsiveTableFrame,
   TABLE_CELL_CLASS,
@@ -104,28 +105,15 @@ export default async function VenueAnalyticsPage({ searchParams }: Props) {
     <div className="mx-auto max-w-6xl space-y-6">
       <FilterLinks pathname="/venues" band={state.band} bands={bands} />
 
-      <section className="relative overflow-hidden rounded-xl border border-outline-variant/30 bg-surface-container px-6 py-6 shadow-[0_24px_80px_rgba(0,0,0,0.08)] md:px-10 md:py-8">
-        <div className="absolute inset-y-0 right-0 hidden w-1/3 bg-gradient-to-l from-primary-container/15 to-transparent lg:block" />
-        <div className="relative grid gap-8 lg:grid-cols-[minmax(0,1.4fr)_minmax(280px,0.8fr)]">
-          <div className="flex flex-col justify-center text-center lg:text-left">
-            <p className="font-label text-[10px] uppercase tracking-[0.24em] text-on-surface-variant">
-              Venue-specific patterns
-            </p>
-            <h1 className="mt-2 font-headline text-3xl font-bold uppercase tracking-[-0.04em] text-on-surface md:text-5xl">
-              {snapshot?.venueName ?? "Venue Analytics"}
-            </h1>
-            <p className="mt-2 font-headline text-base uppercase tracking-[0.08em] text-primary">
-              {locationLabel ? `${locationLabel} • ` : ""}
-              {bandName}
-            </p>
-            <p className="mt-4 max-w-3xl text-sm leading-6 text-on-surface-variant mx-auto lg:mx-0">
-              Read the rooms where {bandName} repeats history. This view surfaces venue frequency,
-              common songs, and direct links back into the Explorer for show-level replay.
-            </p>
-          </div>
-
+      <PageHero
+        kicker="Room history"
+        eyebrow="Venue-specific patterns"
+        title={snapshot?.venueName ?? "Venue Analytics"}
+        meta={`${locationLabel ? `${locationLabel} • ` : ""}${bandName}`}
+        description={`Read the rooms where ${bandName} tends to repeat history. This view surfaces venue frequency, common songs, and quick links back into show-level replay.`}
+        aside={
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
-            <div className="rounded-xl border border-outline-variant/20 bg-surface-container-low p-5 text-center">
+            <div className="editorial-panel p-5 text-center">
               <p className="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">
                 Selected venue
               </p>
@@ -136,7 +124,7 @@ export default async function VenueAnalyticsPage({ searchParams }: Props) {
                 {snapshot ? "historical shows with this venue key" : "choose a valid venue from the rail"}
               </p>
             </div>
-            <div className="rounded-xl border border-outline-variant/20 bg-surface-container-low p-5 text-center">
+            <div className="editorial-panel p-5 text-center">
               <p className="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">
                 Venue options
               </p>
@@ -148,8 +136,8 @@ export default async function VenueAnalyticsPage({ searchParams }: Props) {
               </p>
             </div>
           </div>
-        </div>
-      </section>
+        }
+      />
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.18fr)_minmax(300px,0.82fr)]">
         <div className="space-y-6">
@@ -221,7 +209,7 @@ export default async function VenueAnalyticsPage({ searchParams }: Props) {
                   {snapshot.recentShows.map((show) => (
                     <Link
                       key={show.showId}
-                      href={`/explorer?band=${state.band}&date=${show.showDate}`}
+                      href={`/replay?band=${state.band}&date=${show.showDate}`}
                       className="block rounded-xl border border-outline-variant/20 bg-surface-container-low p-4 transition hover:border-primary hover:bg-surface-container"
                     >
                       <div className="flex items-start justify-between gap-4">
@@ -234,7 +222,7 @@ export default async function VenueAnalyticsPage({ searchParams }: Props) {
                           </p>
                         </div>
                         <span className="font-label text-[10px] uppercase tracking-[0.18rem] text-primary">
-                          Explorer
+                          Replay
                         </span>
                       </div>
                     </Link>
@@ -263,7 +251,7 @@ export default async function VenueAnalyticsPage({ searchParams }: Props) {
           <div className="space-y-4">
             <p className="text-sm leading-6 text-on-surface-variant">
               Use the highest-volume rooms as a fast read on venue character, then drill into a
-              specific date through the Explorer.
+              specific date through Replay.
             </p>
             <div className="max-h-[720px] overflow-y-auto rounded-xl border border-outline-variant/20 bg-surface-container-low p-3">
               {state.venues.length === 0 ? (

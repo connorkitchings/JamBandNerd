@@ -100,13 +100,13 @@ function TierSection({
   const isCkPlus = modelSlug === "ckplus";
 
   return (
-    <div className="rounded-xl border border-outline-variant/20 bg-surface-container-low overflow-hidden">
+    <div className="editorial-panel overflow-hidden rounded-[1.5rem]">
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
         aria-expanded={isOpen}
         aria-controls={`tier-content-${tier}`}
-        className="flex w-full items-center justify-between px-4 py-3 transition hover:bg-surface-container focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
+        className="flex w-full items-center justify-between px-4 py-4 transition hover:bg-surface-container-high/30 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
       >
         <div className="flex items-center gap-3">
           <TierBadge tier={tier} />
@@ -124,18 +124,17 @@ function TierSection({
 
       <div
         id={`tier-content-${tier}`}
-        className="border-t border-outline-variant/15 w-full bg-surface-container-low"
+        className="w-full border-t border-outline-variant/15 bg-surface-container-low/65"
         hidden={!isOpen}
       >
-        {/* Desktop table view */}
-          <div className="hidden md:block overflow-x-auto w-full">
-            <table className="w-full border-collapse text-left text-sm">
+          <div className="hidden w-full overflow-x-auto md:block">
+            <table className="w-full table-fixed border-collapse text-left text-sm">
               <thead>
                 <tr>
                   <th className="w-16 px-4 py-2.5 font-label text-[10px] font-medium uppercase tracking-[0.18rem] text-on-surface-variant">
                     Rank
                   </th>
-                  <th className="px-4 py-2.5 font-label text-[10px] font-medium uppercase tracking-[0.18rem] text-on-surface-variant">
+                  <th className={`px-4 py-2.5 font-label text-[10px] font-medium uppercase tracking-[0.18rem] text-on-surface-variant ${isCkPlus ? "w-[34%]" : "w-[44%]"}`}>
                     Song
                   </th>
                   <th className="w-28 px-4 py-2.5 font-label text-[10px] font-medium uppercase tracking-[0.18rem] text-on-surface-variant text-right">
@@ -164,23 +163,23 @@ function TierSection({
                 </tr>
               </thead>
               <tbody>
-                {rows.map((row, index) => {
+                {rows.map((row) => {
                   const isHighlighted = highlightSongs?.has(normalizeSongName(row.songName));
                   return (
                     <tr
                       key={`${row.rank}-${row.songName}`}
-                      className={`transition-colors hover:bg-surface-container border-t border-outline-variant/5 ${isHighlighted ? "bg-green-950/20" : ""}`}
+                      className={`border-t border-outline-variant/8 transition-colors hover:bg-surface-container-high/20 ${isHighlighted ? "bg-green-950/20" : ""}`}
                     >
                       <td className="whitespace-nowrap px-4 py-3.5 font-headline text-sm font-bold tabular-nums text-on-surface-variant">
                         {row.rank}
                       </td>
                       <td className="px-4 py-3.5">
-                        <span className={`font-headline font-medium ${isHighlighted ? "text-green-300" : "text-on-surface"}`} title={row.songName}>
+                        <span className={`block truncate font-headline font-medium ${isHighlighted ? "text-green-300" : "text-on-surface"}`} title={row.songName}>
                           {row.songName}
                         </span>
                       </td>
                       <td className="whitespace-nowrap px-4 py-3.5 text-right">
-                        <span className="rounded bg-surface-container px-2 py-1 font-mono text-xs font-medium text-on-surface-variant">
+                        <span className="rounded-full bg-surface-container px-2.5 py-1 font-mono text-xs font-medium text-on-surface-variant">
                           {row.currentGap !== null ? row.currentGap : "—"}
                         </span>
                       </td>
@@ -211,7 +210,6 @@ function TierSection({
             </table>
           </div>
 
-        {/* Mobile card view */}
           <div className="divide-y divide-outline-variant/10 md:hidden">
             {rows.map((row) => {
               const isHighlighted = highlightSongs?.has(normalizeSongName(row.songName));
@@ -219,10 +217,10 @@ function TierSection({
               return (
                 <div
                   key={`${row.rank}-${row.songName}`}
-                  className={`flex items-center justify-between px-4 py-3 ${isHighlighted ? "bg-green-950/20" : ""}`}
+                  className={`flex items-center justify-between px-4 py-4 ${isHighlighted ? "bg-green-950/20" : ""}`}
                 >
                   <div className="flex items-center gap-3">
-                    <span className="font-headline text-sm font-bold tabular-nums text-on-surface-variant">
+                    <span className="flex size-8 items-center justify-center rounded-full bg-surface-container-high/60 font-headline text-sm font-bold tabular-nums text-on-surface-variant">
                       {row.rank}
                     </span>
                     <div>
@@ -258,7 +256,7 @@ export function SongBoard({ rows, highlightSongs, secondarySongs, compact, model
   );
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {TIER_ORDER.map((tier) => (
         <TierSection
           key={tier}
@@ -271,8 +269,8 @@ export function SongBoard({ rows, highlightSongs, secondarySongs, compact, model
           modelSlug={modelSlug}
         />
       ))}
-      <p className="pt-2 text-center font-label text-[10px] uppercase tracking-[0.16rem] text-on-surface-variant/50">
-        {rows.length} songs ranked · Tiers reflect relative model signal, not guaranteed outcomes
+      <p className="pt-2 text-center font-label text-[10px] uppercase tracking-[0.16rem] text-on-surface-variant/55">
+        Tiers reflect relative model signal, not guaranteed outcomes
       </p>
     </div>
   );

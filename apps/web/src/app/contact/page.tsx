@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { PageHero } from "@/components/page-hero";
 import { SectionCard } from "@/components/section-card";
 
 export const metadata: Metadata = {
@@ -12,27 +13,18 @@ const CONTACT_EMAIL = "jambandnerd2026@gmail.com";
 export default function ContactPage() {
   return (
     <div className="mx-auto max-w-4xl space-y-8">
-      <section className="relative overflow-hidden rounded-xl border border-outline-variant/30 bg-surface-container p-8 md:p-12">
-        <div className="absolute inset-y-0 right-0 hidden w-1/3 bg-gradient-to-l from-primary-container/15 to-transparent lg:block" />
-        <div className="relative">
-          <p className="font-label text-[10px] uppercase tracking-[0.24em] text-on-surface-variant">
-            Contact
-          </p>
-          <h1 className="mt-3 font-headline text-4xl font-semibold uppercase tracking-[-0.04em] text-on-surface md:text-5xl">
-            Contact JamBandNerd
-          </h1>
-          <p className="mt-4 max-w-3xl text-sm leading-7 text-on-surface-variant">
-            Use the email below for site feedback, data corrections, feature ideas, or general
-            questions about the project.
-          </p>
-        </div>
-      </section>
+      <PageHero
+        kicker="Direct line"
+        eyebrow="Contact"
+        title="Contact JamBandNerd"
+        description="Use the email below for site feedback, data corrections, feature ideas, or general questions about the project."
+      />
 
       <SectionCard title="Email" eyebrow="Direct Contact">
         <a
           href={`mailto:${CONTACT_EMAIL}`}
           aria-label={`Email ${CONTACT_EMAIL}`}
-          className="inline-flex items-center rounded-xl border border-primary/30 bg-primary-container/10 px-5 py-4 font-headline text-base font-medium text-primary transition hover:border-primary hover:bg-primary-container/20"
+          className="inline-flex items-center rounded-full border border-primary/30 bg-primary/12 px-5 py-4 font-headline text-base font-medium text-primary transition hover:border-primary hover:bg-primary/16"
         >
           {CONTACT_EMAIL}
         </a>

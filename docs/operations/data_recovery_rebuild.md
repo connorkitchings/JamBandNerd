@@ -34,10 +34,12 @@ Use the audit to decide whether a band needs targeted raw re-ingestion.
 ## Apply Migration
 
 Apply the relevant Supabase migration before rebuilding derived outputs. For the
-`accuracy_per_show.show_id` alignment change, apply:
+`accuracy_per_show.show_id` alignment change and historical backtest lineage
+store, apply:
 
 ```text
 supabase/migrations/20260322_accuracy_per_show_show_id_text.sql
+supabase/migrations/20260325_create_historical_prediction_runs.sql
 ```
 
 ## Rebuild Derived Outputs
@@ -74,5 +76,8 @@ After rebuild:
 - confirm `scripts/validate_prediction_tables.py` passes for rebuilt bands
 - confirm `prediction_songs` row counts match `top_k` for the latest prediction
   run per band/model
+- confirm recent `accuracy_per_show` rows have non-null `prediction_run_id`
+- confirm `historical_prediction_runs` contains the matching scored board for a
+  spot-checked recent show
 - spot-check the website performance/history surfaces for a numeric-ID band and
   a string-ID band

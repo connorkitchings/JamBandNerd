@@ -25,7 +25,7 @@ Notes:
 
 ### Navigation and state
 - Bottom navigation stays visible above the safe area.
-- Active route styling updates correctly as you move between `/`, `/explorer`, `/performance`, `/last-show`, and `/about`.
+- Active route styling updates correctly as you move between `/`, `/replay`, `/performance`, `/last-show`, and `/about`.
 - Search params for band/model/date remain shareable and survive refresh.
 
 ### Homepage and prediction views
@@ -33,9 +33,9 @@ Notes:
 - Dense tables remain horizontally scrollable instead of clipping.
 - Filter controls stay tap-friendly and readable.
 
-### Historical Explorer
-- Date rail stays usable on phones and only shows valid prediction dates.
-- Prediction replay and actual setlist remain paired to the same selected date.
+### Replay
+- The recent-show rail stays usable on phones and only shows replayable retained dates.
+- Both model boards and the actual setlist remain paired to the same selected date.
 - Summary cards stack without hiding key metadata.
 
 ### Performance and last show
@@ -54,7 +54,7 @@ Notes:
 Capture:
 - Device + browser (e.g., iPhone Safari 17, Pixel Chrome 131)
 - URL (including query params)
-- Band + model + tab + selected date (if Explorer)
+- Band + selected date (if Replay)
 - Screenshot (especially for layout issues)
 
 Then reproduce on desktop with responsive emulation:

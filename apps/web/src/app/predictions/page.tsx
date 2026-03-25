@@ -12,15 +12,26 @@ import {
   getBands,
   getLatestPredictions,
   getNextShowDetails,
+  getRecentAccuracy,
   resolveBandSelection,
 } from "@/lib/data";
 import {
   buildLocationLabel,
   formatDateLabel,
+  formatPercent,
   formatTimestampLabel,
 } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
+
+function average(values: Array<number | null>) {
+  const filtered = values.filter((value): value is number => value !== null);
+  if (filtered.length === 0) {
+    return null;
+  }
+
+  return filtered.reduce((sum, value) => sum + value, 0) / filtered.length;
+}
 
 type Props = {
   searchParams: Promise<{
@@ -102,7 +113,10 @@ export default async function PredictionsPage({ searchParams }: Props) {
   };
   const bandName = bandEntry.displayName;
 
-  const nextShowState = await getNextShowDetails(predictionState.band);
+  const [nextShowState, accuracyState] = await Promise.all([
+    getNextShowDetails(predictionState.band),
+    getRecentAccuracy(predictionState.band, predictionState.model, 25),
+  ]);
   const nextShow = nextShowState.status === "ready" ? nextShowState.show : null;
   const heroDate = nextShow?.showDate ?? predictionState.snapshot.referenceDate;
   const dateLabel = formatDateLabel(heroDate);
@@ -118,6 +132,25 @@ export default async function PredictionsPage({ searchParams }: Props) {
         ? "Next Show"
         : "Prediction Outlook";
   const snapshotLabel = formatTimestampLabel(predictionState.snapshot.predictedAt);
+  const accuracyRows = accuracyState.status === "ready" ? accuracyState.rows : [];
+  const accuracyWindow = accuracyRows.length || 25;
+  const precisionCards = [
+    {
+      title: "Top 10 Accuracy",
+      value: formatPercent(average(accuracyRows.map((row) => row.k10Recall))),
+      description: `last ${accuracyWindow} shows`,
+    },
+    {
+      title: "Top 25 Accuracy",
+      value: formatPercent(average(accuracyRows.map((row) => row.k25Recall))),
+      description: `last ${accuracyWindow} shows`,
+    },
+    {
+      title: "Top 50 Accuracy",
+      value: formatPercent(average(accuracyRows.map((row) => row.k50Recall))),
+      description: `last ${accuracyWindow} shows`,
+    },
+  ] as const;
 
   const searchSongs = predictionState.snapshot.predictions.map((row) => ({
     rank: row.rank,
@@ -147,31 +180,34 @@ export default async function PredictionsPage({ searchParams }: Props) {
         dateLabel={dateLabel}
         locationLabel={locationLabel}
         statusLabel={statusLabel}
-        modelSlug={predictionState.model}
         snapshotLabel={snapshotLabel}
-        totalSongs={predictionState.snapshot.predictions.length}
         predictions={predictionState.snapshot.predictions}
+        precisionCards={precisionCards}
+        metricCaption="Accuracy is measured as the share of the actual setlist included in each Top-X group."
       />
 
       <section>
-        <div className="mb-6 border-b border-outline-variant/20 pb-4">
-          <div>
-            <h2 className="font-headline text-2xl font-bold uppercase tracking-tight text-on-surface">
-              Song Board
+        <div className="editorial-panel px-6 py-6 md:px-7">
+          <div className="relative">
+            <p className="font-label text-[10px] uppercase tracking-[0.24em] text-primary">
+              Full ranking
+            </p>
+            <h2 className="mt-3 font-headline text-3xl font-bold uppercase tracking-[-0.04em] text-on-surface">
+              Song board
             </h2>
-            <p className="text-xs text-on-surface-variant">
+            <p className="mt-3 text-sm leading-7 text-on-surface-variant">
               All ranked predictions for {bandName} using{" "}
-              {MODEL_CONFIG[predictionState.model].displayName}. Tiers reflect relative
-              likelihood, not guarantees.
+              {MODEL_CONFIG[predictionState.model].displayName}. Use the search first, then scan
+              by tier to understand how the board is clustering tonight.
             </p>
           </div>
+          <div className="mt-5">
+            <SongSearch songs={searchSongs} />
+          </div>
+          <div className="mt-6">
+            <SongBoard rows={predictionState.snapshot.predictions} modelSlug={predictionState.model} />
+          </div>
         </div>
-
-        <div className="mb-6">
-          <SongSearch songs={searchSongs} />
-        </div>
-
-        <SongBoard rows={predictionState.snapshot.predictions} modelSlug={predictionState.model} />
       </section>
     </div>
   );

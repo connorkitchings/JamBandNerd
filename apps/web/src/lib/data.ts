@@ -4,6 +4,7 @@ import { cache } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import {
+  ACTIVE_MODELS,
   DEFAULT_BAND_SLUG,
   type BandSlug,
   type LikelihoodTier,
@@ -88,6 +89,19 @@ export type ExplorerSnapshot = {
   setlist: SetlistSnapshot | null;
 };
 
+export type ReplayShowOption = {
+  showDate: string;
+  venueName: string | null;
+};
+
+export type ReplaySnapshot = {
+  availableShows: ReplayShowOption[];
+  selectedDate: string | null;
+  show: ShowDetails | null;
+  setlist: SetlistSnapshot | null;
+  snapshots: Record<ModelSlug, PredictionSnapshot | null>;
+};
+
 export type BandEntry = {
   slug: string;
   displayName: string;
@@ -112,6 +126,23 @@ function parsePredictions(value: unknown): JsonPrediction[] {
   }
 
   return Array.isArray(value) ? (value as JsonPrediction[]) : [];
+}
+
+function parseStringArray(value: unknown): string[] {
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed)
+        ? parsed.filter((item): item is string => typeof item === "string")
+        : [];
+    } catch {
+      return [];
+    }
+  }
+
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string")
+    : [];
 }
 
 function parseNumber(value: unknown): number | null {
@@ -339,6 +370,8 @@ function buildPredictionSnapshotFromCanonicalRow(
     predictedAt:
       typeof row.predicted_at === "string"
         ? row.predicted_at
+        : typeof row.generated_at === "string"
+          ? row.generated_at
         : typeof row.created_at === "string"
           ? row.created_at
           : null,
@@ -1274,6 +1307,28 @@ async function getSetlistForDate(
   };
 }
 
+function buildFallbackSetlistFromHistoricalRow(
+  row: Record<string, unknown> | null,
+): SetlistSnapshot | null {
+  if (!row) {
+    return null;
+  }
+
+  const actualSongs = parseStringArray(row.actual_songs);
+  if (actualSongs.length === 0) {
+    return null;
+  }
+
+  return {
+    showDetails: null,
+    songs: actualSongs.map((songName, index) => ({
+      setNumber: null,
+      position: index + 1,
+      songName,
+    })),
+  };
+}
+
 export const getLastShowSetlist = cache(
   async (bandInput: string | undefined): Promise<RouteState<{ band: BandSlug; setlist: SetlistSnapshot }>> => {
     const missingEnv = getClientOrState<{ band: BandSlug; setlist: SetlistSnapshot }>();
@@ -1376,6 +1431,188 @@ export async function getExplorerSnapshot(
     },
   };
 }
+
+export const getReplaySnapshot = cache(
+  async (
+    bandInput: string | undefined,
+    selectedDateInput?: string,
+    replayWindow = 50,
+  ): Promise<RouteState<{ band: BandSlug; replay: ReplaySnapshot }>> => {
+    const missingEnv = getClientOrState<{ band: BandSlug; replay: ReplaySnapshot }>();
+    if (missingEnv) {
+      return missingEnv;
+    }
+
+    const bandState = await getBandContext(bandInput);
+    if (bandState.status !== "ready") {
+      return bandState as RouteState<{ band: BandSlug; replay: ReplaySnapshot }>;
+    }
+
+    const client = getSupabaseServerClient();
+    if (!client) {
+      return { status: "missing_env" };
+    }
+
+    try {
+      const band = bandState.band;
+      const { showsTable } = bandState.bandEntry;
+      const modelVersions = await Promise.all(
+        ACTIVE_MODELS.map(async (model) => ({
+          model,
+          version: await getCurrentModelVersion(client, band, model),
+        })),
+      );
+
+      const historicalRowsByModel = await Promise.all(
+        modelVersions.map(async ({ model, version }) => {
+          const { data, error } = await client
+            .from("historical_prediction_runs")
+            .select("target_show_date, generated_at")
+            .eq("band", band)
+            .eq("model_slug", model)
+            .eq("model_version", version)
+            .order("target_show_date", { ascending: false })
+            .order("generated_at", { ascending: false })
+            .limit(Math.max(replayWindow * 4, 100));
+
+          if (error) {
+            throw new Error(error.message);
+          }
+
+          const dedupedDates: string[] = [];
+          const seen = new Set<string>();
+          for (const item of data ?? []) {
+            const row = asRecord(item);
+            const showDate =
+              row && typeof row.target_show_date === "string"
+                ? row.target_show_date
+                : null;
+            if (!showDate || seen.has(showDate)) {
+              continue;
+            }
+            seen.add(showDate);
+            dedupedDates.push(showDate);
+          }
+
+          return { model, dates: dedupedDates };
+        }),
+      );
+
+      const replayableDateSet = historicalRowsByModel.reduce<Set<string> | null>(
+        (shared, entry) => {
+          const dates = new Set(entry.dates);
+          if (!shared) {
+            return dates;
+          }
+
+          return new Set([...shared].filter((date) => dates.has(date)));
+        },
+        null,
+      );
+
+      const availableDates = [...(replayableDateSet ?? new Set<string>())]
+        .sort((left, right) => right.localeCompare(left))
+        .slice(0, replayWindow);
+
+      if (availableDates.length === 0) {
+        return { status: "empty" };
+      }
+
+      const selectedDate =
+        selectedDateInput && availableDates.includes(selectedDateInput)
+          ? selectedDateInput
+          : availableDates[0] ?? null;
+
+      if (!selectedDate) {
+        return { status: "empty" };
+      }
+
+      const { data: showRows, error: showError } = await client
+        .from(showsTable)
+        .select("*")
+        .in("show_date", availableDates);
+
+      if (showError) {
+        return { status: "error", message: showError.message };
+      }
+
+      const showByDate = new Map<string, Record<string, unknown>>();
+      for (const item of showRows ?? []) {
+        const row = asRecord(item);
+        if (!row || typeof row.show_date !== "string") {
+          continue;
+        }
+        showByDate.set(row.show_date, row);
+      }
+
+      const availableShows = availableDates.map((showDate) => ({
+        showDate,
+        venueName: getVenueNameFromRow(showByDate.get(showDate) ?? null),
+      }));
+
+      const historicalSnapshots = await Promise.all(
+        modelVersions.map(async ({ model, version }) => {
+          const { data, error } = await client
+            .from("historical_prediction_runs")
+            .select("*")
+            .eq("band", band)
+            .eq("model_slug", model)
+            .eq("model_version", version)
+            .eq("target_show_date", selectedDate)
+            .order("generated_at", { ascending: false })
+            .limit(1);
+
+          if (error) {
+            throw new Error(error.message);
+          }
+
+          const row = asRecord(data?.[0]);
+          return {
+            model,
+            row,
+            snapshot: row ? buildPredictionSnapshotFromCanonicalRow(row) : null,
+          };
+        }),
+      );
+
+      const snapshots = historicalSnapshots.reduce<Record<ModelSlug, PredictionSnapshot | null>>(
+        (acc, entry) => {
+          acc[entry.model] = entry.snapshot;
+          return acc;
+        },
+        {
+          notebook: null,
+          ckplus: null,
+        },
+      );
+
+      const setlist =
+        (await getSetlistForDate(band, selectedDate)) ??
+        buildFallbackSetlistFromHistoricalRow(
+          historicalSnapshots.find((entry) => entry.row)?.row ?? null,
+        );
+
+      const selectedShow = showByDate.get(selectedDate) ?? null;
+
+      return {
+        status: "ready",
+        band,
+        replay: {
+          availableShows,
+          selectedDate,
+          show: selectedShow ? buildShowDetails(selectedShow) : null,
+          setlist,
+          snapshots,
+        },
+      };
+    } catch (error) {
+      return {
+        status: "error",
+        message: error instanceof Error ? error.message : "Unknown error",
+      };
+    }
+  },
+);
 
 export const getGlobalSearchData = cache(
   async (): Promise<RouteState<{ items: { band: BandSlug; songName: string; rank: number }[] }>> => {

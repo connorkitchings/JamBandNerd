@@ -9,10 +9,10 @@ type Props = {
 
 export function SectionCard({ title, eyebrow, children, centered = false }: Props) {
   return (
-    <section className="rounded-xl border border-outline-variant/30 bg-surface-container p-6 shadow-[0_0_0_1px_rgba(255,255,255,0.02)]">
+    <section className="editorial-panel p-6 md:p-7">
       {eyebrow ? (
         <p
-          className={`font-label text-[10px] font-semibold uppercase tracking-[0.24em] text-on-surface-variant ${
+          className={`relative font-label text-[10px] font-semibold uppercase tracking-[0.24em] text-on-surface-variant ${
             centered ? "text-center" : ""
           }`}
         >
@@ -20,13 +20,13 @@ export function SectionCard({ title, eyebrow, children, centered = false }: Prop
         </p>
       ) : null}
       <h2
-        className={`mt-2 font-headline text-xl font-semibold text-on-surface ${
+        className={`relative mt-2 font-headline text-[1.35rem] font-semibold uppercase tracking-[-0.03em] text-on-surface ${
           centered ? "text-center" : ""
         }`}
       >
         {title}
       </h2>
-      {children && <div className="mt-5">{children}</div>}
+      {children && <div className="relative mt-5">{children}</div>}
     </section>
   );
 }

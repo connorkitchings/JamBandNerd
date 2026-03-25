@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
+import { DashboardSideNav } from "@/components/dashboard-side-nav";
 import { DataState } from "@/components/data-state";
-import { FilterLinks } from "@/components/filter-links";
+import { PageHero } from "@/components/page-hero";
 import { SongBoard } from "@/components/song-board";
 import { SectionCard } from "@/components/section-card";
 import { getBands, getLatestPredictions, getShowDetailsByDate, bandEntryBySlug, resolveBandSelection, getRecentAccuracy } from "@/lib/data";
@@ -44,6 +45,29 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
 
 function normalizeSongName(value: string) {
   return value.trim().toLowerCase();
+}
+
+function getWinnerLabel(
+  row: {
+    nb10: number | null;
+    ck10: number | null;
+  },
+  labelA: string,
+  labelB: string,
+) {
+  if (row.nb10 === null || row.ck10 === null) {
+    return "No winner";
+  }
+
+  if (row.nb10 > row.ck10) {
+    return `${labelA} edge`;
+  }
+
+  if (row.ck10 > row.nb10) {
+    return `${labelB} edge`;
+  }
+
+  return "Tie";
 }
 
 export default async function ComparePage({ searchParams }: Props) {
@@ -176,32 +200,32 @@ export default async function ComparePage({ searchParams }: Props) {
     notebook.snapshot.referenceDate === ckplus.snapshot.referenceDate
       ? "Both models are reading the same show date."
       : `${labelA}: ${formatCompactDateLabel(notebook.snapshot.referenceDate)} • ${labelB}: ${formatCompactDateLabel(ckplus.snapshot.referenceDate)}`;
+  const mobileHeadToHeadRows = headToHeadRows.slice(0, 5);
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
-      <FilterLinks pathname="/compare" band={notebook.band} bands={bands} />
+      <DashboardSideNav
+        band={notebook.band}
+        model={modelASlug}
+        bands={bands}
+        pathname="/compare"
+        compareHref={null}
+        hideSecondary
+        bandLinks={bands.map((item) => ({
+          href: `/compare?band=${item.slug}&modelA=${modelASlug}&modelB=${modelBSlug}`,
+          label: item.displayName,
+          active: item.slug === notebook.band,
+        }))}
+      />
 
-      <section className="relative overflow-hidden rounded-xl border border-outline-variant/30 bg-surface-container px-6 py-6 shadow-[0_24px_80px_rgba(0,0,0,0.08)] md:px-10 md:py-8">
-        <div className="absolute inset-y-0 left-0 hidden w-1/3 bg-gradient-to-r from-tertiary/5 to-transparent lg:block" />
-        <div className="absolute inset-y-0 right-0 hidden w-1/3 bg-gradient-to-l from-primary-container/15 to-transparent lg:block" />
-        <div className="relative grid gap-8 lg:grid-cols-[minmax(0,1.4fr)_minmax(280px,0.8fr)]">
-          <div>
-            <p className="font-label text-[10px] uppercase tracking-[0.24em] text-on-surface-variant">
-              Model divergence
-            </p>
-            <h1 className="mt-3 font-headline text-4xl font-semibold uppercase tracking-[-0.04em] text-on-surface md:text-5xl">
-              {bandName} comparison board
-            </h1>
-            <p className="mt-3 font-headline text-base uppercase tracking-[0.08em] text-primary">
-              {show?.venueName ?? "Latest prediction snapshot"}
-              {locationLabel ? ` • ${locationLabel}` : ""}
-            </p>
-            <p className="mt-3 max-w-3xl text-sm leading-6 text-on-surface-variant">
-              Track the historical head-to-head performance exactly mapping {labelA} vs. {labelB} recall across past shows. 
-              Read both latest model snapshots side-by-side to look at where they dynamically converge and diverge for the next gig.
-            </p>
-          </div>
-          <div className="rounded-xl border border-outline-variant/20 bg-surface-container-low p-5">
+      <PageHero
+        kicker="Head-to-head"
+        eyebrow="Model divergence"
+        title={`${bandName} comparison board`}
+        meta={`${show?.venueName ?? "Latest prediction snapshot"}${locationLabel ? ` • ${locationLabel}` : ""}`}
+        description={`Track ${labelA} versus ${labelB} across recent scored shows, then read where the two boards currently converge and break apart for the next night.`}
+        aside={
+          <div className="editorial-panel p-5">
             <p className="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">
               Snapshot sync
             </p>
@@ -210,21 +234,21 @@ export default async function ComparePage({ searchParams }: Props) {
             </p>
             <p className="mt-2 text-sm leading-6 text-on-surface-variant">{syncLabel}</p>
           </div>
-        </div>
-      </section>
+        }
+      />
 
       <section className="grid gap-4 md:grid-cols-3">
-        <div className="rounded-xl border border-primary/20 bg-surface-container-low p-6 text-center">
+        <div className="editorial-panel p-6 text-center">
           <p className="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">{labelA} Wins</p>
           <p className="mt-3 font-headline text-4xl font-bold text-primary">{nbWins}</p>
           <p className="mt-1 text-[10px] font-medium text-on-surface-variant">Top-10 accuracy match-ups</p>
         </div>
-        <div className="rounded-xl border border-tertiary/20 bg-surface-container-low p-6 text-center">
+        <div className="editorial-panel p-6 text-center">
           <p className="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">{labelB} Wins</p>
           <p className="mt-3 font-headline text-4xl font-bold text-tertiary">{ckWins}</p>
           <p className="mt-1 text-[10px] font-medium text-on-surface-variant">Top-10 accuracy match-ups</p>
         </div>
-        <div className="rounded-xl border border-outline-variant/30 bg-surface-container-low p-6 text-center">
+        <div className="editorial-panel p-6 text-center">
           <p className="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">Ties</p>
           <p className="mt-3 font-headline text-4xl font-bold text-on-surface">{ties}</p>
           <p className="mt-1 text-[10px] font-medium text-on-surface-variant">Identical Top-10 recall</p>
@@ -233,7 +257,86 @@ export default async function ComparePage({ searchParams }: Props) {
 
       {headToHeadRows.length > 0 && (
         <SectionCard title="Head-to-Head Record" eyebrow={`Last ${headToHeadRows.length} shows evaluated`}>
-          <div className="overflow-x-auto">
+          <div className="space-y-4 md:hidden">
+            {mobileHeadToHeadRows.map((row) => (
+              <div
+                key={row.date}
+                className="rounded-[1.35rem] border border-outline-variant/20 bg-surface-container-low px-4 py-4"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-headline text-lg font-semibold text-on-surface">
+                      {formatCompactDateLabel(row.date)}
+                    </p>
+                    <p className="mt-1 text-xs leading-5 text-on-surface-variant">
+                      {row.venueName}
+                    </p>
+                  </div>
+                  <span className="rounded-full border border-outline-variant/20 bg-surface/70 px-2.5 py-1 font-label text-[10px] uppercase tracking-[0.16em] text-on-surface-variant">
+                    {getWinnerLabel(row, labelA, labelB)}
+                  </span>
+                </div>
+                <div className="mt-4 grid grid-cols-2 gap-3">
+                  <div className="rounded-2xl bg-surface/70 px-3 py-3">
+                    <p className="font-label text-[9px] uppercase tracking-[0.16rem] text-primary">
+                      {labelA}
+                    </p>
+                    <p className="mt-1 font-headline text-base font-bold text-primary">
+                      {formatPercent(row.nb10)}
+                    </p>
+                    <p className="mt-1 text-[11px] text-on-surface-variant">
+                      Precision {formatPercent(row.nbPrec10)}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl bg-surface/70 px-3 py-3">
+                    <p className="font-label text-[9px] uppercase tracking-[0.16rem] text-tertiary">
+                      {labelB}
+                    </p>
+                    <p className="mt-1 font-headline text-base font-bold text-tertiary">
+                      {formatPercent(row.ck10)}
+                    </p>
+                    <p className="mt-1 text-[11px] text-on-surface-variant">
+                      Precision {formatPercent(row.ckPrec10)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
+
+            <details className="rounded-[1.35rem] border border-outline-variant/20 bg-surface-container-low">
+              <summary className="cursor-pointer list-none px-4 py-4 font-headline text-sm uppercase tracking-[0.12em] text-on-surface">
+                Open raw ledger
+              </summary>
+              <div className="overflow-x-auto px-3 pb-3">
+                <table className="w-full min-w-[640px] whitespace-nowrap text-left text-sm">
+                  <thead>
+                    <tr className="border-b border-outline-variant/20 bg-surface-container-low">
+                      <th className="py-3 px-4 font-label uppercase tracking-wider text-on-surface-variant text-[10px] font-semibold">Show Date</th>
+                      <th className="py-3 px-4 font-label uppercase tracking-wider text-on-surface-variant text-[10px] font-semibold">Venue</th>
+                      <th className="py-3 px-4 text-center font-label uppercase tracking-wider text-primary text-[10px] font-semibold">{labelA}</th>
+                      <th className="py-3 px-4 text-center font-label uppercase tracking-wider text-tertiary text-[10px] font-semibold">{labelB}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {headToHeadRows.slice(0, HEAD_TO_HEAD_ROW_LIMIT).map((row) => (
+                      <tr key={row.date} className="border-b border-outline-variant/10 last:border-0">
+                        <td className="py-3 px-4 font-headline font-medium text-on-surface">{formatCompactDateLabel(row.date)}</td>
+                        <td className="py-3 px-4 text-on-surface-variant">{row.venueName}</td>
+                        <td className="py-3 px-4 text-center">
+                          <span className="font-bold tabular-nums text-primary">{formatPercent(row.nb10)}</span>
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          <span className="font-bold tabular-nums text-tertiary">{formatPercent(row.ck10)}</span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </details>
+          </div>
+
+          <div className="hidden overflow-x-auto md:block">
             <table className="w-full text-left text-sm whitespace-nowrap">
               <thead>
                 <tr className="border-b border-outline-variant/20 bg-surface-container-low">

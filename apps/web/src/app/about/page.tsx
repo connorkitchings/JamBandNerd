@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { PageHero } from "@/components/page-hero";
 import { SectionCard } from "@/components/section-card";
 import { MODEL_CONFIG } from "@/lib/config";
 import { getBands } from "@/lib/data";
@@ -81,28 +82,13 @@ export default async function AboutPage() {
   const bands = bandsResult.status === "ready" ? bandsResult.bands : [];
   return (
     <div className="mx-auto max-w-6xl space-y-8">
-      {/* Hero */}
-      <section className="relative overflow-hidden rounded-xl border border-outline-variant/30 bg-surface-container p-8 md:p-12">
-        <div className="absolute inset-y-0 right-0 hidden w-1/3 bg-gradient-to-l from-primary-container/15 to-transparent lg:block" />
-        <div className="relative">
-          <p className="font-label text-[10px] uppercase tracking-[0.24em] text-on-surface-variant">
-            About the platform
-          </p>
-          <h1 className="mt-3 font-headline text-4xl font-semibold uppercase tracking-[-0.04em] text-on-surface md:text-5xl">
-            About JamBandNerd
-          </h1>
-          <p className="mt-4 max-w-3xl text-sm leading-7 text-on-surface-variant">
-            JamBandNerd is a data platform that collects jam band setlists, transforms them through
-            feature-engineered pipelines, and generates next-show predictions. The system runs daily,
-            tracking rotation patterns, song gaps, and historical cadences to rank every song in a
-            band&rsquo;s catalog by likelihood of appearing at the next show.
-          </p>
-          <p className="mt-3 max-w-3xl text-sm leading-7 text-on-surface-variant">
-            This website is the primary public surface — browse real-time predictions, explore
-            historical snapshots, compare models side-by-side, and track accuracy over time.
-          </p>
-        </div>
-      </section>
+      <PageHero
+        kicker="Platform brief"
+        eyebrow="About the platform"
+        title="About JamBandNerd"
+        description="JamBandNerd is a data platform that collects jam band setlists, transforms them into shared prediction features, and publishes a live website for next-show reads, historical replay, and model auditing."
+        meta="Daily pipeline • multi-model prediction surface"
+      />
 
       {/* Model Explainers */}
       <SectionCard title="Prediction Models" eyebrow="How It Works">
@@ -115,7 +101,7 @@ export default async function AboutPage() {
             ([slug, model]) => (
               <div
                 key={slug}
-                className="rounded-xl border border-outline-variant/20 bg-surface-container-low p-6"
+                className="editorial-chip rounded-[1.5rem] p-6"
               >
                 <p className="font-label text-[10px] uppercase tracking-[0.2em] text-primary">
                   {model.displayName}
@@ -143,7 +129,7 @@ export default async function AboutPage() {
             <Link
               key={band.slug}
               href={`/predictions?band=${band.slug}`}
-              className="rounded-xl border border-outline-variant/20 bg-surface-container-low p-4 transition hover:border-primary hover:bg-surface-container"
+              className="editorial-chip rounded-[1.5rem] p-4 transition hover:border-primary hover:bg-surface-container"
             >
               <p className="font-headline text-lg font-medium text-on-surface">
                 {band.displayName}
@@ -160,7 +146,7 @@ export default async function AboutPage() {
           {PIPELINE_STEPS.map((item) => (
             <div
               key={item.step}
-              className="rounded-xl border border-outline-variant/20 bg-surface-container-low p-5"
+              className="editorial-chip rounded-[1.5rem] p-5"
             >
               <p className="font-headline text-3xl font-bold text-primary/30">{item.step}</p>
               <p className="mt-2 font-headline text-base font-semibold text-on-surface">
@@ -178,7 +164,7 @@ export default async function AboutPage() {
           {FAQ_ITEMS.map((item) => (
             <details
               key={item.question}
-              className="group rounded-xl border border-outline-variant/20 bg-surface-container-low"
+              className="group editorial-chip rounded-[1.5rem]"
             >
               <summary className="cursor-pointer select-none px-5 py-4 font-headline text-sm font-medium text-on-surface transition group-open:text-primary">
                 {item.question}
@@ -194,7 +180,7 @@ export default async function AboutPage() {
         <div className="grid gap-3 sm:grid-cols-2">
           <Link
             href="/data-use"
-            className="block rounded-xl border border-outline-variant/20 bg-surface-container-low p-5 transition hover:border-primary"
+            className="editorial-chip block rounded-[1.5rem] p-5 transition hover:border-primary"
           >
             <p className="font-headline text-base font-medium text-on-surface">
               Data Use
@@ -205,7 +191,7 @@ export default async function AboutPage() {
           </Link>
           <Link
             href="/contact"
-            className="block rounded-xl border border-outline-variant/20 bg-surface-container-low p-5 transition hover:border-primary"
+            className="editorial-chip block rounded-[1.5rem] p-5 transition hover:border-primary"
           >
             <p className="font-headline text-base font-medium text-on-surface">
               Contact

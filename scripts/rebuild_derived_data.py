@@ -18,6 +18,7 @@ from scripts.validate_accuracy_tables import validate_accuracy
 from scripts.validate_prediction_tables import validate_predictions
 from src.jambandnerd.config import (
     ACCURACY_TABLES,
+    HISTORICAL_PREDICTION_RUNS_TABLE,
     MODEL_VERSIONS,
     PREDICTION_SONGS_TABLE,
     PREDICTION_TABLES,
@@ -66,6 +67,14 @@ def clear_model_outputs(
     if clear_accuracy:
         aggregate_table = ACCURACY_TABLES[model]
         print(f"[{band.upper()}/{model.upper()}] Clearing existing accuracy rows...")
+        (
+            client.table(HISTORICAL_PREDICTION_RUNS_TABLE)
+            .delete()
+            .eq("band", band)
+            .eq("model_slug", model)
+            .eq("model_version", model_version)
+            .execute()
+        )
         (
             client.table("accuracy_per_show")
             .delete()
@@ -154,9 +163,7 @@ def _rebuild_model_outputs(
                 end=end,
                 shows=recent_shows,
                 exclusion_window=3,
-                all_history=(
-                    recent_shows is None and start is None and end is None
-                ),
+                all_history=(recent_shows is None and start is None and end is None),
             )
         except Exception as exc:
             state = (
