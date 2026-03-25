@@ -14,6 +14,8 @@ import {
 
 export const dynamic = "force-dynamic";
 
+const HEAD_TO_HEAD_ROW_LIMIT = 15;
+
 type Props = {
   searchParams: Promise<{
     band?: string;
@@ -247,7 +249,7 @@ export default async function ComparePage({ searchParams }: Props) {
                 </tr>
               </thead>
               <tbody>
-                {headToHeadRows.slice(0, 15).map((row) => {
+                {headToHeadRows.slice(0, HEAD_TO_HEAD_ROW_LIMIT).map((row) => {
                   const isNbWin = row.nb10! > row.ck10!;
                   const isCkWin = row.ck10! > row.nb10!;
                   return (

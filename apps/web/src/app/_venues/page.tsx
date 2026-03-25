@@ -266,6 +266,11 @@ export default async function VenueAnalyticsPage({ searchParams }: Props) {
               specific date through the Explorer.
             </p>
             <div className="max-h-[720px] overflow-y-auto rounded-xl border border-outline-variant/20 bg-surface-container-low p-3">
+              {state.venues.length === 0 ? (
+                <p className="py-8 text-center text-sm text-on-surface-variant">
+                  No venues available for this band.
+                </p>
+              ) : (
               <div className="space-y-2">
                 {state.venues.map((venue) => {
                   const isActive = venue.key === state.selectedVenueKey && Boolean(snapshot);
@@ -302,6 +307,7 @@ export default async function VenueAnalyticsPage({ searchParams }: Props) {
                   );
                 })}
               </div>
+              )}
             </div>
           </div>
         </SectionCard>

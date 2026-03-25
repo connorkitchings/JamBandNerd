@@ -37,6 +37,7 @@ export function DashboardSideNav({ band, model, bands }: Props) {
                 <Link
                   key={item.slug}
                   href={buildHref(item.slug, model)}
+                  aria-current={active ? "page" : undefined}
                   className={`flex items-center justify-center rounded-full border px-3 py-1.5 text-center font-headline text-[11px] font-bold uppercase tracking-[0.12rem] transition ${
                     active
                       ? "border-primary-container bg-primary-container text-white"
@@ -67,6 +68,7 @@ export function DashboardSideNav({ band, model, bands }: Props) {
                 <Link
                   key={item}
                   href={buildHref(band, item)}
+                  aria-current={item === model ? "page" : undefined}
                   className={`flex items-center justify-center rounded-full border px-3 py-1.5 text-center font-headline text-[11px] font-bold uppercase tracking-[0.12rem] transition ${
                     active
                       ? "border-primary bg-primary/15 text-primary"

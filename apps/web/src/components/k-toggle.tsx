@@ -21,12 +21,20 @@ export function KToggle({ currentK }: Props) {
     router.push(`?${params}`, { scroll: false });
   }
 
+  function handleKeyDown(e: React.KeyboardEvent, k: 10 | 25 | 50) {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      setK(k);
+    }
+  }
+
   return (
     <div className="flex gap-1">
       {kOptions.map(({ value, label }) => (
         <button
           key={value}
           onClick={() => setK(value)}
+          onKeyDown={(e) => handleKeyDown(e, value)}
           className={`rounded px-3 py-1.5 font-label text-[10px] uppercase tracking-wider transition-colors ${
             currentK === value
               ? "bg-primary/20 text-primary ring-1 ring-primary/40"

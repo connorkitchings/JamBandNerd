@@ -47,6 +47,7 @@ export function FilterLinks({ pathname, band, model, date, bands }: Props) {
                 <Link
                   key={item.slug}
                   href={buildHref(pathname, item.slug, model, date)}
+                  aria-current={active ? "page" : undefined}
                   className={`flex items-center justify-center rounded-full border px-3 py-1.5 text-center font-headline text-[11px] font-bold uppercase tracking-[0.12rem] transition whitespace-nowrap ${
                     active
                       ? "border-primary-container bg-primary-container text-white"
@@ -79,6 +80,7 @@ export function FilterLinks({ pathname, band, model, date, bands }: Props) {
                     <Link
                       key={item}
                       href={buildHref(pathname, band, item, date)}
+                      aria-current={item === model ? "page" : undefined}
                       className={`flex items-center justify-center rounded-full border px-3 py-1.5 text-center font-headline text-[11px] font-bold uppercase tracking-[0.12rem] transition ${
                         active
                           ? "border-primary bg-primary/15 text-primary"
@@ -115,6 +117,7 @@ export function FilterLinks({ pathname, band, model, date, bands }: Props) {
                   <Link
                     key={view.path}
                     href={buildHref(view.path, band, model, date)}
+                    aria-current={pathname === view.path ? "page" : undefined}
                     className={`flex items-center justify-center rounded-full border px-3 py-1.5 text-center font-headline text-[11px] font-bold uppercase tracking-[0.12rem] transition whitespace-nowrap ${
                       active
                         ? "border-tertiary/60 bg-tertiary/10 text-tertiary"

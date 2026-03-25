@@ -31,6 +31,7 @@ export default function ContactPage() {
       <SectionCard title="Email" eyebrow="Direct Contact">
         <a
           href={`mailto:${CONTACT_EMAIL}`}
+          aria-label={`Email ${CONTACT_EMAIL}`}
           className="inline-flex items-center rounded-xl border border-primary/30 bg-primary-container/10 px-5 py-4 font-headline text-base font-medium text-primary transition hover:border-primary hover:bg-primary-container/20"
         >
           {CONTACT_EMAIL}

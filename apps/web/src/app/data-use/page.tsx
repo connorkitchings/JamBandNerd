@@ -66,6 +66,7 @@ export default function DataUsePage() {
             <a
               className="text-primary underline decoration-dotted"
               href={`mailto:${CONTACT_EMAIL}`}
+              aria-label={`Email ${CONTACT_EMAIL}`}
             >
               {CONTACT_EMAIL}
             </a>
