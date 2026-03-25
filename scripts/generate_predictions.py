@@ -36,6 +36,7 @@ from src.jambandnerd.db.operations import (
 )
 from src.jambandnerd.models.ckplus.model import CKPlusPredictor
 from src.jambandnerd.models.notebook.model import NotebookPredictor
+from src.jambandnerd.models.serialization import serialize_predictions
 from src.jambandnerd.transformations.gaps import generate_model_data
 
 
@@ -115,39 +116,9 @@ def generate_predictions(
         return
 
     # 3. Format and save results
-    if model == "notebook":
-        predictions_list = [
-            {
-                "rank": i + 1,
-                "song_name": p.song_name,
-                "plays_past_year": p.plays_past_year,
-                "current_gap": p.current_gap,
-                "last_played_date": p.last_played_date,
-            }
-            for i, p in enumerate(predictions)
-        ]
-        table_name = PREDICTION_TABLES["notebook"]
-        model_version = MODEL_VERSIONS["notebook"]
-    elif model == "ckplus":
-        predictions_list = [
-            {
-                "rank": i + 1,
-                "song_name": p.song_name,
-                "times_played": p.times_played,
-                "current_gap": p.current_gap,
-                "avg_gap": p.avg_gap,
-                "recent_avg_gap": p.recent_avg_gap,
-                "gap_ratio": p.gap_ratio,
-                "gap_z_score": p.gap_z_score,
-                "ckplus_score": p.ckplus_score,
-                "LTP": p.LTP,
-            }
-            for i, p in enumerate(predictions)
-        ]
-        table_name = PREDICTION_TABLES["ckplus"]
-        model_version = MODEL_VERSIONS["ckplus"]
-    else:
-        raise ValueError("Invalid model type")
+    predictions_list = serialize_predictions(model_slug=model, predictions=predictions)
+    table_name = PREDICTION_TABLES[model]
+    model_version = MODEL_VERSIONS[model]
 
     predicted_at = datetime.now(timezone.utc).isoformat()
     output_row = {

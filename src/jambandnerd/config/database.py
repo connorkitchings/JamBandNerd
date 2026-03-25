@@ -16,6 +16,9 @@ PREDICTION_TABLES: Final[dict[str, str]] = {
 # Derived per-song prediction projection table
 PREDICTION_SONGS_TABLE: Final[str] = "prediction_songs"
 
+# Canonical historical scored-run table for backtest lineage
+HISTORICAL_PREDICTION_RUNS_TABLE: Final[str] = "historical_prediction_runs"
+
 # Unified accuracy table names
 ACCURACY_TABLES: Final[dict[str, str]] = {
     "notebook": "notebook_accuracy",

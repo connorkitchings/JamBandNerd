@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { PageHero } from "@/components/page-hero";
 import { SectionCard } from "@/components/section-card";
 
 export const metadata: Metadata = {
@@ -14,22 +15,12 @@ const CONTACT_EMAIL = "jambandnerd2026@gmail.com";
 export default function DataUsePage() {
   return (
     <div className="mx-auto max-w-5xl space-y-8">
-      <section className="relative overflow-hidden rounded-xl border border-outline-variant/30 bg-surface-container p-8 md:p-12">
-        <div className="absolute inset-y-0 right-0 hidden w-1/3 bg-gradient-to-l from-primary-container/15 to-transparent lg:block" />
-        <div className="relative">
-          <p className="font-label text-[10px] uppercase tracking-[0.24em] text-on-surface-variant">
-            Data use
-          </p>
-          <h1 className="mt-3 font-headline text-4xl font-semibold uppercase tracking-[-0.04em] text-on-surface md:text-5xl">
-            Data Use
-          </h1>
-          <p className="mt-4 max-w-3xl text-sm leading-7 text-on-surface-variant">
-            JamBandNerd is intended to present factual show information and our own
-            derived analytics in a reference-style format. This page explains the kind
-            of information the site uses and what it is designed not to reproduce.
-          </p>
-        </div>
-      </section>
+      <PageHero
+        kicker="Reference policy"
+        eyebrow="Data use"
+        title="Data Use"
+        description="JamBandNerd is intended to present factual show information and its own derived analytics in a reference-style format. This page explains what the site uses and what it is designed not to reproduce."
+      />
 
       <SectionCard title="What The Site Uses">
         <div className="space-y-3 text-sm leading-6 text-on-surface-variant">

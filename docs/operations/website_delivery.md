@@ -7,6 +7,7 @@ Current route split:
 
 - `/` is the public homepage and product entry page
 - `/predictions` is the primary live dashboard for repeat use
+- `/performance`, `/compare`, and `/replay` are the three historical analysis surfaces
 - `/?band=...&model=...` redirects to `/predictions?...` for compatibility
 
 ## Target Architecture
@@ -26,7 +27,7 @@ Current route split:
 - **Overflow safe**: data tables and dense views must remain usable on phones through scroll-safe wrappers rather than clipped content.
 - **Shared dense-data pattern**: tables and long data grids should use a single responsive wrapper/padding pattern instead of route-specific one-offs.
 - **Search-param navigation**: prefer URL-driven band/model/date state so pages are shareable and hydration stays light.
-- **Freshness over static caching**: prediction and explorer routes should favor dynamic server rendering while the marketing shell can stay static later.
+- **Freshness over static caching**: prediction and replay routes should favor dynamic server rendering while the marketing shell can stay static later.
 
 ## Visual Source Of Truth
 
@@ -41,7 +42,7 @@ The website should become the primary public surface for:
 
 - Multi-band prediction browsing
 - Model comparison
-- Historical explorer workflows
+- Replay workflows
 - Venue-specific historical analytics
 - Accuracy and performance views
 - Last-show details and explanatory content
@@ -171,7 +172,7 @@ GitHub secret.
 After smoke verification, manually verify:
 
 - `/`
-- `/explorer`
+- `/replay`
 - `/venues`
 - `/compare`
 - `/performance`

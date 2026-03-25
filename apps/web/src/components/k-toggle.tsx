@@ -3,25 +3,26 @@
 import { useRouter, useSearchParams } from "next/navigation";
 
 type Props = {
-  currentK: 10 | 25 | 50;
+  currentK: 10 | 25 | 50 | "all";
 };
 
 export function KToggle({ currentK }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const kOptions: Array<{ value: 10 | 25 | 50; label: string }> = [
+  const kOptions: Array<{ value: 10 | 25 | 50 | "all"; label: string }> = [
     { value: 10, label: "Top 10" },
     { value: 25, label: "Top 25" },
     { value: 50, label: "Top 50" },
+    { value: "all", label: "All" },
   ];
 
-  function setK(k: 10 | 25 | 50) {
+  function setK(k: 10 | 25 | 50 | "all") {
     const params = new URLSearchParams(searchParams.toString());
     params.set("k", String(k));
     router.push(`?${params}`, { scroll: false });
   }
 
-  function handleKeyDown(e: React.KeyboardEvent, k: 10 | 25 | 50) {
+  function handleKeyDown(e: React.KeyboardEvent, k: 10 | 25 | 50 | "all") {
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
       setK(k);

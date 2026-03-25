@@ -259,6 +259,96 @@ def replace_prediction_projection(
     bulk_insert_dataframe(table_name, pd.DataFrame(rows))
 
 
+def upsert_historical_prediction_run(
+    *,
+    band: str,
+    model_slug: str,
+    model_version: str,
+    reference_date: str,
+    target_show_id: str,
+    target_show_date: str,
+    generated_at: str,
+    predictions: Sequence[dict[str, Any]],
+    actual_songs: Sequence[str],
+    table_name: str = "historical_prediction_runs",
+) -> int:
+    """Upsert a historical scored prediction run and return its stable id."""
+    client = get_supabase_client()
+    row = {
+        "band": band,
+        "model_slug": model_slug,
+        "model_version": model_version,
+        "run_type": "backtest",
+        "reference_date": reference_date,
+        "target_show_id": target_show_id,
+        "target_show_date": target_show_date,
+        "generated_at": generated_at,
+        "predictions": list(predictions),
+        "top_k": len(predictions),
+        "actual_songs": list(actual_songs),
+        "actual_song_count": len(actual_songs),
+    }
+    cleaned_row = {str(key): _clean_record_value(value) for key, value in row.items()}
+
+    response = (
+        client.table(table_name)
+        .upsert(
+            cleaned_row,
+            on_conflict="band,model_slug,model_version,reference_date,target_show_id",
+        )
+        .execute()
+    )
+    data = response.data or []
+    if data:
+        run_id = data[0].get("id")
+        if run_id is not None:
+            return int(run_id)
+
+    existing = (
+        client.table(table_name)
+        .select("id")
+        .eq("band", band)
+        .eq("model_slug", model_slug)
+        .eq("model_version", model_version)
+        .eq("reference_date", reference_date)
+        .eq("target_show_id", target_show_id)
+        .limit(1)
+        .execute()
+    )
+    existing_rows = existing.data or []
+    if not existing_rows or existing_rows[0].get("id") is None:
+        raise RuntimeError(
+            "Failed to resolve historical_prediction_runs.id after upsert"
+        )
+    return int(existing_rows[0]["id"])
+
+
+def fetch_historical_prediction_run(
+    *,
+    band: str,
+    model_slug: str,
+    model_version: str,
+    reference_date: str,
+    target_show_id: str,
+    table_name: str = "historical_prediction_runs",
+) -> dict[str, Any] | None:
+    """Fetch one historical scored run by its unique context."""
+    client = get_supabase_client()
+    response = (
+        client.table(table_name)
+        .select("*")
+        .eq("band", band)
+        .eq("model_slug", model_slug)
+        .eq("model_version", model_version)
+        .eq("reference_date", reference_date)
+        .eq("target_show_id", target_show_id)
+        .limit(1)
+        .execute()
+    )
+    rows = response.data or []
+    return rows[0] if rows else None
+
+
 def fetch_latest_prediction_songs(
     *, band: str, model_slug: str, table_name: str = "prediction_songs"
 ) -> list[dict[str, Any]]:

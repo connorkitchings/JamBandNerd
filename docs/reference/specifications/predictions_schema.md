@@ -10,6 +10,7 @@ Prediction tables:
 - `predictions_notebook`
 - `predictions_ckplus`
 - `prediction_songs` (derived per-song projection)
+- `historical_prediction_runs` (canonical scored backtest snapshots)
 
 Accuracy tables:
 
@@ -98,6 +99,7 @@ Canonical columns include:
 - `model_version`
 - `show_id`
 - `show_date`
+- `prediction_run_id`
 - `actual_song_count`
 - `evaluated_at`
 - `k10_*`, `k25_*`, `k50_*` metric families
@@ -107,6 +109,36 @@ Uniqueness:
 - `(band, model_version, show_id)`
 
 This is the canonical evaluation source for historical performance analysis.
+For new backtest rows, `prediction_run_id` links each evaluation row to the
+exact stored ranked board that produced it.
+
+## Historical Scored Run Storage
+
+`historical_prediction_runs` stores one canonical row per scored historical
+prediction context.
+
+Canonical columns include:
+
+- `band`
+- `model_slug`
+- `model_version`
+- `run_type`
+- `reference_date`
+- `target_show_id`
+- `target_show_date`
+- `generated_at`
+- `actual_songs`
+- `actual_song_count`
+- `top_k`
+- `predictions`
+
+Uniqueness:
+
+- `(band, model_slug, model_version, reference_date, target_show_id)`
+
+This table is the canonical lineage store for historical backtests. It preserves
+the exact ranked board that was scored without overloading the live
+`predictions_{model}` tables or `prediction_songs`.
 
 ## Aggregate Accuracy Storage
 

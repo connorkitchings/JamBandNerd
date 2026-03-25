@@ -6,7 +6,11 @@ import argparse
 from datetime import datetime, timezone
 from typing import Dict, Iterable, List
 
-from jambandnerd.config import ACCURACY_TABLES, MODEL_VERSIONS
+from jambandnerd.config import (
+    ACCURACY_TABLES,
+    HISTORICAL_PREDICTION_RUNS_TABLE,
+    MODEL_VERSIONS,
+)
 from jambandnerd.db.connection import get_supabase_client
 
 
@@ -31,6 +35,57 @@ def _latest_row(client, *, table: str, band: str, model_version: str):
     )
     rows: List[Dict[str, str]] = response.data or []
     return rows[0] if rows else None
+
+
+def _recent_rows(
+    client, *, table: str, band: str, model_version: str, limit: int
+) -> List[Dict[str, object]]:
+    response = (
+        client.table(table)
+        .select("*")
+        .eq("band", band)
+        .eq("model_version", model_version)
+        .order("show_date", desc=True)
+        .limit(limit)
+        .execute()
+    )
+    return response.data or []
+
+
+def _recent_replay_eligible_rows(
+    client, *, table: str, band: str, model_version: str, limit: int
+) -> List[Dict[str, object]]:
+    rows = _recent_rows(
+        client,
+        table=table,
+        band=band,
+        model_version=model_version,
+        limit=max(limit * 3, 150),
+    )
+    eligible = [
+        row for row in rows if int(row.get("actual_song_count") or 0) > 2
+    ]
+    eligible.sort(
+        key=lambda row: (
+            str(row.get("show_date") or ""),
+            row.get("prediction_run_id") is not None,
+            _parse_timestamp(str(row.get("evaluated_at") or "")) or datetime.min.replace(tzinfo=timezone.utc),
+        ),
+        reverse=True,
+    )
+
+    deduped: list[Dict[str, object]] = []
+    seen_dates: set[str] = set()
+    for row in eligible:
+        show_date = str(row.get("show_date") or "")
+        if not show_date or show_date in seen_dates:
+            continue
+        seen_dates.add(show_date)
+        deduped.append(row)
+        if len(deduped) >= limit:
+            break
+
+    return deduped
 
 
 def _validate_row(
@@ -68,7 +123,12 @@ def _validate_row(
 
 
 def validate_accuracy(
-    bands: Iterable[str], max_age_hours: int, *, validate_aggregate: bool = True
+    bands: Iterable[str],
+    max_age_hours: int,
+    *,
+    validate_aggregate: bool = True,
+    validate_replay: bool = True,
+    replay_window: int = 50,
 ) -> int:
     client = get_supabase_client()
 
@@ -95,6 +155,35 @@ def validate_accuracy(
                 max_age_hours=max_age_hours,
                 required_fields=("show_date",),
             )
+
+            if validate_replay:
+                replay_rows = _recent_replay_eligible_rows(
+                    client,
+                    table=per_show_table,
+                    band=band,
+                    model_version=model_version,
+                    limit=replay_window,
+                )
+                if not replay_rows:
+                    print(f"[FAIL] {band}: no replay lineage rows found for {model_slug}")
+                    failures += 1
+                else:
+                    missing_links = [
+                        str(row.get("show_date") or "unknown")
+                        for row in replay_rows
+                        if row.get("prediction_run_id") is None
+                    ]
+                    if missing_links:
+                        preview = ", ".join(missing_links[:3])
+                        suffix = "..." if len(missing_links) > 3 else ""
+                        print(
+                            f"[FAIL] {band}: replay lineage missing for {model_slug} on {preview}{suffix}"
+                        )
+                        failures += 1
+                    else:
+                        print(
+                            f"[OK] {band}: replay lineage ready for {model_slug} across {len(replay_rows)} recent shows via {HISTORICAL_PREDICTION_RUNS_TABLE}"
+                        )
 
             if not validate_aggregate:
                 continue
@@ -137,12 +226,25 @@ def main() -> None:
         action="store_true",
         help="Skip validation of aggregate accuracy tables.",
     )
+    parser.add_argument(
+        "--skip-replay-check",
+        action="store_true",
+        help="Skip validation that recent per-show rows carry replay lineage.",
+    )
+    parser.add_argument(
+        "--replay-window",
+        type=int,
+        default=50,
+        help="Number of recent scored shows that must retain replay lineage.",
+    )
     args = parser.parse_args()
 
     failures = validate_accuracy(
         bands=args.bands or [],
         max_age_hours=args.max_age_hours,
         validate_aggregate=not args.skip_aggregate_check,
+        validate_replay=not args.skip_replay_check,
+        replay_window=args.replay_window,
     )
     if failures:
         raise SystemExit(f"Accuracy validation failed with {failures} issue(s)")

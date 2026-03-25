@@ -22,7 +22,7 @@ async function bootstrapHostedPreviewBypass(page: Page) {
   );
 }
 
-async function expectPageHeadingOrMissingEnv(page: Page, heading: string) {
+async function expectPageHeadingOrMissingEnv(page: Page, heading: string | RegExp) {
   await expect(
     page
       .getByRole("heading", { name: heading })
@@ -46,8 +46,8 @@ test("desktop routes render the public shell", async ({ page }, testInfo) => {
   await page.goto("/performance");
   await expectPageHeadingOrMissingEnv(page, "Historical Performance");
 
-  await page.goto("/explorer");
-  await expectPageHeadingOrMissingEnv(page, "Historical Explorer");
+  await page.goto("/replay");
+  await expectPageHeadingOrMissingEnv(page, /prediction replay/i);
 
   await page.goto("/venues");
   await expectPageHeadingOrMissingEnv(page, "Venue Analytics");
@@ -79,7 +79,7 @@ test("mobile navigation uses thumb-first ordering", async ({ page }, testInfo) =
   await expect(mobileNav).toBeVisible();
 
   const labels = await mobileNav.getByRole("link").locator("span:last-child").allTextContents();
-  expect(labels).toEqual(["Explore", "Stats", "Predict", "Last Show", "About"]);
+  expect(labels).toEqual(["Compare", "Stats", "Replay", "Predict"]);
 });
 
 test("mobile detail routes show a back affordance", async ({ page }, testInfo) => {

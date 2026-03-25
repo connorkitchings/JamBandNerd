@@ -30,20 +30,27 @@ export const DESKTOP_NAV_ITEMS: NavItem[] = [
   },
   {
     href: "/compare",
-    label: "Deep-Dive",
-    mobileLabel: "Deep-Dive",
+    label: "Compare",
+    mobileLabel: "Compare",
     icon: "◎",
-    matches: ["/explorer", "/compare"],
+    matches: ["/compare"],
+  },
+  {
+    href: "/replay",
+    label: "Replay",
+    mobileLabel: "Replay",
+    icon: "◧",
+    matches: ["/replay", "/explorer"],
   },
 ];
 
 export const MOBILE_NAV_ITEMS: NavItem[] = [
   {
     href: "/compare",
-    label: "Deep-Dive",
-    mobileLabel: "Deep-Dive",
+    label: "Compare",
+    mobileLabel: "Compare",
     icon: "◎",
-    matches: ["/explorer", "/compare"],
+    matches: ["/compare"],
   },
   {
     href: "/performance",
@@ -53,18 +60,18 @@ export const MOBILE_NAV_ITEMS: NavItem[] = [
     matches: ["/performance"],
   },
   {
+    href: "/replay",
+    label: "Replay",
+    mobileLabel: "Replay",
+    icon: "◧",
+    matches: ["/replay", "/explorer"],
+  },
+  {
     href: "/predictions",
     label: "Predictions",
     mobileLabel: "Predict",
     icon: "◈",
     matches: ["/predictions"],
-  },
-  {
-    href: "/last-show",
-    label: "Last Show",
-    mobileLabel: "Last Show",
-    icon: "◧",
-    matches: ["/last-show"],
   },
 ];
 

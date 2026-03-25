@@ -5,7 +5,6 @@ import { redirect } from "next/navigation";
 import { SectionCard } from "@/components/section-card";
 import { ACTIVE_MODELS } from "@/lib/config";
 import {
-  bandEntryBySlug,
   getBands,
   getLatestPredictions,
   getNextShowDetails,
@@ -24,18 +23,18 @@ const HOME_TEASER_BANDS = [
 const HOW_IT_WORKS = [
   {
     step: "01",
-    title: "Track setlists",
-    body: "JamBandNerd collects and normalizes historical show data across supported bands.",
+    title: "Collect setlist data",
+    body: "Historical setlists are collected and normalized into a shared format across supported bands.",
   },
   {
     step: "02",
-    title: "Rank songs",
-    body: "Multiple models rank songs from different angles to estimate what could appear next.",
+    title: "Apply prediction models",
+    body: "Multiple models score and rank songs to estimate what is most likely to appear next.",
   },
   {
     step: "03",
-    title: "Review outcomes",
-    body: "Use the site to compare predictions, explore past shows, and track model performance.",
+    title: "Publish predictions",
+    body: "Predictions, performance reads, and replay views are published together in the website.",
   },
 ] as const;
 
@@ -76,12 +75,6 @@ export default async function HomePage({ searchParams }: Props) {
     HOME_TEASER_BANDS.find((band) => band.slug === requestedTeaser) ??
     HOME_TEASER_BANDS[0];
   const teaserBandSlug = teaserConfig.slug;
-  const teaserBandEntry = bandEntryBySlug(bands, teaserBandSlug) ?? {
-    slug: teaserBandSlug,
-    displayName: teaserConfig.fallbackName,
-    showsTable: "",
-    idColumn: "",
-  };
 
   const teaserPredictionState = await getLatestPredictions(teaserBandSlug, "notebook");
   const teaserNextShowState = await getNextShowDetails(teaserBandSlug);
@@ -97,32 +90,31 @@ export default async function HomePage({ searchParams }: Props) {
   ]);
 
   return (
-    <div className="mx-auto max-w-6xl space-y-12 pb-10">
-      <section className="relative overflow-hidden rounded-[32px] border border-outline-variant/30 bg-surface-container px-6 py-8 shadow-[0_24px_80px_rgba(0,0,0,0.08)] md:px-10 md:py-16">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,205,110,0.22),transparent_32%),radial-gradient(circle_at_bottom_right,rgba(255,140,80,0.16),transparent_30%),linear-gradient(135deg,rgba(255,255,255,0.04),transparent_55%)]" />
+    <div className="mx-auto max-w-6xl space-y-6 pb-0">
+      <section className="editorial-hero px-6 py-8 md:px-10 md:py-16">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,191,105,0.22),transparent_32%),radial-gradient(circle_at_bottom_right,rgba(136,229,216,0.12),transparent_26%),linear-gradient(135deg,rgba(255,255,255,0.04),transparent_55%)]" />
         <div className="relative grid gap-10 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)] lg:items-center">
           <div className="flex h-full flex-col justify-center">
             <div className="flex flex-col gap-8">
               <div>
-                <p className="font-label text-[11px] font-bold uppercase tracking-[0.24em] text-primary">
-                  JamBandNerd
-                </p>
-                <h1 className="mt-4 max-w-3xl font-headline text-4xl font-bold uppercase tracking-[-0.04em] text-on-surface md:text-6xl lg:text-7xl leading-tight">
+                <span className="editorial-kicker">JamBandNerd</span>
+                <h1 className="mt-4 max-w-3xl font-headline text-4xl font-bold uppercase leading-tight tracking-[-0.05em] text-on-surface md:text-6xl lg:text-7xl">
                   What are they playing next?
                 </h1>
                 <p className="mt-5 max-w-2xl text-lg leading-relaxed text-on-surface-variant">
-                  Data-driven setlist predictions for your favorite jam bands. Track historical performance, explore venue trends, and see what the models think is coming.
+                  Setlist predictions for the next show, plus model comparisons, performance
+                  tracking, and historical replay in one place.
                 </p>
-                <div className="mt-8 flex flex-wrap gap-4">
+                <div className="mt-8 grid gap-4 md:max-w-3xl md:grid-cols-2">
                   <Link
                     href="/predictions"
-                    className="inline-flex items-center justify-center rounded-full border border-outline-variant/40 bg-surface/70 px-6 py-3.5 text-center font-headline text-sm font-medium uppercase tracking-[0.14rem] text-on-surface transition hover:border-primary hover:text-primary hover:bg-surface-container-low"
+                    className="inline-flex w-full items-center justify-center rounded-full border border-outline-variant/35 bg-surface/70 px-6 py-3.5 text-center font-headline text-sm font-medium uppercase tracking-[0.14rem] text-on-surface transition hover:border-primary/35 hover:text-primary hover:bg-surface-container-low"
                   >
                     View Predictions
                   </Link>
                   <Link
                     href="/performance"
-                    className="inline-flex items-center justify-center rounded-full border border-outline-variant/40 bg-surface/70 px-6 py-3.5 text-center font-headline text-sm font-medium uppercase tracking-[0.14rem] text-on-surface transition hover:border-primary hover:text-primary hover:bg-surface-container-low"
+                    className="inline-flex w-full items-center justify-center rounded-full border border-outline-variant/35 bg-surface/70 px-6 py-3.5 text-center font-headline text-sm font-medium uppercase tracking-[0.14rem] text-on-surface transition hover:border-primary/35 hover:text-primary hover:bg-surface-container-low"
                   >
                     See Performance
                   </Link>
@@ -131,9 +123,9 @@ export default async function HomePage({ searchParams }: Props) {
             </div>
           </div>
 
-          <div className="rounded-[28px] border border-outline-variant/30 bg-surface/85 p-6 shadow-xl backdrop-blur-md">
+          <div className="editorial-panel rounded-[1.9rem] p-6">
             <p className="mb-4 font-label text-[10px] font-bold uppercase tracking-[0.24em] text-primary/80">
-              Live Teasers
+              Teasers
             </p>
             <div className="grid grid-cols-4 gap-2">
               {HOME_TEASER_BANDS.map((band) => {
@@ -142,9 +134,9 @@ export default async function HomePage({ searchParams }: Props) {
                   <Link
                     key={band.slug}
                     href={`/?teaser=${band.slug}`}
-                    className={`rounded-full border px-2.5 py-1 flex items-center justify-center text-center font-headline text-[10px] font-bold uppercase tracking-[0.12rem] transition ${
+                    className={`flex items-center justify-center rounded-full border px-2.5 py-2 text-center font-headline text-[10px] font-bold uppercase tracking-[0.12rem] transition ${
                       isActive
-                        ? "border-primary bg-primary/15 text-primary"
+                        ? "border-primary/30 bg-primary/12 text-primary"
                         : "border-transparent bg-surface-container-low text-on-surface-variant hover:bg-outline-variant/20 hover:text-on-surface"
                     }`}
                   >
@@ -156,7 +148,7 @@ export default async function HomePage({ searchParams }: Props) {
 
             {teaserPredictionState.status === "ready" ? (
               <>
-                <div className="mt-5 rounded-2xl border border-outline-variant/20 bg-surface/50 p-4">
+                <div className="editorial-chip mt-5 rounded-[1.5rem] p-4">
                   <p className="font-label text-[10px] font-medium uppercase tracking-[0.18rem] text-on-surface-variant/70">
                     Next Show
                   </p>
@@ -174,7 +166,7 @@ export default async function HomePage({ searchParams }: Props) {
                   </p>
                 </div>
 
-                <div className="mt-4 rounded-2xl border border-outline-variant/20 bg-surface/50 p-4">
+                <div className="editorial-chip mt-4 rounded-[1.5rem] p-4">
                   <div className="flex items-center justify-between mb-3 border-b border-outline-variant/15 pb-2">
                     <p className="font-label text-[10px] font-medium uppercase tracking-[0.16rem] text-on-surface-variant/70">
                       Top Picks (Notebook)
@@ -190,7 +182,7 @@ export default async function HomePage({ searchParams }: Props) {
                         className="flex items-center justify-between group"
                       >
                         <div className="flex items-center gap-3">
-                          <span className="flex h-5 w-5 items-center justify-center rounded bg-surface-container font-headline text-xs font-bold text-on-surface-variant">
+                          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-surface-container font-headline text-xs font-bold text-on-surface-variant">
                             {row.rank}
                           </span>
                           <span className="font-headline text-sm font-medium text-on-surface group-hover:text-primary transition-colors">
@@ -198,7 +190,7 @@ export default async function HomePage({ searchParams }: Props) {
                           </span>
                         </div>
                         <div className="flex items-center">
-                          <span className="rounded bg-surface-container px-2 py-0.5 font-mono text-xs font-medium text-on-surface-variant">
+                          <span className="rounded-full bg-surface-container px-2.5 py-0.5 font-mono text-xs font-medium text-on-surface-variant">
                             {row.currentGap !== null ? row.currentGap : "-"}
                           </span>
                         </div>
@@ -208,7 +200,7 @@ export default async function HomePage({ searchParams }: Props) {
                 </div>
               </>
             ) : (
-              <div className="mt-5 rounded-2xl border border-dashed border-outline-variant/30 bg-surface/50 p-6 text-center">
+              <div className="editorial-chip mt-5 rounded-[1.5rem] border-dashed p-6 text-center">
                 <p className="font-headline text-lg text-on-surface">
                   Live preview unavailable
                 </p>
@@ -229,7 +221,7 @@ export default async function HomePage({ searchParams }: Props) {
 
       {/* Stats Ribbon */}
       <section className="grid grid-cols-2 gap-4 md:grid-cols-3">
-        <div className="flex flex-col justify-center rounded-2xl border border-outline-variant/20 bg-surface-container px-6 py-5 text-center">
+        <div className="editorial-panel flex flex-col justify-center px-6 py-5 text-center">
           <p className="font-headline text-3xl font-bold text-on-surface">
             {bands.length || "—"}
           </p>
@@ -237,7 +229,7 @@ export default async function HomePage({ searchParams }: Props) {
             Bands Tracked
           </p>
         </div>
-        <div className="flex flex-col justify-center rounded-2xl border border-outline-variant/20 bg-surface-container px-6 py-5 text-center">
+        <div className="editorial-panel flex flex-col justify-center px-6 py-5 text-center">
           <p className="font-headline text-3xl font-bold text-on-surface">
             {ACTIVE_MODELS.length}
           </p>
@@ -245,7 +237,7 @@ export default async function HomePage({ searchParams }: Props) {
             Prediction Models
           </p>
         </div>
-        <div className="col-span-2 flex flex-col justify-center rounded-2xl border border-outline-variant/20 bg-surface-container px-6 py-5 text-center md:col-span-1">
+        <div className="editorial-panel col-span-2 flex flex-col justify-center px-6 py-5 text-center md:col-span-1">
           <p className="font-headline text-3xl font-bold text-on-surface">Daily</p>
           <p className="mt-1 font-label text-[10px] font-bold uppercase tracking-[0.18rem] text-on-surface-variant">
             Refresh Cadence
@@ -253,14 +245,14 @@ export default async function HomePage({ searchParams }: Props) {
         </div>
       </section>
 
-      <SectionCard title="How It Works">
+      <SectionCard title="How Predictions Work" eyebrow="Prediction Workflow">
         <div className="grid gap-6 md:grid-cols-3">
           {HOW_IT_WORKS.map((item) => (
             <div
               key={item.step}
-              className="flex flex-col rounded-2xl border border-outline-variant/15 bg-surface/50 p-6 transition-colors hover:border-primary/30 hover:bg-surface-container-low"
+              className="editorial-chip flex flex-col rounded-[1.5rem] p-6 transition-colors hover:border-primary/30"
             >
-              <div className="mb-4 inline-flex h-8 w-8 items-center justify-center rounded-full bg-surface-container font-mono text-sm font-bold text-primary/80">
+              <div className="mb-4 inline-flex h-9 w-9 items-center justify-center rounded-full bg-surface-container font-mono text-sm font-bold text-primary/80">
                 {item.step}
               </div>
               <p className="font-headline text-lg font-bold text-on-surface">
@@ -274,13 +266,13 @@ export default async function HomePage({ searchParams }: Props) {
         </div>
       </SectionCard>
 
-      <SectionCard title="Supported Bands">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <SectionCard title="Bands We Track" eyebrow={`${bands.length} bands tracked`}>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {bands.map((band) => (
             <Link
               key={band.slug}
               href={`/predictions?band=${band.slug}`}
-              className="flex items-center justify-center rounded-2xl border border-outline-variant/20 bg-surface-container p-5 text-center transition-all hover:border-primary hover:bg-surface-container-high hover:shadow-md"
+              className="editorial-chip flex items-center justify-center rounded-[1.5rem] p-5 text-center transition-all hover:border-primary hover:bg-surface-container-high hover:shadow-md"
             >
               <span className="font-headline text-lg font-bold text-on-surface transition-colors hover:text-primary">
                 {band.displayName}

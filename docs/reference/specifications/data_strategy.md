@@ -210,11 +210,22 @@ JamBandNerd also maintains a derived `prediction_songs` table with one row per
 predicted song for SQL-friendly reads and analytics. That table is rebuildable
 from the canonical run-level rows.
 
+Historical scored backtests are stored separately in
+`historical_prediction_runs`. This preserves the exact ranked board used for a
+completed-show evaluation without mixing historical replay snapshots into the
+live prediction tables. The website's `/replay` surface treats this table as
+its canonical historical source and assumes roughly the last 50 completed shows
+per band/model remain queryable.
+
 ### Accuracy storage
 
 - `accuracy_per_show` is the canonical granular evaluation store.
+- new `accuracy_per_show` rows link to `historical_prediction_runs` through
+  `prediction_run_id`
 - `notebook_accuracy` and `accuracy_ckplus` are aggregate summary tables derived
   from `accuracy_per_show`.
+- pipeline validation now checks that recent `accuracy_per_show` rows retain
+  replay lineage, so replay readiness is part of normal data health.
 
 ## Current Decision: Prediction Storage
 
