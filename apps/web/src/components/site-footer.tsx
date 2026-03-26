@@ -31,6 +31,12 @@ export function SiteFooter() {
           >
             Contact
           </Link>
+          <Link
+            className="rounded-full border border-outline-variant/20 px-4 py-2 transition hover:border-primary/40 hover:text-primary"
+            href="/admin/setlist"
+          >
+            Admin
+          </Link>
         </div>
       </div>
     </footer>

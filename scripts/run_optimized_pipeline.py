@@ -42,6 +42,13 @@ from scripts.validate_accuracy_tables import validate_accuracy
 from scripts.validate_prediction_tables import validate_predictions
 from src.jambandnerd.config.bands import get_active_bands
 
+try:
+    from scripts.backfill_predictions import backfill_band
+
+    HAS_BACKFILL = True
+except ImportError:
+    HAS_BACKFILL = False
+
 # Suppress noisy httpx logs
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
@@ -158,6 +165,21 @@ def run_band_pipeline(band: str, skip_accuracy: bool = False) -> bool:
 
     if skip_accuracy:
         log_with_timestamp(f"{log_prefix} Skipping accuracy calculations.")
+
+    # Step 3: Backfill stale predictions
+    if HAS_BACKFILL:
+        for model in models:
+            log_with_timestamp(f"[{band.upper()}] Starting: {model.title()} Backfill")
+            try:
+                result = backfill_band(band, model, dry_run=False)
+                log_with_timestamp(
+                    f"[{band.upper()}] Finished: {model.title()} Backfill "
+                    f"({result['regenerated']} regenerated)"
+                )
+            except Exception as e:
+                log_with_timestamp(
+                    f"[{band.upper()}] WARNING: {model.title()} Backfill failed: {e}"
+                )
 
     if not run_step(
         _validate_band_predictions, band, "Prediction Validation", max_age_hours=72

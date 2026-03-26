@@ -18,7 +18,7 @@ const FAQ_ITEMS = [
   {
     question: "What drives the predictions?",
     answer:
-      "Each model uses different signals:\n\nNotebook — Based on the method developed by Phish.net. It emphasizes songs active in the recent rotation and uses current gap to separate likely candidates, while excluding songs played in the last 3 shows.\n\nCK+ — A personally developed model. It ranks songs by how overdue they are relative to their historical cadence, using gap ratio, gap z-score, and reliability signals. Songs played in the last 3 shows are excluded.",
+      "Each model uses different signals:\n\nNotebook — An independent implementation of the weighted-recency algorithm popularized by Phish.net, provided as a benchmark for comparison. It emphasizes songs active in the recent rotation and uses current gap to separate likely candidates, while excluding songs played in the last 3 shows.\n\nCK+ — A personally developed model. It ranks songs by how overdue they are relative to their historical cadence, using gap ratio, gap z-score, and reliability signals. Songs played in the last 3 shows are excluded.",
   },
   {
     question: "Does accuracy vary by band?",
@@ -51,13 +51,14 @@ const PIPELINE_STEPS = [
   {
     step: "01",
     title: "Collect",
-    description: "Band-specific collectors pull the latest setlist data from community archives.",
+    description:
+      "Aggregates public, factual show metadata (dates, venues, song titles) from community archives.",
   },
   {
     step: "02",
     title: "Transform",
     description:
-      "Raw data is normalized into a shared show-centric format with gap calculations and rotation signals.",
+      "Normalizes raw facts into a proprietary feature set for statistical modeling.",
   },
   {
     step: "03",
@@ -90,17 +91,18 @@ export default function AboutPage() {
           approach, which makes the Compare and Replay pages useful rather than redundant.
         </p>
         <div className="grid gap-4 md:grid-cols-2">
-          <div className="editorial-chip rounded-[1.5rem] p-6">
+            <div className="editorial-chip rounded-[1.5rem] p-6">
             <p className="font-label text-[10px] uppercase tracking-[0.2em] text-primary">
               {MODEL_CONFIG.notebook.displayName}
             </p>
             <p className="mt-3 text-sm leading-6 text-on-surface-variant">
-              A recency-first ranking model based on the Phish.net method. It focuses on songs
-              active in the current rotation, then uses current gap to separate candidates while
+              An independent implementation of the weighted-recency algorithm popularized by
+              Phish.net, provided as a benchmark for comparison. It emphasizes songs active in
+              the recent rotation and uses current gap to separate likely candidates, while
               excluding songs played in the last 3 shows.
             </p>
             <p className="mt-4 border-t border-outline-variant/15 pt-4 font-label text-[10px] uppercase tracking-[0.16em] text-on-surface-variant">
-              Credit: Notebook is based on the method developed by Phish.net.
+              Credit: Based on the weighted-recency method popularized by Phish.net.
             </p>
           </div>
           <div className="editorial-chip rounded-[1.5rem] p-6">

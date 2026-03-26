@@ -42,6 +42,7 @@ export default function ContactPage() {
             <p>Spotted a wrong setlist, venue, or show date.</p>
             <p>Have an idea for a feature, page, or prediction explanation.</p>
             <p>Want to suggest another band or data source.</p>
+            <p>Attribution or Source Inquiries: Discussing how we credit your organization or link back to your archives.</p>
           </div>
         </SectionCard>
 
@@ -53,6 +54,11 @@ export default function ContactPage() {
           </div>
         </SectionCard>
       </div>
+
+      <p className="text-center text-xs text-on-surface-variant">
+        By submitting data corrections, you grant JamBandNerd a non-exclusive license to use
+        that factual information to improve our models.
+      </p>
     </div>
   );
 }

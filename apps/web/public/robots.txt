@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+
+# Identity for JamBandNerd's data collection pipeline
+# Contact: jambandnerd2026@gmail.com
+# Policy: https://jambandnerd.com/data-use
+User-agent: JamBandNerd-Bot
+Disallow:

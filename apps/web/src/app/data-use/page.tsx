@@ -43,6 +43,27 @@ export default function DataUsePage() {
         </div>
       </SectionCard>
 
+      <SectionCard title="Non-Substitutional Intent">
+        <div className="space-y-3 text-sm leading-6 text-on-surface-variant">
+          <p>
+            JamBandNerd is a companion tool for statistical analysis, not a replacement for
+            community archives. We encourage users to visit original sources for full show
+            histories.
+          </p>
+          <p>
+            The site is designed to complement—not substitute for—the dedicated setlist archives
+            maintained by fans and communities.
+          </p>
+        </div>
+      </SectionCard>
+
+      <SectionCard title="Expressive Content Disclaimer">
+        <div className="space-y-3 text-sm leading-6 text-on-surface-variant">
+          <p>This site does not host lyrics, sheet music, audio/video files, or long-form editorial reviews.</p>
+          <p>We focus exclusively on the mathematical analysis of factual setlist data.</p>
+        </div>
+      </SectionCard>
+
       <SectionCard title="Source Attribution And Model Credit">
         <div className="space-y-3 text-sm leading-6 text-on-surface-variant">
           <p>
@@ -81,6 +102,26 @@ export default function DataUsePage() {
           </div>
         </SectionCard>
       </div>
+
+      <SectionCard title="Notice and Takedown">
+        <div className="space-y-3 text-sm leading-6 text-on-surface-variant">
+          <p>
+            If you represent a band or data source and believe your content is used in a way that
+            exceeds factual reference, please contact us at{" "}
+            <a
+              className="text-primary underline decoration-dotted"
+              href={`mailto:${CONTACT_EMAIL}`}
+            >
+              {CONTACT_EMAIL}
+            </a>
+            .
+          </p>
+          <p>
+            We are committed to addressing concerns promptly and will review any takedown requests
+            in good faith.
+          </p>
+        </div>
+      </SectionCard>
 
       <SectionCard title="Questions Or Concerns">
         <div className="space-y-4 text-sm leading-6 text-on-surface-variant">
