@@ -79,8 +79,8 @@ export function RecallChart({ rows, k = 10 }: Props) {
   const plotHeight = CHART_HEIGHT - PADDING.top - PADDING.bottom;
 
   const maxValue = Math.max(...visibleSeries.flatMap((series) => series.points.map((point) => point.value)));
-  const yMax = Math.min(1, Math.ceil(maxValue * 10) / 10 + 0.1);
   const yMin = 0;
+  const yMax = Math.min(1, Math.ceil(maxValue * 10) / 10 + 0.1);
 
   const yTicks: number[] = [];
   for (let v = 0; v <= yMax; v += 0.1) {

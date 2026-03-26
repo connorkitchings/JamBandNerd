@@ -27,7 +27,7 @@ While the optimized pipeline is recommended for end-to-end runs, the core logic 
 
 Generates and saves predictions for a given band and model.
 
-- `--band {goose,phish,wsp}`: (Required) The band to process.
+- `--band <active-band-slug>`: (Required) The band to process. The script accepts any active band returned by the registry/config layer.
 - `--model {notebook,ckplus}`: (Required) The model to use.
 - `--date {YYYY-MM-DD}`: (Optional) The reference date for predictions. Defaults to the next upcoming show.
 - `--exclusion-window {N}`: (Optional) For the Notebook model, the number of recent shows to exclude songs from. Defaults to 3.
@@ -39,7 +39,7 @@ Runs a historical backtest, storing the scored ranked board in
 `accuracy_per_show` table. Replay readiness is validated from those linked
 `prediction_run_id` rows through `validate_accuracy_tables.py`.
 
-- `--band {goose,phish,wsp}`: (Required) The band to process.
+- `--band <active-band-slug>`: (Required) The band to process. The script accepts any active band returned by the registry/config layer.
 - `--model {notebook,ckplus}`: (Required) The model to backtest.
 - `--shows {N}`: (Optional) Backtest the last N completed shows.
 - `--start {YYYY-MM-DD}` / `--end {YYYY-MM-DD}`: (Optional) Define a specific date range for the backtest.
@@ -49,7 +49,7 @@ Runs a historical backtest, storing the scored ranked board in
 
 Calculates and saves a single aggregate accuracy record based on the results from the backtest.
 
-- `--band {goose,phish,wsp}`: (Required) The band to process.
+- `--band <active-band-slug>`: (Required) The band to process. The script accepts any active band returned by the registry/config layer.
 - `--model {notebook,ckplus}`: (Required) The model to aggregate.
 - `--shows {N}`: (Optional) The number of recent shows from `accuracy_per_show` to include in the aggregation. Defaults to 100.
 

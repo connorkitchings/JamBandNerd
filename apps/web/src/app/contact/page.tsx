@@ -17,21 +17,23 @@ export default function ContactPage() {
         kicker="Direct line"
         eyebrow="Contact"
         title="Contact JamBandNerd"
-        description="Use the email below for site feedback, data corrections, feature ideas, or general questions about the project."
+        description="Use the email below for site feedback, data corrections, feature ideas, collaboration inquiries, or general questions about the project."
       />
 
       <SectionCard title="Email" eyebrow="Direct Contact">
-        <a
-          href={`mailto:${CONTACT_EMAIL}`}
-          aria-label={`Email ${CONTACT_EMAIL}`}
-          className="inline-flex items-center rounded-full border border-primary/30 bg-primary/12 px-5 py-4 font-headline text-base font-medium text-primary transition hover:border-primary hover:bg-primary/16"
-        >
-          {CONTACT_EMAIL}
-        </a>
-        <p className="mt-4 text-sm leading-6 text-on-surface-variant">
-          Best for bug reports, incorrect setlist data, venue corrections, product feedback, and
-          collaboration inquiries.
-        </p>
+        <div className="space-y-4 text-center">
+          <a
+            href={`mailto:${CONTACT_EMAIL}`}
+            aria-label={`Email ${CONTACT_EMAIL}`}
+            className="inline-flex items-center rounded-full border border-primary/30 bg-primary/12 px-5 py-4 font-headline text-base font-medium text-primary transition hover:border-primary hover:bg-primary/16"
+          >
+            {CONTACT_EMAIL}
+          </a>
+          <p className="mx-auto max-w-2xl text-sm leading-6 text-on-surface-variant">
+            Best for bug reports, incorrect setlist data, venue corrections, product feedback, and
+            collaboration inquiries.
+          </p>
+        </div>
       </SectionCard>
 
       <div className="grid gap-4 md:grid-cols-2">

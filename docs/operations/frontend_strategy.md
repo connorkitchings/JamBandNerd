@@ -85,7 +85,8 @@ Show summary context first. Allow users to drill into details.
 
 ### Navigation
 
-- **Mobile**: Fixed bottom nav with 4 items (Compare, Performance, Replay, Predict)
+- **Compatibility**: `/explorer` redirects to `/replay`; it is not a primary product surface.
+- **Mobile**: Fixed bottom nav with 5 items (Home, Compare, Performance, Replay, Predict)
 - **Desktop**: Side navigation with full labels
 - **State**: URL-driven via search params (`?band=goose&model=ckplus`)
 - **Search**: Global search in header; song-specific search on song board

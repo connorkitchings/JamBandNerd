@@ -74,6 +74,14 @@ export function buildLocationLabel(parts: Array<string | null>) {
   return filtered.join(", ");
 }
 
+export function formatSetLabel(value: number | null) {
+  if (value === null) {
+    return "—";
+  }
+
+  return value === 99 ? "E" : String(value);
+}
+
 export function formatPercent(value: number | null, digits = 1) {
   return value === null ? "—" : `${(value * 100).toFixed(digits)}%`;
 }

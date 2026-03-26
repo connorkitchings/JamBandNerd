@@ -115,7 +115,7 @@ export default async function PredictionsPage({ searchParams }: Props) {
 
   const [nextShowState, accuracyState] = await Promise.all([
     getNextShowDetails(predictionState.band),
-    getRecentAccuracy(predictionState.band, predictionState.model, 25),
+    getRecentAccuracy(predictionState.band, predictionState.model, 50),
   ]);
   const nextShow = nextShowState.status === "ready" ? nextShowState.show : null;
   const heroDate = nextShow?.showDate ?? predictionState.snapshot.referenceDate;
@@ -133,7 +133,7 @@ export default async function PredictionsPage({ searchParams }: Props) {
         : "Prediction Outlook";
   const snapshotLabel = formatTimestampLabel(predictionState.snapshot.predictedAt);
   const accuracyRows = accuracyState.status === "ready" ? accuracyState.rows : [];
-  const accuracyWindow = accuracyRows.length || 25;
+  const accuracyWindow = accuracyRows.length || 50;
   const precisionCards = [
     {
       title: "Top 10 Accuracy",
@@ -161,7 +161,7 @@ export default async function PredictionsPage({ searchParams }: Props) {
   }));
 
   return (
-    <div className="w-full max-w-6xl mx-auto">
+    <div className="mx-auto w-full max-w-6xl">
       <DashboardSideNav
         band={predictionState.band}
         model={predictionState.model}
@@ -187,7 +187,7 @@ export default async function PredictionsPage({ searchParams }: Props) {
       />
 
       <section>
-        <div className="editorial-panel px-6 py-6 md:px-7">
+        <div className="editorial-panel px-4 py-5 sm:px-6 sm:py-6 md:px-7">
           <div className="relative">
             <p className="font-label text-[10px] uppercase tracking-[0.24em] text-primary">
               Full ranking

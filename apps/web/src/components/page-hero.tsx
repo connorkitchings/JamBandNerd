@@ -1,11 +1,12 @@
 import type { ReactNode } from "react";
 
 type Props = {
-  eyebrow: string;
+  eyebrow?: string;
   title: string;
   description: string;
+  descriptionClassName?: string;
   kicker?: string;
-  meta?: string;
+  meta?: ReactNode;
   aside?: ReactNode;
   centered?: boolean;
 };
@@ -14,6 +15,7 @@ export function PageHero({
   eyebrow,
   title,
   description,
+  descriptionClassName,
   kicker,
   meta,
   aside,
@@ -39,14 +41,14 @@ export function PageHero({
             {title}
           </h1>
           {meta ? (
-            <p className="mt-3 font-headline text-xs uppercase tracking-[0.14em] text-primary md:mt-4 md:text-base">
+            <div className="mt-3 font-headline text-xs uppercase tracking-[0.14em] text-primary md:mt-4 md:text-base">
               {meta}
-            </p>
+            </div>
           ) : null}
           <p
             className={`mt-4 max-w-3xl text-sm leading-6 text-on-surface-variant md:mt-5 md:text-[0.95rem] md:leading-7 ${
               centered ? "mx-auto" : ""
-            }`}
+            } ${descriptionClassName ?? ""}`}
           >
             {description}
           </p>

@@ -245,7 +245,7 @@ export default async function HomePage({ searchParams }: Props) {
         </div>
       </section>
 
-      <SectionCard title="How Predictions Work" eyebrow="Prediction Workflow">
+      <SectionCard title="How Predictions Work">
         <div className="grid gap-6 md:grid-cols-3">
           {HOW_IT_WORKS.map((item) => (
             <div
@@ -266,7 +266,7 @@ export default async function HomePage({ searchParams }: Props) {
         </div>
       </SectionCard>
 
-      <SectionCard title="Bands We Track" eyebrow={`${bands.length} bands tracked`}>
+      <SectionCard title="Artists We Track">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {bands.map((band) => (
             <Link
