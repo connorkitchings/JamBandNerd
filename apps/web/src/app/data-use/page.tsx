@@ -23,111 +23,47 @@ export default function DataUsePage() {
       />
 
       <SectionCard title="What The Site Uses">
-        <div className="space-y-3 text-sm leading-6 text-on-surface-variant">
-          <p>
-            Publicly available factual show information such as band names, show dates, venues,
-            cities, regions, song titles, and song order.
-          </p>
-          <p>
-            The site is built around facts and factual show metadata rather than expressive
-            content, and does not treat that factual information as proprietary creative material.
-          </p>
-          <p>
-            JamBandNerd also generates its own analytics, including prediction rankings, gap
-            metrics, venue summaries, and accuracy calculations.
-          </p>
-          <p>
-            Nonetheless, if a band or management group is uncomfortable with how data is being
-            used or displayed here, please reach out and we will review it promptly.
-          </p>
-        </div>
+        <ul className="space-y-3 pl-5 text-sm leading-6 text-on-surface-variant marker:text-primary/75 list-disc">
+          <li>Publicly available factual show information like band names, show dates, venues, cities, regions, song titles, and song order.</li>
+          <li>Internally generated analytics such as prediction rankings, gap metrics, venue summaries, and accuracy calculations.</li>
+          <li>Source-specific setlist histories assembled into a shared factual reference layer for analysis.</li>
+        </ul>
       </SectionCard>
 
-      <SectionCard title="Non-Substitutional Intent">
-        <div className="space-y-3 text-sm leading-6 text-on-surface-variant">
+      <SectionCard title="What The Site Does Not Reproduce">
+        <ul className="space-y-3 pl-5 text-sm leading-6 text-on-surface-variant marker:text-primary/75 list-disc">
+          <li>No lyrics, sheet music, notation, or long-form editorial reviews.</li>
+          <li>No audio or video files.</li>
+          <li>No paywalled or authenticated source content.</li>
+          <li>No attempt to replace dedicated community archives as the primary source of record.</li>
+        </ul>
+      </SectionCard>
+
+      <SectionCard title="How The Product Is Positioned">
+        <div className="space-y-4 text-sm leading-6 text-on-surface-variant">
           <p>
             JamBandNerd is a companion tool for statistical analysis, not a replacement for
-            community archives. We encourage users to visit original sources for full show
-            histories.
+            community archives. The product is meant to help users follow next-show predictions,
+            compare historical outcomes, and explore venue or rotation patterns.
           </p>
-          <p>
-            The site is designed to complement—not substitute for—the dedicated setlist archives
-            maintained by fans and communities.
-          </p>
-        </div>
-      </SectionCard>
-
-      <SectionCard title="Expressive Content Disclaimer">
-        <div className="space-y-3 text-sm leading-6 text-on-surface-variant">
-          <p>This site does not host lyrics, sheet music, audio/video files, or long-form editorial reviews.</p>
-          <p>We focus exclusively on the mathematical analysis of factual setlist data.</p>
-        </div>
-      </SectionCard>
-
-      <SectionCard title="Source Attribution And Model Credit">
-        <div className="space-y-3 text-sm leading-6 text-on-surface-variant">
           <p>
             JamBandNerd uses a dedicated online setlist source for each band, with some sources
             affiliated with the bands and some maintained independently. The site is intended to
-            follow source terms of use while assembling factual show histories and setlist context.
+            follow source terms of use while assembling factual show histories and clearly labeled
+            derived analytics.
           </p>
           <p>
-            The Notebook method is based on the method developed by Phish.net.
-          </p>
-          <p>
-            CK+ is a personally developed model created for this site.
-          </p>
-          <p>
-            The product intent is to combine factual reference data with clearly labeled derived
-            analytics rather than present all models as originating from the same source.
+            The Notebook method is based on the method developed by Phish.net. CK+ is a
+            personally developed model created for this site.
           </p>
         </div>
       </SectionCard>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <SectionCard title="What The Site Is Not Reproducing">
-          <div className="space-y-3 text-sm leading-6 text-on-surface-variant">
-            <p>No lyrics, sheet music, or notation.</p>
-            <p>No audio or video files.</p>
-            <p>No long-form editorial writeups, articles, or expressive source material copied onto the site.</p>
-            <p>No paywalled or authenticated source content is intended to be republished here.</p>
-          </div>
-        </SectionCard>
-
-        <SectionCard title="Good-Faith Product Intent">
-          <div className="space-y-3 text-sm leading-6 text-on-surface-variant">
-            <p>The site is meant to help users follow next-show predictions, compare historical outcomes, and explore venue or rotation patterns.</p>
-            <p>The product is designed around factual reference data and internally generated analysis rather than expressive content.</p>
-            <p>If any data appears inaccurate or creates a concern, we want to hear about it and review it promptly.</p>
-          </div>
-        </SectionCard>
-      </div>
-
-      <SectionCard title="Notice and Takedown">
-        <div className="space-y-3 text-sm leading-6 text-on-surface-variant">
-          <p>
-            If you represent a band or data source and believe your content is used in a way that
-            exceeds factual reference, please contact us at{" "}
-            <a
-              className="text-primary underline decoration-dotted"
-              href={`mailto:${CONTACT_EMAIL}`}
-            >
-              {CONTACT_EMAIL}
-            </a>
-            .
-          </p>
-          <p>
-            We are committed to addressing concerns promptly and will review any takedown requests
-            in good faith.
-          </p>
-        </div>
-      </SectionCard>
-
-      <SectionCard title="Questions Or Concerns">
+      <SectionCard title="Questions, Notices, and Takedown">
         <div className="space-y-4 text-sm leading-6 text-on-surface-variant">
           <p>
-            For corrections, attribution concerns, or general questions about how data is
-            being displayed, contact{" "}
+            If you represent a band or data source and believe your content is used in a way that
+            exceeds factual reference, contact{" "}
             <a
               className="text-primary underline decoration-dotted"
               href={`mailto:${CONTACT_EMAIL}`}
@@ -135,18 +71,17 @@ export default function DataUsePage() {
             >
               {CONTACT_EMAIL}
             </a>
-            .
+            . We will review concerns in good faith.
           </p>
           <p>
-            This page is informational only and should not be treated as legal advice.
-          </p>
-          <p>
-            You can also use the{" "}
+            For corrections, attribution concerns, or general questions about how data is being
+            displayed, you can also use the{" "}
             <Link className="text-primary underline decoration-dotted" href="/contact">
               contact page
-            </Link>{" "}
-            for general feedback or corrections.
+            </Link>
+            .
           </p>
+          <p>This page is informational only and should not be treated as legal advice.</p>
         </div>
       </SectionCard>
     </div>

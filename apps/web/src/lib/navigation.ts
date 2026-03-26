@@ -53,13 +53,6 @@ export const MOBILE_NAV_ITEMS: NavItem[] = [
     matches: ["/"],
   },
   {
-    href: "/compare",
-    label: "Compare",
-    mobileLabel: "Compare",
-    icon: "◎",
-    matches: ["/compare"],
-  },
-  {
     href: "/performance",
     label: "Performance",
     mobileLabel: "Stats",
@@ -67,18 +60,25 @@ export const MOBILE_NAV_ITEMS: NavItem[] = [
     matches: ["/performance"],
   },
   {
-    href: "/replay",
-    label: "Replay",
-    mobileLabel: "Replay",
-    icon: "◧",
-    matches: ["/replay", "/explorer"],
-  },
-  {
     href: "/predictions",
     label: "Predictions",
     mobileLabel: "Predict",
     icon: "◈",
     matches: ["/predictions"],
+  },
+  {
+    href: "/compare",
+    label: "Compare",
+    mobileLabel: "Compare",
+    icon: "◎",
+    matches: ["/compare"],
+  },
+  {
+    href: "/replay",
+    label: "Replay",
+    mobileLabel: "Replay",
+    icon: "◧",
+    matches: ["/replay", "/explorer"],
   },
 ];
 

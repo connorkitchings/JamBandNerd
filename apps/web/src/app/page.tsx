@@ -134,6 +134,7 @@ export default async function HomePage({ searchParams }: Props) {
                   <Link
                     key={band.slug}
                     href={`/?teaser=${band.slug}`}
+                    scroll={false}
                     className={`flex items-center justify-center rounded-full border px-2.5 py-2 text-center font-headline text-[10px] font-bold uppercase tracking-[0.12rem] transition ${
                       isActive
                         ? "border-primary/30 bg-primary/12 text-primary"

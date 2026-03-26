@@ -125,8 +125,9 @@ export default async function PredictionsPage({ searchParams }: Props) {
     nextShow?.state ?? nextShow?.country ?? null,
   ]);
   const today = new Date().toISOString().slice(0, 10);
+  const isLiveShow = heroDate === today;
   const statusLabel =
-    heroDate === today
+    isLiveShow
       ? "LIVE"
       : nextShow?.showDate
         ? "Next Show"
@@ -168,8 +169,11 @@ export default async function PredictionsPage({ searchParams }: Props) {
         bands={bands}
       />
 
-      {process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY && (
+      {isLiveShow && process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY && (
         <LiveTracker
+          band={predictionState.band}
+          model={predictionState.model}
+          referenceDate={heroDate}
           supabaseUrl={process.env.SUPABASE_URL}
           supabaseAnonKey={process.env.SUPABASE_ANON_KEY}
         />

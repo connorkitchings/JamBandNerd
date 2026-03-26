@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { AccuracyTable } from "@/components/accuracy-table";
 import { DashboardSideNav } from "@/components/dashboard-side-nav";
 import { DataState } from "@/components/data-state";
+import { ExpandablePanel } from "@/components/expandable-panel";
 import { KToggle } from "@/components/k-toggle";
 import { PageHero } from "@/components/page-hero";
 import { RecallChart } from "@/components/recall-chart";
@@ -123,7 +124,6 @@ export default async function PerformancePage({ searchParams }: Props) {
         model={state.model}
         bands={bands}
         pathname="/performance"
-        compareHref={null}
       />
 
       <PageHero
@@ -271,17 +271,17 @@ export default async function PerformancePage({ searchParams }: Props) {
             ))}
           </div>
 
-          <details className="rounded-[1.35rem] border border-outline-variant/20 bg-surface-container-low">
-            <summary className="cursor-pointer list-none px-4 py-4 font-headline text-sm uppercase tracking-[0.12em] text-on-surface">
-              Open raw ledger
-            </summary>
-            <div className="px-3 pb-3">
+          <ExpandablePanel
+            expandLabel="Open Raw Ledger"
+            bodyClassName="px-3 pt-3"
+            buttonClassName="w-full rounded-[1.35rem] border border-outline-variant/20 bg-surface-container-low px-4 py-4 text-center font-headline text-sm uppercase tracking-[0.12em] text-on-surface"
+            containerClassName="rounded-[1.35rem] border border-outline-variant/20 bg-surface-container-low"
+          >
               <AccuracyTable
                 rows={state.rows}
                 replayBand={state.band}
               />
-            </div>
-          </details>
+          </ExpandablePanel>
         </div>
 
         <div className="hidden md:block">

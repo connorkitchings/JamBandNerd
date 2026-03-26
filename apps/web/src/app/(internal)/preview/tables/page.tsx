@@ -61,6 +61,8 @@ const accuracyRows = [
   {
     showDate: "2026-03-12",
     venueName: "The Salt Shed",
+    city: "Chicago",
+    state: "IL",
     k10Recall: 0.4,
     k25Recall: 0.72,
     k50Recall: 0.91,
@@ -71,6 +73,8 @@ const accuracyRows = [
   {
     showDate: "2026-03-14",
     venueName: "Red Rocks Amphitheatre",
+    city: "Morrison",
+    state: "CO",
     k10Recall: 0.5,
     k25Recall: 0.76,
     k50Recall: 0.93,

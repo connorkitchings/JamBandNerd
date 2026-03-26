@@ -1,6 +1,9 @@
+import { createHash } from "node:crypto";
+
+import { type SupabaseClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
+
 import { getServiceRoleClient } from "@/lib/supabase/server";
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 export async function POST(request: NextRequest) {
   const authHeader = request.headers.get("authorization");
@@ -9,7 +12,7 @@ export async function POST(request: NextRequest) {
   if (!adminPassword) {
     return NextResponse.json(
       { error: "Admin not configured" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 
@@ -18,7 +21,7 @@ export async function POST(request: NextRequest) {
   if (!providedPassword || providedPassword !== adminPassword) {
     return NextResponse.json(
       { error: "Unauthorized" },
-      { status: 401 }
+      { status: 401 },
     );
   }
 
@@ -28,7 +31,7 @@ export async function POST(request: NextRequest) {
   if (!band || !showDate || !venueName || !city || !state || !setlistText) {
     return NextResponse.json(
       { error: "Missing required fields" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -36,7 +39,7 @@ export async function POST(request: NextRequest) {
   if (!supabase) {
     return NextResponse.json(
       { error: "Database not configured" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 
@@ -47,7 +50,7 @@ export async function POST(request: NextRequest) {
       showDate,
       venueName,
       city,
-      state
+      state,
     );
     await upsertSetlistRows(supabase, band, showId, setlistText);
 
@@ -60,7 +63,7 @@ export async function POST(request: NextRequest) {
     console.error("Error adding setlist:", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Failed to add setlist" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -71,7 +74,7 @@ async function ensureShow(
   showDate: string,
   venueName: string,
   city: string,
-  state: string
+  state: string,
 ): Promise<string> {
   const showsTable = `${band}_shows_raw`;
 
@@ -107,8 +110,7 @@ async function ensureShow(
 }
 
 function generateShowId(date: string, venue: string): string {
-  const crypto = require("crypto");
-  const hash = crypto.createHash("md5").update(`${date}|${venue}`).digest("hex");
+  const hash = createHash("md5").update(`${date}|${venue}`).digest("hex");
   return parseInt(hash.slice(0, 8), 16).toString();
 }
 
@@ -116,7 +118,7 @@ async function upsertSetlistRows(
   supabase: SupabaseClient,
   band: string,
   showId: string,
-  setlistText: string
+  setlistText: string,
 ): Promise<void> {
   const setsTable = `${band}_setlists_raw`;
   const parsed = parseSetlistText(setlistText);
@@ -184,9 +186,7 @@ function parseSetlistText(text: string): Array<{
       const parts = item.split(">").map((p) => p.trim()).filter(Boolean);
 
       for (let i = 0; i < parts.length; i++) {
-        const part = parts[i]
-          .replace(/[\u2018\u2019]/g, "'")
-          .trim();
+        const part = parts[i].replace(/[\u2018\u2019]/g, "'").trim();
 
         rows.push({
           set_number: setNumber,

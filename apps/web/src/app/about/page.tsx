@@ -1,6 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-
 import { PageHero } from "@/components/page-hero";
 import { SectionCard } from "@/components/section-card";
 import { MODEL_CONFIG } from "@/lib/config";
@@ -11,9 +9,9 @@ export const metadata: Metadata = {
 };
 const FAQ_ITEMS = [
   {
-    question: "What is Top-10 Recall?",
+    question: "How do you measure accuracy?",
     answer:
-      "Recall measures how well the model's top predictions matched the actual setlist. For example, 30% recall at Top-10 means 3 out of every 10 predicted songs in the top-10 appeared in the show. We track this across the last 50 scored shows for each band and model in the current website views.",
+      "Accuracy measures how much of the actual setlist was captured by the model's top predictions. For example, 30% accuracy at Top 10 means the model's top-10 group captured 30% of that night's actual songs. The site tracks that across multiple Top-X thresholds and shows the recent scoring history for each band and model.",
   },
   {
     question: "What drives the predictions?",
@@ -91,16 +89,15 @@ export default function AboutPage() {
           approach, which makes the Compare and Replay pages useful rather than redundant.
         </p>
         <div className="grid gap-4 md:grid-cols-2">
-            <div className="editorial-chip rounded-[1.5rem] p-6">
+          <div className="editorial-chip rounded-[1.5rem] p-6">
             <p className="font-label text-[10px] uppercase tracking-[0.2em] text-primary">
               {MODEL_CONFIG.notebook.displayName}
             </p>
-            <p className="mt-3 text-sm leading-6 text-on-surface-variant">
-              An independent implementation of the weighted-recency algorithm popularized by
-              Phish.net, provided as a benchmark for comparison. It emphasizes songs active in
-              the recent rotation and uses current gap to separate likely candidates, while
-              excluding songs played in the last 3 shows.
-            </p>
+            <ul className="mt-3 space-y-3 pl-5 text-sm leading-6 text-on-surface-variant marker:text-primary/75 list-disc">
+              <li>Weighted-recency benchmark inspired by the method popularized by Phish.net.</li>
+              <li>Leans on active rotation trends and current gap to separate likely songs.</li>
+              <li>Excludes songs played in the last 3 shows.</li>
+            </ul>
             <p className="mt-4 border-t border-outline-variant/15 pt-4 font-label text-[10px] uppercase tracking-[0.16em] text-on-surface-variant">
               Credit: Based on the weighted-recency method popularized by Phish.net.
             </p>
@@ -109,11 +106,11 @@ export default function AboutPage() {
             <p className="font-label text-[10px] uppercase tracking-[0.2em] text-primary">
               {MODEL_CONFIG.ckplus.displayName}
             </p>
-            <p className="mt-3 text-sm leading-6 text-on-surface-variant">
-              A personally developed cadence model that ranks songs by how overdue they are
-              relative to their historical behavior, using gap ratio, gap z-score, and reliability
-              signals.
-            </p>
+            <ul className="mt-3 space-y-3 pl-5 text-sm leading-6 text-on-surface-variant marker:text-primary/75 list-disc">
+              <li>Personally developed cadence model built specifically for this site.</li>
+              <li>Ranks songs by how overdue they are relative to their historical behavior.</li>
+              <li>Uses gap ratio, gap z-score, and reliability signals.</li>
+            </ul>
             <p className="mt-4 border-t border-outline-variant/15 pt-4 font-label text-[10px] uppercase tracking-[0.16em] text-on-surface-variant">
               Credit: CK+ is an original personally developed model.
             </p>
@@ -147,42 +144,28 @@ export default function AboutPage() {
               key={item.question}
               className="group editorial-chip rounded-[1.5rem]"
             >
-              <summary className="cursor-pointer select-none px-5 py-4 font-headline text-sm font-medium text-on-surface transition group-open:text-primary">
-                {item.question}
+              <summary className="flex cursor-pointer list-none items-start justify-between gap-3 px-5 py-4 font-headline text-sm font-medium text-on-surface transition group-open:text-primary">
+                <span className="pr-2">{item.question}</span>
+                <svg
+                  aria-hidden="true"
+                  className="mt-0.5 size-4 shrink-0 text-on-surface-variant transition-transform group-open:rotate-180"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    d="M6 9L12 15L18 9"
+                    stroke="currentColor"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="1.75"
+                  />
+                </svg>
               </summary>
               <p className="whitespace-pre-line px-5 pb-4 text-sm leading-6 text-on-surface-variant">
                 {item.answer}
               </p>
             </details>
           ))}
-        </div>
-      </SectionCard>
-
-      {/* Links */}
-      <SectionCard title="Links">
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Link
-            href="/data-use"
-            className="editorial-chip block rounded-[1.5rem] p-5 transition hover:border-primary"
-          >
-            <p className="font-headline text-base font-medium text-on-surface">
-              Data Use
-            </p>
-            <p className="mt-1 text-xs text-on-surface-variant">
-              Read how the site uses public factual information and derived analytics
-            </p>
-          </Link>
-          <Link
-            href="/contact"
-            className="editorial-chip block rounded-[1.5rem] p-5 transition hover:border-primary"
-          >
-            <p className="font-headline text-base font-medium text-on-surface">
-              Contact
-            </p>
-            <p className="mt-1 text-xs text-on-surface-variant">
-              Reach out with feedback, corrections, or attribution questions
-            </p>
-          </Link>
         </div>
       </SectionCard>
     </div>

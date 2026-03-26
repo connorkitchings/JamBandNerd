@@ -26,11 +26,6 @@ export default function AdminSetlistPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-  };
-
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -145,7 +140,7 @@ export default function AdminSetlistPage() {
       } else {
         setMessage({ type: "error", text: `Error: ${data.error}` });
       }
-    } catch (err) {
+    } catch {
       setMessage({ type: "error", text: "Failed to submit" });
     } finally {
       setIsSubmitting(false);
@@ -160,7 +155,7 @@ export default function AdminSetlistPage() {
           <p className="mt-2 text-sm text-on-surface-variant">Enter password to continue</p>
         </div>
 
-        <form onSubmit={handleLogin} className="space-y-4">
+        <form onSubmit={handlePasswordSubmit} className="space-y-4">
           <div>
             <label htmlFor="password" className="sr-only">
               Password
@@ -170,6 +165,7 @@ export default function AdminSetlistPage() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
               placeholder="Enter admin password"
               className="w-full rounded-xl border border-outline-variant bg-surface px-4 py-3 text-on-surface focus:border-primary focus:outline-none"
             />
@@ -301,11 +297,12 @@ export default function AdminSetlistPage() {
             onChange={(e) => handleSetlistChange(e.target.value)}
             required
             rows={8}
-            placeholder={`Set 1 Song A, Song B {'>'} Song C, Song D\nSet 2 Song X, Song Y\nEncore Song Z`}
+            placeholder={`Set 1 Song A, Song B > Song C, Song D\nSet 2 Song X, Song Y\nEncore Song Z`}
             className="mt-1 w-full rounded-xl border border-outline-variant bg-surface px-3 py-2 text-on-surface focus:border-primary focus:outline-none font-mono text-sm"
           />
           <p className="mt-1 text-xs text-on-surface-variant">
-            Format: "Set 1" or "Encore" followed by comma-separated song names. Use "{'>'}" for segues.
+            Format: Use Set 1 or Encore, followed by comma-separated song names. Use
+            {" > "}for segues.
           </p>
         </div>
 

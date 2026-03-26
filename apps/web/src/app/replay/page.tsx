@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { DashboardSideNav } from "@/components/dashboard-side-nav";
 import { DataState } from "@/components/data-state";
+import { ExpandablePanel } from "@/components/expandable-panel";
 import { PageHero } from "@/components/page-hero";
 import { ReplayShowSelect } from "@/components/replay-show-select";
 import {
@@ -20,7 +21,6 @@ import {
   type PredictionRow,
 } from "@/lib/data";
 import {
-  buildLocationLabel,
   formatCompactDateLabel,
   formatPercent,
 } from "@/lib/format";
@@ -89,6 +89,34 @@ function wasPlayed(songName: string | null, actualSongs: Set<string>) {
   return songName ? actualSongs.has(normalizeSongName(songName)) : false;
 }
 
+function renderPlayedLabel(
+  label: string,
+  exists: boolean,
+  played: boolean,
+  accentClassName: string,
+) {
+  if (!exists) {
+    return (
+      <span className="rounded-full border border-outline-variant/20 bg-surface px-2 py-1 font-label text-[9px] uppercase tracking-[0.16rem] text-on-surface-variant">
+        No pick
+      </span>
+    );
+  }
+
+  return (
+    <span
+      className={`rounded-full border px-2 py-1 font-label text-[9px] uppercase tracking-[0.16rem] ${
+        played
+          ? `${accentClassName} border-current/25 bg-current/12`
+          : "border-outline-variant/20 bg-surface text-on-surface-variant"
+      }`}
+      aria-label={played ? `${label} prediction was played` : `${label} prediction was not played`}
+    >
+      {played ? "Hit" : "Miss"}
+    </span>
+  );
+}
+
 export default async function ReplayPage({ searchParams }: Props) {
   const params = await searchParams;
   const bandsResult = await getBands();
@@ -139,10 +167,8 @@ export default async function ReplayPage({ searchParams }: Props) {
   const actualSongs = new Set(
     (state.replay.setlist?.songs ?? []).map((song) => normalizeSongName(song.songName)),
   );
-  const locationLabel = buildLocationLabel([
-    show?.city ?? null,
-    show?.state ?? show?.country ?? null,
-  ]);
+  const locationCity = show?.city ?? "Unavailable";
+  const locationRegion = show?.state ?? show?.country ?? "Unavailable";
 
   const notebookTop10Hits = computeTopKHits(notebookRows, actualSongs, 10);
   const ckplusTop10Hits = computeTopKHits(ckplusRows, actualSongs, 10);
@@ -165,6 +191,8 @@ export default async function ReplayPage({ searchParams }: Props) {
       ckplusPlayed: wasPlayed(ckplusRow?.songName ?? null, actualSongs),
     };
   });
+  const mobileReplayRows = replayRows.slice(0, 10);
+  const remainingReplayRows = replayRows.slice(10);
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
@@ -173,7 +201,6 @@ export default async function ReplayPage({ searchParams }: Props) {
         model="notebook"
         bands={bands}
         pathname="/replay"
-        compareHref={null}
         hideSecondary
         bandLinks={bands.map((item) => ({
           href: state.replay.selectedDate
@@ -201,29 +228,22 @@ export default async function ReplayPage({ searchParams }: Props) {
               options={state.replay.availableShows}
               label="Select show"
             />
-            <div className="grid gap-4 md:grid-cols-3">
-              <div className="rounded-xl border border-outline-variant/20 bg-surface-container-low p-4">
+            <div className="grid gap-3 md:grid-cols-2 md:gap-4">
+              <div className="min-w-0 rounded-xl border border-outline-variant/20 bg-surface-container-low p-3 md:p-4">
                 <p className="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">
                   Venue
                 </p>
-                <p className="mt-2 text-sm text-on-surface">
+                <p className="mt-2 text-xs leading-5 text-on-surface md:text-sm">
                   {show?.venueName ?? "Unavailable"}
                 </p>
               </div>
-              <div className="rounded-xl border border-outline-variant/20 bg-surface-container-low p-4">
+              <div className="min-w-0 rounded-xl border border-outline-variant/20 bg-surface-container-low p-3 md:p-4">
                 <p className="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">
                   Location
                 </p>
-                <p className="mt-2 text-sm text-on-surface">
-                  {locationLabel || "Unavailable"}
-                </p>
-              </div>
-              <div className="rounded-xl border border-outline-variant/20 bg-surface-container-low p-4">
-                <p className="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">
-                  Song count
-                </p>
-                <p className="mt-2 text-sm text-on-surface">
-                  {state.replay.setlist.songs.length}
+                <p className="mt-2 text-xs leading-5 text-on-surface md:text-sm">
+                  {locationCity}
+                  {locationRegion !== "Unavailable" ? `, ${locationRegion}` : ""}
                 </p>
               </div>
             </div>
@@ -251,7 +271,7 @@ export default async function ReplayPage({ searchParams }: Props) {
                   </p>
                 </div>
                 <p className="mt-2 text-sm text-on-surface">
-                  {formatPercent(computeTopKRecall(notebookRows, actualSongs, 10))} recall
+                  {formatPercent(computeTopKRecall(notebookRows, actualSongs, 10))} accuracy
                 </p>
               </div>
               <div className="rounded-[1.35rem] border border-outline-variant/20 bg-surface-container-low p-5 text-center">
@@ -267,7 +287,7 @@ export default async function ReplayPage({ searchParams }: Props) {
                   </p>
                 </div>
                 <p className="mt-2 text-sm text-on-surface">
-                  {formatPercent(computeTopKRecall(ckplusRows, actualSongs, 10))} recall
+                  {formatPercent(computeTopKRecall(ckplusRows, actualSongs, 10))} accuracy
                 </p>
               </div>
             </div>
@@ -286,93 +306,251 @@ export default async function ReplayPage({ searchParams }: Props) {
             <p className="text-sm leading-6 text-on-surface-variant">
               Read both boards by rank and check whether each pick made the actual setlist.
             </p>
-            <ResponsiveTableFrame
-              minWidthClassName="min-w-[780px]"
-              testId="replay-comparison"
-            >
-              <thead className="bg-surface-container-low text-on-surface-variant">
-                <tr>
-                  <th className={`${TABLE_HEAD_CLASS} whitespace-nowrap`}>Rank</th>
-                  <th className={TABLE_HEAD_CLASS}>{MODEL_CONFIG.notebook.displayName}</th>
-                  <th className={`${TABLE_HEAD_CLASS} whitespace-nowrap text-center`}>
-                    Played
-                  </th>
-                  <th className={TABLE_HEAD_CLASS}>{MODEL_CONFIG.ckplus.displayName}</th>
-                  <th className={`${TABLE_HEAD_CLASS} whitespace-nowrap text-center`}>
-                    Played
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-outline-variant/20 bg-surface-container text-on-surface">
-                {replayRows.map((row) => (
-                  <tr key={row.rank} className="odd:bg-surface-container-low/30">
-                    <td
-                      className={`${TABLE_CELL_CLASS} whitespace-nowrap font-headline font-semibold text-on-surface-variant`}
+            <div className="space-y-3 md:hidden" data-testid="replay-comparison-cards">
+              {mobileReplayRows.map((row) => (
+                <article
+                  key={row.rank}
+                  className="rounded-[1.35rem] border border-outline-variant/20 bg-surface-container-low px-4 py-4"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="font-label text-[10px] uppercase tracking-[0.16rem] text-on-surface-variant">
+                      Rank {row.rank}
+                    </p>
+                    <div className="flex gap-2">
+                      {row.notebookPlayed ? (
+                        <span className="rounded-full border border-primary/25 bg-primary/12 px-2.5 py-1 font-label text-[9px] uppercase tracking-[0.16rem] text-primary">
+                          NB Hit
+                        </span>
+                      ) : null}
+                      {row.ckplusPlayed ? (
+                        <span className="rounded-full border border-tertiary/25 bg-tertiary/12 px-2.5 py-1 font-label text-[9px] uppercase tracking-[0.16rem] text-tertiary">
+                          CK+ Hit
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  <div className="mt-4 grid gap-3">
+                    <div className="rounded-2xl bg-surface/70 px-3 py-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="font-label text-[9px] uppercase tracking-[0.16rem] text-primary">
+                            {MODEL_CONFIG.notebook.displayName}
+                          </p>
+                          <p
+                            className={`mt-2 font-headline text-base font-medium ${
+                              row.notebookPlayed ? "text-primary" : "text-on-surface"
+                            }`}
+                          >
+                            {row.notebookSong ?? "—"}
+                          </p>
+                        </div>
+                        {renderPlayedLabel(
+                          "Notebook",
+                          Boolean(row.notebookSong),
+                          row.notebookPlayed,
+                          "text-primary",
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="rounded-2xl bg-surface/70 px-3 py-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="font-label text-[9px] uppercase tracking-[0.16rem] text-tertiary">
+                            {MODEL_CONFIG.ckplus.displayName}
+                          </p>
+                          <p
+                            className={`mt-2 font-headline text-base font-medium ${
+                              row.ckplusPlayed ? "text-tertiary" : "text-on-surface"
+                            }`}
+                          >
+                            {row.ckplusSong ?? "—"}
+                          </p>
+                        </div>
+                        {renderPlayedLabel(
+                          "CK plus",
+                          Boolean(row.ckplusSong),
+                          row.ckplusPlayed,
+                          "text-tertiary",
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </article>
+              ))}
+
+              {remainingReplayRows.length > 0 ? (
+                <ExpandablePanel
+                  bodyClassName="space-y-3 px-3 pt-3"
+                  buttonClassName="w-full rounded-[1.35rem] border border-outline-variant/20 bg-surface-container-low px-4 py-4 text-center font-headline text-sm uppercase tracking-[0.12em] text-on-surface"
+                  containerClassName="rounded-[1.35rem] border border-outline-variant/20 bg-surface-container-low"
+                >
+                  {remainingReplayRows.map((row) => (
+                    <article
+                      key={row.rank}
+                      className="rounded-[1.2rem] border border-outline-variant/20 bg-surface/70 px-4 py-4"
                     >
-                      {row.rank}
-                    </td>
-                    <td className={TABLE_CELL_CLASS}>
-                      <span
-                        className={`font-headline font-medium ${
-                          row.notebookPlayed ? "text-primary" : "text-on-surface"
-                        }`}
-                      >
-                        {row.notebookSong ?? "—"}
-                      </span>
-                    </td>
-                    <td className={`${TABLE_CELL_CLASS} text-center`}>
-                      <span
-                        className={`font-label text-[10px] font-semibold uppercase tracking-[0.16rem] ${
-                          row.notebookSong
-                            ? row.notebookPlayed
-                              ? "text-primary"
-                              : "text-on-surface-variant"
-                            : "text-on-surface-variant"
-                        }`}
-                        aria-label={
-                          row.notebookSong
-                            ? row.notebookPlayed
-                              ? "Notebook prediction was played"
-                              : "Notebook prediction was not played"
-                            : "No notebook prediction"
-                        }
-                      >
-                        {row.notebookSong ? (row.notebookPlayed ? "✓" : "") : "—"}
-                      </span>
-                    </td>
-                    <td className={TABLE_CELL_CLASS}>
-                      <span
-                        className={`font-headline font-medium ${
-                          row.ckplusPlayed ? "text-tertiary" : "text-on-surface"
-                        }`}
-                      >
-                        {row.ckplusSong ?? "—"}
-                      </span>
-                    </td>
-                    <td className={`${TABLE_CELL_CLASS} text-center`}>
-                      <span
-                        className={`font-label text-[10px] font-semibold uppercase tracking-[0.16rem] ${
-                          row.ckplusSong
-                            ? row.ckplusPlayed
-                              ? "text-primary"
-                              : "text-on-surface-variant"
-                            : "text-on-surface-variant"
-                        }`}
-                        aria-label={
-                          row.ckplusSong
-                            ? row.ckplusPlayed
-                              ? "CK plus prediction was played"
-                              : "CK plus prediction was not played"
-                            : "No CK plus prediction"
-                        }
-                      >
-                        {row.ckplusSong ? (row.ckplusPlayed ? "✓" : "") : "—"}
-                      </span>
-                    </td>
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="font-label text-[10px] uppercase tracking-[0.16rem] text-on-surface-variant">
+                          Rank {row.rank}
+                        </p>
+                        <div className="flex gap-2">
+                          {row.notebookPlayed ? (
+                            <span className="rounded-full border border-primary/25 bg-primary/12 px-2.5 py-1 font-label text-[9px] uppercase tracking-[0.16rem] text-primary">
+                              NB Hit
+                            </span>
+                          ) : null}
+                          {row.ckplusPlayed ? (
+                            <span className="rounded-full border border-tertiary/25 bg-tertiary/12 px-2.5 py-1 font-label text-[9px] uppercase tracking-[0.16rem] text-tertiary">
+                              CK+ Hit
+                            </span>
+                          ) : null}
+                        </div>
+                      </div>
+
+                      <div className="mt-4 grid gap-3">
+                        <div className="rounded-2xl bg-surface-container px-3 py-3">
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="font-label text-[9px] uppercase tracking-[0.16rem] text-primary">
+                                {MODEL_CONFIG.notebook.displayName}
+                              </p>
+                              <p
+                                className={`mt-2 font-headline text-base font-medium ${
+                                  row.notebookPlayed ? "text-primary" : "text-on-surface"
+                                }`}
+                              >
+                                {row.notebookSong ?? "—"}
+                              </p>
+                            </div>
+                            {renderPlayedLabel(
+                              "Notebook",
+                              Boolean(row.notebookSong),
+                              row.notebookPlayed,
+                              "text-primary",
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="rounded-2xl bg-surface-container px-3 py-3">
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="font-label text-[9px] uppercase tracking-[0.16rem] text-tertiary">
+                                {MODEL_CONFIG.ckplus.displayName}
+                              </p>
+                              <p
+                                className={`mt-2 font-headline text-base font-medium ${
+                                  row.ckplusPlayed ? "text-tertiary" : "text-on-surface"
+                                }`}
+                              >
+                                {row.ckplusSong ?? "—"}
+                              </p>
+                            </div>
+                            {renderPlayedLabel(
+                              "CK plus",
+                              Boolean(row.ckplusSong),
+                              row.ckplusPlayed,
+                              "text-tertiary",
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </article>
+                  ))}
+                </ExpandablePanel>
+              ) : null}
+            </div>
+
+            <div className="hidden md:block">
+              <ResponsiveTableFrame
+                minWidthClassName="min-w-[780px]"
+                testId="replay-comparison"
+              >
+                <thead className="bg-surface-container-low text-on-surface-variant">
+                  <tr>
+                    <th className={`${TABLE_HEAD_CLASS} whitespace-nowrap`}>Rank</th>
+                    <th className={TABLE_HEAD_CLASS}>{MODEL_CONFIG.notebook.displayName}</th>
+                    <th className={`${TABLE_HEAD_CLASS} whitespace-nowrap text-center`}>
+                      Played
+                    </th>
+                    <th className={TABLE_HEAD_CLASS}>{MODEL_CONFIG.ckplus.displayName}</th>
+                    <th className={`${TABLE_HEAD_CLASS} whitespace-nowrap text-center`}>
+                      Played
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </ResponsiveTableFrame>
+                </thead>
+                <tbody className="divide-y divide-outline-variant/20 bg-surface-container text-on-surface">
+                  {replayRows.map((row) => (
+                    <tr key={row.rank} className="odd:bg-surface-container-low/30">
+                      <td
+                        className={`${TABLE_CELL_CLASS} whitespace-nowrap font-headline font-semibold text-on-surface-variant`}
+                      >
+                        {row.rank}
+                      </td>
+                      <td className={TABLE_CELL_CLASS}>
+                        <span
+                          className={`font-headline font-medium ${
+                            row.notebookPlayed ? "text-primary" : "text-on-surface"
+                          }`}
+                        >
+                          {row.notebookSong ?? "—"}
+                        </span>
+                      </td>
+                      <td className={`${TABLE_CELL_CLASS} text-center`}>
+                        <span
+                          className={`font-label text-[10px] font-semibold uppercase tracking-[0.16rem] ${
+                            row.notebookSong
+                              ? row.notebookPlayed
+                                ? "text-primary"
+                                : "text-on-surface-variant"
+                              : "text-on-surface-variant"
+                          }`}
+                          aria-label={
+                            row.notebookSong
+                              ? row.notebookPlayed
+                                ? "Notebook prediction was played"
+                                : "Notebook prediction was not played"
+                              : "No notebook prediction"
+                          }
+                        >
+                          {row.notebookSong ? (row.notebookPlayed ? "✓" : "") : "—"}
+                        </span>
+                      </td>
+                      <td className={TABLE_CELL_CLASS}>
+                        <span
+                          className={`font-headline font-medium ${
+                            row.ckplusPlayed ? "text-tertiary" : "text-on-surface"
+                          }`}
+                        >
+                          {row.ckplusSong ?? "—"}
+                        </span>
+                      </td>
+                      <td className={`${TABLE_CELL_CLASS} text-center`}>
+                        <span
+                          className={`font-label text-[10px] font-semibold uppercase tracking-[0.16rem] ${
+                            row.ckplusSong
+                              ? row.ckplusPlayed
+                                ? "text-primary"
+                                : "text-on-surface-variant"
+                              : "text-on-surface-variant"
+                          }`}
+                          aria-label={
+                            row.ckplusSong
+                              ? row.ckplusPlayed
+                                ? "CK plus prediction was played"
+                                : "CK plus prediction was not played"
+                              : "No CK plus prediction"
+                          }
+                        >
+                          {row.ckplusSong ? (row.ckplusPlayed ? "✓" : "") : "—"}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </ResponsiveTableFrame>
+            </div>
           </div>
         ) : (
           <DataState

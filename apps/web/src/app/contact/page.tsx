@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { ContactActions } from "@/components/contact-actions";
 import { PageHero } from "@/components/page-hero";
 import { SectionCard } from "@/components/section-card";
 
@@ -22,13 +23,7 @@ export default function ContactPage() {
 
       <SectionCard title="Email" eyebrow="Direct Contact">
         <div className="space-y-4 text-center">
-          <a
-            href={`mailto:${CONTACT_EMAIL}`}
-            aria-label={`Email ${CONTACT_EMAIL}`}
-            className="inline-flex items-center rounded-full border border-primary/30 bg-primary/12 px-5 py-4 font-headline text-base font-medium text-primary transition hover:border-primary hover:bg-primary/16"
-          >
-            {CONTACT_EMAIL}
-          </a>
+          <ContactActions email={CONTACT_EMAIL} />
           <p className="mx-auto max-w-2xl text-sm leading-6 text-on-surface-variant">
             Best for bug reports, incorrect setlist data, venue corrections, product feedback, and
             collaboration inquiries.
@@ -38,20 +33,20 @@ export default function ContactPage() {
 
       <div className="grid gap-4 md:grid-cols-2">
         <SectionCard title="Good Reasons To Reach Out" eyebrow="Examples">
-          <div className="space-y-3 text-sm leading-6 text-on-surface-variant">
-            <p>Spotted a wrong setlist, venue, or show date.</p>
-            <p>Have an idea for a feature, page, or prediction explanation.</p>
-            <p>Want to suggest another band or data source.</p>
-            <p>Attribution or Source Inquiries: Discussing how we credit your organization or link back to your archives.</p>
-          </div>
+          <ul className="space-y-3 pl-5 text-sm leading-6 text-on-surface-variant marker:text-primary/75 list-disc">
+            <li>Spotted a wrong setlist, venue, or show date.</li>
+            <li>Have an idea for a feature, page, or prediction explanation.</li>
+            <li>Want to suggest another band or data source.</li>
+            <li>Need to discuss attribution, source credit, or archive links.</li>
+          </ul>
         </SectionCard>
 
         <SectionCard title="What To Include" eyebrow="Helpful Context">
-          <div className="space-y-3 text-sm leading-6 text-on-surface-variant">
-            <p>The band and page you were looking at.</p>
-            <p>The exact show date, song, or venue if your note is data-related.</p>
-            <p>A screenshot or short description of the issue if something looked broken.</p>
-          </div>
+          <ul className="space-y-3 pl-5 text-sm leading-6 text-on-surface-variant marker:text-primary/75 list-disc">
+            <li>The band and page you were looking at.</li>
+            <li>The exact show date, song, or venue if your note is data-related.</li>
+            <li>A screenshot or short description if something looked broken.</li>
+          </ul>
         </SectionCard>
       </div>
 

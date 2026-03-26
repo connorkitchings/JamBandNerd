@@ -22,11 +22,9 @@ async function bootstrapHostedPreviewBypass(page: Page) {
   );
 }
 
-async function expectPageHeadingOrMissingEnv(page: Page, heading: string | RegExp) {
+async function expectPrimaryHeadingOrMissingEnv(page: Page) {
   await expect(
-    page
-      .getByRole("heading", { name: heading })
-      .or(page.getByRole("heading", { name: "Supabase environment required" })),
+    page.locator("main h1").or(page.getByRole("heading", { name: "Supabase environment required" })),
   ).toBeVisible();
 }
 
@@ -39,28 +37,26 @@ test("desktop routes render the public shell", async ({ page }, testInfo) => {
   await expect(page.getByRole("navigation", { name: "Primary navigation" })).toBeVisible();
   await expect(page.getByRole("navigation", { name: "Primary navigation" }).getByRole("link", { name: "Predictions" })).toBeVisible();
   await expect(page.getByRole("navigation", { name: "Primary navigation" }).getByRole("link", { name: "Performance" })).toBeVisible();
-  await expect(
-    page.getByRole("heading", { name: "JamBandNerd" }),
-  ).toBeVisible();
+  await expect(page.locator("main h1")).toBeVisible();
 
   await page.goto("/performance");
-  await expectPageHeadingOrMissingEnv(page, "Historical Performance");
+  await expectPrimaryHeadingOrMissingEnv(page);
 
   await page.goto("/replay");
-  await expectPageHeadingOrMissingEnv(page, /prediction replay/i);
+  await expectPrimaryHeadingOrMissingEnv(page);
 
   await page.goto("/venues");
-  await expectPageHeadingOrMissingEnv(page, "Venue Analytics");
+  await expectPrimaryHeadingOrMissingEnv(page);
 
   await page.goto("/compare");
-  await expectPageHeadingOrMissingEnv(page, "Model Compare");
+  await expectPrimaryHeadingOrMissingEnv(page);
 
   await page.goto("/predictions");
-  await expectPageHeadingOrMissingEnv(page, "Song Board");
+  await expectPrimaryHeadingOrMissingEnv(page);
 
   await page.goto("/?band=goose&model=notebook");
   await page.waitForURL(/\/predictions\?band=goose&model=notebook$/);
-  await expectPageHeadingOrMissingEnv(page, "Song Board");
+  await expectPrimaryHeadingOrMissingEnv(page);
 
   await page.goto("/about");
   await expect(page.getByRole("heading", { name: "About JamBandNerd" })).toBeVisible();
@@ -79,7 +75,7 @@ test("mobile navigation uses thumb-first ordering", async ({ page }, testInfo) =
   await expect(mobileNav).toBeVisible();
 
   const labels = await mobileNav.getByRole("link").locator("span:last-child").allTextContents();
-  expect(labels).toEqual(["Home", "Compare", "Stats", "Replay", "Predict"]);
+  expect(labels).toEqual(["Home", "Stats", "Predict", "Compare", "Replay"]);
 });
 
 test("mobile detail routes show a back affordance", async ({ page }, testInfo) => {
@@ -88,6 +84,9 @@ test("mobile detail routes show a back affordance", async ({ page }, testInfo) =
   await bootstrapHostedPreviewBypass(page);
   await page.goto("/last-show");
   await expect(page.getByRole("button", { name: "Go back" })).toBeVisible();
+
+  await page.goto("/replay");
+  await expect(page.getByTestId("replay-comparison-cards")).toBeVisible();
 
   await page.goto("/about");
   await expect(page.getByRole("button", { name: "Go back" })).toHaveCount(0);

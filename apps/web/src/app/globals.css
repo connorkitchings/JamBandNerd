@@ -79,16 +79,16 @@ button {
 }
 
 .safe-bottom-content {
-  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 6rem);
+  padding-bottom: 1.5rem;
 }
 
 .safe-bottom-nav {
-  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 0.75rem);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
-@media (min-width: 1024px) {
+@media (min-width: 768px) {
   .safe-bottom-content {
-    padding-bottom: 3rem;
+    padding-bottom: 2rem;
   }
 
   .safe-bottom-nav {

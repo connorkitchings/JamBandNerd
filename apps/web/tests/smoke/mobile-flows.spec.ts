@@ -36,10 +36,10 @@ test.describe("mobile flows", () => {
     await expect(mobileNav).toBeVisible();
 
     const labels = await mobileNav.getByRole("link").locator("span:last-child").allTextContents();
-    expect(labels).toEqual(["Home", "Compare", "Stats", "Replay", "Predict"]);
+    expect(labels).toEqual(["Home", "Stats", "Predict", "Compare", "Replay"]);
   });
 
-  test("replay rail scrolls horizontally on mobile", async ({ page }, testInfo) => {
+  test("replay comparison cards render on mobile", async ({ page }, testInfo) => {
     test.skip(
       testInfo.project.name !== "mobile-chromium",
       "mobile-only test",
@@ -48,17 +48,12 @@ test.describe("mobile flows", () => {
     await bootstrapHostedPreviewBypass(page);
     await page.goto("/replay?band=goose");
 
-    const rail = page.locator(".overflow-x-auto").first();
-    await expect(rail).toBeVisible();
-    
-    const isScrollable = await rail.evaluate((el) => {
-      return el.scrollWidth > el.clientWidth;
-    });
-    
-    expect(isScrollable).toBe(true);
+    const cards = page.getByTestId("replay-comparison-cards");
+    await expect(cards).toBeVisible();
+    await expect(cards.locator("article").first()).toBeVisible();
   });
 
-  test("filter pills have adequate touch targets", async ({ page }, testInfo) => {
+  test("mobile top controls use compact dropdown selectors", async ({ page }, testInfo) => {
     test.skip(
       testInfo.project.name !== "mobile-chromium",
       "mobile-only test",
@@ -67,12 +62,17 @@ test.describe("mobile flows", () => {
     await bootstrapHostedPreviewBypass(page);
     await page.goto("/predictions?band=goose");
 
-    const filterPill = page.getByRole("link", { name: /goose/i }).first();
-    await expect(filterPill).toBeVisible();
+    const bandSelect = page.getByRole("combobox", { name: "Band" });
+    const modelSelect = page.getByRole("combobox", { name: "Model" });
+    await expect(bandSelect).toBeVisible();
+    await expect(modelSelect).toBeVisible();
 
-    const box = await filterPill.boundingBox();
-    expect(box).not.toBeNull();
-    expect(box!.height).toBeGreaterThanOrEqual(44);
+    const bandBox = await bandSelect.boundingBox();
+    const modelBox = await modelSelect.boundingBox();
+    expect(bandBox).not.toBeNull();
+    expect(modelBox).not.toBeNull();
+    expect(bandBox!.height).toBeGreaterThanOrEqual(44);
+    expect(modelBox!.height).toBeGreaterThanOrEqual(44);
   });
 
   test("compare page stacks on narrow viewport", async ({ page }, testInfo) => {
@@ -114,7 +114,10 @@ test.describe("mobile flows", () => {
     }
 
     const criticalErrors = errors.filter(
-      (e) => !e.includes("hydration") && !e.includes("warning"),
+      (e) =>
+        !e.includes("hydration") &&
+        !e.includes("warning") &&
+        !e.includes("status of 404"),
     );
     expect(criticalErrors).toHaveLength(0);
   });

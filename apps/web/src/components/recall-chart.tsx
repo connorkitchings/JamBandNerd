@@ -118,7 +118,7 @@ export function RecallChart({ rows, k = 10 }: Props) {
         </div>
       ) : null}
       <svg
-        aria-label={k === "all" ? "Recall over time for Top 10, Top 25, and Top 50" : `Top-${k} recall over time`}
+        aria-label={k === "all" ? "Accuracy over time for Top 10, Top 25, and Top 50" : `Top-${k} accuracy over time`}
         className="h-auto w-full"
         preserveAspectRatio="xMidYMid meet"
         role="img"

@@ -3,7 +3,7 @@ import { SITE_COPYRIGHT_YEAR, SITE_NAME, SITE_VERSION } from "@/lib/site";
 
 export function SiteFooter() {
   return (
-    <footer className="mt-0 px-4 pb-28 pt-0 md:px-6 lg:px-8 lg:pb-10">
+    <footer className="mt-0 px-4 pb-20 pt-0 md:px-6 md:pb-0 lg:px-8">
       <div className="mx-auto max-w-7xl rounded-[1.6rem] border border-outline-variant/28 bg-surface-container px-6 py-6 text-center shadow-[0_-1px_0_rgba(255,255,255,0.03),0_28px_72px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.03)] md:px-8">
         <p className="text-xs text-on-surface/55">
           © {SITE_COPYRIGHT_YEAR} {SITE_NAME} • v{SITE_VERSION}

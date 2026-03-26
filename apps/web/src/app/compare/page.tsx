@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { CompareMetricSelect } from "@/components/compare-metric-select";
 import { DashboardSideNav } from "@/components/dashboard-side-nav";
 import { DataState } from "@/components/data-state";
+import { ExpandablePanel } from "@/components/expandable-panel";
 import { PageHero } from "@/components/page-hero";
 import { SectionCard } from "@/components/section-card";
 import { getBands, bandEntryBySlug, resolveBandSelection, getRecentAccuracy } from "@/lib/data";
 import { ACTIVE_MODELS, MODEL_CONFIG, type ModelSlug } from "@/lib/config";
-import { formatCompactDateLabel, formatPercent } from "@/lib/format";
+import { buildLocationLabel, formatCompactDateLabel, formatPercent } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +26,31 @@ type Props = {
     k?: string;
   }>;
 };
+
+function WinnerCrown({ tone, side }: { tone: "primary" | "tertiary"; side: "left" | "right" }) {
+  const toneClasses =
+    tone === "primary"
+      ? "border-primary/35 bg-primary/12 text-primary shadow-[0_8px_18px_rgba(255,191,105,0.18)]"
+      : "border-tertiary/35 bg-tertiary/10 text-tertiary shadow-[0_8px_18px_rgba(136,229,216,0.16)]";
+  const sideClasses =
+    side === "left"
+      ? "left-0 -translate-x-[22%]"
+      : "right-0 translate-x-[22%]";
+
+  return (
+    <span
+      aria-label="Winner"
+      className={`absolute top-0 flex size-7 -translate-y-[28%] items-center justify-center rounded-full border ${toneClasses} ${sideClasses}`}
+    >
+      <svg aria-hidden="true" className="size-4" viewBox="0 0 24 24">
+        <path
+          d="M4.5 18.5H19.5L18 9.5L14 12.2L12 5.5L10 12.2L6 9.5L4.5 18.5Z"
+          fill="currentColor"
+        />
+      </svg>
+    </span>
+  );
+}
 
 export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
   const params = await searchParams;
@@ -43,29 +70,6 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
   };
 }
 
-function getWinnerLabel(
-  row: {
-    nb10: number | null;
-    ck10: number | null;
-  },
-  labelA: string,
-  labelB: string,
-) {
-  if (row.nb10 === null || row.ck10 === null) {
-    return "No winner";
-  }
-
-  if (row.nb10 > row.ck10) {
-    return `${labelA} edge`;
-  }
-
-  if (row.ck10 > row.nb10) {
-    return `${labelB} edge`;
-  }
-
-  return "Tie";
-}
-
 function averageMetric(values: Array<number | null>) {
   const presentValues = values.filter((value): value is number => value !== null);
   if (presentValues.length === 0) {
@@ -73,6 +77,14 @@ function averageMetric(values: Array<number | null>) {
   }
 
   return presentValues.reduce((sum, value) => sum + value, 0) / presentValues.length;
+}
+
+function buildReplayHref(band: string | null | undefined, showDate: string | null) {
+  if (!band || !showDate) {
+    return null;
+  }
+
+  return `/replay?band=${band}&date=${showDate}`;
 }
 
 function resolveComparisonMetric(value: string | undefined): ComparisonMetric {
@@ -101,25 +113,6 @@ function getSelectedMetric(
   }
 
   return metric === 10 ? row.ck10 : metric === 25 ? row.ck25 : row.ck50;
-}
-
-function getSelectedPrecision(
-  row: {
-    nbPrec10: number | null;
-    nbPrec25: number | null;
-    nbPrec50: number | null;
-    ckPrec10: number | null;
-    ckPrec25: number | null;
-    ckPrec50: number | null;
-  },
-  model: "nb" | "ck",
-  metric: ComparisonMetric,
-) {
-  if (model === "nb") {
-    return metric === 10 ? row.nbPrec10 : metric === 25 ? row.nbPrec25 : row.nbPrec50;
-  }
-
-  return metric === 10 ? row.ckPrec10 : metric === 25 ? row.ckPrec25 : row.ckPrec50;
 }
 
 export default async function ComparePage({ searchParams }: Props) {
@@ -187,6 +180,8 @@ export default async function ComparePage({ searchParams }: Props) {
       return {
         date,
         venueName: nbRow.venueName ?? ckRow.venueName ?? "Unknown Venue",
+        city: nbRow.city ?? ckRow.city ?? null,
+        state: nbRow.state ?? ckRow.state ?? null,
         nb10: nbRow.k10Recall ?? null,
         nb25: nbRow.k25Recall ?? null,
         nb50: nbRow.k50Recall ?? null,
@@ -221,11 +216,14 @@ export default async function ComparePage({ searchParams }: Props) {
   });
 
   const mobileHeadToHeadRows = headToHeadRows.slice(0, 5);
+  const remainingHeadToHeadRows = headToHeadRows.slice(5);
   const averageHeadToHeadRow =
     headToHeadRows.length > 0
       ? {
           date: "average",
           venueName: "",
+          city: null,
+          state: null,
           nb10: averageMetric(headToHeadRows.map((row) => row.nb10)),
           nb25: averageMetric(headToHeadRows.map((row) => row.nb25)),
           nb50: averageMetric(headToHeadRows.map((row) => row.nb50)),
@@ -251,7 +249,6 @@ export default async function ComparePage({ searchParams }: Props) {
         model={modelASlug}
         bands={bands}
         pathname="/compare"
-        compareHref={null}
         hideSecondary
         bandLinks={bands.map((item) => ({
           href: `/compare?band=${item.slug}&modelA=${modelASlug}&modelB=${modelBSlug}&k=${comparisonMetric}`,
@@ -269,130 +266,198 @@ export default async function ComparePage({ searchParams }: Props) {
         descriptionClassName="max-w-5xl"
       />
 
-      <section className="grid gap-4 md:grid-cols-3">
-        <div className="editorial-panel p-6 text-center">
-          <p className="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">{labelA} Wins</p>
-          <p className="mt-3 font-headline text-4xl font-bold text-primary">{nbWins}</p>
+      <section className="editorial-chip flex flex-col gap-3 rounded-[1.5rem] p-4 md:flex-row md:items-center md:justify-between">
+        <div className="space-y-1">
+          <p className="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">
+            Top-X Threshold
+          </p>
+          <p className="text-sm leading-6 text-on-surface-variant">
+            Choose which threshold to compare by.
+          </p>
+        </div>
+        <CompareMetricSelect
+          selectedMetric={comparisonMetric}
+          options={[...COMPARISON_METRIC_OPTIONS]}
+        />
+      </section>
+
+      <section className="grid grid-cols-3 gap-3 md:gap-4">
+        <div className="editorial-panel px-3 py-4 text-center md:p-6">
+          <p className="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">
+            <span className="block">{labelA}</span>
+            <span className="block">Wins</span>
+          </p>
+          <p className="mt-2 font-headline text-2xl font-bold text-primary md:mt-3 md:text-4xl">{nbWins}</p>
           <p className="mt-1 text-[10px] font-medium text-on-surface-variant">Top-{comparisonMetric} accuracy match-ups</p>
         </div>
-        <div className="editorial-panel p-6 text-center">
-          <p className="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">{labelB} Wins</p>
-          <p className="mt-3 font-headline text-4xl font-bold text-tertiary">{ckWins}</p>
+        <div className="editorial-panel px-3 py-4 text-center md:p-6">
+          <p className="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">
+            <span className="block">{labelB}</span>
+            <span className="block">Wins</span>
+          </p>
+          <p className="mt-2 font-headline text-2xl font-bold text-tertiary md:mt-3 md:text-4xl">{ckWins}</p>
           <p className="mt-1 text-[10px] font-medium text-on-surface-variant">Top-{comparisonMetric} accuracy match-ups</p>
         </div>
-        <div className="editorial-panel p-6 text-center">
-          <p className="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">Ties</p>
-          <p className="mt-3 font-headline text-4xl font-bold text-on-surface">{ties}</p>
-          <p className="mt-1 text-[10px] font-medium text-on-surface-variant">Identical Top-{comparisonMetric} recall</p>
+        <div className="editorial-panel px-3 py-4 text-center md:p-6">
+          <p className="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">
+            <span className="block">Ties</span>
+            <span className="block">&nbsp;</span>
+          </p>
+          <p className="mt-2 font-headline text-2xl font-bold text-on-surface md:mt-3 md:text-4xl">{ties}</p>
+          <p className="mt-1 text-[10px] font-medium text-on-surface-variant">Identical Top-{comparisonMetric} accuracy</p>
         </div>
       </section>
 
       {headToHeadRows.length > 0 && (
-        <SectionCard
-          title="Historical Performance"
-          headerAccessory={
-            <CompareMetricSelect
-              selectedMetric={comparisonMetric}
-              options={[...COMPARISON_METRIC_OPTIONS]}
-            />
-          }
-        >
+        <SectionCard title="Historical Performance">
           <div className="space-y-4 md:hidden">
-            {mobileHeadToHeadRows.map((row) => (
-              <div
-                key={row.date}
-                className="rounded-[1.35rem] border border-outline-variant/20 bg-surface-container-low px-4 py-4"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="font-headline text-lg font-semibold text-on-surface">
+            {mobileHeadToHeadRows.map((row) => {
+              const notebookValue = getSelectedMetric(row, "nb", comparisonMetric);
+              const ckplusValue = getSelectedMetric(row, "ck", comparisonMetric);
+              const isNbWin =
+                notebookValue !== null && ckplusValue !== null && notebookValue > ckplusValue;
+              const isCkWin =
+                notebookValue !== null && ckplusValue !== null && ckplusValue > notebookValue;
+              const replayHref = buildReplayHref(selectedBand, row.date);
+              const locationLabel = buildLocationLabel([row.city, row.state]);
+
+              return (
+                <div
+                  key={row.date}
+                  className="rounded-[1.35rem] border border-outline-variant/20 bg-surface-container-low px-4 py-4"
+                >
+                  <div className="flex items-center justify-between gap-4 pt-1">
+                    <p className="shrink-0 font-headline text-lg font-semibold text-on-surface">
                       {formatCompactDateLabel(row.date)}
                     </p>
-                    <p className="mt-1 text-xs leading-5 text-on-surface-variant">
-                      {row.venueName}
-                    </p>
+                    <div className="min-w-0 text-right">
+                      <p className="text-xs leading-5 text-on-surface-variant">
+                        {row.venueName || "Venue unavailable"}
+                      </p>
+                      <p className="text-xs leading-5 text-on-surface-variant">
+                        {locationLabel || "Location unavailable"}
+                      </p>
+                    </div>
                   </div>
-                  <span className="rounded-full border border-outline-variant/20 bg-surface/70 px-2.5 py-1 font-label text-[10px] uppercase tracking-[0.16em] text-on-surface-variant">
-                    {getWinnerLabel(
-                      {
-                        nb10: getSelectedMetric(row, "nb", comparisonMetric),
-                        ck10: getSelectedMetric(row, "ck", comparisonMetric),
-                      },
-                      labelA,
-                      labelB,
-                    )}
-                  </span>
-                </div>
-                <div className="mt-4 grid grid-cols-2 gap-3">
-                  <div className="rounded-2xl bg-surface/70 px-3 py-3">
-                    <p className="font-label text-[9px] uppercase tracking-[0.16rem] text-primary">
-                      {labelA}
-                    </p>
-                    <p className="mt-1 font-headline text-base font-bold text-primary">
-                      {formatPercent(getSelectedMetric(row, "nb", comparisonMetric))}
-                    </p>
-                    <p className="mt-1 text-[11px] text-on-surface-variant">
-                      Precision {formatPercent(getSelectedPrecision(row, "nb", comparisonMetric))}
-                    </p>
-                  </div>
-                  <div className="rounded-2xl bg-surface/70 px-3 py-3">
-                    <p className="font-label text-[9px] uppercase tracking-[0.16rem] text-tertiary">
-                      {labelB}
-                    </p>
-                    <p className="mt-1 font-headline text-base font-bold text-tertiary">
-                      {formatPercent(getSelectedMetric(row, "ck", comparisonMetric))}
-                    </p>
-                    <p className="mt-1 text-[11px] text-on-surface-variant">
-                      Precision {formatPercent(getSelectedPrecision(row, "ck", comparisonMetric))}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ))}
 
-            <details className="rounded-[1.35rem] border border-outline-variant/20 bg-surface-container-low">
-              <summary className="cursor-pointer list-none px-4 py-4 font-headline text-sm uppercase tracking-[0.12em] text-on-surface">
-                Open raw ledger
-              </summary>
-              <div className="overflow-x-auto px-3 pb-3">
-                <table className="w-full min-w-[640px] whitespace-nowrap text-left text-sm">
-                  <thead>
-                    <tr className="border-b border-outline-variant/20 bg-surface-container-low">
-                      <th className="py-3 px-4 font-label uppercase tracking-wider text-on-surface-variant text-[10px] font-semibold">Show Date</th>
-                      <th className="py-3 px-4 font-label uppercase tracking-wider text-on-surface-variant text-[10px] font-semibold">Venue</th>
-                      <th className="py-3 px-4 text-center font-label uppercase tracking-wider text-primary text-[10px] font-semibold">{labelA}</th>
-                      <th className="py-3 px-4 text-center font-label uppercase tracking-wider text-tertiary text-[10px] font-semibold">{labelB}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {headToHeadLedgerRows.map((row) => {
-                      const isAverageRow = row.date === "average";
-                      return (
-                        <tr
-                          key={row.date}
-                          className={`border-b border-outline-variant/10 last:border-0 ${isAverageRow ? "bg-surface-container" : ""}`}
-                        >
-                          <td className="py-3 px-4 font-headline font-medium text-on-surface">
-                            {isAverageRow ? "Average" : formatCompactDateLabel(row.date)}
-                          </td>
-                          <td className="py-3 px-4 text-on-surface-variant">{row.venueName}</td>
-                          <td className="py-3 px-4 text-center">
-                            <span className="font-bold tabular-nums text-primary">
-                              {formatPercent(getSelectedMetric(row, "nb", comparisonMetric))}
-                            </span>
-                          </td>
-                          <td className="py-3 px-4 text-center">
-                            <span className="font-bold tabular-nums text-tertiary">
-                              {formatPercent(getSelectedMetric(row, "ck", comparisonMetric))}
-                            </span>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </details>
+                  <div className="mt-5 grid grid-cols-2 gap-3">
+                    <div className="relative rounded-2xl bg-surface/70 px-3 py-3 text-center">
+                      {isNbWin ? <WinnerCrown tone="primary" side="left" /> : null}
+                      <p className="font-label text-[9px] uppercase tracking-[0.16rem] text-primary">
+                        {labelA}
+                      </p>
+                      <p className="mt-1 font-headline text-base font-bold text-primary">
+                        {formatPercent(notebookValue)}
+                      </p>
+                    </div>
+                    <div className="relative rounded-2xl bg-surface/70 px-3 py-3 text-center">
+                      {isCkWin ? <WinnerCrown tone="tertiary" side="right" /> : null}
+                      <p className="font-label text-[9px] uppercase tracking-[0.16rem] text-tertiary">
+                        {labelB}
+                      </p>
+                      <p className="mt-1 font-headline text-base font-bold text-tertiary">
+                        {formatPercent(ckplusValue)}
+                      </p>
+                    </div>
+                  </div>
+
+                  {!isNbWin && !isCkWin ? (
+                    <p className="mt-3 text-center font-label text-[10px] uppercase tracking-[0.16rem] text-on-surface-variant">
+                      Tie
+                    </p>
+                  ) : null}
+
+                  {replayHref ? (
+                    <div className="mt-4 flex justify-center">
+                      <Link
+                        href={replayHref}
+                        className="touch-manipulation inline-flex min-h-11 w-full items-center justify-center rounded-full border border-outline-variant/30 bg-surface/75 px-4 py-2 font-headline text-[10px] uppercase tracking-[0.14rem] text-on-surface transition hover:border-primary/35 hover:text-primary"
+                      >
+                        View Replay
+                      </Link>
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
+
+            {remainingHeadToHeadRows.length > 0 ? (
+              <ExpandablePanel
+                bodyClassName="space-y-4 px-3 pt-3"
+                buttonClassName="w-full rounded-[1.35rem] border border-outline-variant/20 bg-surface-container-low px-4 py-4 text-center font-headline text-sm uppercase tracking-[0.12em] text-on-surface"
+                containerClassName="rounded-[1.35rem] border border-outline-variant/20 bg-surface-container-low"
+              >
+                  {remainingHeadToHeadRows.map((row) => {
+                    const notebookValue = getSelectedMetric(row, "nb", comparisonMetric);
+                    const ckplusValue = getSelectedMetric(row, "ck", comparisonMetric);
+                    const isNbWin =
+                      notebookValue !== null && ckplusValue !== null && notebookValue > ckplusValue;
+                    const isCkWin =
+                      notebookValue !== null && ckplusValue !== null && ckplusValue > notebookValue;
+                    const replayHref = buildReplayHref(selectedBand, row.date);
+                    const locationLabel = buildLocationLabel([row.city, row.state]);
+
+                    return (
+                      <div
+                        key={row.date}
+                        className="rounded-[1.2rem] border border-outline-variant/20 bg-surface/70 px-4 py-4"
+                      >
+                        <div className="flex items-center justify-between gap-4 pt-1">
+                          <p className="shrink-0 font-headline text-lg font-semibold text-on-surface">
+                            {formatCompactDateLabel(row.date)}
+                          </p>
+                          <div className="min-w-0 text-right">
+                            <p className="text-xs leading-5 text-on-surface-variant">
+                              {row.venueName || "Venue unavailable"}
+                            </p>
+                            <p className="text-xs leading-5 text-on-surface-variant">
+                              {locationLabel || "Location unavailable"}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="mt-5 grid grid-cols-2 gap-3">
+                          <div className="relative rounded-2xl bg-surface-container px-3 py-3 text-center">
+                            {isNbWin ? <WinnerCrown tone="primary" side="left" /> : null}
+                            <p className="font-label text-[9px] uppercase tracking-[0.16rem] text-primary">
+                              {labelA}
+                            </p>
+                            <p className="mt-1 font-headline text-base font-bold text-primary">
+                              {formatPercent(notebookValue)}
+                            </p>
+                          </div>
+                          <div className="relative rounded-2xl bg-surface-container px-3 py-3 text-center">
+                            {isCkWin ? <WinnerCrown tone="tertiary" side="right" /> : null}
+                            <p className="font-label text-[9px] uppercase tracking-[0.16rem] text-tertiary">
+                              {labelB}
+                            </p>
+                            <p className="mt-1 font-headline text-base font-bold text-tertiary">
+                              {formatPercent(ckplusValue)}
+                            </p>
+                          </div>
+                        </div>
+
+                        {!isNbWin && !isCkWin ? (
+                          <p className="mt-3 text-center font-label text-[10px] uppercase tracking-[0.16rem] text-on-surface-variant">
+                            Tie
+                          </p>
+                        ) : null}
+
+                        {replayHref ? (
+                          <div className="mt-4 flex justify-center">
+                            <Link
+                              href={replayHref}
+                              className="touch-manipulation inline-flex min-h-11 w-full items-center justify-center rounded-full border border-outline-variant/30 bg-surface/75 px-4 py-2 font-headline text-[10px] uppercase tracking-[0.14rem] text-on-surface transition hover:border-primary/35 hover:text-primary"
+                            >
+                              View Replay
+                            </Link>
+                          </div>
+                        ) : null}
+                      </div>
+                    );
+                  })}
+              </ExpandablePanel>
+            ) : null}
           </div>
 
           <div className="hidden overflow-x-auto md:block">
@@ -401,11 +466,12 @@ export default async function ComparePage({ searchParams }: Props) {
                 <tr className="border-b border-outline-variant/20 bg-surface-container-low">
                   <th className="py-3 px-4 font-label uppercase tracking-wider text-on-surface-variant text-[10px] font-semibold">Show Date</th>
                   <th className="py-3 px-4 font-label uppercase tracking-wider text-on-surface-variant text-[10px] font-semibold">Venue</th>
+                  <th className="py-3 px-4 font-label uppercase tracking-wider text-on-surface-variant text-[10px] font-semibold">Location</th>
                   <th className="py-3 px-4 text-center font-label uppercase tracking-wider text-primary text-[10px] font-semibold">
-                    {labelA} Top {comparisonMetric}<br/><span className="text-[8px] opacity-80 tracking-normal">(Recall / Precision)</span>
+                    {labelA} Top {comparisonMetric}
                   </th>
                   <th className="py-3 px-4 text-center font-label uppercase tracking-wider text-tertiary text-[10px] font-semibold">
-                    {labelB} Top {comparisonMetric}<br/><span className="text-[8px] opacity-80 tracking-normal">(Recall / Precision)</span>
+                    {labelB} Top {comparisonMetric}
                   </th>
                   <th className="py-3 px-4 text-right font-label uppercase tracking-wider text-on-surface-variant text-[10px] font-semibold">Winner</th>
                 </tr>
@@ -415,8 +481,6 @@ export default async function ComparePage({ searchParams }: Props) {
                   const isAverageRow = row.date === "average";
                   const notebookValue = getSelectedMetric(row, "nb", comparisonMetric);
                   const ckplusValue = getSelectedMetric(row, "ck", comparisonMetric);
-                  const notebookPrecision = getSelectedPrecision(row, "nb", comparisonMetric);
-                  const ckplusPrecision = getSelectedPrecision(row, "ck", comparisonMetric);
                   const isNbWin =
                     notebookValue !== null && ckplusValue !== null && notebookValue > ckplusValue;
                   const isCkWin =
@@ -432,17 +496,14 @@ export default async function ComparePage({ searchParams }: Props) {
                         {isAverageRow ? "Average" : formatCompactDateLabel(row.date)}
                       </td>
                       <td className="py-3 px-4 text-on-surface-variant truncate max-w-[200px]">{row.venueName}</td>
+                      <td className="py-3 px-4 text-on-surface-variant truncate max-w-[140px]">
+                        {isAverageRow ? "" : (buildLocationLabel([row.city, row.state]) || "—")}
+                      </td>
                       <td className={`py-3 px-4 text-center ${isNbWin ? "bg-primary/5" : ""}`}>
-                        <div className="flex flex-col items-center leading-tight">
-                          <span className={`font-bold tabular-nums ${isNbWin ? "text-primary" : "text-on-surface"}`}>{formatPercent(notebookValue)}</span>
-                          <span className={`text-[10px] font-medium tabular-nums ${isNbWin ? "text-primary/70" : "text-on-surface-variant"}`}>{formatPercent(notebookPrecision)}</span>
-                        </div>
+                        <span className={`font-bold tabular-nums ${isNbWin ? "text-primary" : "text-on-surface"}`}>{formatPercent(notebookValue)}</span>
                       </td>
                       <td className={`py-3 px-4 text-center ${isCkWin ? "bg-tertiary/5" : ""}`}>
-                        <div className="flex flex-col items-center leading-tight">
-                          <span className={`font-bold tabular-nums ${isCkWin ? "text-tertiary" : "text-on-surface"}`}>{formatPercent(ckplusValue)}</span>
-                          <span className={`text-[10px] font-medium tabular-nums ${isCkWin ? "text-tertiary/70" : "text-on-surface-variant"}`}>{formatPercent(ckplusPrecision)}</span>
-                        </div>
+                        <span className={`font-bold tabular-nums ${isCkWin ? "text-tertiary" : "text-on-surface"}`}>{formatPercent(ckplusValue)}</span>
                       </td>
                       <td className="py-3 px-4 text-right font-label text-[10px] uppercase tracking-wider font-bold">
                         {isNbWin ? <span className="text-primary tracking-[0.24em] uppercase">{modelASlug}</span> : isCkWin ? <span className="text-tertiary tracking-[0.24em] uppercase">{modelBSlug}</span> : <span className="text-on-surface-variant">Tie</span>}

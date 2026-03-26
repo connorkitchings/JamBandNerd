@@ -4,29 +4,46 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
 
+import { matchesPredictionUpdateScope } from "@/lib/live-updates";
+
 type Props = {
+  band: string;
+  model: string;
+  referenceDate: string;
   supabaseUrl: string;
   supabaseAnonKey: string;
 };
 
-export function LiveTracker({ supabaseUrl, supabaseAnonKey }: Props) {
+export function LiveTracker({
+  band,
+  model,
+  referenceDate,
+  supabaseUrl,
+  supabaseAnonKey,
+}: Props) {
   const router = useRouter();
 
   useEffect(() => {
-    if (!supabaseUrl || !supabaseAnonKey) return;
+    if (!supabaseUrl || !supabaseAnonKey || !band || !model || !referenceDate) return;
 
-    // Create a temporary client just for listening to the realtime channel
-    // We intentionally don't try to reuse a global instance because we only need it for the socket connection.
     const supabase = createClient(supabaseUrl, supabaseAnonKey);
     const channel = supabase
-      .channel('live-updates')
+      .channel(`live-updates-${band}-${model}-${referenceDate}`)
       .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'prediction_songs' },
-        () => {
-          // When the database updates with new predictions while the user is looking at the page,
-          // router.refresh() fetches the new server component payload without losing client state (like scroll).
-          router.refresh();
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "prediction_songs",
+          filter: `band=eq.${band}`,
+        },
+        (payload) => {
+          const scopedUpdate =
+            matchesPredictionUpdateScope(payload.new, { band, model, referenceDate }) ||
+            matchesPredictionUpdateScope(payload.old, { band, model, referenceDate });
+          if (scopedUpdate) {
+            router.refresh();
+          }
         }
       )
       .subscribe();
@@ -34,7 +51,7 @@ export function LiveTracker({ supabaseUrl, supabaseAnonKey }: Props) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [supabaseUrl, supabaseAnonKey, router]);
+  }, [band, model, referenceDate, supabaseUrl, supabaseAnonKey, router]);
 
   return null;
 }

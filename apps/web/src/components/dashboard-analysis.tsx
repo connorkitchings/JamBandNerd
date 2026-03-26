@@ -42,10 +42,10 @@ export function DashboardAnalysis({
     <section className="mt-16 grid grid-cols-1 gap-8 lg:grid-cols-12">
       <div className="rounded-lg bg-surface-container-low p-8 lg:col-span-8">
         <h4 className="font-headline text-xl font-bold uppercase text-on-surface">
-          Recent Recall Analysis
+          Recent Accuracy Analysis
         </h4>
         <p className="mt-2 text-sm text-on-surface-variant">
-          Last completed shows for the selected band/model, using Top 10 recall as the signal.
+          Last completed shows for the selected band/model, using Top 10 accuracy as the signal.
         </p>
         <div className="mt-8 flex h-64 items-end justify-between gap-2 border-b border-outline-variant/30 pb-2">
           {chartRows.map((row, index) => (

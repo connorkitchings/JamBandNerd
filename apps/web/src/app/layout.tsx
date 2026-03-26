@@ -44,9 +44,12 @@ export default async function RootLayout({
         >
           Skip to main content
         </a>
-        <div className="min-h-screen">
+        <div className="flex min-h-screen flex-col">
           <SiteHeader />
-          <main id="main-content" className="safe-bottom-content w-full px-6 pt-24 md:px-8 lg:px-10">
+          <main
+            id="main-content"
+            className="safe-bottom-content w-full flex-1 px-6 pt-24 md:px-8 lg:px-10"
+          >
             {children}
           </main>
           <SiteFooter />
