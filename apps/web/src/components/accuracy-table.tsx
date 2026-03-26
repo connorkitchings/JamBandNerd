@@ -30,7 +30,7 @@ export function AccuracyTable({ rows, replayBand }: Props) {
             <th className={`${TABLE_HEAD_CLASS} whitespace-nowrap`}>Top 10</th>
             <th className={`${TABLE_HEAD_CLASS} whitespace-nowrap`}>Top 25</th>
             <th className={`${TABLE_HEAD_CLASS} whitespace-nowrap`}>Top 50</th>
-            <th className={`${TABLE_HEAD_CLASS} whitespace-nowrap text-right`}>Replay</th>
+            <th className={`${TABLE_HEAD_CLASS} whitespace-nowrap text-right`}></th>
           </tr>
         </thead>
         <tbody className="divide-y divide-outline-variant/20 bg-surface-container text-on-surface">

@@ -9,7 +9,8 @@ system walkthrough, use the
 
 JamBandNerd is a Python 3.12 data platform for jam band setlist collection,
 transformation, prediction, and website delivery. The public surface is the
-website; Streamlit has been retired from the active product path.
+website; Streamlit remains in the repo for internal legacy/debugging use only
+and is no longer part of the active public product path.
 
 ## Current Technical Shape
 

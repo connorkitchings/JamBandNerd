@@ -68,17 +68,19 @@ graph TD
 - The website in `apps/web` is the current public surface.
 - Supabase remains the shared storage and read layer for predictions and
   accuracy data.
-- Streamlit has been retired and is not part of the active delivery path.
+- Streamlit is no longer part of the active public delivery path, but it
+  remains in the repo for internal legacy/debugging use.
 
 Current website routes:
 - `/` - Homepage with band overview and upcoming shows
 - `/predictions` - Live predictions with model comparison and show outlook
 - `/performance` - Historical accuracy charts with K-value selection
 - `/compare` - Model board comparison against actual setlists
-- `/replay` - Historical prediction replay (last 50 shows per band/model)
-- `/explorer` - Song and setlist analytics
+- `/replay` - Canonical historical prediction replay with both model boards and
+  the actual setlist for one completed show
+- `/explorer` - Compatibility redirect to `/replay`
 - `/last-show` - Most recent completed show details
-- `/_venues` - Venue analytics and tour patterns
+- `/venues` - Venue analytics and tour patterns
 - `/about`, `/contact`, `/data-use` - Public informational pages
 
 Key shared components:

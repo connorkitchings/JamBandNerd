@@ -10,10 +10,10 @@ export function KToggle({ currentK }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const kOptions: Array<{ value: 10 | 25 | 50 | "all"; label: string }> = [
+    { value: "all", label: "All" },
     { value: 10, label: "Top 10" },
     { value: 25, label: "Top 25" },
     { value: 50, label: "Top 50" },
-    { value: "all", label: "All" },
   ];
 
   function setK(k: 10 | 25 | 50 | "all") {
@@ -36,7 +36,7 @@ export function KToggle({ currentK }: Props) {
           key={value}
           onClick={() => setK(value)}
           onKeyDown={(e) => handleKeyDown(e, value)}
-          className={`rounded px-3 py-1.5 font-label text-[10px] uppercase tracking-wider transition-colors ${
+          className={`touch-manipulation min-h-11 rounded px-3 py-1.5 font-label text-[10px] uppercase tracking-wider transition-colors ${
             currentK === value
               ? "bg-primary/20 text-primary ring-1 ring-primary/40"
               : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"

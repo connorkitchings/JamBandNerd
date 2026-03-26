@@ -25,7 +25,7 @@ Notes:
 
 ### Navigation and state
 - Bottom navigation stays visible above the safe area.
-- Active route styling updates correctly as you move between `/`, `/replay`, `/performance`, `/last-show`, and `/about`.
+- Active route styling updates correctly as you move between `/`, `/predictions`, `/compare`, `/replay`, `/performance`, `/venues`, `/last-show`, and `/about`.
 - Search params for band/model/date remain shareable and survive refresh.
 
 ### Homepage and prediction views
@@ -38,8 +38,9 @@ Notes:
 - Both model boards and the actual setlist remain paired to the same selected date.
 - Summary cards stack without hiding key metadata.
 
-### Performance and last show
+### Performance, venues, and last show
 - Metric cards stack cleanly at narrow widths.
+- Venue rail links remain easy to tap and the song/history tables stay horizontally scrollable.
 - Last-show detail route shows the mobile back affordance and remains readable.
 - Setlist and prediction replay tables remain usable on touch screens.
 

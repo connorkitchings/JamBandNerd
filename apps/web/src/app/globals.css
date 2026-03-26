@@ -110,6 +110,20 @@ button {
   touch-action: manipulation;
 }
 
+.horizontal-scroll-surface {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-gutter: stable;
+}
+
+.mobile-pill-rail {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-gutter: stable;
+}
+
 @media (orientation: landscape) and (max-height: 500px) {
   .chart-container {
     min-height: 180px;

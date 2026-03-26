@@ -4,25 +4,21 @@ import Link from "next/link";
 import { PageHero } from "@/components/page-hero";
 import { SectionCard } from "@/components/section-card";
 import { MODEL_CONFIG } from "@/lib/config";
-import { getBands } from "@/lib/data";
 
 export const metadata: Metadata = {
   title: "About | JamBandNerd",
   description: "Learn how JamBandNerd collects setlists, transforms data, and generates predictions.",
 };
-
-
-
 const FAQ_ITEMS = [
   {
     question: "What is Top-10 Recall?",
     answer:
-      "Recall measures how well the model's top predictions matched the actual setlist. For example, 30% recall at Top-10 means 3 out of every 10 predicted songs in the top-10 appeared in the show. We track this across the last 100 scored shows for each band and model.",
+      "Recall measures how well the model's top predictions matched the actual setlist. For example, 30% recall at Top-10 means 3 out of every 10 predicted songs in the top-10 appeared in the show. We track this across the last 50 scored shows for each band and model in the current website views.",
   },
   {
     question: "What drives the predictions?",
     answer:
-      "Each model uses different signals:\n\nNotebook — Ranks songs by recent activity. Songs played most in the past year rise to the top, with songs that have larger gaps since their last performance ranked higher. Songs played in the last 3 shows are excluded.\n\nCK+ — Ranks songs by how overdue they are relative to their historical cadence. The score combines gap ratio (how much longer than average since last performance), gap z-score (how statistically unusual the current gap is), and reliability (songs with more consistent historical gaps and more plays get a boost). Songs played in the last 3 shows are excluded.",
+      "Each model uses different signals:\n\nNotebook — Based on the method developed by Phish.net. It emphasizes songs active in the recent rotation and uses current gap to separate likely candidates, while excluding songs played in the last 3 shows.\n\nCK+ — A personally developed model. It ranks songs by how overdue they are relative to their historical cadence, using gap ratio, gap z-score, and reliability signals. Songs played in the last 3 shows are excluded.",
   },
   {
     question: "Does accuracy vary by band?",
@@ -32,7 +28,7 @@ const FAQ_ITEMS = [
   {
     question: "How often are predictions updated?",
     answer:
-      "The pipeline runs daily at 3 PM ET via GitHub Actions. Each run collects the latest setlist data, re-generates predictions for every supported band and model, and publishes them to Supabase.",
+      "The pipeline runs daily at 3 PM ET. Each run collects the latest setlist data, re-generates predictions for every supported band and model, and publishes them to Supabase.",
   },
   {
     question: "What do the likelihood tiers mean?",
@@ -42,12 +38,12 @@ const FAQ_ITEMS = [
   {
     question: "Where does the setlist data come from?",
     answer:
-      "Each band has a dedicated collector. Sources include Phish.net, El Goose, setlist.fm, Every Day Companion, and other community-maintained archives. The pipeline normalizes all data into a shared show-centric format.",
+      "Each band has a dedicated setlist source online, with some sources affiliated with the bands and some maintained independently. We are careful to follow source terms of use, and the pipeline normalizes that factual show information into a shared show-centric format.",
   },
   {
     question: "Can I use this data for my own projects?",
     answer:
-      "The project is open-source under the MIT license. Check out the GitHub repository for the full codebase, documentation, and contribution guidelines.",
+      "The project is open-source under the MIT license. Reach out through the contact page if you have questions about reuse, attribution, or how the site is presenting data.",
   },
 ];
 
@@ -77,71 +73,54 @@ const PIPELINE_STEPS = [
   },
 ];
 
-export default async function AboutPage() {
-  const bandsResult = await getBands();
-  const bands = bandsResult.status === "ready" ? bandsResult.bands : [];
+export default function AboutPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-8">
       <PageHero
         kicker="Platform brief"
-        eyebrow="About the platform"
         title="About JamBandNerd"
         description="JamBandNerd is a data platform that collects jam band setlists, transforms them into shared prediction features, and publishes a live website for next-show reads, historical replay, and model auditing."
         meta="Daily pipeline • multi-model prediction surface"
       />
 
       {/* Model Explainers */}
-      <SectionCard title="Prediction Models" eyebrow="How It Works">
+      <SectionCard title="How the Models Work">
         <p className="mb-6 text-sm leading-6 text-on-surface-variant">
-          Two models generate independent predictions for every band. Each approaches the
-          problem from a different angle, letting you compare outputs and spot consensus.
+          Two models generate independent predictions for every band. Each takes a distinct
+          approach, which makes the Compare and Replay pages useful rather than redundant.
         </p>
         <div className="grid gap-4 md:grid-cols-2">
-          {(Object.entries(MODEL_CONFIG) as [string, (typeof MODEL_CONFIG)[keyof typeof MODEL_CONFIG]][]).map(
-            ([slug, model]) => (
-              <div
-                key={slug}
-                className="editorial-chip rounded-[1.5rem] p-6"
-              >
-                <p className="font-label text-[10px] uppercase tracking-[0.2em] text-primary">
-                  {model.displayName}
-                </p>
-                <p className="mt-3 text-sm leading-6 text-on-surface-variant">
-                  {model.explanation}
-                </p>
-              </div>
-            ),
-          )}
-        </div>
-      </SectionCard>
-
-      {/* Supported Bands */}
-      <SectionCard
-        title="Supported Bands"
-        eyebrow={`${bands.length} bands tracked`}
-      >
-        <p className="mb-6 text-sm leading-6 text-on-surface-variant">
-          The pipeline dynamically discovers and runs for each supported band. Tap one
-          to jump to its latest predictions.
-        </p>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          {bands.map((band) => (
-            <Link
-              key={band.slug}
-              href={`/predictions?band=${band.slug}`}
-              className="editorial-chip rounded-[1.5rem] p-4 transition hover:border-primary hover:bg-surface-container"
-            >
-              <p className="font-headline text-lg font-medium text-on-surface">
-                {band.displayName}
-              </p>
-              <p className="mt-1 text-xs text-on-surface-variant">View predictions →</p>
-            </Link>
-          ))}
+          <div className="editorial-chip rounded-[1.5rem] p-6">
+            <p className="font-label text-[10px] uppercase tracking-[0.2em] text-primary">
+              {MODEL_CONFIG.notebook.displayName}
+            </p>
+            <p className="mt-3 text-sm leading-6 text-on-surface-variant">
+              A recency-first ranking model based on the Phish.net method. It focuses on songs
+              active in the current rotation, then uses current gap to separate candidates while
+              excluding songs played in the last 3 shows.
+            </p>
+            <p className="mt-4 border-t border-outline-variant/15 pt-4 font-label text-[10px] uppercase tracking-[0.16em] text-on-surface-variant">
+              Credit: Notebook is based on the method developed by Phish.net.
+            </p>
+          </div>
+          <div className="editorial-chip rounded-[1.5rem] p-6">
+            <p className="font-label text-[10px] uppercase tracking-[0.2em] text-primary">
+              {MODEL_CONFIG.ckplus.displayName}
+            </p>
+            <p className="mt-3 text-sm leading-6 text-on-surface-variant">
+              A personally developed cadence model that ranks songs by how overdue they are
+              relative to their historical behavior, using gap ratio, gap z-score, and reliability
+              signals.
+            </p>
+            <p className="mt-4 border-t border-outline-variant/15 pt-4 font-label text-[10px] uppercase tracking-[0.16em] text-on-surface-variant">
+              Credit: CK+ is an original personally developed model.
+            </p>
+          </div>
         </div>
       </SectionCard>
 
       {/* Pipeline Overview */}
-      <SectionCard title="The Pipeline" eyebrow="Daily Automation">
+      <SectionCard title="The Pipeline">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {PIPELINE_STEPS.map((item) => (
             <div
@@ -159,7 +138,7 @@ export default async function AboutPage() {
       </SectionCard>
 
       {/* FAQ */}
-      <SectionCard title="FAQ" eyebrow="Common Questions">
+      <SectionCard title="FAQ">
         <div className="space-y-4">
           {FAQ_ITEMS.map((item) => (
             <details
@@ -169,14 +148,16 @@ export default async function AboutPage() {
               <summary className="cursor-pointer select-none px-5 py-4 font-headline text-sm font-medium text-on-surface transition group-open:text-primary">
                 {item.question}
               </summary>
-              <p className="px-5 pb-4 text-sm leading-6 text-on-surface-variant">{item.answer}</p>
+              <p className="whitespace-pre-line px-5 pb-4 text-sm leading-6 text-on-surface-variant">
+                {item.answer}
+              </p>
             </details>
           ))}
         </div>
       </SectionCard>
 
       {/* Links */}
-      <SectionCard title="Links" eyebrow="Resources">
+      <SectionCard title="Links">
         <div className="grid gap-3 sm:grid-cols-2">
           <Link
             href="/data-use"
@@ -197,7 +178,7 @@ export default async function AboutPage() {
               Contact
             </p>
             <p className="mt-1 text-xs text-on-surface-variant">
-              Reach out with feedback, corrections, or feature ideas
+              Reach out with feedback, corrections, or attribution questions
             </p>
           </Link>
         </div>

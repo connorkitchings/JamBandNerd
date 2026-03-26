@@ -76,7 +76,7 @@ export function DashboardSideNav({
                   key={item.href}
                   href={item.href}
                   aria-current={item.active ? "page" : undefined}
-                  className={`flex min-h-11 items-center justify-center rounded-full border px-3 py-2 text-center font-headline text-[10px] font-bold uppercase tracking-[0.14rem] transition sm:text-[11px] ${
+                  className={`touch-manipulation flex min-h-11 items-center justify-center rounded-full border px-3 py-2 text-center font-headline text-[10px] font-bold uppercase tracking-[0.14rem] transition sm:text-[11px] ${
                     item.active
                       ? "border-primary/25 bg-primary/12 text-primary"
                       : "border-outline-variant/40 bg-surface/75 text-on-surface-variant hover:border-primary/35 hover:text-on-surface"
@@ -116,7 +116,7 @@ export function DashboardSideNav({
                           key={item}
                           href={buildHref(pathname, band, item)}
                           aria-current={item === model ? "page" : undefined}
-                          className={`flex min-h-11 items-center justify-center rounded-full border px-3 py-2 text-center font-headline text-[10px] font-bold uppercase tracking-[0.14rem] transition sm:text-[11px] ${
+                          className={`touch-manipulation flex min-h-11 items-center justify-center rounded-full border px-3 py-2 text-center font-headline text-[10px] font-bold uppercase tracking-[0.14rem] transition sm:text-[11px] ${
                             active
                               ? "border-primary/25 bg-primary/12 text-primary"
                               : "border-outline-variant/40 bg-surface/75 text-on-surface-variant hover:border-primary/35 hover:text-on-surface"
@@ -131,7 +131,7 @@ export function DashboardSideNav({
                         key={item.href}
                         href={item.href}
                         aria-current={item.active ? "page" : undefined}
-                        className={`flex min-h-11 items-center justify-center rounded-full border px-3 py-2 text-center font-headline text-[10px] font-bold uppercase tracking-[0.14rem] transition sm:text-[11px] ${
+                        className={`touch-manipulation flex min-h-11 items-center justify-center rounded-full border px-3 py-2 text-center font-headline text-[10px] font-bold uppercase tracking-[0.14rem] transition sm:text-[11px] ${
                           item.active
                             ? secondaryTone === "primary"
                               ? "border-primary/25 bg-primary/12 text-primary"
@@ -148,7 +148,7 @@ export function DashboardSideNav({
               {showModelButtons && compareHref ? (
                 <Link
                   href={compareHref}
-                  className="inline-flex min-h-11 w-full items-center justify-center rounded-full border border-outline-variant/35 bg-surface/80 px-4 py-3 text-center font-headline text-[10px] font-bold uppercase tracking-[0.18rem] text-on-surface transition hover:border-primary/35 hover:bg-surface-container hover:text-primary sm:text-[11px]"
+                  className="touch-manipulation inline-flex min-h-11 w-full items-center justify-center rounded-full border border-outline-variant/35 bg-surface/80 px-4 py-3 text-center font-headline text-[10px] font-bold uppercase tracking-[0.18rem] text-on-surface transition hover:border-primary/35 hover:bg-surface-container hover:text-primary sm:text-[11px]"
                 >
                   Compare Models
                 </Link>

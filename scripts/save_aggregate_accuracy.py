@@ -26,6 +26,7 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, project_root)
 
 from src.jambandnerd.config.database import ACCURACY_TABLES
+from src.jambandnerd.config.bands import get_active_bands
 from src.jambandnerd.db.connection import get_supabase_client
 from src.jambandnerd.models.accuracy import aggregate_metrics
 
@@ -136,7 +137,7 @@ def main() -> None:
         "--band",
         type=str,
         required=True,
-        choices=["goose", "eggy", "phish", "wsp", "billy", "um"],
+        choices=get_active_bands(),
         help="The band to process.",
     )
     parser.add_argument(
