@@ -9,6 +9,7 @@ from typing import Dict, Iterable, List
 
 from jambandnerd.db.connection import get_supabase_client
 from jambandnerd.db.operations import fetch_latest_prediction_songs
+from jambandnerd.config.bands import get_active_bands
 
 
 def _parse_timestamp(value: str | None) -> datetime | None:
@@ -83,7 +84,7 @@ def validate_predictions(
 
     band_list = list(bands)
     if not band_list:
-        band_list = ["goose", "eggy", "phish", "wsp", "billy", "um"]
+        band_list = list(get_active_bands())
     tables = {
         "predictions_notebook": {
             "model_slug": "notebook",

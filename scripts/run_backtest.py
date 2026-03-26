@@ -30,6 +30,7 @@ sys.path.insert(0, project_root)
 
 from scripts.common import fetch_table, prepare_band_data
 from src.jambandnerd.config import HISTORICAL_PREDICTION_RUNS_TABLE, MODEL_VERSIONS
+from src.jambandnerd.config.bands import get_active_bands
 from src.jambandnerd.db.operations import (
     upsert_dataframe,
     upsert_historical_prediction_run,
@@ -250,7 +251,7 @@ def main() -> None:
         "--band",
         type=str,
         required=True,
-        choices=["goose", "eggy", "phish", "wsp", "billy", "um"],
+        choices=get_active_bands(),
         help="The band to process.",
     )
     parser.add_argument(

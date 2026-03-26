@@ -106,6 +106,16 @@ button {
   }
 }
 
+.touch-manipulation {
+  touch-action: manipulation;
+}
+
+@media (orientation: landscape) and (max-height: 500px) {
+  .chart-container {
+    min-height: 180px;
+  }
+}
+
 .editorial-panel {
   position: relative;
   overflow: hidden;

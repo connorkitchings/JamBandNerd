@@ -271,10 +271,65 @@ Supabase table. This is the single write point for band metadata consumed by bot
 pipeline and the website. The website fetches active bands dynamically from this table
 rather than maintaining a hardcoded static list.
 
+The `bands` table schema:
+
+```sql
+CREATE TABLE public.bands (
+    slug text NOT NULL,
+    display_name text NOT NULL,
+    shows_table text NOT NULL,
+    id_column text NOT NULL,
+    is_active boolean NOT NULL DEFAULT true,
+    created_at timestamp with time zone NOT NULL DEFAULT now(),
+    CONSTRAINT bands_pkey PRIMARY KEY (slug)
+);
+```
+
+Current supported bands:
+- `goose` / Goose / goose_shows_raw / show_id
+- `phish` / Phish / phish_shows_raw / api_show_id
+- `eggy` / Eggy / eggy_shows_raw / show_id
+- `billy` / Billy Strings / billy_shows_raw / show_id
+- `wsp` / Widespread Panic / wsp_shows_raw / show_id
+- `um` / Umphrey's McGee / um_shows_raw / show_id
+
 New band onboarding workflow:
 1. Write the band's collector script → creates `{band}_shows_raw`, `{band}_setlists_raw`
 2. Insert a row into the `bands` table
 3. The website automatically discovers and surfaces the new band
+
+## Historical Prediction Runs (Replay Lineage)
+
+The `historical_prediction_runs` table preserves exact prediction boards for completed shows,
+enabling the Replay feature. Each row stores:
+
+- `band`, `model_slug`, `model_version`: prediction context
+- `reference_date`: when the prediction was made
+- `target_show_id`, `target_show_date`: the show being predicted
+- `actual_songs`: JSON snapshot of the setlist at scoring time
+- `predictions`: exact ranked JSON payload emitted by the model
+- `run_type`: either 'backtest' or 'live'
+
+The `accuracy_per_show` table links back to `historical_prediction_runs` via
+`prediction_run_id`, creating full lineage from evaluation back to the original prediction.
+
+The website's `/replay` surface assumes roughly the last 50 completed shows per band/model
+remain queryable.
+
+## Per-Song Prediction Projection
+
+`prediction_songs` is a derived table storing one row per predicted song for SQL-friendly
+reads and analytics. It is rebuildable from the canonical run-level rows in
+`predictions_notebook` or `predictions_ckplus`.
+
+Schema:
+- `band`, `model_slug`, `model_version`, `reference_date`: prediction context
+- `predicted_at`: when the prediction was generated
+- `rank`, `song_name`, `top_k`: song position in the prediction board
+- `prediction_payload`: model-specific JSON object for that ranked song
+
+Unique constraint on `(band, model_version, reference_date, rank)` ensures deterministic
+upserts.
 
 ## Files To Treat As Current References
 

@@ -38,7 +38,7 @@ export function FilterLinks({ pathname, band, model, date, bands }: Props) {
               Band
             </span>
           </div>
-          <div className="overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <div className="flex min-w-max gap-2 md:hidden">
               {bands.map((item) => {
                 const active = item.slug === band;
@@ -47,7 +47,7 @@ export function FilterLinks({ pathname, band, model, date, bands }: Props) {
                     key={item.slug}
                     href={buildHref(pathname, item.slug, model, date)}
                     aria-current={active ? "page" : undefined}
-                    className={`flex items-center justify-center rounded-full border px-3 py-2 text-center font-headline text-[11px] font-bold uppercase tracking-[0.12rem] transition whitespace-nowrap ${
+                    className={`touch-manipulation flex items-center justify-center rounded-full border px-4 py-2.5 text-center font-headline text-[11px] font-bold uppercase tracking-[0.12rem] transition whitespace-nowrap ${
                       active
                         ? "border-primary/25 bg-primary/12 text-primary"
                         : "border-outline-variant/40 bg-surface/75 text-on-surface-variant hover:border-primary/35 hover:text-on-surface"
@@ -72,7 +72,7 @@ export function FilterLinks({ pathname, band, model, date, bands }: Props) {
                     key={item.slug}
                     href={buildHref(pathname, item.slug, model, date)}
                     aria-current={active ? "page" : undefined}
-                    className={`flex items-center justify-center rounded-full border px-3 py-2 text-center font-headline text-[11px] font-bold uppercase tracking-[0.14rem] transition whitespace-nowrap ${
+                    className={`touch-manipulation flex items-center justify-center rounded-full border px-4 py-2.5 text-center font-headline text-[11px] font-bold uppercase tracking-[0.14rem] transition whitespace-nowrap ${
                       active
                         ? "border-primary/25 bg-primary/12 text-primary"
                         : "border-outline-variant/40 bg-surface/75 text-on-surface-variant hover:border-primary/35 hover:text-on-surface"
@@ -105,11 +105,11 @@ export function FilterLinks({ pathname, band, model, date, bands }: Props) {
                         key={item}
                         href={buildHref(pathname, band, item, date)}
                         aria-current={item === model ? "page" : undefined}
-                        className={`flex items-center justify-center rounded-full border px-3 py-2 text-center font-headline text-[11px] font-bold uppercase tracking-[0.12rem] transition whitespace-nowrap ${
-                          active
-                            ? "border-primary/25 bg-primary/12 text-primary"
-                            : "border-outline-variant/40 bg-surface/75 text-on-surface-variant hover:border-primary/35 hover:text-on-surface"
-                        }`}
+                    className={`touch-manipulation flex items-center justify-center rounded-full border px-4 py-2.5 text-center font-headline text-[11px] font-bold uppercase tracking-[0.12rem] transition whitespace-nowrap ${
+                      active
+                        ? "border-primary/25 bg-primary/12 text-primary"
+                        : "border-outline-variant/40 bg-surface/75 text-on-surface-variant hover:border-primary/35 hover:text-on-surface"
+                    }`}
                       >
                         {MODEL_CONFIG[item].displayName}
                       </Link>
@@ -124,7 +124,7 @@ export function FilterLinks({ pathname, band, model, date, bands }: Props) {
                         key={item}
                         href={buildHref(pathname, band, item, date)}
                         aria-current={item === model ? "page" : undefined}
-                        className={`flex items-center justify-center rounded-full border px-3 py-2 text-center font-headline text-[11px] font-bold uppercase tracking-[0.14rem] transition ${
+                        className={`touch-manipulation flex items-center justify-center rounded-full border px-4 py-2.5 text-center font-headline text-[11px] font-bold uppercase tracking-[0.14rem] transition ${
                           active
                             ? "border-primary/25 bg-primary/12 text-primary"
                             : "border-outline-variant/40 bg-surface/75 text-on-surface-variant hover:border-primary/35 hover:text-on-surface"

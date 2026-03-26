@@ -28,9 +28,9 @@ def _stats_for_song(group: pd.DataFrame) -> pd.Series:
             "last_played_index": plays_idx[-1],
             "last_played_date": group["show_date"].max(),
             "avg_gap": pd.Series(gaps).mean() if gaps else float("nan"),
-            "recent_avg_gap": pd.Series(recent_gaps).mean()
-            if recent_gaps
-            else float("nan"),
+            "recent_avg_gap": (
+                pd.Series(recent_gaps).mean() if recent_gaps else float("nan")
+            ),
             "std_gap": pd.Series(gaps).std(ddof=0) if gaps else 0.0,
         }
     )

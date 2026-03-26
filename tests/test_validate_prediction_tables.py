@@ -202,4 +202,6 @@ def test_validate_predictions_fails_on_projection_mismatch(monkeypatch, capsys):
 
     assert failures == 2
     captured = capsys.readouterr().out
-    assert "projection top_song=Wrong Song does not match canonical Fresh Song" in captured
+    assert (
+        "projection top_song=Wrong Song does not match canonical Fresh Song" in captured
+    )

@@ -38,6 +38,7 @@ from src.jambandnerd.models.ckplus.model import CKPlusPredictor
 from src.jambandnerd.models.notebook.model import NotebookPredictor
 from src.jambandnerd.models.serialization import serialize_predictions
 from src.jambandnerd.transformations.gaps import generate_model_data
+from src.jambandnerd.config.bands import get_active_bands
 
 
 class NpEncoder(json.JSONEncoder):
@@ -160,7 +161,7 @@ def main() -> None:
         "--band",
         type=str,
         required=True,
-        choices=["goose", "eggy", "phish", "wsp", "billy", "um"],
+        choices=get_active_bands(),
         help="The band to process.",
     )
     parser.add_argument(

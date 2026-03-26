@@ -70,6 +70,22 @@ graph TD
   accuracy data.
 - Streamlit has been retired and is not part of the active delivery path.
 
+Current website routes:
+- `/` - Homepage with band overview and upcoming shows
+- `/predictions` - Live predictions with model comparison and show outlook
+- `/performance` - Historical accuracy charts with K-value selection
+- `/compare` - Model board comparison against actual setlists
+- `/replay` - Historical prediction replay (last 50 shows per band/model)
+- `/explorer` - Song and setlist analytics
+- `/last-show` - Most recent completed show details
+- `/_venues` - Venue analytics and tour patterns
+- `/about`, `/contact`, `/data-use` - Public informational pages
+
+Key shared components:
+- `page-hero`, `site-header`, `site-footer`, `dashboard-side-nav`
+- `prediction-hero`, `song-board`, `recall-chart`, `accuracy-table`
+- `show-outlook-popover`, `live-tracker`, `model-agreement`, `venue-analytics`
+
 ### Orchestration
 
 - `scripts/run_optimized_pipeline.py` is the canonical end-to-end local runner.
@@ -77,6 +93,7 @@ graph TD
 - Band metadata (slug, display name, raw table names, ID column) is managed in the
   `bands` Supabase table as the single write point. The website reads it dynamically;
   adding a new band requires only inserting a row into `bands` and creating a collector.
+- Supported bands: Goose, Phish, Eggy, Billy Strings, Widespread Panic, Umphrey's McGee
 
 ### Model Platform
 

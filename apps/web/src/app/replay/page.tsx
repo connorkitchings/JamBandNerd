@@ -226,13 +226,13 @@ export default async function ReplayPage({ searchParams }: Props) {
             <p className="text-sm leading-6 text-on-surface-variant">
               Browse the retained replay window for this band. Each show here has stored historical runs for both models.
             </p>
-            <div className="max-h-[420px] overflow-y-auto rounded-xl border border-outline-variant/20 bg-surface-container-low p-3">
-              <div className="flex flex-wrap gap-2">
+            <div className="overflow-x-auto rounded-xl border border-outline-variant/20 bg-surface-container-low [-webkit-overflow-scrolling:touch] [scrollbar-gutter:stable]">
+              <div className="flex gap-2 px-3 py-3 sm:flex-wrap sm:px-3 sm:py-2">
                 {state.replay.availableShows.map((showOption) => (
                   <Link
                     key={showOption.showDate}
                     href={`/replay?band=${state.band}&date=${showOption.showDate}`}
-                    className={`rounded-full border px-3 py-1.5 font-headline text-xs uppercase tracking-[0.14rem] transition ${
+                    className={`touch-manipulation flex-shrink-0 rounded-full border px-4 py-2 font-headline text-xs uppercase tracking-[0.14rem] transition sm:flex-shrink ${
                       showOption.showDate === state.replay.selectedDate
                         ? "border-primary bg-primary-container text-white"
                         : "border-outline-variant bg-surface text-on-surface-variant hover:border-primary hover:text-on-surface"

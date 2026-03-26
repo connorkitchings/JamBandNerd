@@ -62,14 +62,13 @@ def _recent_replay_eligible_rows(
         model_version=model_version,
         limit=max(limit * 3, 150),
     )
-    eligible = [
-        row for row in rows if int(row.get("actual_song_count") or 0) > 2
-    ]
+    eligible = [row for row in rows if int(row.get("actual_song_count") or 0) > 2]
     eligible.sort(
         key=lambda row: (
             str(row.get("show_date") or ""),
             row.get("prediction_run_id") is not None,
-            _parse_timestamp(str(row.get("evaluated_at") or "")) or datetime.min.replace(tzinfo=timezone.utc),
+            _parse_timestamp(str(row.get("evaluated_at") or ""))
+            or datetime.min.replace(tzinfo=timezone.utc),
         ),
         reverse=True,
     )
@@ -165,7 +164,9 @@ def validate_accuracy(
                     limit=replay_window,
                 )
                 if not replay_rows:
-                    print(f"[FAIL] {band}: no replay lineage rows found for {model_slug}")
+                    print(
+                        f"[FAIL] {band}: no replay lineage rows found for {model_slug}"
+                    )
                     failures += 1
                 else:
                     missing_links = [

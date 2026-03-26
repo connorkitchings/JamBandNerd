@@ -40,6 +40,7 @@ from scripts.run_wsp_collection import run_wsp_collection
 from scripts.save_aggregate_accuracy import save_aggregate_accuracy
 from scripts.validate_accuracy_tables import validate_accuracy
 from scripts.validate_prediction_tables import validate_predictions
+from src.jambandnerd.config.bands import get_active_bands
 
 # Suppress noisy httpx logs
 logging.getLogger("httpx").setLevel(logging.WARNING)
@@ -84,7 +85,9 @@ def _validate_band_accuracy(*, band: str, max_age_hours: int = 72) -> None:
     failures = validate_accuracy(bands=[band], max_age_hours=max_age_hours)
 
     if failures:
-        raise RuntimeError(f"Accuracy validation failed for {band}: {failures} issue(s)")
+        raise RuntimeError(
+            f"Accuracy validation failed for {band}: {failures} issue(s)"
+        )
 
 
 def run_band_pipeline(band: str, skip_accuracy: bool = False) -> bool:
@@ -178,7 +181,7 @@ def main():
     )
     parser.add_argument(
         "--band",
-        choices=["goose", "eggy", "phish", "wsp", "billy", "um", "all"],
+        choices=[*get_active_bands(), "all"],
         default="all",
         help="Band to process (default: all)",
     )

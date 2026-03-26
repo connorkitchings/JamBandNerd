@@ -46,6 +46,13 @@ export const DESKTOP_NAV_ITEMS: NavItem[] = [
 
 export const MOBILE_NAV_ITEMS: NavItem[] = [
   {
+    href: "/",
+    label: "Home",
+    mobileLabel: "Home",
+    icon: "◉",
+    matches: ["/"],
+  },
+  {
     href: "/compare",
     label: "Compare",
     mobileLabel: "Compare",

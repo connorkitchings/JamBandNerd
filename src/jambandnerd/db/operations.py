@@ -546,3 +546,14 @@ def check_prediction_staleness(
             f"Error checking prediction staleness for {band}/{model_version}: {e}"
         )
         return False, None
+
+
+def fetch_active_bands() -> list[dict[str, Any]]:
+    """Fetch active bands from the bands registry table."""
+    try:
+        client = get_supabase_client()
+        response = client.table("bands").select("*").eq("is_active", True).execute()
+        return response.data or []
+    except Exception as e:
+        logger.warning(f"Failed to fetch active bands from registry: {e}")
+        return []

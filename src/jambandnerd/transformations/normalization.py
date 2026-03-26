@@ -88,9 +88,7 @@ def normalize_prediction_inputs(
     setlists["show_id"] = setlists["show_id"].astype(str).str.strip()
     setlists["song_name"] = setlists["song_name"].astype(str).str.strip()
 
-    shows = shows.loc[
-        shows["show_date"].notna() & shows["show_id"].ne("")
-    ].copy()
+    shows = shows.loc[shows["show_date"].notna() & shows["show_id"].ne("")].copy()
     setlists = setlists.loc[
         setlists["show_id"].ne("") & setlists["song_name"].ne("")
     ].copy()
@@ -100,9 +98,7 @@ def normalize_prediction_inputs(
 
 def sort_normalized_shows(shows_df: pd.DataFrame) -> pd.DataFrame:
     """Return shows sorted by the canonical historical sequence contract."""
-    _require_columns(
-        shows_df, label="shows", required_columns=("show_id", "show_date")
-    )
+    _require_columns(shows_df, label="shows", required_columns=("show_id", "show_date"))
     shows = shows_df.copy()
     shows["show_id"] = shows["show_id"].astype(str).str.strip()
     shows["show_date"] = pd.to_datetime(shows["show_date"], errors="coerce").dt.date

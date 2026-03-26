@@ -383,7 +383,7 @@ export default async function ComparePage({ searchParams }: Props) {
         </SectionCard>
       )}
 
-      <section className="grid gap-4 md:grid-cols-3 pt-6 border-t border-outline-variant/20 mt-8">
+      <section className="grid gap-4 sm:grid-cols-3 pt-6 border-t border-outline-variant/20 mt-8">
         <SectionCard title={`${sharedSongs.length}/10`} eyebrow="Upcoming overlap">
           <p className="text-sm leading-6 text-on-surface-variant">
             Shared songs across both current top-10 lists.
@@ -391,12 +391,12 @@ export default async function ComparePage({ searchParams }: Props) {
         </SectionCard>
         <SectionCard title={String(notebookOnly.length)} eyebrow={`${labelA} only`}>
           <p className="text-sm leading-6 text-on-surface-variant">
-            Songs unique to the {labelA} model’s current top slice.
+            Songs unique to the {labelA} model&apos;s current top slice.
           </p>
         </SectionCard>
         <SectionCard title={String(ckplusOnly.length)} eyebrow={`${labelB} only`}>
           <p className="text-sm leading-6 text-on-surface-variant">
-            Songs unique to the {labelB} model’s current top slice.
+            Songs unique to the {labelB} model&apos;s current top slice.
           </p>
         </SectionCard>
       </section>
@@ -471,10 +471,14 @@ export default async function ComparePage({ searchParams }: Props) {
 
       <div className="grid gap-6 xl:grid-cols-2">
         <SectionCard title={labelA} eyebrow={notebook.snapshot.referenceDate ?? "No date"}>
-          <SongBoard rows={notebook.snapshot.predictions} compact modelSlug={modelASlug} secondarySongs={ckplusSongsSet} />
+          <div className="overflow-x-auto [-webkit-overflow-scrolling:touch]">
+            <SongBoard rows={notebook.snapshot.predictions} compact modelSlug={modelASlug} secondarySongs={ckplusSongsSet} />
+          </div>
         </SectionCard>
         <SectionCard title={labelB} eyebrow={ckplus.snapshot.referenceDate ?? "No date"}>
-          <SongBoard rows={ckplus.snapshot.predictions} compact modelSlug={modelBSlug} secondarySongs={notebookSongsSet} />
+          <div className="overflow-x-auto [-webkit-overflow-scrolling:touch]">
+            <SongBoard rows={ckplus.snapshot.predictions} compact modelSlug={modelBSlug} secondarySongs={notebookSongsSet} />
+          </div>
         </SectionCard>
       </div>
     </div>

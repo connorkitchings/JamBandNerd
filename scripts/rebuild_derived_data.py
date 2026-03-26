@@ -22,15 +22,15 @@ from src.jambandnerd.config import (
     MODEL_VERSIONS,
     PREDICTION_SONGS_TABLE,
     PREDICTION_TABLES,
-    SUPPORTED_BANDS,
 )
 from src.jambandnerd.db.connection import get_supabase_client
+from src.jambandnerd.config.bands import get_active_bands
 
 MODELS: tuple[str, ...] = ("notebook", "ckplus")
 
 
 def _selected_bands(band: str) -> list[str]:
-    return list(SUPPORTED_BANDS) if band == "all" else [band]
+    return list(get_active_bands()) if band == "all" else [band]
 
 
 def clear_model_outputs(
@@ -236,7 +236,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--band",
-        choices=[*SUPPORTED_BANDS, "all"],
+        choices=[*get_active_bands(), "all"],
         default="all",
         help="Band to rebuild (default: all supported bands).",
     )

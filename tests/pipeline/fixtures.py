@@ -3,7 +3,9 @@ from __future__ import annotations
 from datetime import date, timedelta
 from typing import Any
 
-BANDS = ("goose", "eggy", "phish", "wsp", "billy", "um")
+from src.jambandnerd.config.bands import get_active_bands
+
+BANDS = tuple(get_active_bands())
 
 
 def band_raw_tables(
