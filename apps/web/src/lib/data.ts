@@ -1601,6 +1601,7 @@ export const getReplaySnapshot = cache(
         {
           notebook: null,
           ckplus: null,
+          deal: null,
         },
       );
 

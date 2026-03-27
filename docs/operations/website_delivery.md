@@ -28,6 +28,22 @@ Current route split:
 - **Shared dense-data pattern**: tables and long data grids should use a single responsive wrapper/padding pattern instead of route-specific one-offs.
 - **Search-param navigation**: prefer URL-driven band/model/date state so pages are shareable and hydration stays light.
 - **Freshness over static caching**: prediction and replay routes should favor dynamic server rendering while the marketing shell can stay static later.
+- **Hermetic builds**: prefer local assets and system fallbacks over build-time network fetches.
+
+## Web Module Ownership
+
+- `apps/web/src/app/**`: route composition, metadata, and search-param handling
+- `apps/web/src/components/**`: reusable presentation and client islands
+- `apps/web/src/lib/data.ts`: compatibility barrel for existing route imports
+- `apps/web/src/lib/data/bands.ts`: band discovery and selection helpers
+- `apps/web/src/lib/data/predictions.ts`: latest/current prediction reads
+- `apps/web/src/lib/data/accuracy.ts`: historical accuracy reads
+- `apps/web/src/lib/data/replay.ts`: replay timeline assembly
+- `apps/web/src/lib/data/shows.ts`: show detail, next show, and setlist reads
+- `apps/web/src/lib/data/venues.ts`: venue analytics assembly
+
+Client component rule:
+- Keep route-level Supabase reads on the server. Use `"use client"` only for interactive islands, navigation hooks, or live subscriptions.
 
 ## Visual Source Of Truth
 
@@ -113,6 +129,13 @@ For Vercel, add the same variable names to:
 - Preview
 - Production
 
+The internal admin setlist tooling additionally expects:
+
+- `ADMIN_PASSWORD`
+- `ADMIN_SESSION_SECRET`
+
+The admin route now authenticates into an httpOnly cookie-backed session instead of sending bearer credentials with browser-side write requests.
+
 ## Vercel Project Setup
 
 Use Vercel’s native GitHub integration rather than a repo-driven deploy action.
@@ -147,6 +170,7 @@ before running the normal route assertions.
 - Production deployment on the main website branch
 - Runtime secrets for Supabase configured through the hosting platform
 - Basic health checks and deploy verification as part of website operations
+- Pull request validation through GitHub Actions before `main` promotion
 
 ## Post-Deploy Verification
 
@@ -181,3 +205,5 @@ After smoke verification, manually verify:
 Also confirm that pages render with server-side Supabase reads instead of the missing-env fallback state.
 
 The smoke test suite also covers `/about` and `/predictions` alongside the routes above.
+
+See [Main Branch Elevation](./main_branch_elevation.md) for the documented `main` branch promotion gate.

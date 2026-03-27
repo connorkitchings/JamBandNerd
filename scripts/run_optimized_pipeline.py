@@ -41,6 +41,7 @@ from scripts.save_aggregate_accuracy import save_aggregate_accuracy
 from scripts.validate_accuracy_tables import validate_accuracy
 from scripts.validate_prediction_tables import validate_predictions
 from src.jambandnerd.config.bands import get_active_bands
+from src.jambandnerd.models.registry import list_backfill_models, list_pipeline_models
 
 try:
     from scripts.backfill_predictions import backfill_band
@@ -130,7 +131,7 @@ def run_band_pipeline(band: str, skip_accuracy: bool = False) -> bool:
         return False
 
     # Step 2: Generate Predictions, Backtest, and Calculate Accuracy for each model
-    models = ["notebook", "ckplus"]
+    models = [definition.slug for definition in list_pipeline_models()]
     for model in models:
         if not run_step(
             generate_predictions,
@@ -168,7 +169,8 @@ def run_band_pipeline(band: str, skip_accuracy: bool = False) -> bool:
 
     # Step 3: Backfill stale predictions
     if HAS_BACKFILL:
-        for model in models:
+        backfill_models = [definition.slug for definition in list_backfill_models()]
+        for model in backfill_models:
             log_with_timestamp(f"[{band.upper()}] Starting: {model.title()} Backfill")
             try:
                 result = backfill_band(band, model, dry_run=False)

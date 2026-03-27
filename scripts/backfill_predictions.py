@@ -27,19 +27,18 @@ project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 
 from scripts.common import fetch_table, prepare_band_data
-from src.jambandnerd.config import (
-    BAND_EXCLUSION_WINDOWS,
-    MODEL_VERSIONS,
-    PREDICTION_TABLES,
-)
+from src.jambandnerd.config import BAND_EXCLUSION_WINDOWS
 from src.jambandnerd.config.bands import get_active_bands
 from src.jambandnerd.db.operations import (
     replace_prediction_projection,
     upsert_dataframe,
 )
-from src.jambandnerd.models.ckplus.model import CKPlusPredictor
-from src.jambandnerd.models.notebook.model import NotebookPredictor
-from src.jambandnerd.models.serialization import serialize_predictions
+from src.jambandnerd.models.registry import (
+    build_predictor,
+    get_model_definition,
+    list_backfill_models,
+    serialize_model_predictions,
+)
 from src.jambandnerd.transformations.gaps import generate_model_data
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
@@ -50,7 +49,6 @@ def check_stale_predictions(
     band: str,
     model: str,
     prediction_table: str,
-    model_version: str,
 ) -> list[dict]:
     """Find predictions that may need refreshing due to new setlist data.
 
@@ -168,23 +166,21 @@ def regenerate_prediction(
         logger.error(f"Failed to generate model data: {e}")
         return False
 
-    if model == "notebook":
-        predictor = NotebookPredictor(band=band)
-        predictions, _ = predictor.predict(model_data=model_data, top_k=50)
-    elif model == "ckplus":
-        predictor = CKPlusPredictor(band=band)
-        predictions = predictor.predict(model_data=model_data, top_k=50)
-    else:
-        logger.error(f"Unknown model: {model}")
-        return False
+    model_definition = get_model_definition(model)
+    predictor = build_predictor(model, band=band)
+    prediction_output = predictor.predict(
+        model_data=model_data,
+        top_k=model_definition.default_top_k,
+    )
+    predictions = prediction_output[0] if isinstance(prediction_output, tuple) else prediction_output
 
     if not predictions:
         logger.error(f"No predictions generated for {reference_date_str}")
         return False
 
-    predictions_list = serialize_predictions(model_slug=model, predictions=predictions)
-    table_name = PREDICTION_TABLES[model]
-    model_version = MODEL_VERSIONS[model]
+    predictions_list = serialize_model_predictions(model, predictions)
+    table_name = model_definition.prediction_table
+    model_version = model_definition.version
 
     predicted_at = datetime.now(timezone.utc).isoformat()
     output_row = {
@@ -226,11 +222,11 @@ def backfill_band(
 ) -> dict:
     """Backfill stale predictions for a single band and model."""
 
-    prediction_table = PREDICTION_TABLES[model]
-    model_version = MODEL_VERSIONS[model]
+    model_definition = get_model_definition(model)
+    prediction_table = model_definition.prediction_table
     exclusion_window = BAND_EXCLUSION_WINDOWS.get(band, 3)
 
-    stale = check_stale_predictions(band, model, prediction_table, model_version)
+    stale = check_stale_predictions(band, model, prediction_table)
 
     if not stale:
         return {"band": band, "model": model, "stale_count": 0, "regenerated": 0}
@@ -278,7 +274,7 @@ def main() -> None:
         "--model",
         type=str,
         default="ckplus",
-        choices=["notebook", "ckplus"],
+        choices=[definition.slug for definition in list_backfill_models()],
         help="Model to process (default: ckplus)",
     )
     parser.add_argument(

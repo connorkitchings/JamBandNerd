@@ -29,17 +29,19 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, project_root)
 
 from scripts.common import fetch_table, prepare_band_data
-from src.jambandnerd.config import HISTORICAL_PREDICTION_RUNS_TABLE, MODEL_VERSIONS
+from src.jambandnerd.config import HISTORICAL_PREDICTION_RUNS_TABLE
 from src.jambandnerd.config.bands import get_active_bands
 from src.jambandnerd.db.operations import (
     upsert_dataframe,
     upsert_historical_prediction_run,
 )
 from src.jambandnerd.models.accuracy import aggregate_metrics, compute_per_show_metrics
-from src.jambandnerd.models.ckplus.model import CKPlusPredictor
-from src.jambandnerd.models.deal import DealPredictor
-from src.jambandnerd.models.notebook.model import NotebookPredictor
-from src.jambandnerd.models.serialization import serialize_predictions
+from src.jambandnerd.models.registry import (
+    build_predictor,
+    get_model_definition,
+    list_backtest_models,
+    serialize_model_predictions,
+)
 from src.jambandnerd.transformations.gaps import generate_model_data
 from src.jambandnerd.transformations.normalization import sort_normalized_shows
 
@@ -107,15 +109,11 @@ def run_backtest(
         return
 
     # 3. Initialize predictor
-    if model == "notebook":
-        predictor = NotebookPredictor()
-    elif model == "ckplus":
-        predictor = CKPlusPredictor(band=band)
-    elif model == "deal":
-        predictor = DealPredictor(band=band)
-    else:
-        raise ValueError(f"Invalid model: {model}")
-    model_version = MODEL_VERSIONS[model]
+    definition = get_model_definition(model)
+    if not definition.supports_backtest:
+        raise ValueError(f"Model does not support backtests: {model}")
+    predictor = build_predictor(model, band=band)
+    model_version = definition.version
 
     # 4. Run backtest loop
     per_show_results: List[Dict[str, Any]] = []
@@ -153,21 +151,19 @@ def run_backtest(
                 shows_df, sets_df, prediction_date, exclusion_window=exclusion_window
             )
 
-            if model == "notebook":
-                preds, _ = predictor.predict(model_data=model_data, top_k=50)
-            elif model == "deal":
+            if definition.supports_training:
                 predictor.train(model_data)
-                preds = predictor.predict(model_data=model_data, top_k=50)
-            else:
-                preds = predictor.predict(model_data=model_data, top_k=50)
+            prediction_output = predictor.predict(
+                model_data=model_data,
+                top_k=definition.default_top_k,
+            )
+            preds = prediction_output[0] if isinstance(prediction_output, tuple) else prediction_output
 
             if not preds:
                 print(f"{log_prefix} No predictions generated for {ref_date}, skipping")
                 continue
 
-            serialized_predictions = serialize_predictions(
-                model_slug=model, predictions=preds
-            )
+            serialized_predictions = serialize_model_predictions(model, preds)
             pred_songs = [
                 prediction["song_name"] for prediction in serialized_predictions
             ]
@@ -264,7 +260,7 @@ def main() -> None:
         "--model",
         type=str,
         required=True,
-        choices=["notebook", "ckplus", "deal"],
+        choices=[definition.slug for definition in list_backtest_models()],
         help="The model to backtest.",
     )
     parser.add_argument("--start", help="Start date for backtest window (YYYY-MM-DD).")

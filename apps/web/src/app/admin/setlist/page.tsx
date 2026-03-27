@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 const ACTIVE_BANDS = [
   { value: "wsp", label: "Widespread Panic" },
@@ -13,6 +13,8 @@ const ACTIVE_BANDS = [
 
 export default function AdminSetlistPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isCheckingSession, setIsCheckingSession] = useState(true);
+  const [isConfigured, setIsConfigured] = useState(true);
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
@@ -26,6 +28,44 @@ export default function AdminSetlistPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
+  useEffect(() => {
+    let isMounted = true;
+
+    async function checkSession() {
+      try {
+        const response = await fetch("/api/admin/session", { method: "GET" });
+        if (!isMounted) {
+          return;
+        }
+
+        if (!response.ok) {
+          setIsConfigured(false);
+          setIsAuthenticated(false);
+          return;
+        }
+
+        const data = await response.json();
+        setIsConfigured(Boolean(data.configured));
+        setIsAuthenticated(Boolean(data.authenticated));
+      } catch {
+        if (isMounted) {
+          setIsConfigured(false);
+          setIsAuthenticated(false);
+        }
+      } finally {
+        if (isMounted) {
+          setIsCheckingSession(false);
+        }
+      }
+    }
+
+    void checkSession();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -35,26 +75,35 @@ export default function AdminSetlistPage() {
       return;
     }
 
-    const response = await fetch("/api/admin/setlist", {
+    const response = await fetch("/api/admin/session", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${password}`,
       },
-      body: JSON.stringify({ test: true }),
+      body: JSON.stringify({ password }),
     });
+
+    if (response.ok) {
+      setIsAuthenticated(true);
+      setPassword("");
+      setError("");
+      return;
+    }
 
     if (response.status === 401) {
       setError("Invalid password");
-    } else if (response.status === 400) {
-      setIsAuthenticated(true);
-      setError("");
-    } else if (response.status === 500 && (await response.json()).error === "Missing required fields") {
-      setIsAuthenticated(true);
-      setError("");
+    } else if (response.status === 503) {
+      setIsConfigured(false);
+      setError("Admin access is not configured");
     } else {
       setError("Authentication failed");
     }
+  };
+
+  const handleLogout = async () => {
+    await fetch("/api/admin/session", { method: "DELETE" });
+    setIsAuthenticated(false);
+    setPassword("");
   };
 
   const parsePreview = (text: string) => {
@@ -115,7 +164,6 @@ export default function AdminSetlistPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${password}`,
         },
         body: JSON.stringify({
           band,
@@ -146,6 +194,25 @@ export default function AdminSetlistPage() {
       setIsSubmitting(false);
     }
   };
+
+  if (isCheckingSession) {
+    return (
+      <div className="mx-auto max-w-md py-12 text-center text-sm text-on-surface-variant">
+        Checking admin session…
+      </div>
+    );
+  }
+
+  if (!isConfigured) {
+    return (
+      <div className="mx-auto max-w-xl space-y-4 py-12 text-center">
+        <h1 className="font-headline text-3xl font-bold text-on-surface">Admin Unavailable</h1>
+        <p className="text-sm text-on-surface-variant">
+          Configure <code>ADMIN_PASSWORD</code> and <code>ADMIN_SESSION_SECRET</code> to enable the internal setlist admin route.
+        </p>
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
     return (
@@ -189,8 +256,15 @@ export default function AdminSetlistPage() {
       <div>
         <h1 className="font-headline text-3xl font-bold text-on-surface">Add Setlist</h1>
         <p className="mt-2 text-sm text-on-surface-variant">
-          Manually add a show and setlist to the database
+          Manually add a show and setlist to the database. This route uses an httpOnly admin session cookie rather than passing credentials with each write.
         </p>
+        <button
+          type="button"
+          onClick={handleLogout}
+          className="mt-4 rounded-xl border border-outline-variant/30 bg-surface px-4 py-2 font-label text-xs uppercase tracking-[0.12rem] text-on-surface transition hover:border-primary hover:text-primary"
+        >
+          Log out
+        </button>
       </div>
 
       {message && (
