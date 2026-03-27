@@ -40,7 +40,7 @@ jobs:
           python-version: '3.12'
       - id: get_bands
         run: |
-          BANDS_JSON=$(python scripts/get_all_bands.py)
+          BANDS_JSON=$(python -m scripts.get_all_bands)
           echo "bands=$BANDS_JSON" >> $GITHUB_OUTPUT
           echo "bands_list=$BANDS_JSON" >> $GITHUB_OUTPUT
 
