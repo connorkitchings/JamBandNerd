@@ -30,7 +30,7 @@ jobs:
           enable-cache: true
 
       - name: Install project
-        run: uv pip install --system -e ".[dev]"
+        run: uv sync --locked --extra dev
 
       - name: Lint Python source
         run: uv run ruff check src tests scripts
