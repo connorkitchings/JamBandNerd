@@ -17,16 +17,20 @@ from scripts.save_aggregate_accuracy import save_aggregate_accuracy
 from scripts.validate_accuracy_tables import validate_accuracy
 from scripts.validate_prediction_tables import validate_predictions
 from src.jambandnerd.config import (
-    ACCURACY_TABLES,
     HISTORICAL_PREDICTION_RUNS_TABLE,
-    MODEL_VERSIONS,
     PREDICTION_SONGS_TABLE,
-    PREDICTION_TABLES,
 )
-from src.jambandnerd.db.connection import get_supabase_client
 from src.jambandnerd.config.bands import get_active_bands
+from src.jambandnerd.db.connection import get_supabase_client
+from src.jambandnerd.models.registry import (
+    get_aggregate_accuracy_table,
+    get_model_definition,
+    list_pipeline_models,
+)
 
-MODELS: tuple[str, ...] = ("notebook", "ckplus")
+MODELS: tuple[str, ...] = tuple(
+    definition.slug for definition in list_pipeline_models()
+)
 
 
 def _selected_bands(band: str) -> list[str]:
@@ -42,10 +46,11 @@ def clear_model_outputs(
 ) -> None:
     """Delete derived outputs for one band/model pair."""
     client = get_supabase_client()
-    model_version = MODEL_VERSIONS[model]
+    model_definition = get_model_definition(model)
+    model_version = model_definition.version
 
     if clear_predictions:
-        prediction_table = PREDICTION_TABLES[model]
+        prediction_table = model_definition.prediction_table
         print(
             f"[{band.upper()}/{model.upper()}] Clearing existing predictions from {prediction_table}..."
         )
@@ -65,7 +70,9 @@ def clear_model_outputs(
         )
 
     if clear_accuracy:
-        aggregate_table = ACCURACY_TABLES[model]
+        aggregate_table = get_aggregate_accuracy_table(model)
+        if not aggregate_table:
+            raise RuntimeError(f"No aggregate accuracy table configured for model: {model}")
         print(f"[{band.upper()}/{model.upper()}] Clearing existing accuracy rows...")
         (
             client.table(HISTORICAL_PREDICTION_RUNS_TABLE)

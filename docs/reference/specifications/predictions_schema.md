@@ -9,6 +9,7 @@ Prediction tables:
 
 - `predictions_notebook`
 - `predictions_ckplus`
+- `predictions_deal` (backend-registered; may be hidden from website surfaces)
 - `prediction_songs` (derived per-song projection)
 - `historical_prediction_runs` (canonical scored backtest snapshots)
 
@@ -17,6 +18,11 @@ Accuracy tables:
 - `accuracy_per_show`
 - `notebook_accuracy`
 - `accuracy_ckplus`
+- `accuracy_deal` (experimental)
+
+Model metadata for table/version/serializer mapping is registered in
+`src/jambandnerd/models/registry.py`. Scripts should derive model behavior from
+that registry rather than hardcoded slug lists.
 
 ## Current Prediction Storage
 
@@ -166,6 +172,7 @@ The current repo uses explicit model version strings such as:
 
 - `notebook_v1`
 - `ckplus_v1`
+- `deal_v2`
 
 Changing output semantics, feature logic, or scoring behavior should produce a
 new `model_version`.

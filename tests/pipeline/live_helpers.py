@@ -3,8 +3,12 @@ from __future__ import annotations
 import os
 from datetime import datetime, timedelta, timezone
 
-from src.jambandnerd.config.database import ACCURACY_TABLES, PREDICTION_TABLES
 from src.jambandnerd.db.connection import get_supabase_client
+from src.jambandnerd.models.registry import (
+    get_aggregate_accuracy_table,
+    get_model_version,
+    get_prediction_table,
+)
 
 
 def ensure_live_env(*, band: str) -> None:
@@ -27,8 +31,8 @@ def assert_prediction_publish_fresh(
     *, band: str, model: str, started_at: datetime
 ) -> None:
     client = get_supabase_client()
-    table_name = PREDICTION_TABLES[model]
-    model_version = f"{model}_v1"
+    table_name = get_prediction_table(model)
+    model_version = get_model_version(model)
     response = (
         client.table(table_name)
         .select("band, model_version, predicted_at, reference_date, predictions")
@@ -50,10 +54,10 @@ def assert_accuracy_publish_fresh(
     *, band: str, model: str, started_at: datetime
 ) -> None:
     client = get_supabase_client()
-    model_version = f"{model}_v1"
+    model_version = get_model_version(model)
 
     per_show_response = (
-        client.table(ACCURACY_TABLES["per_show"])
+        client.table("accuracy_per_show")
         .select("band, model_version, evaluated_at, show_date")
         .eq("band", band)
         .eq("model_version", model_version)
@@ -68,7 +72,9 @@ def assert_accuracy_publish_fresh(
         per_show_response.data[0]["evaluated_at"]
     ) >= started_at - timedelta(minutes=5)
 
-    aggregate_table = ACCURACY_TABLES[model]
+    aggregate_table = get_aggregate_accuracy_table(model)
+    if not aggregate_table:
+        raise RuntimeError(f"No aggregate accuracy table configured for model: {model}")
     aggregate_response = (
         client.table(aggregate_table)
         .select("band, model_version, evaluated_at, window_start, window_end")

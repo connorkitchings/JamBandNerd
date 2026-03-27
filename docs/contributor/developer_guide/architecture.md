@@ -70,6 +70,9 @@ graph TD
   accuracy data.
 - Streamlit is no longer part of the active public delivery path, but it
   remains in the repo for internal legacy/debugging use.
+- `apps/web/src/lib/data.ts` remains the compatibility import surface while domain ownership is split across `apps/web/src/lib/data/{bands,predictions,accuracy,replay,shows,venues}.ts`.
+- Route files should compose server-side results rather than reimplement query logic.
+- Client components are reserved for interactive islands, navigation hooks, and live subscriptions.
 
 Current website routes:
 - `/` - Homepage with band overview and upcoming shows
@@ -92,6 +95,7 @@ Key shared components:
 
 - `scripts/run_optimized_pipeline.py` is the canonical end-to-end local runner.
 - GitHub Actions executes the daily pipeline in production-like automation.
+- Pull requests targeting `main` should clear `Repo Quality` and `Verify Website` before merge.
 - Band metadata (slug, display name, raw table names, ID column) is managed in the
   `bands` Supabase table as the single write point. The website reads it dynamically;
   adding a new band requires only inserting a row into `bands` and creating a collector.
@@ -99,12 +103,16 @@ Key shared components:
 
 ### Model Platform
 
-New prediction models are added through a documented 4-step process (see
-`docs/contributor/model_development.md`). Each model:
-1. Inherits `PredictionModel` and consumes the same `ModelData` contract
-2. Is wired into `generate_predictions.py` with its own output formatting block
-3. Registers its version string and legacy table name in the config modules
-4. Adds an entry to `MODEL_CONFIG` in the website for UI display
+The backend model platform is registry-based. The canonical model source of
+truth is `src/jambandnerd/models/registry.py`, which defines predictor class,
+table/version mapping, serializer, and orchestration capability flags.
+
+New prediction models are added through the registry workflow (see
+`docs/contributor/model_development.md`):
+1. Add a model package that consumes the shared `ModelData` contract
+2. Add a model-specific serializer module
+3. Add one `ModelDefinition` entry in the registry
+4. Optionally add frontend presentation metadata in website config
 
 All models write to `prediction_songs` via `replace_prediction_projection()`, making
 them automatically available to the website's analytics and explorer routes.
@@ -118,5 +126,5 @@ them automatically available to the website's analytics and explorer routes.
   source-faithful raw storage, shared normalized modeling inputs.
 - Band metadata lives in the `bands` Supabase table — the website reads it
   dynamically. Do not hardcode band lists in frontend code.
-- Models are wired via `MODEL_CONFIG` in the website and config modules — no
-  dynamic discovery required on the frontend.
+- Backend model registration lives in `models/registry.py`; frontend
+  `MODEL_CONFIG` is product presentation metadata only.

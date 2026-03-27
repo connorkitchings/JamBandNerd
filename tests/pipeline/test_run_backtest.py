@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+from dataclasses import replace
+
 import pandas as pd
 
 from scripts import run_backtest as run_backtest_module
+from src.jambandnerd.models.registry import get_model_definition
 
 
 class _Prediction:
@@ -65,7 +68,28 @@ def test_run_backtest_persists_string_show_ids(monkeypatch):
         run_backtest_module, "generate_model_data", lambda *args, **kwargs: object()
     )
     monkeypatch.setattr(
-        run_backtest_module, "NotebookPredictor", _NotebookPredictorStub
+        run_backtest_module,
+        "build_predictor",
+        lambda slug, *, band: _NotebookPredictorStub(),
+    )
+    monkeypatch.setattr(
+        run_backtest_module,
+        "get_model_definition",
+        lambda slug: replace(get_model_definition(slug), default_top_k=50),
+    )
+    monkeypatch.setattr(
+        run_backtest_module,
+        "serialize_model_predictions",
+        lambda slug, preds: [
+            {
+                "rank": index + 1,
+                "song_name": prediction.song_name,
+                "plays_past_year": prediction.plays_past_year,
+                "current_gap": prediction.current_gap,
+                "last_played_date": prediction.last_played_date,
+            }
+            for index, prediction in enumerate(preds)
+        ],
     )
     monkeypatch.setattr(run_backtest_module, "upsert_dataframe", capture_upsert)
     monkeypatch.setattr(

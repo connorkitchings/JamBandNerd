@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Final
 
+from src.jambandnerd.models.metadata import MODEL_METADATA
+
 # Top-K values for accuracy evaluation
 TOP_K_VALUES: Final[list[int]] = [10, 25, 50]
 
@@ -32,15 +34,14 @@ RETIREMENT_GAPS: Final[dict[str, int]] = {
     "default": 250,  # Safe fallback for other bands
 }
 
-# Model version identifiers
+# Compatibility maps derived from the canonical model registry metadata.
 MODEL_VERSIONS: Final[dict[str, str]] = {
-    "notebook": "notebook_v1",
-    "ckplus": "ckplus_v1",
-    "deal": "deal_v1",
+    metadata.slug: metadata.version for metadata in MODEL_METADATA
 }
 
-# Enabled models for website (deal hidden until approved)
-ENABLED_MODELS: Final[list[str]] = ["notebook", "ckplus"]
+ENABLED_MODELS: Final[list[str]] = [
+    metadata.slug for metadata in MODEL_METADATA if metadata.enabled_for_web
+]
 
 # Deal model-specific configuration
 DEAL_MIN_PLAYS_THRESHOLD: Final[int] = 5
@@ -55,9 +56,11 @@ DEAL_RETIREMENT_GAP: Final[dict[str, int]] = {
 }
 
 # Deal model hyperparameters
-DEAL_MAX_DEPTH: Final[int] = 6
-DEAL_ETA: Final[float] = 0.1
-DEAL_NROUNDS: Final[int] = 100
+DEAL_MIN_TRAINING_SHOWS: Final[int] = 25
+DEAL_TRAINING_WINDOW_SHOWS: Final[int] = 75
+DEAL_LEARNING_RATE: Final[float] = 0.05
+DEAL_EPOCHS: Final[int] = 400
+DEAL_L2_REGULARIZATION: Final[float] = 0.01
 
 # Deal retraining interval (days)
 DEAL_RETRAIN_INTERVAL_DAYS: Final[int] = 7

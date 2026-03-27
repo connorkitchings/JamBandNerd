@@ -35,6 +35,16 @@
 
 :root {
   color-scheme: dark;
+  --font-space-grotesk:
+    "Avenir Next Condensed",
+    "Arial Narrow",
+    "Segoe UI",
+    sans-serif;
+  --font-inter:
+    "Avenir Next",
+    "Helvetica Neue",
+    "Segoe UI",
+    sans-serif;
 }
 
 html {

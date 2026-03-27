@@ -121,8 +121,13 @@ def _compute_base_features(
         print(f"Plays shape after filtering to historical shows: {plays.shape}")
 
     plays["show_index"] = plays["show_id"].map(show_idx_map)
+    show_context_columns = ["show_id", "show_date"]
+    for optional_column in ["venue_name", "city", "state", "country"]:
+        if optional_column in historical_shows.columns:
+            show_context_columns.append(optional_column)
+
     plays = plays.merge(
-        historical_shows[["show_id", "show_date"]], on="show_id", how="left"
+        historical_shows[show_context_columns], on="show_id", how="left"
     )
     if debug:
         print(f"Plays shape after merging with show_date: {plays.shape}")

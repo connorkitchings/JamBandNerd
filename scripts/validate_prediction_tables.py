@@ -7,9 +7,10 @@ import json
 from datetime import datetime, timezone
 from typing import Dict, Iterable, List
 
+from jambandnerd.config.bands import get_active_bands
 from jambandnerd.db.connection import get_supabase_client
 from jambandnerd.db.operations import fetch_latest_prediction_songs
-from jambandnerd.config.bands import get_active_bands
+from jambandnerd.models.registry import list_pipeline_models
 
 
 def _parse_timestamp(value: str | None) -> datetime | None:
@@ -86,14 +87,11 @@ def validate_predictions(
     if not band_list:
         band_list = list(get_active_bands())
     tables = {
-        "predictions_notebook": {
-            "model_slug": "notebook",
-            "model_version": "notebook_v1",
-        },
-        "predictions_ckplus": {
-            "model_slug": "ckplus",
-            "model_version": "ckplus_v1",
-        },
+        definition.prediction_table: {
+            "model_slug": definition.slug,
+            "model_version": definition.version,
+        }
+        for definition in list_pipeline_models()
     }
 
     now = datetime.now(timezone.utc)

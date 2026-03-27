@@ -3,22 +3,20 @@ import { createHash } from "node:crypto";
 import { type SupabaseClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 
+import { ADMIN_SESSION_COOKIE, verifyAdminSessionToken } from "@/lib/admin/session";
 import { getServiceRoleClient } from "@/lib/supabase/server";
 
 export async function POST(request: NextRequest) {
-  const authHeader = request.headers.get("authorization");
-  const adminPassword = process.env.ADMIN_PASSWORD;
-
-  if (!adminPassword) {
+  const sessionSecret = process.env.ADMIN_SESSION_SECRET;
+  if (!process.env.ADMIN_PASSWORD || !sessionSecret) {
     return NextResponse.json(
       { error: "Admin not configured" },
-      { status: 500 },
+      { status: 503 },
     );
   }
 
-  const providedPassword = authHeader?.replace("Bearer ", "");
-
-  if (!providedPassword || providedPassword !== adminPassword) {
+  const sessionToken = request.cookies.get(ADMIN_SESSION_COOKIE)?.value;
+  if (!verifyAdminSessionToken(sessionToken, sessionSecret)) {
     return NextResponse.json(
       { error: "Unauthorized" },
       { status: 401 },

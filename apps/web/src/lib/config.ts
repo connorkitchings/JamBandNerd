@@ -14,7 +14,7 @@ export const MODEL_CONFIG = {
   deal: {
     displayName: "Deal",
     explanation:
-      "ML-based model using XGBoost to learn patterns in song rotation and provide probability rankings.",
+      "Explainable logistic ranking model trained on true per-show candidate rows and rotation-gap signals.",
     enabled: false, // Hidden until approved
   },
 } as const;
