@@ -9,8 +9,15 @@ import { SiteHeader } from "@/components/site-header";
 import "./globals.css";
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://jambandnerd.com"),
   title: "JamBandNerd",
-  description: "Prediction dashboards, historical analysis views, and performance analysis for jam band setlists.",
+  description:
+    "Prediction dashboards, historical analysis views, and performance analysis for jam band setlists.",
+  openGraph: {
+    siteName: "JamBandNerd",
+    images: [{ url: "/logo.png", width: 1200, height: 630, alt: "JamBandNerd" }],
+    type: "website",
+  },
 };
 
 export const viewport = {

@@ -99,6 +99,46 @@ EXCLUDED_SONGS_LOWER: Final[dict[str, frozenset[str]]] = {
     for band, songs in EXCLUDED_SONGS.items()
 }
 
+# Show dates to exclude from prediction/backtest windows.
+# Prefer EXCLUDED_PREDICTION_SHOW_IDS when a date has multiple shows and only
+# some should be excluded.
+EXCLUDED_PREDICTION_SHOW_DATES: Final[dict[str, list[str]]] = {
+    "goose": [],
+    "eggy": [],
+    "phish": [],
+    "wsp": [],
+    "billy": [],
+    "um": [],
+}
+
+EXCLUDED_PREDICTION_SHOW_DATES_SET: Final[dict[str, frozenset[str]]] = {
+    band: frozenset(date_str.strip() for date_str in dates)
+    for band, dates in EXCLUDED_PREDICTION_SHOW_DATES.items()
+}
+
+# Show IDs to exclude from prediction/backtest windows. Prefer this over
+# date-based exclusions when a date has multiple shows and only some should
+# be excluded (e.g., a festival promo set on the same day as a full show).
+EXCLUDED_PREDICTION_SHOW_IDS: Final[dict[str, list[str]]] = {
+    "goose": [
+        "1755099318",  # 2025-08-13 TV appearance
+        "1748090458",  # 2025-05-25 Napa short set (4 songs; full show same day)
+        "1745685585",  # 2025-04-25 short set (3 songs)
+        "1741108426",  # 2025-03-11 promo (1 song)
+        "1730168333",  # 2024-11-24 MSG short set (5 songs)
+    ],
+    "eggy": [],
+    "phish": [],
+    "wsp": [],
+    "billy": [],
+    "um": [],
+}
+
+EXCLUDED_PREDICTION_SHOW_IDS_SET: Final[dict[str, frozenset[str]]] = {
+    band: frozenset(str(sid).strip() for sid in ids)
+    for band, ids in EXCLUDED_PREDICTION_SHOW_IDS.items()
+}
+
 
 def get_excluded_songs(band: str) -> frozenset[str]:
     """Get case-insensitive excluded songs for a band.
@@ -110,3 +150,13 @@ def get_excluded_songs(band: str) -> frozenset[str]:
         Frozenset of lowercase song names to exclude
     """
     return EXCLUDED_SONGS_LOWER.get(band, frozenset())
+
+
+def get_excluded_prediction_show_dates(band: str) -> frozenset[str]:
+    """Get ISO show dates that should be excluded from prediction windows."""
+    return EXCLUDED_PREDICTION_SHOW_DATES_SET.get(band, frozenset())
+
+
+def get_excluded_prediction_show_ids(band: str) -> frozenset[str]:
+    """Get show IDs that should be excluded from prediction windows."""
+    return EXCLUDED_PREDICTION_SHOW_IDS_SET.get(band, frozenset())

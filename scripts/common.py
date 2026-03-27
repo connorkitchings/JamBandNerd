@@ -78,11 +78,44 @@ def prepare_band_data(
 
     This is the shared normalization boundary for prediction scripts.
     """
+    from src.jambandnerd.config.bands import (
+        get_excluded_prediction_show_dates,
+        get_excluded_prediction_show_ids,
+    )
     from src.jambandnerd.transformations.normalization import (
         normalize_prediction_inputs,
     )
 
-    return normalize_prediction_inputs(shows_df, setlists_df, band=band)
+    prepared_shows, prepared_setlists = normalize_prediction_inputs(
+        shows_df, setlists_df, band=band
+    )
+
+    if not band:
+        return prepared_shows, prepared_setlists
+
+    excluded_show_ids = set(get_excluded_prediction_show_ids(band))
+
+    excluded_dates = get_excluded_prediction_show_dates(band)
+    if excluded_dates:
+        show_dates = pd.to_datetime(
+            prepared_shows["show_date"], errors="coerce"
+        ).dt.date
+        date_mask = show_dates.astype(str).isin(excluded_dates)
+        excluded_show_ids.update(prepared_shows.loc[date_mask, "show_id"].astype(str))
+
+    if not excluded_show_ids:
+        return prepared_shows, prepared_setlists
+
+    prepared_show_ids = prepared_shows["show_id"].astype(str)
+    excluded_mask = prepared_show_ids.isin(excluded_show_ids)
+    if not excluded_mask.any():
+        return prepared_shows, prepared_setlists
+
+    filtered_shows = prepared_shows.loc[~excluded_mask].copy()
+    filtered_setlists = prepared_setlists[
+        ~prepared_setlists["show_id"].astype(str).isin(excluded_show_ids)
+    ].copy()
+    return filtered_shows, filtered_setlists
 
 
 def resolve_reference_date(

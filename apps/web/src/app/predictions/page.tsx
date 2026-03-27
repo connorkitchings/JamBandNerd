@@ -4,6 +4,7 @@ import { DashboardSideNav } from "@/components/dashboard-side-nav";
 import { DataState } from "@/components/data-state";
 import { LiveTracker } from "@/components/live-tracker";
 import { PredictionHero } from "@/components/prediction-hero";
+import { SharePredictionsButton } from "@/components/share-predictions-button";
 import { SongBoard } from "@/components/song-board";
 import { SongSearch } from "@/components/song-search";
 import { MODEL_CONFIG, normalizeModel } from "@/lib/config";
@@ -21,6 +22,7 @@ import {
   formatPercent,
   formatTimestampLabel,
 } from "@/lib/format";
+import { formatTop10Text } from "@/lib/format-predictions-text";
 
 export const dynamic = "force-dynamic";
 
@@ -49,9 +51,21 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
   const bandName = bandSelection.bandEntry?.displayName ?? bandSelection.requestedSlug;
   const modelName = MODEL_CONFIG[model].displayName;
 
+  const title = `${bandName} Setlist Predictions | JamBandNerd`;
+  const description = `Latest ${modelName} model setlist predictions for ${bandName}, ranked by likelihood tier.`;
+  const url = `https://jambandnerd.com/predictions?band=${params.band ?? "goose"}&model=${model}`;
+
   return {
-    title: `${bandName} Setlist Predictions | JamBandNerd`,
-    description: `Latest ${modelName} model setlist predictions for ${bandName}, ranked by likelihood tier.`,
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      url,
+      siteName: "JamBandNerd",
+      images: [{ url: "/logo.png", width: 1200, height: 630, alt: title }],
+      type: "website",
+    },
   };
 }
 
@@ -161,6 +175,16 @@ export default async function PredictionsPage({ searchParams }: Props) {
     lastPlayed: row.lastPlayed,
   }));
 
+  const shareText = formatTop10Text({
+    bandName,
+    dateLabel,
+    locationLabel,
+    venueName: nextShow?.venueName ?? "",
+    predictions: predictionState.snapshot.predictions,
+    modelDisplayName: MODEL_CONFIG[predictionState.model].displayName,
+    shareUrl: `jambandnerd.com/predictions?band=${predictionState.band}&model=${predictionState.model}`,
+  });
+
   return (
     <div className="mx-auto w-full max-w-6xl">
       <DashboardSideNav
@@ -192,18 +216,23 @@ export default async function PredictionsPage({ searchParams }: Props) {
 
       <section>
         <div className="editorial-panel px-4 py-5 sm:px-6 sm:py-6 md:px-7">
-          <div className="relative">
-            <p className="font-label text-[10px] uppercase tracking-[0.24em] text-primary">
-              Full ranking
-            </p>
-            <h2 className="mt-3 font-headline text-3xl font-bold uppercase tracking-[-0.04em] text-on-surface">
-              Song board
-            </h2>
-            <p className="mt-3 text-sm leading-7 text-on-surface-variant">
-              All ranked predictions for {bandName} using{" "}
-              {MODEL_CONFIG[predictionState.model].displayName}. Use the search first, then scan
-              by tier to understand how the board is clustering tonight.
-            </p>
+          <div className="relative flex items-start justify-between gap-4">
+            <div>
+              <p className="font-label text-[10px] uppercase tracking-[0.24em] text-primary">
+                Full ranking
+              </p>
+              <h2 className="mt-3 font-headline text-3xl font-bold uppercase tracking-[-0.04em] text-on-surface">
+                Song board
+              </h2>
+              <p className="mt-3 text-sm leading-7 text-on-surface-variant">
+                All ranked predictions for {bandName} using{" "}
+                {MODEL_CONFIG[predictionState.model].displayName}. Use the search first, then scan
+                by tier to understand how the board is clustering tonight.
+              </p>
+            </div>
+            <div className="shrink-0 pt-1">
+              <SharePredictionsButton text={shareText} />
+            </div>
           </div>
           <div className="mt-5">
             <SongSearch songs={searchSongs} />

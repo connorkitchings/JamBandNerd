@@ -11,7 +11,14 @@ Example:
 
 from __future__ import annotations
 
-from .bands import BAND_DISPLAY_NAMES, BAND_ID_COLUMNS, EXCLUDED_SONGS, SUPPORTED_BANDS
+from .bands import (
+    BAND_DISPLAY_NAMES,
+    BAND_ID_COLUMNS,
+    EXCLUDED_PREDICTION_SHOW_DATES,
+    EXCLUDED_PREDICTION_SHOW_IDS,
+    EXCLUDED_SONGS,
+    SUPPORTED_BANDS,
+)
 from .data_collection import DATE_FORMATS, DEFAULT_CHUNK_SIZE, FETCH_CHUNK_SIZE
 from .database import (
     ACCURACY_TABLES,
@@ -46,6 +53,8 @@ __all__ = [
     "BAND_DISPLAY_NAMES",
     "BAND_ID_COLUMNS",
     "EXCLUDED_SONGS",
+    "EXCLUDED_PREDICTION_SHOW_DATES",
+    "EXCLUDED_PREDICTION_SHOW_IDS",
     # data_collection.py
     "DEFAULT_CHUNK_SIZE",
     "FETCH_CHUNK_SIZE",
