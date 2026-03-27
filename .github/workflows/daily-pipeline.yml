@@ -40,7 +40,11 @@ jobs:
           python-version: '3.12'
       - id: get_bands
         run: |
-          BANDS_JSON=$(python -m scripts.get_all_bands)
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.band || 'all' }}" != "all" ]]; then
+            BANDS_JSON='["${{ github.event.inputs.band }}"]'
+          else
+            BANDS_JSON=$(python -m scripts.get_all_bands)
+          fi
           echo "bands=$BANDS_JSON" >> $GITHUB_OUTPUT
           echo "bands_list=$BANDS_JSON" >> $GITHUB_OUTPUT
 
@@ -59,26 +63,16 @@ jobs:
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       PHISH_API_KEY: ${{ secrets.PHISH_API_KEY }}
 
-    outputs:
-      band_status: ${{ steps.set_status.outputs.status }}
-
     steps:
-      - name: Check if job should run
-        id: check
-        run: |
-          BAND_INPUT="${{ github.event.inputs.band || 'all' }}"
-          if [[ "${{ github.event_name }}" == "schedule" || "$BAND_INPUT" == "all" || "$BAND_INPUT" == "${{ matrix.band }}" ]]; then
-            echo "should_run=true" >> $GITHUB_OUTPUT
-          else
-            echo "should_run=false" >> $GITHUB_OUTPUT
-          fi
-
       - name: Checkout repository
-        if: steps.check.outputs.should_run == 'true'
         uses: actions/checkout@v6
 
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
       - name: Validate required secrets
-        if: steps.check.outputs.should_run == 'true'
         run: |
           MISSING=()
           BAND="${{ matrix.band }}"
@@ -104,33 +98,20 @@ jobs:
           
           echo "✅ All required secrets are configured"
 
-      - name: Set up Python and UV
-        if: steps.check.outputs.should_run == 'true'
+      - name: Set up Python
         uses: actions/setup-python@v6
         with:
           python-version: '3.12'
-      
-      - name: Install Dependencies
-        if: steps.check.outputs.should_run == 'true'
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-          uv venv
-          source .venv/bin/activate
-          uv pip install .
+
+      - name: Install dependencies
+        run: uv sync --locked --no-dev
 
       - name: Install Playwright Browsers
-        if: steps.check.outputs.should_run == 'true' && matrix.band == 'wsp'
-        run: |
-          source .venv/bin/activate
-          playwright install --with-deps firefox
+        if: matrix.band == 'wsp'
+        run: uv run playwright install --with-deps firefox
 
       - name: Run Data Collection
-        if: steps.check.outputs.should_run == 'true'
         run: |
-          source .venv/bin/activate
           echo "::group::Collecting data for ${{ matrix.band }}"
           
           # Verify collection script exists
@@ -148,7 +129,7 @@ jobs:
           while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
             echo "Attempt $((RETRY_COUNT + 1)) of $MAX_RETRIES for ${{ matrix.band }} collection"
             
-            if python "$SCRIPT_PATH"; then
+            if uv run python "$SCRIPT_PATH"; then
               echo "✅ Collection for ${{ matrix.band }} successful"
               break
             else
@@ -166,15 +147,13 @@ jobs:
           echo "::endgroup::"
 
       - name: Verify Data Freshness
-        if: steps.check.outputs.should_run == 'true'
         id: data_check
         env:
           BAND: ${{ matrix.band }}
         run: |
-          source .venv/bin/activate
           echo "::group::Verifying data freshness for ${{ matrix.band }}"
           
-          python scripts/verify_data_freshness.py
+          uv run python scripts/verify_data_freshness.py
           
           echo "::endgroup::"
           
@@ -189,23 +168,21 @@ jobs:
           echo "Consider running the collection script manually to fetch missing setlists."
           
       - name: Generate Predictions (Notebook & CK+)
-        if: steps.check.outputs.should_run == 'true'
         run: |
-          source .venv/bin/activate
           echo "::group::Generating predictions for ${{ matrix.band }}"
           
           # Generate for the next upcoming show (default behavior)
-          python scripts/generate_predictions.py --band ${{ matrix.band }} --model notebook
-          python scripts/generate_predictions.py --band ${{ matrix.band }} --model ckplus
+          uv run python scripts/generate_predictions.py --band ${{ matrix.band }} --model notebook
+          uv run python scripts/generate_predictions.py --band ${{ matrix.band }} --model ckplus
           
           # Also generate for the most recent completed show to power setlist highlighting
           echo "Finding last completed show date..."
-          LAST_COMPLETED_DATE=$(python scripts/get_last_completed_show_date.py --band ${{ matrix.band }})
+          LAST_COMPLETED_DATE=$(uv run python scripts/get_last_completed_show_date.py --band ${{ matrix.band }})
           
           if [[ -n "$LAST_COMPLETED_DATE" ]]; then
             echo "Last completed show date is $LAST_COMPLETED_DATE. Generating predictions for this date."
-            python scripts/generate_predictions.py --band ${{ matrix.band }} --model notebook --date $LAST_COMPLETED_DATE
-            python scripts/generate_predictions.py --band ${{ matrix.band }} --model ckplus --date $LAST_COMPLETED_DATE
+            uv run python scripts/generate_predictions.py --band ${{ matrix.band }} --model notebook --date $LAST_COMPLETED_DATE
+            uv run python scripts/generate_predictions.py --band ${{ matrix.band }} --model ckplus --date $LAST_COMPLETED_DATE
           else
             echo "Could not determine last completed show date. Skipping predictions for it."
           fi
@@ -213,46 +190,36 @@ jobs:
           echo "::endgroup::"
 
       - name: Validate Prediction Tables
-        if: steps.check.outputs.should_run == 'true'
         run: |
-          source .venv/bin/activate
           echo "::group::Validating prediction table freshness for ${{ matrix.band }}"
-          python scripts/validate_prediction_tables.py --band ${{ matrix.band }} --max-age-hours 72
+          uv run python scripts/validate_prediction_tables.py --band ${{ matrix.band }} --max-age-hours 72
           echo "::endgroup::"
 
       - name: Run Backtest and Calculate Aggregate Accuracy
-        if: steps.check.outputs.should_run == 'true' && (github.event.inputs.skip_accuracy != 'true')
+        if: github.event.inputs.skip_accuracy != 'true'
         run: |
-          source .venv/bin/activate
           echo "::group::Running backtest for ${{ matrix.band }}"
           
           # Run backtest for last 100 shows to populate per-show accuracy
-          python scripts/run_backtest.py --band ${{ matrix.band }} --model notebook --shows 100
-          python scripts/run_backtest.py --band ${{ matrix.band }} --model ckplus --shows 100
+          uv run python scripts/run_backtest.py --band ${{ matrix.band }} --model notebook --shows 100
+          uv run python scripts/run_backtest.py --band ${{ matrix.band }} --model ckplus --shows 100
           
           echo "::endgroup::"
           
           echo "::group::Calculating aggregate accuracy for ${{ matrix.band }}"
           
           # Calculate aggregate accuracy from the per-show data
-          python scripts/save_aggregate_accuracy.py --band ${{ matrix.band }} --model notebook --shows 100
-          python scripts/save_aggregate_accuracy.py --band ${{ matrix.band }} --model ckplus --shows 100
+          uv run python scripts/save_aggregate_accuracy.py --band ${{ matrix.band }} --model notebook --shows 100
+          uv run python scripts/save_aggregate_accuracy.py --band ${{ matrix.band }} --model ckplus --shows 100
           
           echo "::endgroup::"
 
       - name: Validate Accuracy Tables
-        if: steps.check.outputs.should_run == 'true' && (github.event.inputs.skip_accuracy != 'true')
+        if: github.event.inputs.skip_accuracy != 'true'
         run: |
-          source .venv/bin/activate
           echo "::group::Validating accuracy tables for ${{ matrix.band }}"
-          python scripts/validate_accuracy_tables.py --band ${{ matrix.band }} --max-age-hours 72
+          uv run python scripts/validate_accuracy_tables.py --band ${{ matrix.band }} --max-age-hours 72
           echo "::endgroup::"
-
-      - name: Set Job Status Output
-        id: set_status
-        if: always()
-        run: |
-          echo "status=${{ job.status }}" >> $GITHUB_OUTPUT
 
   pipeline-summary:
     name: Pipeline Summary
@@ -273,10 +240,14 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: '3.12'
-          
-      - name: Install minimal dependencies
-        run: |
-          pip install pandas supabase python-dotenv
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --locked --no-dev
           
       - name: Generate pipeline summary header
         run: |
@@ -294,7 +265,7 @@ jobs:
       - name: Generate monitoring summary
         run: |
           echo "" >> $GITHUB_STEP_SUMMARY
-          python scripts/generate_pipeline_summary.py --bands-json "$BAND_LIST_JSON" >> $GITHUB_STEP_SUMMARY
+          uv run python scripts/generate_pipeline_summary.py --bands-json "$BAND_LIST_JSON" >> $GITHUB_STEP_SUMMARY
           
       - name: Add next steps
         run: |
