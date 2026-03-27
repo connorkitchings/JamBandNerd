@@ -38,4 +38,18 @@ def serialize_predictions(
             for i, prediction in enumerate(predictions)
         ]
 
+    if model_slug == "deal":
+        return [
+            {
+                "rank": i + 1,
+                "song_name": prediction.song_name,
+                "probability": prediction.probability,
+                "current_gap": prediction.current_gap,
+                "plays_past_year": prediction.plays_past_year,
+                "times_played": prediction.times_played,
+                "LTP": prediction.LTP,
+            }
+            for i, prediction in enumerate(predictions)
+        ]
+
     raise ValueError(f"Invalid model slug: {model_slug}")

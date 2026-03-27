@@ -231,12 +231,50 @@ The model is fully wired in the backend and generates predictions on each pipeli
 The model requires:
 - `xgboost>=2.0.0` (see `pyproject.toml`)
 
+### Implementation Status
+
+The Deal model has been implemented with the following architecture:
+
+- **Model Class**: `DealPredictor` in `src/jambandnerd/models/deal/model.py`
+- **Feature Engineering**: `src/jambandnerd/models/deal/features.py`
+- **Training Strategy**: Persisted model with weekly retraining (Option B)
+- **Model Storage**: `models/deal/{band}_{YYYYMMDD}.json`
+- **Retrain Interval**: 7 days (configurable via `DEAL_RETRAIN_INTERVAL_DAYS`)
+
+### Pipeline Integration
+
+The Deal model is fully wired into the prediction pipeline:
+
+```bash
+# Generate Deal predictions
+uv run python scripts/generate_predictions.py --band goose --model deal
+
+# Force retrain (override weekly interval)
+uv run python scripts/generate_predictions.py --band goose --model deal --retrain
+
+# Backtest Deal model
+uv run python scripts/run_backtest.py --band goose --model deal --shows 50
+```
+
+### Website Visibility Control
+
+The model is hidden from the public website (see `apps/web/src/lib/config.ts`):
+
+```typescript
+deal: {
+  displayName: "Deal",
+  enabled: false, // Hidden until approved
+}
+```
+
+To enable public visibility, flip the flag to `enabled: true`.
+
 ### Next Steps
 
-- Implement core feature generation in `transformations/gaps.py` or new module
-- Create `DealPredictor` class extending `PredictionModel`
-- Wire into prediction pipeline scripts
+- Run the SQL statements in `docs/reference/schemas/deal_tables.md` to create Supabase tables
+- Test the model with a single band (e.g., Goose)
 - Run backtests and compare against Notebook and CK+ models
+- Review predictions via admin tools
 - Enable website visibility upon approval
 
 ### Rationale

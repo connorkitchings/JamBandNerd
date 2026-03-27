@@ -37,6 +37,7 @@ from src.jambandnerd.db.operations import (
 )
 from src.jambandnerd.models.accuracy import aggregate_metrics, compute_per_show_metrics
 from src.jambandnerd.models.ckplus.model import CKPlusPredictor
+from src.jambandnerd.models.deal import DealPredictor
 from src.jambandnerd.models.notebook.model import NotebookPredictor
 from src.jambandnerd.models.serialization import serialize_predictions
 from src.jambandnerd.transformations.gaps import generate_model_data
@@ -110,6 +111,8 @@ def run_backtest(
         predictor = NotebookPredictor()
     elif model == "ckplus":
         predictor = CKPlusPredictor(band=band)
+    elif model == "deal":
+        predictor = DealPredictor(band=band)
     else:
         raise ValueError(f"Invalid model: {model}")
     model_version = MODEL_VERSIONS[model]
@@ -152,6 +155,9 @@ def run_backtest(
 
             if model == "notebook":
                 preds, _ = predictor.predict(model_data=model_data, top_k=50)
+            elif model == "deal":
+                predictor.train(model_data)
+                preds = predictor.predict(model_data=model_data, top_k=50)
             else:
                 preds = predictor.predict(model_data=model_data, top_k=50)
 
@@ -258,7 +264,7 @@ def main() -> None:
         "--model",
         type=str,
         required=True,
-        choices=["notebook", "ckplus"],
+        choices=["notebook", "ckplus", "deal"],
         help="The model to backtest.",
     )
     parser.add_argument("--start", help="Start date for backtest window (YYYY-MM-DD).")

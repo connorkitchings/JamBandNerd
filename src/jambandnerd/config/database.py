@@ -11,6 +11,7 @@ RAW_TABLE_SUFFIX: Final[str] = "_raw"
 PREDICTION_TABLES: Final[dict[str, str]] = {
     "notebook": "predictions_notebook",
     "ckplus": "predictions_ckplus",
+    "deal": "predictions_deal",
 }
 
 # Derived per-song prediction projection table
@@ -23,5 +24,6 @@ HISTORICAL_PREDICTION_RUNS_TABLE: Final[str] = "historical_prediction_runs"
 ACCURACY_TABLES: Final[dict[str, str]] = {
     "notebook": "notebook_accuracy",
     "ckplus": "accuracy_ckplus",
+    "deal": "accuracy_deal",
     "per_show": "accuracy_per_show",
 }

@@ -30,15 +30,16 @@ sys.path.insert(0, project_root)
 
 from scripts.common import fetch_table, prepare_band_data, resolve_reference_date
 from src.jambandnerd.config import MODEL_VERSIONS, PREDICTION_TABLES
+from src.jambandnerd.config.bands import get_active_bands
 from src.jambandnerd.db.operations import (
     replace_prediction_projection,
     upsert_dataframe,
 )
 from src.jambandnerd.models.ckplus.model import CKPlusPredictor
+from src.jambandnerd.models.deal import DealPredictor
 from src.jambandnerd.models.notebook.model import NotebookPredictor
 from src.jambandnerd.models.serialization import serialize_predictions
 from src.jambandnerd.transformations.gaps import generate_model_data
-from src.jambandnerd.config.bands import get_active_bands
 
 
 class NpEncoder(json.JSONEncoder):
@@ -57,7 +58,11 @@ class NpEncoder(json.JSONEncoder):
 
 
 def generate_predictions(
-    band: str, model: str, date_str: str | None, exclusion_window: int
+    band: str,
+    model: str,
+    date_str: str | None,
+    exclusion_window: int,
+    retrain: bool = False,
 ):
     """Generate and save predictions for a given band and model."""
     band = band.lower()
@@ -110,6 +115,15 @@ def generate_predictions(
         print(f"{log_prefix} -------------------------")
     elif model == "ckplus":
         predictor = CKPlusPredictor(band=band)
+        predictions = predictor.predict(model_data=model_data, top_k=50)
+    elif model == "deal":
+        predictor = DealPredictor(band=band)
+        if retrain:
+            print(f"{log_prefix} Force retrain enabled, clearing model cache...")
+            model_path = predictor._get_model_path(band)
+            if model_path.exists():
+                model_path.unlink()
+        predictor.train(model_data)
         predictions = predictor.predict(model_data=model_data, top_k=50)
 
     if not predictions:
@@ -168,8 +182,13 @@ def main() -> None:
         "--model",
         type=str,
         required=True,
-        choices=["notebook", "ckplus"],
+        choices=["notebook", "ckplus", "deal"],
         help="The model to use for predictions.",
+    )
+    parser.add_argument(
+        "--retrain",
+        action="store_true",
+        help="Force retrain the Deal model (only applicable for deal model).",
     )
     parser.add_argument(
         "--date",
@@ -188,6 +207,7 @@ def main() -> None:
         model=args.model,
         date_str=args.date,
         exclusion_window=args.exclusion_window,
+        retrain=args.retrain,
     )
 
 

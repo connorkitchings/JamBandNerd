@@ -36,4 +36,28 @@ RETIREMENT_GAPS: Final[dict[str, int]] = {
 MODEL_VERSIONS: Final[dict[str, str]] = {
     "notebook": "notebook_v1",
     "ckplus": "ckplus_v1",
+    "deal": "deal_v1",
 }
+
+# Enabled models for website (deal hidden until approved)
+ENABLED_MODELS: Final[list[str]] = ["notebook", "ckplus"]
+
+# Deal model-specific configuration
+DEAL_MIN_PLAYS_THRESHOLD: Final[int] = 5
+DEAL_RETIREMENT_GAP: Final[dict[str, int]] = {
+    "goose": 100,
+    "phish": 150,
+    "wsp": 150,
+    "billy": 150,
+    "um": 150,
+    "eggy": 120,
+    "default": 150,
+}
+
+# Deal model hyperparameters
+DEAL_MAX_DEPTH: Final[int] = 6
+DEAL_ETA: Final[float] = 0.1
+DEAL_NROUNDS: Final[int] = 100
+
+# Deal retraining interval (days)
+DEAL_RETRAIN_INTERVAL_DAYS: Final[int] = 7

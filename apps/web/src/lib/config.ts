@@ -3,15 +3,25 @@ export const MODEL_CONFIG = {
     displayName: "Notebook",
     explanation:
       "Frequency-based model focused on songs active in the recent rotation while excluding the last three shows.",
+    enabled: true,
   },
   ckplus: {
     displayName: "CK+",
     explanation:
       "Gap-based model that ranks songs by how overdue they are relative to their historical cadence.",
+    enabled: true,
+  },
+  deal: {
+    displayName: "Deal",
+    explanation:
+      "ML-based model using XGBoost to learn patterns in song rotation and provide probability rankings.",
+    enabled: false, // Hidden until approved
   },
 } as const;
 
-export const ACTIVE_MODELS = Object.keys(MODEL_CONFIG) as ModelSlug[];
+export const ACTIVE_MODELS = Object.keys(MODEL_CONFIG).filter(
+  (key) => MODEL_CONFIG[key as ModelSlug].enabled
+) as ModelSlug[];
 
 export const DEFAULT_BAND_SLUG = "goose";
 
