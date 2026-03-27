@@ -6,11 +6,11 @@ from src.jambandnerd.models.registry import (
     build_predictor,
     get_aggregate_accuracy_table,
     get_model_definition,
-    list_aggregate_accuracy_models,
-    list_models,
     list_accuracy_validation_models,
+    list_aggregate_accuracy_models,
     list_backfill_models,
     list_model_slugs,
+    list_models,
     list_pipeline_models,
     list_web_models,
 )

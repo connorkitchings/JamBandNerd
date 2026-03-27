@@ -5,20 +5,20 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Callable, Sequence
 
-from src.jambandnerd.models.base import PredictionModel
-from src.jambandnerd.models.ckplus.model import CKPlusPredictor
-from src.jambandnerd.models.ckplus.serialization import (
+from jambandnerd.models.base import PredictionModel
+from jambandnerd.models.ckplus.model import CKPlusPredictor
+from jambandnerd.models.ckplus.serialization import (
     serialize_predictions as serialize_ckplus_predictions,
 )
-from src.jambandnerd.models.deal.model import DealPredictor
-from src.jambandnerd.models.deal.serialization import (
+from jambandnerd.models.deal.model import DealPredictor
+from jambandnerd.models.deal.serialization import (
     serialize_predictions as serialize_deal_predictions,
 )
-from src.jambandnerd.models.notebook.model import NotebookPredictor
-from src.jambandnerd.models.notebook.serialization import (
+from jambandnerd.models.metadata import MODEL_METADATA, ModelMetadata
+from jambandnerd.models.notebook.model import NotebookPredictor
+from jambandnerd.models.notebook.serialization import (
     serialize_predictions as serialize_notebook_predictions,
 )
-from src.jambandnerd.models.metadata import MODEL_METADATA, ModelMetadata
 
 PredictionSerializer = Callable[[Sequence[Any]], list[dict[str, Any]]]
 

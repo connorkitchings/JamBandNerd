@@ -3,7 +3,6 @@ from __future__ import annotations
 from dataclasses import replace
 from datetime import date
 
-import pandas as pd
 import pytest
 
 from scripts import generate_predictions as module

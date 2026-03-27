@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Sequence
 
-from src.jambandnerd.models.registry import serialize_model_predictions
+from jambandnerd.models.registry import serialize_model_predictions
 
 
 def serialize_predictions(

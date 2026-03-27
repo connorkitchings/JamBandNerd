@@ -3,8 +3,6 @@ from __future__ import annotations
 from dataclasses import replace
 from datetime import date
 
-import pandas as pd
-
 from scripts import evaluate_deal_model as module
 from src.jambandnerd.models.registry import get_model_definition
 

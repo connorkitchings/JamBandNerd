@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Final
 
-from src.jambandnerd.models.metadata import MODEL_METADATA
+from jambandnerd.models.metadata import MODEL_METADATA
 
 # Tables suffix for raw data
 RAW_TABLE_SUFFIX: Final[str] = "_raw"

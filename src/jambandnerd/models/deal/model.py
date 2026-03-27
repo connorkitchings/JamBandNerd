@@ -11,7 +11,7 @@ from typing import Any, Dict, List, Optional
 import numpy as np
 import pandas as pd
 
-from src.jambandnerd.config import (
+from jambandnerd.config import (
     DEAL_EPOCHS,
     DEAL_L2_REGULARIZATION,
     DEAL_LEARNING_RATE,
@@ -21,9 +21,9 @@ from src.jambandnerd.config import (
     DEAL_RETRAIN_INTERVAL_DAYS,
     DEAL_TRAINING_WINDOW_SHOWS,
 )
-from src.jambandnerd.config.bands import get_excluded_songs
-from src.jambandnerd.models.base import PredictionModel
-from src.jambandnerd.transformations.gaps import ModelData
+from jambandnerd.config.bands import get_excluded_songs
+from jambandnerd.models.base import PredictionModel
+from jambandnerd.transformations.gaps import ModelData
 
 from .features import (
     DEAL_FEATURE_COLUMNS,

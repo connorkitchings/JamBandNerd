@@ -10,8 +10,8 @@ from typing import Any, Dict, List, Tuple
 import numpy as np
 import pandas as pd
 
-from src.jambandnerd.config import BAND_EXCLUSION_WINDOWS, EXCLUSION_WINDOW_DEFAULT
-from src.jambandnerd.transformations.gaps import ModelData
+from jambandnerd.config import BAND_EXCLUSION_WINDOWS, EXCLUSION_WINDOW_DEFAULT
+from jambandnerd.transformations.gaps import ModelData
 
 DEAL_FEATURE_COLUMNS: list[str] = [
     "current_gap",

@@ -46,7 +46,7 @@ def get_active_bands() -> Sequence[str]:
         return _cached_active_bands
 
     try:
-        from src.jambandnerd.db.operations import fetch_active_bands
+        from jambandnerd.db.operations import fetch_active_bands
 
         db_bands = fetch_active_bands()
         if db_bands:
@@ -63,7 +63,7 @@ def get_band_id_column(band: str) -> str:
     global _cached_band_id_columns
     if _cached_band_id_columns is None:
         try:
-            from src.jambandnerd.db.operations import fetch_active_bands
+            from jambandnerd.db.operations import fetch_active_bands
 
             db_bands = fetch_active_bands()
             if db_bands:

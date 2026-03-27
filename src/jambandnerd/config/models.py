@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Final
 
-from src.jambandnerd.models.metadata import MODEL_METADATA
+from jambandnerd.models.metadata import MODEL_METADATA
 
 # Top-K values for accuracy evaluation
 TOP_K_VALUES: Final[list[int]] = [10, 25, 50]

@@ -186,7 +186,7 @@ def generate_model_data(
 
     # Get band-specific exclusion window if band is provided
     if band:
-        from src.jambandnerd.config import (
+        from jambandnerd.config import (
             BAND_EXCLUSION_WINDOWS,
             EXCLUSION_WINDOW_DEFAULT,
         )
