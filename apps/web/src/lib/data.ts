@@ -18,6 +18,7 @@ import {
   selectUmUpcomingShowRow,
   type ShowDetails,
 } from "@/lib/next-show";
+import { selectLivePredictionSeedRow } from "@/lib/prediction-selection";
 import {
   buildVenueAnalyticsSnapshot,
   buildVenueKey,
@@ -407,6 +408,8 @@ async function fetchProjectedPredictionSnapshot(
     .eq("band", band)
     .eq("model_slug", model);
 
+  const todayIso = new Date().toISOString().slice(0, 10);
+
   if (referenceDate) {
     seedQuery = seedQuery.eq("reference_date", referenceDate);
   }
@@ -415,13 +418,28 @@ async function fetchProjectedPredictionSnapshot(
     .order("predicted_at", { ascending: false })
     .order("reference_date", { ascending: false })
     .order("rank", { ascending: true })
-    .limit(1);
+    .limit(referenceDate ? 1 : 100);
 
   if (seedError) {
     throw seedError;
   }
 
-  const seedRow = asRecord(seedRows?.[0]);
+  const seedRow = referenceDate
+    ? asRecord(seedRows?.[0])
+    : selectLivePredictionSeedRow(
+        (seedRows ?? [])
+          .map((item) => asRecord(item))
+          .filter((item): item is Record<string, unknown> => item !== null)
+          .map((row) => ({
+            reference_date:
+              typeof row.reference_date === "string" ? row.reference_date : null,
+            predicted_at:
+              typeof row.predicted_at === "string" ? row.predicted_at : null,
+            model_version:
+              typeof row.model_version === "string" ? row.model_version : null,
+          })),
+        { todayIso },
+      );
   const seedReferenceDate =
     seedRow && typeof seedRow.reference_date === "string"
       ? seedRow.reference_date
