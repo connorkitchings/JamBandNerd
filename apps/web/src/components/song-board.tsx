@@ -165,6 +165,11 @@ function TierDesktopTable({
             <th className="w-28 px-4 py-2.5 font-label text-[10px] font-medium uppercase tracking-[0.18rem] text-on-surface-variant text-right">
               Current Gap
             </th>
+            {!isCkPlus ? (
+              <th className="w-32 px-4 py-2.5 font-label text-[10px] font-medium uppercase tracking-[0.18rem] text-on-surface-variant text-right">
+                Plays Last Year
+              </th>
+            ) : null}
             {isCkPlus ? (
               <>
                 <th className="w-28 px-4 py-2.5 font-label text-[10px] font-medium uppercase tracking-[0.18rem] text-on-surface-variant text-right">
@@ -212,6 +217,11 @@ function TierDesktopTable({
                     {row.currentGap !== null ? row.currentGap : "—"}
                   </span>
                 </td>
+                {!isCkPlus ? (
+                  <td className="whitespace-nowrap px-4 py-3.5 text-right text-sm tabular-nums text-on-surface-variant">
+                    {row.playsPastYear !== null ? row.playsPastYear : "—"}
+                  </td>
+                ) : null}
                 {isCkPlus ? (
                   <>
                     <td className="whitespace-nowrap px-4 py-3.5 text-right text-sm tabular-nums text-on-surface-variant">
@@ -286,6 +296,9 @@ function TierMobileList({
                   {row.currentGap !== null
                     ? `${row.currentGap} ${row.currentGap === 1 ? "show" : "shows"} ago`
                     : "Current gap unknown"}
+                  {row.playsPastYear !== null
+                    ? ` · ${row.playsPastYear} play${row.playsPastYear === 1 ? "" : "s"} last year`
+                    : ""}
                   {row.lastPlayed ? ` · ${formatMMDDYYYY(row.lastPlayed)}` : ""}
                 </p>
               </div>
