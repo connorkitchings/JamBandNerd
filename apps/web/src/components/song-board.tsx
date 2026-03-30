@@ -162,14 +162,14 @@ function TierDesktopTable({
             >
               Song
             </th>
-            <th className="w-28 px-4 py-2.5 font-label text-[10px] font-medium uppercase tracking-[0.18rem] text-on-surface-variant text-right">
-              Current Gap
-            </th>
             {!isCkPlus ? (
               <th className="w-32 px-4 py-2.5 font-label text-[10px] font-medium uppercase tracking-[0.18rem] text-on-surface-variant text-right">
                 Plays Last Year
               </th>
             ) : null}
+            <th className="w-28 px-4 py-2.5 font-label text-[10px] font-medium uppercase tracking-[0.18rem] text-on-surface-variant text-right">
+              Current Gap
+            </th>
             {isCkPlus ? (
               <>
                 <th className="w-28 px-4 py-2.5 font-label text-[10px] font-medium uppercase tracking-[0.18rem] text-on-surface-variant text-right">
@@ -212,16 +212,16 @@ function TierDesktopTable({
                     {row.songName}
                   </span>
                 </td>
-                <td className="whitespace-nowrap px-4 py-3.5 text-right">
-                  <span className="rounded-full bg-surface-container px-2.5 py-1 font-mono text-xs font-medium text-on-surface-variant">
-                    {row.currentGap !== null ? row.currentGap : "—"}
-                  </span>
-                </td>
                 {!isCkPlus ? (
                   <td className="whitespace-nowrap px-4 py-3.5 text-right text-sm tabular-nums text-on-surface-variant">
                     {row.playsPastYear !== null ? row.playsPastYear : "—"}
                   </td>
                 ) : null}
+                <td className="whitespace-nowrap px-4 py-3.5 text-right">
+                  <span className="rounded-full bg-surface-container px-2.5 py-1 font-mono text-xs font-medium text-on-surface-variant">
+                    {row.currentGap !== null ? row.currentGap : "—"}
+                  </span>
+                </td>
                 {isCkPlus ? (
                   <>
                     <td className="whitespace-nowrap px-4 py-3.5 text-right text-sm tabular-nums text-on-surface-variant">
