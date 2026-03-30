@@ -37,6 +37,22 @@ def _parse_bands(*, bands_json: str | None, bands: list[str] | None) -> list[str
     return get_bands()
 
 
+def _load_band_statuses(status_files: Iterable[str] | None) -> list[dict[str, object]]:
+    if not status_files:
+        return []
+
+    statuses: list[dict[str, object]] = []
+    for path in status_files:
+        with open(path, encoding="utf-8") as handle:
+            payload = json.load(handle)
+        if not isinstance(payload, dict):
+            raise ValueError(f"Status file must decode to an object: {path}")
+        statuses.append(payload)
+
+    statuses.sort(key=lambda item: str(item.get("band") or ""))
+    return statuses
+
+
 def _completed_show_end_date(*, today: date | None = None) -> str:
     today = today or date.today()
     return (today - timedelta(days=1)).isoformat()
@@ -193,16 +209,63 @@ def build_prediction_coverage_lines(
     return lines
 
 
+def build_band_health_lines(statuses: Iterable[dict[str, object]]) -> list[str]:
+    statuses = list(statuses)
+    if not statuses:
+        return []
+
+    lines = [
+        "### Band Run Health",
+        "",
+        "| Band | State | Outcome | Missing Recent Setlists | Prediction Action | Notes |",
+        "| --- | --- | --- | --- | --- | --- |",
+    ]
+
+    for status in statuses:
+        band = str(status.get("band") or "").upper() or "UNKNOWN"
+        workflow_state = str(status.get("workflow_state") or "unknown")
+        outcome_code = str(status.get("outcome_code") or "unknown")
+        missing_count = str(status.get("missing_count") or "0")
+        prediction_action = str(status.get("prediction_action") or "pending")
+        notes = []
+
+        fallback_shows = int(status.get("fallback_shows_filled") or 0)
+        if fallback_shows:
+            notes.append(f"fallback shows filled={fallback_shows}")
+
+        request_blocked = int(status.get("request_blocked_missing_setlists") or 0)
+        if request_blocked:
+            notes.append(f"request-blocked recent setlists={request_blocked}")
+
+        collector_missing = int(status.get("collector_missing_setlists") or 0)
+        if collector_missing:
+            notes.append(f"collector gaps={collector_missing}")
+
+        failure_reason = str(status.get("failure_reason") or "").strip()
+        if failure_reason:
+            notes.append(failure_reason.replace("|", "/"))
+
+        notes_text = "; ".join(notes) if notes else "n/a"
+        lines.append(
+            f"| {band} | {workflow_state} | {outcome_code} | {missing_count} | {prediction_action} | {notes_text} |"
+        )
+
+    lines.append("")
+    return lines
+
+
 def render_summary(
     client,
     *,
     bands: Iterable[str],
+    band_statuses: Iterable[dict[str, object]] | None = None,
     days: int = 7,
     output: str = "markdown",
     today: date | None = None,
 ) -> str:
     bands = list(bands)
     sections = [
+        build_band_health_lines(band_statuses or []),
         build_data_quality_lines(client, bands=bands, days=days, today=today),
         build_prediction_coverage_lines(client, bands=bands, today=today),
     ]
@@ -233,6 +296,12 @@ def main() -> None:
         help="Band to include (repeat for multiple). Defaults to all discovered bands.",
     )
     parser.add_argument(
+        "--status-file",
+        dest="status_files",
+        action="append",
+        help="Path to a per-band run status JSON file for the workflow summary.",
+    )
+    parser.add_argument(
         "--days",
         type=int,
         default=7,
@@ -247,8 +316,17 @@ def main() -> None:
     args = parser.parse_args()
 
     bands = _parse_bands(bands_json=args.bands_json, bands=args.bands)
+    band_statuses = _load_band_statuses(args.status_files)
     client = get_supabase_client()
-    print(render_summary(client, bands=bands, days=args.days, output=args.output))
+    print(
+        render_summary(
+            client,
+            bands=bands,
+            band_statuses=band_statuses,
+            days=args.days,
+            output=args.output,
+        )
+    )
 
 
 if __name__ == "__main__":

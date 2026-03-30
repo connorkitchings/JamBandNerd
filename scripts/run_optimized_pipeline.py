@@ -219,7 +219,7 @@ def main():
     overall_start_time = time.time()
     log_with_timestamp("🚀 Starting JamBandNerd Pipeline Orchestrator")
 
-    all_bands = ["goose", "eggy", "phish", "wsp", "billy", "um"]
+    all_bands = list(get_active_bands())
     bands_to_process = all_bands if args.band == "all" else [args.band]
     results = {}
 

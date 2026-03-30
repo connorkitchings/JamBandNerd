@@ -5,6 +5,8 @@ normalizes the responses to the raw table schemas, and performs upserts into
 the `wsp_songs_raw`, `wsp_shows_raw`, and `wsp_setlists_raw` tables.
 """
 
+from __future__ import annotations
+
 import logging
 import os
 import sys
@@ -15,6 +17,7 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, project_root)
 
 from src.jambandnerd.data_collection.wsp.orchestration import process_wsp_data
+from src.jambandnerd.data_collection.wsp.status import CollectionStatus
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
@@ -26,7 +29,7 @@ def run_wsp_collection(
     year_start: int | None = None,
     year_end: int | None = None,
     full_backfill: bool = False,
-) -> None:
+) -> CollectionStatus:
     """Runs the Widespread Panic data collection pipeline."""
     if not full_backfill and year_start is None and year_end is None:
         current_year = datetime.now().year
@@ -37,20 +40,53 @@ def run_wsp_collection(
         )
 
     try:
-        process_wsp_data(
+        status = process_wsp_data(
             skip_existing_setlists=skip_existing_setlists,
             year_start=year_start,
             year_end=year_end,
             full_backfill=full_backfill,
         )
-        logging.info("✅ WSP collection completed successfully")
+        _write_github_outputs(status)
+        if status.workflow_state() == "degraded":
+            logging.warning("⚠️ WSP collection completed in degraded mode")
+        else:
+            logging.info("✅ WSP collection completed successfully")
+        return status
     except RuntimeError as e:
         logging.error(f"❌ WSP collection failed: {e}")
+        _write_failure_github_outputs(str(e))
         sys.exit(1)
     except Exception as e:
         logging.error(f"❌ Unexpected error during WSP collection: {e}")
         logging.exception("Full traceback:")
+        _write_failure_github_outputs(str(e))
         sys.exit(1)
+
+
+def _write_github_outputs(status: CollectionStatus) -> None:
+    """Write structured outputs for GitHub Actions consumers when available."""
+    github_output = os.environ.get("GITHUB_OUTPUT")
+    if not github_output:
+        return
+
+    with open(github_output, "a", encoding="utf-8") as handle:
+        for key, value in status.as_github_outputs().items():
+            handle.write(f"{key}={value}\n")
+
+
+def _write_failure_github_outputs(reason: str) -> None:
+    """Write explicit failure outputs when the runner exits non-zero."""
+    github_output = os.environ.get("GITHUB_OUTPUT")
+    if not github_output:
+        return
+
+    with open(github_output, "a", encoding="utf-8") as handle:
+        handle.write("workflow_state=failed\n")
+        handle.write("outcome_code=failed_internal\n")
+        handle.write("should_retry_collection=true\n")
+        handle.write("recent_data_usable=false\n")
+        handle.write("prediction_action=skipped\n")
+        handle.write(f"failure_reason={reason}\n")
 
 
 if __name__ == "__main__":
