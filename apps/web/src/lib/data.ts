@@ -14,6 +14,11 @@ import {
 } from "@/lib/config";
 import { getSupabaseServerClient, hasSupabaseEnv } from "@/lib/supabase/server";
 import {
+  buildShowDetails,
+  selectUmUpcomingShowRow,
+  type ShowDetails,
+} from "@/lib/next-show";
+import {
   buildVenueAnalyticsSnapshot,
   buildVenueKey,
   summarizeVenueOptions,
@@ -24,6 +29,7 @@ import {
 } from "@/lib/venue-analytics";
 export type { ModelAgreement, ModelAgreementTier } from "@/lib/model-agreement";
 export { calculateModelAgreement } from "@/lib/model-agreement";
+export type { ShowDetails } from "@/lib/next-show";
 
 type JsonPrediction = Record<string, unknown>;
 type ProjectionRow = Record<string, unknown>;
@@ -73,15 +79,6 @@ export type SetlistSong = {
 export type SetlistSnapshot = {
   showDetails: Record<string, unknown> | null;
   songs: SetlistSong[];
-};
-
-export type ShowDetails = {
-  venueName: string | null;
-  city: string | null;
-  state: string | null;
-  country: string | null;
-  showDate: string | null;
-  raw: Record<string, unknown>;
 };
 
 export type ExplorerSnapshot = {
@@ -205,6 +202,10 @@ function getVenueRegionFromRow(row: Record<string, unknown> | null): string | nu
     return null;
   }
 
+  if (typeof row.region === "string") {
+    return row.region;
+  }
+
   if (typeof row.venue_state === "string") {
     return row.venue_state;
   }
@@ -222,37 +223,6 @@ function getVenueRegionFromRow(row: Record<string, unknown> | null): string | nu
   }
 
   return null;
-}
-
-function buildShowDetails(row: Record<string, unknown>): ShowDetails {
-  return {
-    venueName:
-      typeof row.venue_name === "string"
-        ? row.venue_name
-        : typeof row.venue === "string"
-          ? row.venue
-          : null,
-    city:
-      typeof row.venue_city === "string"
-        ? row.venue_city
-        : typeof row.city === "string"
-          ? row.city
-          : null,
-    state:
-      typeof row.venue_state === "string"
-        ? row.venue_state
-        : typeof row.state === "string"
-          ? row.state
-          : null,
-    country:
-      typeof row.venue_country === "string"
-        ? row.venue_country
-        : typeof row.country === "string"
-          ? row.country
-          : null,
-    showDate: typeof row.show_date === "string" ? row.show_date : null,
-    raw: row,
-  };
 }
 
 const SUPABASE_PAGE_SIZE = 1000;
@@ -1217,6 +1187,33 @@ export const getNextShowDetails = cache(
 
     try {
       const todayIso = new Date().toISOString().slice(0, 10);
+      if (bandState.band === "um") {
+        const { data: upcomingData, error: upcomingError } = await client
+          .from("um_upcoming_shows")
+          .select("*")
+          .gte("starts_at_local", todayIso)
+          .order("starts_at_local", { ascending: true })
+          .order("starts_at", { ascending: true })
+          .limit(25);
+
+        if (upcomingError) {
+          return { status: "error", message: upcomingError.message };
+        }
+
+        const upcomingRows = (upcomingData ?? [])
+          .map((item) => asRecord(item))
+          .filter((item): item is Record<string, unknown> => item !== null);
+        const upcomingRow = selectUmUpcomingShowRow(upcomingRows);
+
+        if (upcomingRow) {
+          return {
+            status: "ready",
+            band: bandState.band,
+            show: buildShowDetails(upcomingRow),
+          };
+        }
+      }
+
       const { data, error } = await client
         .from(bandState.bandEntry.showsTable)
         .select("*")
