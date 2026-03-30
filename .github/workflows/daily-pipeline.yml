@@ -111,43 +111,99 @@ jobs:
         run: uv run playwright install --with-deps firefox
 
       - name: Run Data Collection
+        id: collection
         run: |
           echo "::group::Collecting data for ${{ matrix.band }}"
-          
-          # Verify collection script exists
-          SCRIPT_PATH="scripts/run_${{ matrix.band }}_collection.py"
+
+          BAND="${{ matrix.band }}"
+          SCRIPT_PATH="scripts/run_${BAND}_collection.py"
           if [[ ! -f "$SCRIPT_PATH" ]]; then
             echo "::error::Collection script not found: $SCRIPT_PATH"
             exit 1
           fi
-          
-          # Use retry logic for all bands for consistency
+
           MAX_RETRIES=3
           RETRY_COUNT=0
           RETRY_DELAY=30
-          
-          while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-            echo "Attempt $((RETRY_COUNT + 1)) of $MAX_RETRIES for ${{ matrix.band }} collection"
-            
-            if uv run python "$SCRIPT_PATH"; then
-              echo "✅ Collection for ${{ matrix.band }} successful"
-              break
-            else
+          STEP_OUTPUT="$GITHUB_OUTPUT"
+          ATTEMPT_OUTPUT="$(mktemp)"
+
+          if [[ "$BAND" == "wsp" ]]; then
+            FINAL_EXIT_CODE=0
+            WORKFLOW_STATE="failed"
+            SHOULD_RETRY="true"
+
+            while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+              echo "Attempt $((RETRY_COUNT + 1)) of $MAX_RETRIES for ${BAND} collection"
+              : > "$ATTEMPT_OUTPUT"
+
+              set +e
+              GITHUB_OUTPUT="$ATTEMPT_OUTPUT" uv run python "$SCRIPT_PATH"
+              FINAL_EXIT_CODE=$?
+              set -e
+
+              WORKFLOW_STATE="$(grep '^workflow_state=' "$ATTEMPT_OUTPUT" | tail -n 1 | cut -d= -f2-)"
+              SHOULD_RETRY="$(grep '^should_retry_collection=' "$ATTEMPT_OUTPUT" | tail -n 1 | cut -d= -f2-)"
+
+              if [[ $FINAL_EXIT_CODE -eq 0 ]]; then
+                if [[ "$WORKFLOW_STATE" == "degraded" ]]; then
+                  echo "::warning::Collection for ${BAND} completed in degraded mode"
+                else
+                  echo "✅ Collection for ${BAND} successful"
+                fi
+                break
+              fi
+
+              if [[ "$SHOULD_RETRY" != "true" ]]; then
+                echo "::warning::Collection for ${BAND} produced a non-retryable outcome"
+                break
+              fi
+
               RETRY_COUNT=$((RETRY_COUNT + 1))
               if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
-                echo "⚠️ Collection for ${{ matrix.band }} failed, retrying in ${RETRY_DELAY} seconds..."
+                echo "⚠️ Collection for ${BAND} failed, retrying in ${RETRY_DELAY} seconds..."
                 sleep $RETRY_DELAY
               else
-                echo "::error::Collection for ${{ matrix.band }} failed after $MAX_RETRIES attempts"
+                echo "::error::Collection for ${BAND} failed after $MAX_RETRIES attempts"
+              fi
+            done
+
+            cat "$ATTEMPT_OUTPUT" >> "$STEP_OUTPUT"
+
+            if [[ $FINAL_EXIT_CODE -ne 0 && "${WORKFLOW_STATE:-failed}" == "failed" ]]; then
+              exit $FINAL_EXIT_CODE
+            fi
+          else
+            while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+              echo "Attempt $((RETRY_COUNT + 1)) of $MAX_RETRIES for ${BAND} collection"
+
+              if uv run python "$SCRIPT_PATH"; then
+                echo "✅ Collection for ${BAND} successful"
+                break
+              fi
+
+              RETRY_COUNT=$((RETRY_COUNT + 1))
+              if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+                echo "⚠️ Collection for ${BAND} failed, retrying in ${RETRY_DELAY} seconds..."
+                sleep $RETRY_DELAY
+              else
+                echo "::error::Collection for ${BAND} failed after $MAX_RETRIES attempts"
                 exit 1
               fi
-            fi
-          done
+            done
+
+            echo "workflow_state=success" >> "$STEP_OUTPUT"
+            echo "outcome_code=success" >> "$STEP_OUTPUT"
+            echo "should_retry_collection=false" >> "$STEP_OUTPUT"
+            echo "recent_data_usable=true" >> "$STEP_OUTPUT"
+            echo "prediction_action=generated" >> "$STEP_OUTPUT"
+          fi
           
           echo "::endgroup::"
 
       - name: Verify Data Freshness
         id: data_check
+        if: success() || steps.collection.outputs.workflow_state == 'degraded'
         env:
           BAND: ${{ matrix.band }}
         run: |
@@ -163,11 +219,18 @@ jobs:
           MISSING_COUNT: ${{ steps.data_check.outputs.missing_count }}
         run: |
           COUNT=${MISSING_COUNT:-0}
-          echo "::error::Critical: ${COUNT} recent ${{ matrix.band }} shows are missing setlist data!"
-          echo "This may cause predictions to include songs that were recently played."
-          echo "Consider running the collection script manually to fetch missing setlists."
+          if [[ "${{ matrix.band }}" == "wsp" && "${{ steps.collection.outputs.workflow_state }}" == "degraded" ]]; then
+            echo "::warning::WSP degraded: ${COUNT} recent completed shows are missing setlist data."
+            echo "Predictions will be reused or skipped rather than failing the full daily pipeline."
+          else
+            echo "::error::Critical: ${COUNT} recent ${{ matrix.band }} shows are missing setlist data!"
+            echo "This may cause predictions to include songs that were recently played."
+            echo "Consider running the collection script manually to fetch missing setlists."
+          fi
           
       - name: Generate Predictions (Notebook & CK+)
+        id: predictions
+        if: steps.collection.outputs.workflow_state != 'degraded'
         run: |
           echo "::group::Generating predictions for ${{ matrix.band }}"
           
@@ -190,13 +253,16 @@ jobs:
           echo "::endgroup::"
 
       - name: Validate Prediction Tables
+        id: prediction_validation
+        if: steps.collection.outputs.workflow_state != 'degraded'
         run: |
           echo "::group::Validating prediction table freshness for ${{ matrix.band }}"
           uv run python scripts/validate_prediction_tables.py --band ${{ matrix.band }} --max-age-hours 72
           echo "::endgroup::"
 
       - name: Run Backtest and Calculate Aggregate Accuracy
-        if: github.event.inputs.skip_accuracy != 'true'
+        id: accuracy_calc
+        if: github.event.inputs.skip_accuracy != 'true' && steps.collection.outputs.workflow_state != 'degraded'
         run: |
           echo "::group::Running backtest for ${{ matrix.band }}"
           
@@ -215,11 +281,95 @@ jobs:
           echo "::endgroup::"
 
       - name: Validate Accuracy Tables
-        if: github.event.inputs.skip_accuracy != 'true'
+        id: accuracy_validation
+        if: github.event.inputs.skip_accuracy != 'true' && steps.collection.outputs.workflow_state != 'degraded'
         run: |
           echo "::group::Validating accuracy tables for ${{ matrix.band }}"
           uv run python scripts/validate_accuracy_tables.py --band ${{ matrix.band }} --max-age-hours 72
           echo "::endgroup::"
+
+      - name: Write Band Status
+        if: always()
+        env:
+          BAND: ${{ matrix.band }}
+          WORKFLOW_STATE: ${{ steps.collection.outputs.workflow_state || (job.status == 'success' && 'success' || 'failed') }}
+          OUTCOME_CODE: ${{ steps.collection.outputs.outcome_code || (job.status == 'success' && 'success' || 'failed_internal') }}
+          RECENT_DATA_USABLE: ${{ steps.collection.outputs.recent_data_usable || 'false' }}
+          FALLBACK_SHOWS_FILLED: ${{ steps.collection.outputs.fallback_shows_filled || '0' }}
+          FALLBACK_SETLISTS_COLLECTED: ${{ steps.collection.outputs.fallback_setlists_collected || '0' }}
+          COLLECTOR_MISSING_SETLISTS: ${{ steps.collection.outputs.collector_missing_setlists || '0' }}
+          REQUEST_BLOCKED_MISSING_SETLISTS: ${{ steps.collection.outputs.request_blocked_missing_setlists || '0' }}
+          UPSTREAM_MISSING_SETLISTS: ${{ steps.collection.outputs.upstream_missing_setlists || '0' }}
+          FALLBACK_AVAILABLE_MISSING_SETLISTS: ${{ steps.collection.outputs.fallback_available_missing_setlists || '0' }}
+          FAILURE_REASON: ${{ steps.collection.outputs.failure_reason || '' }}
+          MISSING_DATA: ${{ steps.data_check.outputs.missing_data || 'false' }}
+          MISSING_COUNT: ${{ steps.data_check.outputs.missing_count || '0' }}
+          PREDICTIONS_OUTCOME: ${{ steps.predictions.outcome || '' }}
+          ACCURACY_SKIPPED: ${{ github.event.inputs.skip_accuracy == 'true' }}
+        run: |
+          mkdir -p .github/workflow-status
+          python - <<'PY'
+          import json
+          import os
+
+          workflow_state = os.environ.get("WORKFLOW_STATE", "failed")
+          missing_data = os.environ.get("MISSING_DATA", "false") == "true"
+          recent_data_usable = os.environ.get("RECENT_DATA_USABLE", "false") == "true"
+
+          if workflow_state == "degraded":
+              prediction_action = "reused_existing" if recent_data_usable and not missing_data else "skipped"
+          elif os.environ.get("PREDICTIONS_OUTCOME") == "success":
+              prediction_action = "generated"
+          elif os.environ.get("WORKFLOW_STATE") == "failed":
+              prediction_action = "skipped"
+          else:
+              prediction_action = os.environ.get("prediction_action", "pending")
+
+          payload = {
+              "band": os.environ["BAND"],
+              "workflow_state": workflow_state,
+              "outcome_code": os.environ.get("OUTCOME_CODE", "failed_internal"),
+              "recent_data_usable": recent_data_usable,
+              "missing_data": missing_data,
+              "missing_count": int(os.environ.get("MISSING_COUNT", "0") or 0),
+              "prediction_action": prediction_action,
+              "fallback_shows_filled": int(os.environ.get("FALLBACK_SHOWS_FILLED", "0") or 0),
+              "fallback_setlists_collected": int(os.environ.get("FALLBACK_SETLISTS_COLLECTED", "0") or 0),
+              "collector_missing_setlists": int(os.environ.get("COLLECTOR_MISSING_SETLISTS", "0") or 0),
+              "request_blocked_missing_setlists": int(os.environ.get("REQUEST_BLOCKED_MISSING_SETLISTS", "0") or 0),
+              "upstream_missing_setlists": int(os.environ.get("UPSTREAM_MISSING_SETLISTS", "0") or 0),
+              "fallback_available_missing_setlists": int(os.environ.get("FALLBACK_AVAILABLE_MISSING_SETLISTS", "0") or 0),
+              "failure_reason": os.environ.get("FAILURE_REASON", ""),
+              "accuracy_skipped": os.environ.get("ACCURACY_SKIPPED", "false") == "true",
+          }
+
+          path = f".github/workflow-status/{payload['band']}.json"
+          with open(path, "w", encoding="utf-8") as handle:
+              json.dump(payload, handle)
+          print(f"Wrote {path}")
+          PY
+
+      - name: Upload Band Status
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: band-status-${{ matrix.band }}
+          path: .github/workflow-status/${{ matrix.band }}.json
+          if-no-files-found: error
+
+      - name: Append Band Summary
+        if: always()
+        env:
+          BAND: ${{ matrix.band }}
+          WORKFLOW_STATE: ${{ steps.collection.outputs.workflow_state || (job.status == 'success' && 'success' || 'failed') }}
+          OUTCOME_CODE: ${{ steps.collection.outputs.outcome_code || (job.status == 'success' && 'success' || 'failed_internal') }}
+          MISSING_COUNT: ${{ steps.data_check.outputs.missing_count || '0' }}
+        run: |
+          echo "### ${BAND^^}" >> $GITHUB_STEP_SUMMARY
+          echo "- State: ${WORKFLOW_STATE}" >> $GITHUB_STEP_SUMMARY
+          echo "- Outcome: ${OUTCOME_CODE}" >> $GITHUB_STEP_SUMMARY
+          echo "- Missing recent setlists: ${MISSING_COUNT}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
 
   pipeline-summary:
     name: Pipeline Summary
@@ -235,6 +385,13 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+
+      - name: Download band status artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: band-status-*
+          path: .github/workflow-status
+          merge-multiple: true
         
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -253,19 +410,43 @@ jobs:
         run: |
           echo "## Daily Pipeline Summary - $(date)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          
-          if [[ "${{ needs.daily-pipeline.result }}" == "success" ]]; then
-            echo "✅ **All band pipelines completed successfully!**" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "⚠️ **One or more band pipelines failed, were skipped, or were cancelled.**" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "Please check the logs for the 'daily-pipeline' job matrix for details." >> $GITHUB_STEP_SUMMARY
-          fi
+
+          python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          from pathlib import Path
+
+          status_dir = Path(".github/workflow-status")
+          statuses = []
+          if status_dir.exists():
+              for path in sorted(status_dir.glob("*.json")):
+                  with open(path, encoding="utf-8") as handle:
+                      statuses.append(json.load(handle))
+
+          has_failed = any(item.get("workflow_state") == "failed" for item in statuses)
+          has_degraded = any(item.get("workflow_state") == "degraded" for item in statuses)
+
+          if has_failed:
+              print("⚠️ **One or more band pipelines failed.**")
+              print("")
+              print("Please check the failed band jobs and the run health table below.")
+          elif has_degraded:
+              print("⚠️ **All band pipelines completed, but at least one band ran in degraded mode.**")
+              print("")
+              print("Review the band run health table below for partial upstream issues.")
+          else:
+              print("✅ **All band pipelines completed successfully.**")
+          PY
 
       - name: Generate monitoring summary
         run: |
           echo "" >> $GITHUB_STEP_SUMMARY
-          uv run python scripts/generate_pipeline_summary.py --bands-json "$BAND_LIST_JSON" >> $GITHUB_STEP_SUMMARY
+          STATUS_ARGS=()
+          for file in .github/workflow-status/*.json; do
+            if [[ -f "$file" ]]; then
+              STATUS_ARGS+=(--status-file "$file")
+            fi
+          done
+          uv run python scripts/generate_pipeline_summary.py --bands-json "$BAND_LIST_JSON" "${STATUS_ARGS[@]}" >> $GITHUB_STEP_SUMMARY
           
       - name: Add next steps
         run: |

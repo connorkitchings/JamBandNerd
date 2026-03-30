@@ -39,7 +39,9 @@ class TestCollectionStatus:
         status.record_403_error("shows endpoint")
         status.songs_collected = 0
         status.shows_collected = 0
-        assert status.should_fail() is True
+        assert status.should_fail() is False
+        assert status.workflow_state() == "degraded"
+        assert status.outcome_code() == "degraded_upstream_blocked"
 
     def test_should_not_fail_with_403_and_only_songs(self):
         """Test that collection succeeds when 403s occur but songs were collected."""
@@ -72,7 +74,9 @@ class TestCollectionStatus:
         for i in range(6):  # More than threshold of 5
             status.record_http_error(f"endpoint {i}", 500)
         status.shows_collected = 0
-        assert status.should_fail() is True
+        assert status.should_fail() is False
+        assert status.workflow_state() == "degraded"
+        assert status.outcome_code() == "degraded_upstream_blocked"
 
     def test_should_not_fail_with_few_http_errors(self):
         """Test that collection succeeds with few HTTP errors."""
@@ -101,6 +105,37 @@ class TestCollectionStatus:
         assert "Setlists collected: 0" in summary
         assert "Recent failures:" in summary
 
+    def test_collector_missing_setlists_is_internal_failure(self):
+        """Collector gaps should remain hard failures."""
+        status = CollectionStatus()
+        status.collector_missing_setlists = 1
+
+        assert status.should_fail() is True
+        assert status.workflow_state() == "failed"
+        assert status.outcome_code() == "failed_internal"
+
+    def test_request_blocked_recent_gap_is_degraded_stale(self):
+        """Recent blocked setlists should classify as degraded stale data."""
+        status = CollectionStatus()
+        status.request_blocked_missing_setlists = 2
+
+        assert status.should_fail() is False
+        assert status.workflow_state() == "degraded"
+        assert status.outcome_code() == "degraded_upstream_blocked_stale"
+
+    def test_as_github_outputs_reports_machine_readable_state(self):
+        """GitHub outputs should reflect the workflow-consumable status."""
+        status = CollectionStatus()
+        status.record_403_error("shows endpoint")
+        status.songs_collected = 100
+        status.set_prediction_action("reused_existing")
+
+        outputs = status.as_github_outputs()
+
+        assert outputs["workflow_state"] == "success"
+        assert outputs["outcome_code"] == "success"
+        assert outputs["prediction_action"] == "reused_existing"
+
     def test_get_failure_summary_limits_failures(self):
         """Test that failure summary only shows last 5 failures."""
         status = CollectionStatus()
@@ -122,6 +157,7 @@ class TestCollectionStatus:
 
         summary = status.get_success_summary()
         assert "WSP collection completed successfully" in summary
+        assert "Outcome code: success" in summary
         assert "Songs collected: 100" in summary
         assert "Shows collected: 50" in summary
         assert "Setlists collected: 200" in summary
@@ -140,3 +176,17 @@ class TestCollectionStatus:
         assert "Some errors occurred but data was still collected" in summary
         assert "403 errors: 1" in summary
         assert "Other HTTP errors: 1" in summary
+
+    def test_get_degraded_summary(self):
+        """Degraded summary should include fallback and prediction behavior."""
+        status = CollectionStatus()
+        status.record_403_error("shows page")
+        status.fallback_shows_filled = 2
+        status.set_prediction_action("reused_existing")
+
+        summary = status.get_degraded_summary()
+
+        assert "WSP collection degraded due to upstream blocking" in summary
+        assert "Outcome code: degraded_upstream_blocked" in summary
+        assert "TourWrangler fallback shows filled: 2" in summary
+        assert "Prediction action: reused_existing" in summary

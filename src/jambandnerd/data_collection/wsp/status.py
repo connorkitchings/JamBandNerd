@@ -1,5 +1,7 @@
 """Status tracking for WSP data collection to determine success/failure."""
 
+from __future__ import annotations
+
 import logging
 from typing import List
 
@@ -30,6 +32,69 @@ class CollectionStatus:
         self.request_blocked_missing_setlists = 0
         self.fallback_available_missing_setlists = 0
         self.critical_failures: List[str] = []
+        self.prediction_action = "pending"
+
+    def _has_systemic_http_failure(self) -> bool:
+        """Return True when the collector appears blocked upstream."""
+        if (
+            self.http_403_errors > 0
+            and self.songs_collected == 0
+            and self.shows_collected == 0
+        ):
+            logger.warning(
+                "Collection hit 403s with zero songs and zero shows collected"
+            )
+            return True
+
+        if self.other_http_errors > 5 and self.shows_collected == 0:
+            logger.warning(
+                "Collection hit %s HTTP errors with zero shows collected",
+                self.other_http_errors,
+            )
+            return True
+
+        return False
+
+    def has_recent_data_gap(self) -> bool:
+        """Return True when recent completed-show data is still incomplete."""
+        return (
+            self.upstream_missing_setlists > 0
+            or self.collector_missing_setlists > 0
+            or self.request_blocked_missing_setlists > 0
+            or self.fallback_available_missing_setlists > 0
+        )
+
+    def outcome_code(self) -> str:
+        """Classify the collection run for CI/workflow branching."""
+        if self.collector_missing_setlists > 0:
+            return "failed_internal"
+
+        if self.request_blocked_missing_setlists > 0:
+            return "degraded_upstream_blocked_stale"
+
+        if (
+            self.upstream_missing_setlists > 0
+            or self.fallback_available_missing_setlists > 0
+        ):
+            return "degraded_upstream_blocked_stale"
+
+        if self._has_systemic_http_failure():
+            return "degraded_upstream_blocked"
+
+        return "success"
+
+    def workflow_state(self) -> str:
+        """Return the coarse workflow state for summaries."""
+        outcome = self.outcome_code()
+        if outcome == "success":
+            return "success"
+        if outcome.startswith("degraded_"):
+            return "degraded"
+        return "failed"
+
+    def should_retry_collection(self) -> bool:
+        """Return True when retrying the whole collector run still makes sense."""
+        return self.workflow_state() == "failed"
 
     def record_403_error(self, context: str) -> None:
         """Record a 403 Forbidden error with context.
@@ -68,31 +133,34 @@ class CollectionStatus:
 
         Returns:
             True if the collection should fail (exit non-zero), False otherwise
-
-        Logic:
-            - If we have 403 errors and collected zero songs AND zero shows, fail
-            - If we have many other HTTP errors (>5) and collected zero shows, fail
-            - Otherwise, succeed (there may be legitimate cases of no new data)
         """
-        # If we have 403 errors and collected zero data, fail
-        if self.http_403_errors > 0:
-            if self.songs_collected == 0 and self.shows_collected == 0:
-                logger.warning(
-                    f"Collection should fail: {self.http_403_errors} 403 errors "
-                    f"with 0 songs and 0 shows collected"
-                )
-                return True
+        return self.workflow_state() == "failed"
 
-        # If we have other critical HTTP errors and no data, fail
-        if self.other_http_errors > 5:  # Threshold for "too many errors"
-            if self.shows_collected == 0:
-                logger.warning(
-                    f"Collection should fail: {self.other_http_errors} HTTP errors "
-                    f"with 0 shows collected"
-                )
-                return True
+    def set_prediction_action(self, action: str) -> None:
+        """Record how downstream predictions were handled for summary reporting."""
+        self.prediction_action = action
 
-        return False
+    def as_github_outputs(self) -> dict[str, str]:
+        """Return GitHub Actions-compatible outputs for the collection run."""
+        return {
+            "workflow_state": self.workflow_state(),
+            "outcome_code": self.outcome_code(),
+            "should_retry_collection": str(self.should_retry_collection()).lower(),
+            "recent_data_usable": str(not self.has_recent_data_gap()).lower(),
+            "prediction_action": self.prediction_action,
+            "http_403_errors": str(self.http_403_errors),
+            "other_http_errors": str(self.other_http_errors),
+            "fallback_shows_filled": str(self.fallback_shows_filled),
+            "fallback_setlists_collected": str(self.fallback_setlists_collected),
+            "upstream_missing_setlists": str(self.upstream_missing_setlists),
+            "collector_missing_setlists": str(self.collector_missing_setlists),
+            "request_blocked_missing_setlists": str(
+                self.request_blocked_missing_setlists
+            ),
+            "fallback_available_missing_setlists": str(
+                self.fallback_available_missing_setlists
+            ),
+        }
 
     def get_failure_summary(self) -> str:
         """Get a human-readable summary of why collection failed.
@@ -117,6 +185,33 @@ class CollectionStatus:
                 lines.append(f"    - {failure}")
         return "\n".join(lines)
 
+    def get_degraded_summary(self) -> str:
+        """Get a human-readable summary of a degraded-but-usable run."""
+        lines = [
+            "WSP collection degraded due to upstream blocking:",
+            f"  - Outcome code: {self.outcome_code()}",
+            f"  - 403 Forbidden errors: {self.http_403_errors}",
+            f"  - Other HTTP errors: {self.other_http_errors}",
+            f"  - Songs collected: {self.songs_collected}",
+            f"  - Shows collected: {self.shows_collected}",
+            f"  - Setlists collected: {self.setlists_collected}",
+            f"  - TourWrangler fallback shows filled: {self.fallback_shows_filled}",
+            f"  - TourWrangler fallback setlists collected: {self.fallback_setlists_collected}",
+            f"  - Upstream pages without setlists: {self.upstream_missing_setlists}",
+            "  - Collector-visible pages still missing in raw tables: "
+            f"{self.collector_missing_setlists}",
+            "  - EC request failures without fallback: "
+            f"{self.request_blocked_missing_setlists}",
+            "  - TourWrangler data available but not stored: "
+            f"{self.fallback_available_missing_setlists}",
+            f"  - Prediction action: {self.prediction_action}",
+        ]
+        if self.critical_failures:
+            lines.append("  Recent failures:")
+            for failure in self.critical_failures[-5:]:
+                lines.append(f"    - {failure}")
+        return "\n".join(lines)
+
     def get_success_summary(self) -> str:
         """Get a human-readable summary of successful collection.
 
@@ -125,9 +220,11 @@ class CollectionStatus:
         """
         lines = [
             "WSP collection completed successfully:",
+            f"  - Outcome code: {self.outcome_code()}",
             f"  - Songs collected: {self.songs_collected}",
             f"  - Shows collected: {self.shows_collected}",
             f"  - Setlists collected: {self.setlists_collected}",
+            f"  - Prediction action: {self.prediction_action}",
         ]
         if self.fallback_setlists_collected > 0 or self.fallback_shows_filled > 0:
             lines.append("  - TourWrangler fallback:")

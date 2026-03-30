@@ -1,15 +1,15 @@
 # JamBandNerd Implementation Status
 
-**Last Updated**: 2026-03-23
+**Last Updated**: 2026-03-30
 **Project Version**: 1.0.0
 
 ## Overall Status
 
-JamBandNerd has a production-ready data platform and a production website-first product surface.
+JamBandNerd has a production-ready website-first product surface and a production-capable data platform with explicit degraded-mode handling for volatile upstreams.
 
-- **Pipeline status**: stable and production-capable
+- **Pipeline status**: stable and production-capable, with WSP degraded-mode handling in CI
 - **Prediction status**: stable across supported models and bands
-- **Automation status**: daily GitHub Actions workflows in place
+- **Automation status**: daily GitHub Actions workflows in place, including per-band health reporting
 - **Frontend status**: `apps/web` is the sole product surface
 
 ## Implemented Platform Components
@@ -28,6 +28,7 @@ JamBandNerd has a production-ready data platform and a production website-first 
 - Scheduled GitHub Actions pipeline runs with manual triggers
 - Validation and data-quality checks in the pipeline workflow
 - Security/dependency maintenance workflows
+- Dependency audit locked to remediated package versions
 
 ## Active Priorities
 
@@ -46,4 +47,5 @@ JamBandNerd has a production-ready data platform and a production website-first 
 ## Notes
 
 - The Streamlit app has been retired. The website at `apps/web` is the sole product surface.
+- WSP remains part of the supported catalog, but CI now handles Everyday Companion blocking as an explicit degraded state instead of treating it as a full cross-band outage.
 - Pipeline and schema stability remain the priority during ongoing website operations.
