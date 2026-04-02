@@ -217,14 +217,15 @@ def build_band_health_lines(statuses: Iterable[dict[str, object]]) -> list[str]:
     lines = [
         "### Band Run Health",
         "",
-        "| Band | State | Outcome | Missing Recent Setlists | Prediction Action | Notes |",
-        "| --- | --- | --- | --- | --- | --- |",
+        "| Band | State | Outcome | Execution Mode | Missing Recent Setlists | Prediction Action | Notes |",
+        "| --- | --- | --- | --- | --- | --- | --- |",
     ]
 
     for status in statuses:
         band = str(status.get("band") or "").upper() or "UNKNOWN"
         workflow_state = str(status.get("workflow_state") or "unknown")
         outcome_code = str(status.get("outcome_code") or "unknown")
+        execution_mode = str(status.get("execution_mode") or "unknown")
         missing_count = str(status.get("missing_count") or "0")
         prediction_action = str(status.get("prediction_action") or "pending")
         notes = []
@@ -245,9 +246,12 @@ def build_band_health_lines(statuses: Iterable[dict[str, object]]) -> list[str]:
         if failure_reason:
             notes.append(failure_reason.replace("|", "/"))
 
+        if status.get("should_run_collection") is False:
+            notes.append("verify-only preflight")
+
         notes_text = "; ".join(notes) if notes else "n/a"
         lines.append(
-            f"| {band} | {workflow_state} | {outcome_code} | {missing_count} | {prediction_action} | {notes_text} |"
+            f"| {band} | {workflow_state} | {outcome_code} | {execution_mode} | {missing_count} | {prediction_action} | {notes_text} |"
         )
 
     lines.append("")

@@ -115,13 +115,13 @@ class TestCollectionStatus:
         assert status.outcome_code() == "failed_internal"
 
     def test_request_blocked_recent_gap_is_degraded_stale(self):
-        """Recent blocked setlists should classify as degraded stale data."""
+        """Recent blocked setlists should be hard failures when data is unusable."""
         status = CollectionStatus()
         status.request_blocked_missing_setlists = 2
 
-        assert status.should_fail() is False
-        assert status.workflow_state() == "degraded"
-        assert status.outcome_code() == "degraded_upstream_blocked_stale"
+        assert status.should_fail() is True
+        assert status.workflow_state() == "failed"
+        assert status.outcome_code() == "failed_upstream_stale"
 
     def test_as_github_outputs_reports_machine_readable_state(self):
         """GitHub outputs should reflect the workflow-consumable status."""

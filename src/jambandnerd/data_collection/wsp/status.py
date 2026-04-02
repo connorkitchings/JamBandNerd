@@ -70,13 +70,13 @@ class CollectionStatus:
             return "failed_internal"
 
         if self.request_blocked_missing_setlists > 0:
-            return "degraded_upstream_blocked_stale"
+            return "failed_upstream_stale"
 
         if (
             self.upstream_missing_setlists > 0
             or self.fallback_available_missing_setlists > 0
         ):
-            return "degraded_upstream_blocked_stale"
+            return "failed_upstream_stale"
 
         if self._has_systemic_http_failure():
             return "degraded_upstream_blocked"
