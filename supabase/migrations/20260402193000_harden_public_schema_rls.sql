@@ -1,10 +1,5 @@
 begin;
 
--- Remove legacy permissive policies that allowed full public mutation.
-drop policy if exists "Allow public access" on public.pipeline_metadata;
-drop policy if exists "Allow public access" on public.goose_setlists;
-drop policy if exists "Allow public access" on public.goose_transitions;
-
 do $$
 declare
     table_name text;
@@ -14,8 +9,12 @@ declare
         'bands',
         'prediction_songs',
         'predictions_notebook',
+        'predictions_deal',
         'predictions_ckplus',
+        'accuracy_deal',
+        'accuracy_ckplus',
         'accuracy_per_show',
+        'notebook_accuracy',
         'historical_prediction_runs',
         'goose_notebook_predictions',
         'goose_setlists',
@@ -43,7 +42,11 @@ declare
         'eggy_songs_raw',
         'eggy_shows_raw',
         'eggy_venues_raw',
-        'eggy_setlists_raw'
+        'eggy_setlists_raw',
+        'cosmic_shows_raw',
+        'cosmic_setlists_raw',
+        'cosmic_songs_raw',
+        'cosmic_venues_raw'
     ];
     public_read_tables text[] := array[
         'bands',
@@ -68,6 +71,12 @@ declare
         'eggy_setlists_raw'
     ];
 begin
+    foreach table_name in array array['pipeline_metadata', 'goose_setlists', 'goose_transitions'] loop
+        if to_regclass(format('public.%I', table_name)) is not null then
+            execute format('drop policy if exists "Allow public access" on public.%I', table_name);
+        end if;
+    end loop;
+
     foreach table_name in array protected_tables loop
         if to_regclass(format('public.%I', table_name)) is not null then
             execute format('alter table public.%I enable row level security', table_name);
