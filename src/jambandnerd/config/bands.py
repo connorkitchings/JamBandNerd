@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Final, Sequence
 
 # Supported bands (Fallback)
@@ -39,6 +40,51 @@ _cached_active_bands: list[str] | None = None
 _cached_band_id_columns: dict[str, str] | None = None
 
 
+@dataclass(frozen=True)
+class CollectionPolicy:
+    """Policy for how a band's daily ingestion should behave."""
+
+    collection_mode: str
+    rolling_window_days: int | None = None
+    upcoming_lookahead_days: int = 14
+    supports_upstream_update_timestamp: bool = False
+    skip_existing_setlists: bool = False
+    allows_verify_only_when_idle: bool = False
+
+
+COLLECTION_POLICIES: Final[dict[str, CollectionPolicy]] = {
+    "goose": CollectionPolicy(
+        collection_mode="always_refresh",
+        supports_upstream_update_timestamp=False,
+    ),
+    "eggy": CollectionPolicy(
+        collection_mode="always_refresh",
+        supports_upstream_update_timestamp=True,
+    ),
+    "phish": CollectionPolicy(
+        collection_mode="window_refresh",
+        rolling_window_days=730,
+        supports_upstream_update_timestamp=True,
+        skip_existing_setlists=False,
+    ),
+    "wsp": CollectionPolicy(
+        collection_mode="window_refresh",
+        rolling_window_days=730,
+        skip_existing_setlists=True,
+    ),
+    "billy": CollectionPolicy(
+        collection_mode="window_refresh",
+        rolling_window_days=60,
+        skip_existing_setlists=True,
+    ),
+    "um": CollectionPolicy(
+        collection_mode="window_refresh",
+        rolling_window_days=730,
+        skip_existing_setlists=True,
+    ),
+}
+
+
 def get_active_bands() -> Sequence[str]:
     """Get active bands from the DB registry, falling back to static config."""
     global _cached_active_bands
@@ -74,6 +120,14 @@ def get_band_id_column(band: str) -> str:
             _cached_band_id_columns = dict(BAND_ID_COLUMNS)
 
     return _cached_band_id_columns.get(band, BAND_ID_COLUMNS.get(band, "show_id"))
+
+
+def get_collection_policy(band: str) -> CollectionPolicy:
+    """Get the collection policy for a band."""
+    return COLLECTION_POLICIES.get(
+        band,
+        CollectionPolicy(collection_mode="always_refresh"),
+    )
 
 
 # Songs to exclude from predictions (noise, not actual songs)

@@ -35,6 +35,24 @@ def test_prepare_dataframe_for_upsert_fails_on_nullable_violations(monkeypatch):
         operations.prepare_dataframe_for_upsert("goose_setlists_raw", df)
 
 
+def test_dedupe_dataframe_on_conflict_removes_duplicate_rows():
+    df = pd.DataFrame(
+        [
+            {"source_url": "https://example.com/show", "show_date": "2026-04-01"},
+            {"source_url": "https://example.com/show", "show_date": "2026-04-02"},
+        ]
+    )
+
+    deduped = operations.dedupe_dataframe_on_conflict(
+        df,
+        conflict_columns=["source_url"],
+        table_name="um_shows_raw",
+    )
+
+    assert len(deduped) == 1
+    assert deduped.iloc[0]["show_date"] == "2026-04-02"
+
+
 def test_upsert_dataframe_preserves_structured_json_payload(monkeypatch):
     client = MagicMock()
     table = MagicMock()
