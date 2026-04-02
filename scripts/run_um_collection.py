@@ -29,7 +29,10 @@ from src.jambandnerd.data_collection.um.upcoming import (  # noqa: E402
     collect_upcoming_shows,
 )
 from src.jambandnerd.db.connection import get_supabase_client  # noqa: E402
-from src.jambandnerd.db.operations import validate_and_upsert_dataframe  # noqa: E402
+from src.jambandnerd.db.operations import (  # noqa: E402
+    dedupe_dataframe_on_conflict,
+    validate_and_upsert_dataframe,
+)
 
 
 def _hash_row(record: Dict[str, Any]) -> str:
@@ -77,9 +80,14 @@ def _upsert(
 
     if df.empty:
         return
+    deduped = dedupe_dataframe_on_conflict(
+        df,
+        conflict_columns=conflict_columns,
+        table_name=table_name,
+    )
     validate_and_upsert_dataframe(
         table_name=table_name,
-        df=df,
+        df=deduped,
         conflict_columns=list(conflict_columns),
         required_columns=required_columns,
         skip_validation=skip_validation,

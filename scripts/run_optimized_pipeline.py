@@ -50,6 +50,8 @@ try:
 except ImportError:
     HAS_BACKFILL = False
 
+from scripts.collection_preflight import compute_band_preflight
+
 # Suppress noisy httpx logs
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
@@ -105,6 +107,19 @@ def run_band_pipeline(band: str, skip_accuracy: bool = False) -> bool:
 
     log_with_timestamp(f"{log_prefix} Starting full pipeline...")
 
+    try:
+        preflight = compute_band_preflight(band)
+        log_with_timestamp(
+            f"{log_prefix} Preflight: mode={preflight.collection_mode} "
+            f"execution={preflight.execution_mode} "
+            f"recent_completed={preflight.recent_completed_show_count} "
+            f"missing_recent_setlists={preflight.missing_recent_setlist_count} "
+            f"upcoming_soon={preflight.upcoming_show_count}"
+        )
+    except Exception as exc:
+        log_with_timestamp(f"{log_prefix} WARNING: preflight failed: {exc}")
+        preflight = None
+
     # Step 1: Data Collection
 
     collection_runners = {
@@ -119,7 +134,13 @@ def run_band_pipeline(band: str, skip_accuracy: bool = False) -> bool:
     log_with_timestamp(f"[{band.upper()}] Starting: Data Collection")
 
     try:
-        collection_runners[band]()
+        if preflight is not None and not preflight.should_run_collection:
+            log_with_timestamp(
+                f"{log_prefix} Skipping collection after preflight "
+                f"({preflight.execution_mode})."
+            )
+        else:
+            collection_runners[band]()
 
         log_with_timestamp(f"[{band.upper()}] Finished: Data Collection")
 

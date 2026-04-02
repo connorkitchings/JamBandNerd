@@ -110,8 +110,18 @@ jobs:
         if: matrix.band == 'wsp'
         run: uv run playwright install --with-deps firefox
 
+      - name: Compute Collection Preflight
+        id: preflight
+        env:
+          BAND: ${{ matrix.band }}
+        run: |
+          echo "::group::Computing collection preflight for ${{ matrix.band }}"
+          uv run python scripts/collection_preflight.py --band "${{ matrix.band }}"
+          echo "::endgroup::"
+
       - name: Run Data Collection
         id: collection
+        if: steps.preflight.outputs.should_run_collection == 'true'
         run: |
           echo "::group::Collecting data for ${{ matrix.band }}"
 
@@ -201,6 +211,16 @@ jobs:
           
           echo "::endgroup::"
 
+      - name: Seed Verify-Only Collection Outputs
+        id: collection_idle
+        if: steps.preflight.outputs.should_run_collection != 'true'
+        run: |
+          echo "workflow_state=success" >> "$GITHUB_OUTPUT"
+          echo "outcome_code=success" >> "$GITHUB_OUTPUT"
+          echo "should_retry_collection=false" >> "$GITHUB_OUTPUT"
+          echo "recent_data_usable=true" >> "$GITHUB_OUTPUT"
+          echo "prediction_action=skipped_idle" >> "$GITHUB_OUTPUT"
+
       - name: Verify Data Freshness
         id: data_check
         if: success() || steps.collection.outputs.workflow_state == 'degraded'
@@ -230,7 +250,7 @@ jobs:
           
       - name: Generate Predictions (Notebook & CK+)
         id: predictions
-        if: steps.collection.outputs.workflow_state != 'degraded'
+        if: steps.preflight.outputs.should_run_collection == 'true' && steps.collection.outputs.workflow_state != 'degraded'
         run: |
           echo "::group::Generating predictions for ${{ matrix.band }}"
           
@@ -254,7 +274,7 @@ jobs:
 
       - name: Validate Prediction Tables
         id: prediction_validation
-        if: steps.collection.outputs.workflow_state != 'degraded'
+        if: steps.preflight.outputs.should_run_collection == 'true' && steps.collection.outputs.workflow_state != 'degraded'
         run: |
           echo "::group::Validating prediction table freshness for ${{ matrix.band }}"
           uv run python scripts/validate_prediction_tables.py --band ${{ matrix.band }} --max-age-hours 72
@@ -262,7 +282,7 @@ jobs:
 
       - name: Run Backtest and Calculate Aggregate Accuracy
         id: accuracy_calc
-        if: github.event.inputs.skip_accuracy != 'true' && steps.collection.outputs.workflow_state != 'degraded'
+        if: github.event.inputs.skip_accuracy != 'true' && steps.preflight.outputs.should_run_collection == 'true' && steps.collection.outputs.workflow_state != 'degraded'
         run: |
           echo "::group::Running backtest for ${{ matrix.band }}"
           
@@ -282,7 +302,7 @@ jobs:
 
       - name: Validate Accuracy Tables
         id: accuracy_validation
-        if: github.event.inputs.skip_accuracy != 'true' && steps.collection.outputs.workflow_state != 'degraded'
+        if: github.event.inputs.skip_accuracy != 'true' && steps.preflight.outputs.should_run_collection == 'true' && steps.collection.outputs.workflow_state != 'degraded'
         run: |
           echo "::group::Validating accuracy tables for ${{ matrix.band }}"
           uv run python scripts/validate_accuracy_tables.py --band ${{ matrix.band }} --max-age-hours 72
@@ -292,9 +312,9 @@ jobs:
         if: always()
         env:
           BAND: ${{ matrix.band }}
-          WORKFLOW_STATE: ${{ steps.collection.outputs.workflow_state || (job.status == 'success' && 'success' || 'failed') }}
-          OUTCOME_CODE: ${{ steps.collection.outputs.outcome_code || (job.status == 'success' && 'success' || 'failed_internal') }}
-          RECENT_DATA_USABLE: ${{ steps.collection.outputs.recent_data_usable || 'false' }}
+          WORKFLOW_STATE: ${{ steps.collection.outputs.workflow_state || steps.collection_idle.outputs.workflow_state || (job.status == 'success' && 'success' || 'failed') }}
+          OUTCOME_CODE: ${{ steps.collection.outputs.outcome_code || steps.collection_idle.outputs.outcome_code || (job.status == 'success' && 'success' || 'failed_internal') }}
+          RECENT_DATA_USABLE: ${{ steps.collection.outputs.recent_data_usable || steps.collection_idle.outputs.recent_data_usable || 'false' }}
           FALLBACK_SHOWS_FILLED: ${{ steps.collection.outputs.fallback_shows_filled || '0' }}
           FALLBACK_SETLISTS_COLLECTED: ${{ steps.collection.outputs.fallback_setlists_collected || '0' }}
           COLLECTOR_MISSING_SETLISTS: ${{ steps.collection.outputs.collector_missing_setlists || '0' }}
@@ -306,6 +326,13 @@ jobs:
           MISSING_COUNT: ${{ steps.data_check.outputs.missing_count || '0' }}
           PREDICTIONS_OUTCOME: ${{ steps.predictions.outcome || '' }}
           ACCURACY_SKIPPED: ${{ github.event.inputs.skip_accuracy == 'true' }}
+          COLLECTION_MODE: ${{ steps.preflight.outputs.collection_mode || 'unknown' }}
+          EXECUTION_MODE: ${{ steps.preflight.outputs.execution_mode || 'unknown' }}
+          SHOULD_RUN_COLLECTION: ${{ steps.preflight.outputs.should_run_collection || 'false' }}
+          RECENT_COMPLETED_SHOW_COUNT: ${{ steps.preflight.outputs.recent_completed_show_count || '0' }}
+          MISSING_RECENT_SETLIST_COUNT: ${{ steps.preflight.outputs.missing_recent_setlist_count || '0' }}
+          UPCOMING_SHOW_COUNT: ${{ steps.preflight.outputs.upcoming_show_count || '0' }}
+          LAST_SUCCESSFUL_COLLECTION_AT: ${{ steps.preflight.outputs.last_successful_collection_at || '' }}
         run: |
           mkdir -p .github/workflow-status
           python - <<'PY'
@@ -333,6 +360,13 @@ jobs:
               "missing_data": missing_data,
               "missing_count": int(os.environ.get("MISSING_COUNT", "0") or 0),
               "prediction_action": prediction_action,
+              "collection_mode": os.environ.get("COLLECTION_MODE", "unknown"),
+              "execution_mode": os.environ.get("EXECUTION_MODE", "unknown"),
+              "should_run_collection": os.environ.get("SHOULD_RUN_COLLECTION", "false") == "true",
+              "recent_completed_show_count": int(os.environ.get("RECENT_COMPLETED_SHOW_COUNT", "0") or 0),
+              "missing_recent_setlist_count": int(os.environ.get("MISSING_RECENT_SETLIST_COUNT", "0") or 0),
+              "upcoming_show_count": int(os.environ.get("UPCOMING_SHOW_COUNT", "0") or 0),
+              "last_successful_collection_at": os.environ.get("LAST_SUCCESSFUL_COLLECTION_AT", ""),
               "fallback_shows_filled": int(os.environ.get("FALLBACK_SHOWS_FILLED", "0") or 0),
               "fallback_setlists_collected": int(os.environ.get("FALLBACK_SETLISTS_COLLECTED", "0") or 0),
               "collector_missing_setlists": int(os.environ.get("COLLECTOR_MISSING_SETLISTS", "0") or 0),
@@ -361,11 +395,13 @@ jobs:
         if: always()
         env:
           BAND: ${{ matrix.band }}
-          WORKFLOW_STATE: ${{ steps.collection.outputs.workflow_state || (job.status == 'success' && 'success' || 'failed') }}
-          OUTCOME_CODE: ${{ steps.collection.outputs.outcome_code || (job.status == 'success' && 'success' || 'failed_internal') }}
+          WORKFLOW_STATE: ${{ steps.collection.outputs.workflow_state || steps.collection_idle.outputs.workflow_state || (job.status == 'success' && 'success' || 'failed') }}
+          OUTCOME_CODE: ${{ steps.collection.outputs.outcome_code || steps.collection_idle.outputs.outcome_code || (job.status == 'success' && 'success' || 'failed_internal') }}
           MISSING_COUNT: ${{ steps.data_check.outputs.missing_count || '0' }}
+          EXECUTION_MODE: ${{ steps.preflight.outputs.execution_mode || 'unknown' }}
         run: |
           echo "### ${BAND^^}" >> $GITHUB_STEP_SUMMARY
+          echo "- Execution mode: ${EXECUTION_MODE}" >> $GITHUB_STEP_SUMMARY
           echo "- State: ${WORKFLOW_STATE}" >> $GITHUB_STEP_SUMMARY
           echo "- Outcome: ${OUTCOME_CODE}" >> $GITHUB_STEP_SUMMARY
           echo "- Missing recent setlists: ${MISSING_COUNT}" >> $GITHUB_STEP_SUMMARY

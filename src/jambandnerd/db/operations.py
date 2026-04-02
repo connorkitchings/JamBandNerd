@@ -74,6 +74,45 @@ def _format_validation_warnings(
         )
 
 
+def dedupe_dataframe_on_conflict(
+    df: pd.DataFrame,
+    *,
+    conflict_columns: Sequence[str],
+    table_name: str,
+) -> pd.DataFrame:
+    """Drop duplicate conflict-key rows before issuing a batched upsert."""
+    if df.empty:
+        return df
+
+    missing_columns = [column for column in conflict_columns if column not in df.columns]
+    if missing_columns:
+        raise RuntimeError(
+            f"{table_name} missing conflict columns: {', '.join(missing_columns)}"
+        )
+
+    deduped = df.drop_duplicates(subset=list(conflict_columns), keep="last").copy()
+    removed = len(df) - len(deduped)
+    if removed > 0:
+        logger.warning(
+            "%s: removed %s duplicate row(s) for conflict columns %s before upsert",
+            table_name,
+            removed,
+            list(conflict_columns),
+        )
+
+    duplicate_mask = deduped.duplicated(subset=list(conflict_columns), keep=False)
+    if duplicate_mask.any():
+        sample = deduped.loc[duplicate_mask, list(conflict_columns)].head(5).to_dict(
+            orient="records"
+        )
+        raise RuntimeError(
+            f"{table_name} still contains duplicate conflict keys after in-memory "
+            f"dedupe: {sample}"
+        )
+
+    return deduped
+
+
 def prepare_dataframe_for_upsert(
     table_name: str,
     df: pd.DataFrame,
@@ -135,6 +174,11 @@ def validate_and_upsert_dataframe(
     )
     if prepared.empty:
         return
+    prepared = dedupe_dataframe_on_conflict(
+        prepared,
+        conflict_columns=conflict_columns,
+        table_name=table_name,
+    )
     upsert_dataframe(
         table_name=table_name,
         df=prepared,

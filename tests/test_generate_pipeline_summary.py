@@ -281,6 +281,7 @@ def test_render_summary_includes_band_health_states():
                 "band": "goose",
                 "workflow_state": "success",
                 "outcome_code": "success",
+                "execution_mode": "full_refresh",
                 "missing_count": 0,
                 "prediction_action": "generated",
             },
@@ -288,6 +289,7 @@ def test_render_summary_includes_band_health_states():
                 "band": "wsp",
                 "workflow_state": "degraded",
                 "outcome_code": "degraded_upstream_blocked",
+                "execution_mode": "bounded_refresh",
                 "missing_count": 0,
                 "prediction_action": "reused_existing",
                 "fallback_shows_filled": 2,
@@ -298,8 +300,8 @@ def test_render_summary_includes_band_health_states():
     )
 
     assert "### Band Run Health" in summary
-    assert "| GOOSE | success | success | 0 | generated | n/a |" in summary
+    assert "| GOOSE | success | success | full_refresh | 0 | generated | n/a |" in summary
     assert (
-        "| WSP | degraded | degraded_upstream_blocked | 0 | reused_existing | "
+        "| WSP | degraded | degraded_upstream_blocked | bounded_refresh | 0 | reused_existing | "
         "fallback shows filled=2 |" in summary
     )

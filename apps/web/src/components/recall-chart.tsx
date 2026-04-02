@@ -9,6 +9,7 @@ type Props = {
 const CHART_WIDTH = 800;
 const CHART_HEIGHT = 240;
 const PADDING = { top: 20, right: 20, bottom: 56, left: 48 };
+const MAX_X_AXIS_LABELS = 6;
 
 function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
@@ -87,7 +88,10 @@ export function RecallChart({ rows, k = 10 }: Props) {
     yTicks.push(Math.round(v * 100) / 100);
   }
 
-  const labelInterval = Math.max(1, Math.floor(totalRows / 6));
+  const labelInterval =
+    totalRows <= 1
+      ? 1
+      : Math.max(1, Math.ceil((totalRows - 1) / Math.max(MAX_X_AXIS_LABELS - 1, 1)));
   const xLabels = chronological
     .map((row, index) => ({ index, date: row.showDate }))
     .filter((_, i) => i % labelInterval === 0 || i === totalRows - 1);
