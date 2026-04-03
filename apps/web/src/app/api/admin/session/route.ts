@@ -1,3 +1,5 @@
+import { timingSafeEqual } from "node:crypto";
+
 import { NextResponse } from "next/server";
 
 import {
@@ -6,6 +8,13 @@ import {
   buildClearedAdminSessionCookie,
   verifyAdminSessionToken,
 } from "@/lib/admin/session";
+
+function verifyPassword(input: string, expected: string): boolean {
+  const a = Buffer.from(input);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(a, b);
+}
 
 function isAuthenticated(request: Request) {
   const token = request.headers
@@ -39,7 +48,7 @@ export async function POST(request: Request) {
 
   const body = await request.json();
   const password = typeof body?.password === "string" ? body.password : "";
-  if (!password || password !== process.env.ADMIN_PASSWORD) {
+  if (!password || !verifyPassword(password, process.env.ADMIN_PASSWORD!)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
