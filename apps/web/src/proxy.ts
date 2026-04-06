@@ -15,6 +15,12 @@ export function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // The admin page itself renders the configured / login / authenticated states.
+  // Redirecting unauthenticated requests back to this same route causes a loop.
+  if (pathname === "/admin/setlist") {
+    return NextResponse.next();
+  }
+
   const token = request.cookies.get(ADMIN_SESSION_COOKIE)?.value;
   const isValid = verifyAdminSessionToken(token, process.env.ADMIN_SESSION_SECRET);
 
