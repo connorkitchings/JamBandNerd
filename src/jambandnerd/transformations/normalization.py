@@ -59,9 +59,7 @@ def normalize_prediction_inputs(
     band_id_column = BAND_ID_COLUMNS.get(band) if band else None
     show_id_candidates = tuple(
         dict.fromkeys(
-            column
-            for column in (band_id_column, "show_id", "api_show_id")
-            if column is not None
+            column for column in (band_id_column, "show_id") if column is not None
         )
     )
 

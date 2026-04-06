@@ -27,7 +27,7 @@ def band_raw_tables(
     ]
 
     raw_show_ids = [f"{band}-show-{index}" for index in range(1, 8)]
-    show_id_key = "api_show_id" if band == "phish" else "show_id"
+    show_id_key = "show_id"
 
     shows_raw: list[dict[str, Any]] = []
     for index, show_date in enumerate(historical_dates, start=1):

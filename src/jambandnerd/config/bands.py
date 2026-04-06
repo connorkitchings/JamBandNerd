@@ -29,7 +29,7 @@ BAND_DISPLAY_NAMES: Final[dict[str, str]] = {
 BAND_ID_COLUMNS: Final[dict[str, str]] = {
     "goose": "show_id",
     "eggy": "show_id",
-    "phish": "api_show_id",
+    "phish": "show_id",
     "wsp": "show_id",
     "billy": "show_id",
     "um": "show_id",

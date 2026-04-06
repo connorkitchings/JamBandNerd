@@ -11,14 +11,14 @@ from src.jambandnerd.transformations.normalization import sort_normalized_shows
 def test_prepare_band_data_normalizes_band_specific_show_id_columns():
     shows_df = pd.DataFrame(
         [
-            {"api_show_id": 2002, "show_date": "2024-03-02"},
-            {"api_show_id": 2001, "show_date": "2024-03-01"},
+            {"show_id": 2002, "show_date": "2024-03-02"},
+            {"show_id": 2001, "show_date": "2024-03-01"},
         ]
     )
     setlists_df = pd.DataFrame(
         [
-            {"api_show_id": 2002, "song": "Tweezer"},
-            {"api_show_id": 2001, "song": "Bathtub Gin"},
+            {"show_id": 2002, "song": "Tweezer"},
+            {"show_id": 2001, "song": "Bathtub Gin"},
         ]
     )
 
