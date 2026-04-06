@@ -11,6 +11,20 @@ uv pip install .
 uv pip install -e ".[dev]"
 ```
 
+### Python and Runner Notes
+
+- Required interpreter: Python `3.12.x` (see `pyproject.toml`).
+- Preferred runner: `uv run ...`.
+- If `uv` panics on your host, use a local `.venv` fallback:
+
+```bash
+python3.12 -m venv .venv
+source .venv/bin/activate
+python -m pip install -e ".[dev]"
+python -m ruff check src tests scripts
+python -m pytest
+```
+
 ## Pipeline
 
 ```bash

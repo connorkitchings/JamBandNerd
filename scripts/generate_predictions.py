@@ -29,13 +29,17 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, project_root)
 
 from scripts.common import fetch_table, prepare_band_data, resolve_reference_date
-from src.jambandnerd.config import MODEL_VERSIONS, PREDICTION_TABLES
+from src.jambandnerd.config.bands import get_active_bands
 from src.jambandnerd.db.operations import (
     replace_prediction_projection,
     upsert_dataframe,
 )
-from src.jambandnerd.models.ckplus.model import CKPlusPredictor
-from src.jambandnerd.models.notebook.model import NotebookPredictor
+from src.jambandnerd.models.registry import (
+    build_predictor,
+    get_model_definition,
+    list_model_slugs,
+    serialize_model_predictions,
+)
 from src.jambandnerd.transformations.gaps import generate_model_data
 
 
@@ -55,7 +59,11 @@ class NpEncoder(json.JSONEncoder):
 
 
 def generate_predictions(
-    band: str, model: str, date_str: str | None, exclusion_window: int
+    band: str,
+    model: str,
+    date_str: str | None,
+    exclusion_window: int,
+    retrain: bool = False,
 ):
     """Generate and save predictions for a given band and model."""
     band = band.lower()
@@ -95,59 +103,43 @@ def generate_predictions(
     )
 
     # 2. Select and run model
+    model_definition = get_model_definition(model)
+    predictor = build_predictor(model, band=band)
     predictions: List[Any] = []
-    if model == "notebook":
-        predictor = NotebookPredictor(band=band)
-        preds, diagnostics = predictor.predict(model_data=model_data, top_k=50)
-        predictions = preds
+
+    if model_definition.supports_training:
+        if retrain:
+            print(f"{log_prefix} Force retrain enabled, clearing model cache...")
+            get_model_path = getattr(predictor, "_get_model_path", None)
+            if callable(get_model_path):
+                model_path = get_model_path(band)
+                if model_path.exists():
+                    model_path.unlink()
+        predictor.train(model_data)
+
+    prediction_output = predictor.predict(
+        model_data=model_data,
+        top_k=model_definition.default_top_k,
+    )
+    if isinstance(prediction_output, tuple):
+        predictions, diagnostics = prediction_output
         print(f"{log_prefix} --- Model Diagnostics ---")
         print(json.dumps(diagnostics, indent=2, cls=NpEncoder))
         print(
             f"{log_prefix} Recently played songs (excluded): {model_data.recently_played_songs}"
         )
         print(f"{log_prefix} -------------------------")
-    elif model == "ckplus":
-        predictor = CKPlusPredictor(band=band)
-        predictions = predictor.predict(model_data=model_data, top_k=50)
+    else:
+        predictions = prediction_output
 
     if not predictions:
         print(f"{log_prefix} No predictions were generated.")
         return
 
     # 3. Format and save results
-    if model == "notebook":
-        predictions_list = [
-            {
-                "rank": i + 1,
-                "song_name": p.song_name,
-                "plays_past_year": p.plays_past_year,
-                "current_gap": p.current_gap,
-                "last_played_date": p.last_played_date,
-            }
-            for i, p in enumerate(predictions)
-        ]
-        table_name = PREDICTION_TABLES["notebook"]
-        model_version = MODEL_VERSIONS["notebook"]
-    elif model == "ckplus":
-        predictions_list = [
-            {
-                "rank": i + 1,
-                "song_name": p.song_name,
-                "times_played": p.times_played,
-                "current_gap": p.current_gap,
-                "avg_gap": p.avg_gap,
-                "recent_avg_gap": p.recent_avg_gap,
-                "gap_ratio": p.gap_ratio,
-                "gap_z_score": p.gap_z_score,
-                "ckplus_score": p.ckplus_score,
-                "LTP": p.LTP,
-            }
-            for i, p in enumerate(predictions)
-        ]
-        table_name = PREDICTION_TABLES["ckplus"]
-        model_version = MODEL_VERSIONS["ckplus"]
-    else:
-        raise ValueError("Invalid model type")
+    predictions_list = serialize_model_predictions(model, predictions)
+    table_name = model_definition.prediction_table
+    model_version = model_definition.version
 
     predicted_at = datetime.now(timezone.utc).isoformat()
     output_row = {
@@ -189,15 +181,20 @@ def main() -> None:
         "--band",
         type=str,
         required=True,
-        choices=["goose", "eggy", "phish", "wsp", "billy", "um"],
+        choices=get_active_bands(),
         help="The band to process.",
     )
     parser.add_argument(
         "--model",
         type=str,
         required=True,
-        choices=["notebook", "ckplus"],
+        choices=list_model_slugs(),
         help="The model to use for predictions.",
+    )
+    parser.add_argument(
+        "--retrain",
+        action="store_true",
+        help="Force retrain for training-capable models.",
     )
     parser.add_argument(
         "--date",
@@ -211,11 +208,19 @@ def main() -> None:
     )
     args = parser.parse_args()
 
+    model_definition = get_model_definition(args.model)
+    if args.retrain and not model_definition.supports_training:
+        parser.error(
+            "--retrain is only supported for training-capable "
+            f"models; got {args.model}"
+        )
+
     generate_predictions(
         band=args.band,
         model=args.model,
         date_str=args.date,
         exclusion_window=args.exclusion_window,
+        retrain=args.retrain,
     )
 
 

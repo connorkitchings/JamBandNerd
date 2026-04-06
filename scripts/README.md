@@ -9,11 +9,12 @@ These are the canonical scripts used by docs and GitHub Actions:
 
 - `run_optimized_pipeline.py` — end-to-end runner for one band or `all`
 - `generate_predictions.py` — generate predictions for `--band` and `--model`
-- `run_backtest.py` — compute per-show accuracy history
+- `run_backtest.py` — compute per-show accuracy history and persist historical scored-run lineage
 - `save_aggregate_accuracy.py` — compute aggregate accuracy from per-show results
 - `verify_data_freshness.py` — CI data-quality check for recent missing setlists
+- `generate_pipeline_summary.py` — GitHub Actions monitoring summary for recent completed-show freshness and prediction coverage
 - `validate_prediction_tables.py` — prediction freshness/JSON integrity check using the latest row by `predicted_at`, plus `prediction_songs` consistency checks
-- `validate_accuracy_tables.py` — per-show and aggregate accuracy freshness/presence check using the latest row by `evaluated_at`
+- `validate_accuracy_tables.py` — per-show and aggregate accuracy freshness/presence check, plus replay-lineage validation for recent scored shows
 
 Band collection scripts (kept at top-level to support dynamic discovery):
 

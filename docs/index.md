@@ -26,7 +26,7 @@ This documentation is organized into audience-focused sections:
 ### 📚 Reference Library
 - **Specs**: [Technical Overview](reference/specifications/technical_overview.md) · [Data Strategy](reference/specifications/data_strategy.md) · [CLI](reference/specifications/cli.md) · [Transformations](reference/specifications/transformations.md).
 - **Schemas**: [Unified Tables](reference/schemas/unified_tables.md) · [Goose API](reference/schemas/goose_api.md) · [Phish API](reference/schemas/phish_api.md) · [WSP Webscrape](reference/schemas/wsp_webscrape.md) · [UM AllThings](reference/schemas/um_allthings.md).
-- **Models**: [Model Overview](reference/models/index.md) plus detailed pages for the [Notebook](reference/models/notebook.md) and [CK+](reference/models/ckplus.md) predictors.
+- **Models**: [Model Overview](reference/models/index.md) plus detailed pages for the [Notebook](reference/models/notebook.md), [CK+](reference/models/ckplus.md), and [Deal](reference/models/xgboost.md) predictors.
 - **Supabase Helpers**: [API Guide](reference/guides/supabase_api_guide.md) and [Insert Recipes](reference/guides/supabase_inserts.md).
 
 ### 📊 Project Overview
@@ -34,5 +34,5 @@ This documentation is organized into audience-focused sections:
 - **Product Docs**: [PRD](overview/project/prd.md) · [Architecture Decisions](overview/project/adr.md) · [Schedule](overview/project/schedule.md).
 
 ### 🛠️ Troubleshooting & Reports
-- **Guides**: [Data Ingestion & Streamlit Issues](troubleshooting/data_ingestion_and_streamlit_issues.md) · [Validation Fix Log](troubleshooting/VALIDATION_FIX_2025-10-04.md) · [Data Quality Checklist](troubleshooting/troubleshooting_data_quality.md).
+- **Guides**: [Data Ingestion & Legacy Streamlit Issues](troubleshooting/data_ingestion_and_streamlit_issues.md) · [Validation Fix Log](troubleshooting/VALIDATION_FIX_2025-10-04.md) · [Data Quality Checklist](troubleshooting/troubleshooting_data_quality.md).
 - **Reports**: [Improvements Summary](reports/IMPROVEMENTS_SUMMARY.md) · [Validation Improvements](reports/VALIDATION_IMPROVEMENTS.md) · [Validation Test Report](reports/TEST_REPORT_VALIDATION.md).

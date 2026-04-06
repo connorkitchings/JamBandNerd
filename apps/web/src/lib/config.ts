@@ -1,17 +1,27 @@
 export const MODEL_CONFIG = {
-  ckplus: {
-    displayName: "CK+",
-    explanation:
-      "Gap-based model that ranks songs by how overdue they are relative to their historical cadence.",
-  },
   notebook: {
     displayName: "Notebook",
     explanation:
       "Frequency-based model focused on songs active in the recent rotation while excluding the last three shows.",
+    enabled: true,
+  },
+  ckplus: {
+    displayName: "CK+",
+    explanation:
+      "Gap-based model that ranks songs by how overdue they are relative to their historical cadence.",
+    enabled: true,
+  },
+  deal: {
+    displayName: "Deal",
+    explanation:
+      "Explainable logistic ranking model trained on true per-show candidate rows and rotation-gap signals.",
+    enabled: false, // Hidden until approved
   },
 } as const;
 
-export const ACTIVE_MODELS = Object.keys(MODEL_CONFIG) as ModelSlug[];
+export const ACTIVE_MODELS = Object.keys(MODEL_CONFIG).filter(
+  (key) => MODEL_CONFIG[key as ModelSlug].enabled
+) as ModelSlug[];
 
 export const DEFAULT_BAND_SLUG = "goose";
 

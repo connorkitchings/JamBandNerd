@@ -29,6 +29,11 @@ Allowed supporting raw tables:
 - `{band}_venues_raw`
 - source-specific helpers such as `um_upcoming_shows`
 
+### Band registry
+
+- `bands` - Single write point for band metadata (slug, display_name, shows_table,
+  id_column, is_active). Used by both pipeline and website for dynamic band discovery.
+
 Raw tables remain source-faithful. Shared code normalizes them after read, not
 by writing derived tables back to Supabase.
 
@@ -36,11 +41,14 @@ by writing derived tables back to Supabase.
 
 - `predictions_notebook`
 - `predictions_ckplus`
-- `prediction_songs` (derived)
+- `prediction_songs` (derived per-song projection)
+- `historical_prediction_runs` (historical scored-run lineage for Replay)
 
 `predictions_notebook` and `predictions_ckplus` store one canonical row per
 `(band, reference_date, model_version)` with a JSON predictions payload.
-`prediction_songs` stores one derived row per predicted song.
+`prediction_songs` stores one derived row per predicted song for SQL-friendly reads.
+`historical_prediction_runs` preserves exact prediction boards for completed shows,
+enabling the Replay feature with full lineage back to the original prediction.
 
 ### Accuracy tables
 
@@ -48,7 +56,8 @@ by writing derived tables back to Supabase.
 - `notebook_accuracy`
 - `accuracy_ckplus`
 
-`accuracy_per_show` is the canonical granular evaluation store. Aggregate
+`accuracy_per_show` is the canonical granular evaluation store. New rows link to
+`historical_prediction_runs` via `prediction_run_id` for Replay lineage. Aggregate
 accuracy tables are derived summaries.
 
 ## Utility Modules

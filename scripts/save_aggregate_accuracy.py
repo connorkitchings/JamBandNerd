@@ -25,9 +25,14 @@ import pandas as pd
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, project_root)
 
-from src.jambandnerd.config.database import ACCURACY_TABLES
+from src.jambandnerd.config.bands import get_active_bands
 from src.jambandnerd.db.connection import get_supabase_client
 from src.jambandnerd.models.accuracy import aggregate_metrics
+from src.jambandnerd.models.registry import (
+    get_aggregate_accuracy_table,
+    get_model_definition,
+    list_aggregate_accuracy_models,
+)
 
 
 def save_aggregate_accuracy(band: str, model: str, shows: int) -> None:
@@ -35,7 +40,7 @@ def save_aggregate_accuracy(band: str, model: str, shows: int) -> None:
     log_prefix = f"[{band.upper()}/{model.upper()}]"
 
     client = get_supabase_client()
-    model_version = f"{model}_v1"
+    model_version = get_model_definition(model).version
 
     print(f"{log_prefix} Fetching last {shows} per-show accuracy records...")
 
@@ -102,8 +107,9 @@ def save_aggregate_accuracy(band: str, model: str, shows: int) -> None:
         record[f"k{k}_f1"] = agg.f1
 
     # 3. Upsert the aggregated record
-    # Use correct table naming convention based on what exists in database
-    table_name = ACCURACY_TABLES.get(model, f"accuracy_{model}")
+    table_name = get_aggregate_accuracy_table(model)
+    if not table_name:
+        raise ValueError(f"No aggregate accuracy table configured for model: {model}")
     print(f"{log_prefix} Saving aggregate accuracy summary to {table_name}...")
 
     try:
@@ -136,14 +142,14 @@ def main() -> None:
         "--band",
         type=str,
         required=True,
-        choices=["goose", "eggy", "phish", "wsp", "billy", "um"],
+        choices=get_active_bands(),
         help="The band to process.",
     )
     parser.add_argument(
         "--model",
         type=str,
         required=True,
-        choices=["notebook", "ckplus"],
+        choices=[definition.slug for definition in list_aggregate_accuracy_models()],
         help="The model to aggregate accuracy for.",
     )
     parser.add_argument(

@@ -5,9 +5,16 @@ type Props = {
 
 export function DataState({ title, body }: Props) {
   return (
-    <div className="rounded-xl border border-dashed border-outline-variant bg-surface-container/80 p-6 text-on-surface-variant">
-      <h2 className="font-headline text-lg font-semibold text-on-surface">{title}</h2>
-      <p className="mt-2 max-w-2xl text-sm leading-6 text-on-surface-variant">{body}</p>
+    <div className="editorial-panel border-dashed p-6 md:p-7">
+      <div className="relative max-w-2xl">
+        <p className="font-label text-[10px] font-semibold uppercase tracking-[0.24em] text-primary">
+          Data state
+        </p>
+        <h2 className="mt-3 font-headline text-2xl font-semibold uppercase tracking-[-0.03em] text-on-surface">
+          {title}
+        </h2>
+        <p className="mt-3 text-sm leading-7 text-on-surface-variant">{body}</p>
+      </div>
     </div>
   );
 }
