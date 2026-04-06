@@ -12,6 +12,8 @@ The project employs a modular, pluggable architecture for its prediction models,
 
 - **[CK+ Model](./ckplus.md)**: A gap-based statistical model that ranks songs by how "overdue" they are for an appearance.
 
+- **[Deal Model](./xgboost.md)**: An ML-based model using gradient boosted trees to learn patterns in song rotation and provide probability rankings. Hidden from public website until approved.
+
 ### How to Add a New Model
 
 To add a new prediction model to the project, follow these steps:

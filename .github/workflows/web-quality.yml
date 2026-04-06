@@ -2,20 +2,9 @@ name: Website Quality
 
 on:
   pull_request:
-    paths:
-      - "apps/web/**"
-      - "package.json"
-      - "package-lock.json"
-      - ".github/workflows/web-quality.yml"
   push:
     branches:
       - main
-      - streamlined
-    paths:
-      - "apps/web/**"
-      - "package.json"
-      - "package-lock.json"
-      - ".github/workflows/web-quality.yml"
 
 permissions:
   contents: read

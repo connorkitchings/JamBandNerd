@@ -17,19 +17,24 @@ from scripts.save_aggregate_accuracy import save_aggregate_accuracy
 from scripts.validate_accuracy_tables import validate_accuracy
 from scripts.validate_prediction_tables import validate_predictions
 from src.jambandnerd.config import (
-    ACCURACY_TABLES,
-    MODEL_VERSIONS,
+    HISTORICAL_PREDICTION_RUNS_TABLE,
     PREDICTION_SONGS_TABLE,
-    PREDICTION_TABLES,
-    SUPPORTED_BANDS,
 )
+from src.jambandnerd.config.bands import get_active_bands
 from src.jambandnerd.db.connection import get_supabase_client
+from src.jambandnerd.models.registry import (
+    get_aggregate_accuracy_table,
+    get_model_definition,
+    list_pipeline_models,
+)
 
-MODELS: tuple[str, ...] = ("notebook", "ckplus")
+MODELS: tuple[str, ...] = tuple(
+    definition.slug for definition in list_pipeline_models()
+)
 
 
 def _selected_bands(band: str) -> list[str]:
-    return list(SUPPORTED_BANDS) if band == "all" else [band]
+    return list(get_active_bands()) if band == "all" else [band]
 
 
 def clear_model_outputs(
@@ -41,10 +46,11 @@ def clear_model_outputs(
 ) -> None:
     """Delete derived outputs for one band/model pair."""
     client = get_supabase_client()
-    model_version = MODEL_VERSIONS[model]
+    model_definition = get_model_definition(model)
+    model_version = model_definition.version
 
     if clear_predictions:
-        prediction_table = PREDICTION_TABLES[model]
+        prediction_table = model_definition.prediction_table
         print(
             f"[{band.upper()}/{model.upper()}] Clearing existing predictions from {prediction_table}..."
         )
@@ -64,8 +70,18 @@ def clear_model_outputs(
         )
 
     if clear_accuracy:
-        aggregate_table = ACCURACY_TABLES[model]
+        aggregate_table = get_aggregate_accuracy_table(model)
+        if not aggregate_table:
+            raise RuntimeError(f"No aggregate accuracy table configured for model: {model}")
         print(f"[{band.upper()}/{model.upper()}] Clearing existing accuracy rows...")
+        (
+            client.table(HISTORICAL_PREDICTION_RUNS_TABLE)
+            .delete()
+            .eq("band", band)
+            .eq("model_slug", model)
+            .eq("model_version", model_version)
+            .execute()
+        )
         (
             client.table("accuracy_per_show")
             .delete()
@@ -154,9 +170,7 @@ def _rebuild_model_outputs(
                 end=end,
                 shows=recent_shows,
                 exclusion_window=3,
-                all_history=(
-                    recent_shows is None and start is None and end is None
-                ),
+                all_history=(recent_shows is None and start is None and end is None),
             )
         except Exception as exc:
             state = (
@@ -229,7 +243,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--band",
-        choices=[*SUPPORTED_BANDS, "all"],
+        choices=[*get_active_bands(), "all"],
         default="all",
         help="Band to rebuild (default: all supported bands).",
     )

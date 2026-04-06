@@ -1,0 +1,99 @@
+name: Live Show Tracker
+
+on:
+  workflow_dispatch:
+    inputs:
+      band:
+        description: "Band to track (goose or phish)"
+        required: true
+        type: choice
+        options:
+          - goose
+          - phish
+          - wsp
+      date:
+        description: "Target show date (YYYY-MM-DD)"
+        required: true
+        type: string
+      bsky_handle:
+        description: "Bluesky Handle (for WSP only, default: widespreadpanic.com)"
+        required: false
+        default: "widespreadpanic.com"
+        type: string
+      interval:
+        description: "Polling interval in seconds"
+        required: false
+        default: "60"
+        type: string
+      max_iterations:
+        description: "Max polling attempts (e.g. 300 = ~5 hours)"
+        required: false
+        default: "300"
+        type: string
+
+# Ensure only one live tracker runs per band/date combo to avoid collisions
+concurrency:
+  group: live-tracker-${{ github.event.inputs.band }}-${{ github.event.inputs.date }}
+  cancel-in-progress: true
+
+jobs:
+  run-tracker:
+    name: "Live Tracker: ${{ github.event.inputs.band }} on ${{ github.event.inputs.date }}"
+    runs-on: ubuntu-latest
+    
+    # GitHub Actions limit is 6 hours; set timeout slightly below to allow graceful fail
+    timeout-minutes: 360
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Validate required secrets
+        run: |
+          MISSING=()
+          BAND="${{ inputs.band }}"
+
+          if [[ -z "${{ secrets.SUPABASE_URL }}" ]]; then
+            MISSING+=("SUPABASE_URL")
+          fi
+
+          if [[ -z "${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" ]]; then
+            MISSING+=("SUPABASE_SERVICE_ROLE_KEY")
+          fi
+
+          if [[ "$BAND" == "phish" && -z "${{ secrets.PHISH_API_KEY }}" ]]; then
+            MISSING+=("PHISH_API_KEY (required for phish only)")
+          fi
+
+          if [[ ${#MISSING[@]} -gt 0 ]]; then
+            echo "::error::Missing required secrets: ${MISSING[*]}"
+            exit 1
+          fi
+
+          echo "✅ All required secrets are configured"
+
+      - name: Install dependencies
+        run: uv sync --locked --no-dev
+
+      - name: Run Live Tracker
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          PHISH_API_KEY: ${{ secrets.PHISH_API_KEY }}
+        run: |
+          uv run python scripts/run_live_tracker.py \
+            --band ${{ inputs.band }} \
+            --date ${{ inputs.date }} \
+            --interval ${{ inputs.interval }} \
+            --max-iterations ${{ inputs.max_iterations }} \
+            --bsky-handle ${{ inputs.bsky_handle }}

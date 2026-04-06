@@ -3,17 +3,28 @@
 from __future__ import annotations
 
 import sys
-from datetime import date, datetime
-from typing import Dict, Iterable, List, Optional, Tuple
+from datetime import date, datetime, timedelta
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 import pandas as pd
-import requests
-
-from src.jambandnerd.data_collection.config import get_collector_config
 
 # Local imports
-from src.jambandnerd.db.connection import get_supabase_client
-from src.jambandnerd.transformations.normalization import normalize_prediction_inputs
+
+
+def completed_show_window(
+    *, today: date | None = None, days: int = 7
+) -> tuple[str, str]:
+    """Return the recent completed-show window, excluding today."""
+    today = today or date.today()
+    cutoff = today - timedelta(days=days)
+    end_date = today - timedelta(days=1)
+    return cutoff.isoformat(), end_date.isoformat()
+
+
+def batched_values(values: Iterable[Any], batch_size: int = 50) -> List[List[Any]]:
+    """Split values into stable batches for Supabase `in_` queries."""
+    items = list(values)
+    return [items[idx : idx + batch_size] for idx in range(0, len(items), batch_size)]
 
 
 def ensure_source_reachable(band: str, *, timeout: int = 15) -> None:
@@ -26,6 +37,10 @@ def ensure_source_reachable(band: str, *, timeout: int = 15) -> None:
     Raises:
         RuntimeError: If the upstream endpoint is unreachable or returns a fatal error.
     """
+    import requests
+
+    from src.jambandnerd.data_collection.config import get_collector_config
+
     config = get_collector_config(band)
     url = config.base_url
     try:
@@ -63,7 +78,44 @@ def prepare_band_data(
 
     This is the shared normalization boundary for prediction scripts.
     """
-    return normalize_prediction_inputs(shows_df, setlists_df, band=band)
+    from src.jambandnerd.config.bands import (
+        get_excluded_prediction_show_dates,
+        get_excluded_prediction_show_ids,
+    )
+    from src.jambandnerd.transformations.normalization import (
+        normalize_prediction_inputs,
+    )
+
+    prepared_shows, prepared_setlists = normalize_prediction_inputs(
+        shows_df, setlists_df, band=band
+    )
+
+    if not band:
+        return prepared_shows, prepared_setlists
+
+    excluded_show_ids = set(get_excluded_prediction_show_ids(band))
+
+    excluded_dates = get_excluded_prediction_show_dates(band)
+    if excluded_dates:
+        show_dates = pd.to_datetime(
+            prepared_shows["show_date"], errors="coerce"
+        ).dt.date
+        date_mask = show_dates.astype(str).isin(excluded_dates)
+        excluded_show_ids.update(prepared_shows.loc[date_mask, "show_id"].astype(str))
+
+    if not excluded_show_ids:
+        return prepared_shows, prepared_setlists
+
+    prepared_show_ids = prepared_shows["show_id"].astype(str)
+    excluded_mask = prepared_show_ids.isin(excluded_show_ids)
+    if not excluded_mask.any():
+        return prepared_shows, prepared_setlists
+
+    filtered_shows = prepared_shows.loc[~excluded_mask].copy()
+    filtered_setlists = prepared_setlists[
+        ~prepared_setlists["show_id"].astype(str).isin(excluded_show_ids)
+    ].copy()
+    return filtered_shows, filtered_setlists
 
 
 def resolve_reference_date(
@@ -145,6 +197,8 @@ def resolve_reference_date(
 
 def fetch_table(table_name: str, chunk_size: int = 10000) -> List[Dict]:
     """Fetch all rows from a Supabase table with robust, verbose pagination."""
+    from src.jambandnerd.db.connection import get_supabase_client
+
     client = get_supabase_client()
     all_data = []
     offset = 0
@@ -194,6 +248,95 @@ def fetch_table(table_name: str, chunk_size: int = 10000) -> List[Dict]:
 
     print(f"Fetched a total of {len(all_data)} records from {table_name}.")
     return all_data
+
+
+def fetch_table_rows(
+    table_name: str,
+    *,
+    select: str = "*",
+    filters: Iterable[tuple[str, str, Any]] | None = None,
+    order_by: Iterable[tuple[str, bool]] | None = None,
+    chunk_size: int = 1000,
+    limit: int | None = None,
+    client=None,
+) -> List[Dict]:
+    """Fetch rows from a Supabase table with pagination and optional filters."""
+    from src.jambandnerd.db.connection import get_supabase_client
+
+    client = client or get_supabase_client()
+    rows: List[Dict] = []
+    offset = 0
+    remaining = limit
+
+    while True:
+        page_size = chunk_size if remaining is None else min(chunk_size, remaining)
+        if page_size <= 0:
+            break
+
+        query = client.table(table_name).select(select)
+        for operator, column, value in filters or []:
+            if operator == "eq":
+                query = query.eq(column, value)
+            elif operator == "gte":
+                query = query.gte(column, value)
+            elif operator == "lte":
+                query = query.lte(column, value)
+            elif operator == "in":
+                query = query.in_(column, value)
+            else:
+                raise ValueError(f"Unsupported filter operator: {operator}")
+
+        for column, desc in order_by or []:
+            query = query.order(column, desc=desc)
+
+        response = query.range(offset, offset + page_size - 1).execute()
+        page_rows = response.data or []
+        rows.extend(page_rows)
+
+        if remaining is not None:
+            remaining -= len(page_rows)
+
+        if not page_rows or len(page_rows) < page_size:
+            break
+
+        offset += len(page_rows)
+
+    return rows
+
+
+def fetch_column_values_for_ids(
+    table_name: str,
+    *,
+    id_column: str,
+    ids: Iterable[Any],
+    select_column: str | None = None,
+    batch_size: int = 50,
+    client=None,
+) -> set[str]:
+    """Fetch selected column values for a set of IDs using batched `in_` queries."""
+    from src.jambandnerd.db.connection import get_supabase_client
+
+    query_ids = [value for value in ids if value is not None]
+    if not query_ids:
+        return set()
+
+    client = client or get_supabase_client()
+    select_column = select_column or id_column
+    values: set[str] = set()
+
+    for chunk in batched_values(query_ids, batch_size=batch_size):
+        response = (
+            client.table(table_name)
+            .select(select_column)
+            .in_(id_column, chunk)
+            .execute()
+        )
+        for item in response.data or []:
+            value = item.get(select_column)
+            if value is not None:
+                values.add(str(value))
+
+    return values
 
 
 # Backward compatibility alias for callers using the old private name

@@ -1,27 +1,22 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-
+import { PageHero } from "@/components/page-hero";
 import { SectionCard } from "@/components/section-card";
 import { MODEL_CONFIG } from "@/lib/config";
-import { getBands } from "@/lib/data";
 
 export const metadata: Metadata = {
   title: "About | JamBandNerd",
   description: "Learn how JamBandNerd collects setlists, transforms data, and generates predictions.",
 };
-
-
-
 const FAQ_ITEMS = [
   {
-    question: "What is Top-10 Recall?",
+    question: "How do you measure accuracy?",
     answer:
-      "Recall measures how well the model's top predictions matched the actual setlist. For example, 30% recall at Top-10 means 3 out of every 10 predicted songs in the top-10 appeared in the show. We track this across the last 100 scored shows for each band and model.",
+      "Accuracy measures how much of the actual setlist was captured by the model's top predictions. For example, 30% accuracy at Top 10 means the model's top-10 group captured 30% of that night's actual songs. The site tracks that across multiple Top-X thresholds and shows the recent scoring history for each band and model.",
   },
   {
     question: "What drives the predictions?",
     answer:
-      "Each model uses different signals:\n\nNotebook — Ranks songs by recent activity. Songs played most in the past year rise to the top, with songs that have larger gaps since their last performance ranked higher. Songs played in the last 3 shows are excluded.\n\nCK+ — Ranks songs by how overdue they are relative to their historical cadence. The score combines gap ratio (how much longer than average since last performance), gap z-score (how statistically unusual the current gap is), and reliability (songs with more consistent historical gaps and more plays get a boost). Songs played in the last 3 shows are excluded.",
+      "Each model uses different signals:\n\nNotebook — An independent implementation of the weighted-recency algorithm popularized by Phish.net, provided as a benchmark for comparison. It emphasizes songs active in the recent rotation and uses current gap to separate likely candidates, while excluding songs played in the last 3 shows.\n\nCK+ — A personally developed model. It ranks songs by how overdue they are relative to their historical cadence, using gap ratio, gap z-score, and reliability signals. Songs played in the last 3 shows are excluded.",
   },
   {
     question: "Does accuracy vary by band?",
@@ -31,7 +26,7 @@ const FAQ_ITEMS = [
   {
     question: "How often are predictions updated?",
     answer:
-      "The pipeline runs daily at 3 PM ET via GitHub Actions. Each run collects the latest setlist data, re-generates predictions for every supported band and model, and publishes them to Supabase.",
+      "The pipeline runs daily at 3 PM ET. Each run collects the latest setlist data, re-generates predictions for every supported band and model, and publishes them to Supabase.",
   },
   {
     question: "What do the likelihood tiers mean?",
@@ -41,12 +36,12 @@ const FAQ_ITEMS = [
   {
     question: "Where does the setlist data come from?",
     answer:
-      "Each band has a dedicated collector. Sources include Phish.net, El Goose, setlist.fm, Every Day Companion, and other community-maintained archives. The pipeline normalizes all data into a shared show-centric format.",
+      "Each band has a dedicated setlist source online, with some sources affiliated with the bands and some maintained independently. We are careful to follow source terms of use, and the pipeline normalizes that factual show information into a shared show-centric format.",
   },
   {
     question: "Can I use this data for my own projects?",
     answer:
-      "The project is open-source under the MIT license. Check out the GitHub repository for the full codebase, documentation, and contribution guidelines.",
+      "The project is open-source under the MIT license. Reach out through the contact page if you have questions about reuse, attribution, or how the site is presenting data.",
   },
 ];
 
@@ -54,13 +49,14 @@ const PIPELINE_STEPS = [
   {
     step: "01",
     title: "Collect",
-    description: "Band-specific collectors pull the latest setlist data from community archives.",
+    description:
+      "Aggregates public, factual show metadata (dates, venues, song titles) from community archives.",
   },
   {
     step: "02",
     title: "Transform",
     description:
-      "Raw data is normalized into a shared show-centric format with gap calculations and rotation signals.",
+      "Normalizes raw facts into a proprietary feature set for statistical modeling.",
   },
   {
     step: "03",
@@ -76,91 +72,59 @@ const PIPELINE_STEPS = [
   },
 ];
 
-export default async function AboutPage() {
-  const bandsResult = await getBands();
-  const bands = bandsResult.status === "ready" ? bandsResult.bands : [];
+export default function AboutPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-8">
-      {/* Hero */}
-      <section className="relative overflow-hidden rounded-xl border border-outline-variant/30 bg-surface-container p-8 md:p-12">
-        <div className="absolute inset-y-0 right-0 hidden w-1/3 bg-gradient-to-l from-primary-container/15 to-transparent lg:block" />
-        <div className="relative">
-          <p className="font-label text-[10px] uppercase tracking-[0.24em] text-on-surface-variant">
-            About the platform
-          </p>
-          <h1 className="mt-3 font-headline text-4xl font-semibold uppercase tracking-[-0.04em] text-on-surface md:text-5xl">
-            About JamBandNerd
-          </h1>
-          <p className="mt-4 max-w-3xl text-sm leading-7 text-on-surface-variant">
-            JamBandNerd is a data platform that collects jam band setlists, transforms them through
-            feature-engineered pipelines, and generates next-show predictions. The system runs daily,
-            tracking rotation patterns, song gaps, and historical cadences to rank every song in a
-            band&rsquo;s catalog by likelihood of appearing at the next show.
-          </p>
-          <p className="mt-3 max-w-3xl text-sm leading-7 text-on-surface-variant">
-            This website is the primary public surface — browse real-time predictions, explore
-            historical snapshots, compare models side-by-side, and track accuracy over time.
-          </p>
-        </div>
-      </section>
+      <PageHero
+        kicker="Platform brief"
+        title="About JamBandNerd"
+        description="JamBandNerd is a data platform that collects jam band setlists, transforms them into shared prediction features, and publishes a live website for next-show reads, historical replay, and model auditing."
+        meta="Daily pipeline • multi-model prediction surface"
+      />
 
       {/* Model Explainers */}
-      <SectionCard title="Prediction Models" eyebrow="How It Works">
+      <SectionCard title="How the Models Work">
         <p className="mb-6 text-sm leading-6 text-on-surface-variant">
-          Two models generate independent predictions for every band. Each approaches the
-          problem from a different angle, letting you compare outputs and spot consensus.
+          Two models generate independent predictions for every band. Each takes a distinct
+          approach, which makes the Compare and Replay pages useful rather than redundant.
         </p>
         <div className="grid gap-4 md:grid-cols-2">
-          {(Object.entries(MODEL_CONFIG) as [string, (typeof MODEL_CONFIG)[keyof typeof MODEL_CONFIG]][]).map(
-            ([slug, model]) => (
-              <div
-                key={slug}
-                className="rounded-xl border border-outline-variant/20 bg-surface-container-low p-6"
-              >
-                <p className="font-label text-[10px] uppercase tracking-[0.2em] text-primary">
-                  {model.displayName}
-                </p>
-                <p className="mt-3 text-sm leading-6 text-on-surface-variant">
-                  {model.explanation}
-                </p>
-              </div>
-            ),
-          )}
-        </div>
-      </SectionCard>
-
-      {/* Supported Bands */}
-      <SectionCard
-        title="Supported Bands"
-        eyebrow={`${bands.length} bands tracked`}
-      >
-        <p className="mb-6 text-sm leading-6 text-on-surface-variant">
-          The pipeline dynamically discovers and runs for each supported band. Tap one
-          to jump to its latest predictions.
-        </p>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          {bands.map((band) => (
-            <Link
-              key={band.slug}
-              href={`/?band=${band.slug}`}
-              className="rounded-xl border border-outline-variant/20 bg-surface-container-low p-4 transition hover:border-primary hover:bg-surface-container"
-            >
-              <p className="font-headline text-lg font-medium text-on-surface">
-                {band.displayName}
-              </p>
-              <p className="mt-1 text-xs text-on-surface-variant">View predictions →</p>
-            </Link>
-          ))}
+          <div className="editorial-chip rounded-[1.5rem] p-6">
+            <p className="font-label text-[10px] uppercase tracking-[0.2em] text-primary">
+              {MODEL_CONFIG.notebook.displayName}
+            </p>
+            <ul className="mt-3 space-y-3 pl-5 text-sm leading-6 text-on-surface-variant marker:text-primary/75 list-disc">
+              <li>Weighted-recency benchmark inspired by the method popularized by Phish.net.</li>
+              <li>Leans on active rotation trends and current gap to separate likely songs.</li>
+              <li>Excludes songs played in the last 3 shows.</li>
+            </ul>
+            <p className="mt-4 border-t border-outline-variant/15 pt-4 font-label text-[10px] uppercase tracking-[0.16em] text-on-surface-variant">
+              Credit: Based on the weighted-recency method popularized by Phish.net.
+            </p>
+          </div>
+          <div className="editorial-chip rounded-[1.5rem] p-6">
+            <p className="font-label text-[10px] uppercase tracking-[0.2em] text-primary">
+              {MODEL_CONFIG.ckplus.displayName}
+            </p>
+            <ul className="mt-3 space-y-3 pl-5 text-sm leading-6 text-on-surface-variant marker:text-primary/75 list-disc">
+              <li>Personally developed cadence model built specifically for this site.</li>
+              <li>Ranks songs by how overdue they are relative to their historical behavior.</li>
+              <li>Uses gap ratio, gap z-score, and reliability signals.</li>
+            </ul>
+            <p className="mt-4 border-t border-outline-variant/15 pt-4 font-label text-[10px] uppercase tracking-[0.16em] text-on-surface-variant">
+              Credit: CK+ is an original personally developed model.
+            </p>
+          </div>
         </div>
       </SectionCard>
 
       {/* Pipeline Overview */}
-      <SectionCard title="The Pipeline" eyebrow="Daily Automation">
+      <SectionCard title="The Pipeline">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {PIPELINE_STEPS.map((item) => (
             <div
               key={item.step}
-              className="rounded-xl border border-outline-variant/20 bg-surface-container-low p-5"
+              className="editorial-chip rounded-[1.5rem] p-5"
             >
               <p className="font-headline text-3xl font-bold text-primary/30">{item.step}</p>
               <p className="mt-2 font-headline text-base font-semibold text-on-surface">
@@ -173,47 +137,35 @@ export default async function AboutPage() {
       </SectionCard>
 
       {/* FAQ */}
-      <SectionCard title="FAQ" eyebrow="Common Questions">
+      <SectionCard title="FAQ">
         <div className="space-y-4">
           {FAQ_ITEMS.map((item) => (
             <details
               key={item.question}
-              className="group rounded-xl border border-outline-variant/20 bg-surface-container-low"
+              className="group editorial-chip rounded-[1.5rem]"
             >
-              <summary className="cursor-pointer select-none px-5 py-4 font-headline text-sm font-medium text-on-surface transition group-open:text-primary">
-                {item.question}
+              <summary className="flex cursor-pointer list-none items-start justify-between gap-3 px-5 py-4 font-headline text-sm font-medium text-on-surface transition group-open:text-primary">
+                <span className="pr-2">{item.question}</span>
+                <svg
+                  aria-hidden="true"
+                  className="mt-0.5 size-4 shrink-0 text-on-surface-variant transition-transform group-open:rotate-180"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    d="M6 9L12 15L18 9"
+                    stroke="currentColor"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="1.75"
+                  />
+                </svg>
               </summary>
-              <p className="px-5 pb-4 text-sm leading-6 text-on-surface-variant">{item.answer}</p>
+              <p className="whitespace-pre-line px-5 pb-4 text-sm leading-6 text-on-surface-variant">
+                {item.answer}
+              </p>
             </details>
           ))}
-        </div>
-      </SectionCard>
-
-      {/* Links */}
-      <SectionCard title="Links" eyebrow="Resources">
-        <div className="grid gap-3 sm:grid-cols-2">
-          <a
-            href="https://github.com/connorkitchings/JamBandNerd"
-            rel="noopener noreferrer"
-            target="_blank"
-            className="rounded-xl border border-outline-variant/20 bg-surface-container-low p-5 transition hover:border-primary"
-          >
-            <p className="font-headline text-base font-medium text-on-surface">GitHub</p>
-            <p className="mt-1 text-xs text-on-surface-variant">
-              Source code, docs, and contribution guidelines
-            </p>
-          </a>
-          <Link
-            href="/performance"
-            className="rounded-xl border border-outline-variant/20 bg-surface-container-low p-5 transition hover:border-primary"
-          >
-            <p className="font-headline text-base font-medium text-on-surface">
-              Performance Ledger
-            </p>
-            <p className="mt-1 text-xs text-on-surface-variant">
-              Track historical accuracy across models and bands
-            </p>
-          </Link>
         </div>
       </SectionCard>
     </div>

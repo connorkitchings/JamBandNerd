@@ -53,9 +53,8 @@ def _page_has_setlist_table(page_html: str, show_id: str) -> bool:
     for table in tables[4:8]:
         table_text = table.get_text()
         if (
-            ("0:" in table_text or "1:" in table_text or "2:" in table_text)
-            and "Song Stats" not in table_text
-        ):
+            "0:" in table_text or "1:" in table_text or "2:" in table_text
+        ) and "Song Stats" not in table_text:
             return True
 
     return False
@@ -328,7 +327,7 @@ def process_wsp_data(
     year_start: int | None = None,
     year_end: int | None = None,
     full_backfill: bool = False,
-) -> None:
+) -> CollectionStatus:
     """Collect all WSP data and store it in Supabase raw tables."""
     logging.info("Starting Widespread Panic data collection...")
     ensure_source_reachable("wsp")
@@ -551,7 +550,9 @@ def process_wsp_data(
             .execute()
         )
         recent_rows = recent_resp.data or []
-        show_ids = [str(row.get("show_id")) for row in recent_rows if row.get("show_id")]
+        show_ids = [
+            str(row.get("show_id")) for row in recent_rows if row.get("show_id")
+        ]
         if show_ids:
             setlists_resp = (
                 client.table("wsp_setlists_raw")
@@ -565,7 +566,9 @@ def process_wsp_data(
                 if row.get("show_id")
             }
             missing_rows = [
-                row for row in recent_rows if str(row.get("show_id")) not in completed_ids
+                row
+                for row in recent_rows
+                if str(row.get("show_id")) not in completed_ids
             ]
             diagnostics = classify_missing_recent_setlists(client, missing_rows)
             if diagnostics:
@@ -574,7 +577,9 @@ def process_wsp_data(
                 )
                 logging.warning(
                     "Recent WSP missing-setlist diagnostics: %s",
-                    ", ".join(f"{key}={value}" for key, value in sorted(counts.items())),
+                    ", ".join(
+                        f"{key}={value}" for key, value in sorted(counts.items())
+                    ),
                 )
                 for item in diagnostics[:5]:
                     logging.warning(
@@ -603,15 +608,19 @@ def process_wsp_data(
         error_summary = status.get_failure_summary()
         logging.error(error_summary)
         raise RuntimeError(
-            "WSP collection failed: upstream returned errors and no data was collected. "
-            "This likely indicates the site is blocking requests (403 Forbidden). "
-            "Check logs above for details."
+            "WSP collection failed with a non-degraded internal outcome "
+            f"({status.outcome_code()}). Check the failure summary above for details."
         )
+
+    if status.workflow_state() == "degraded":
+        logging.warning(status.get_degraded_summary())
+        return status
 
     # Log success summary
     success_summary = status.get_success_summary()
     logging.info(success_summary)
     logging.info("Widespread Panic data collection finished.")
+    return status
 
 
 def tourwrangler_fallback(client) -> tuple[int, int]:

@@ -4,6 +4,7 @@ import { cache } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import {
+  ACTIVE_MODELS,
   DEFAULT_BAND_SLUG,
   type BandSlug,
   type LikelihoodTier,
@@ -12,6 +13,24 @@ import {
   normalizeModel,
 } from "@/lib/config";
 import { getSupabaseServerClient, hasSupabaseEnv } from "@/lib/supabase/server";
+import {
+  buildShowDetails,
+  selectUmUpcomingShowRow,
+  type ShowDetails,
+} from "@/lib/next-show";
+import { selectLivePredictionSeedRow } from "@/lib/prediction-selection";
+import {
+  buildVenueAnalyticsSnapshot,
+  buildVenueKey,
+  summarizeVenueOptions,
+  type VenueAnalyticsSnapshot,
+  type VenueOption,
+  type VenueSetlistEntry,
+  type VenueShow,
+} from "@/lib/venue-analytics";
+export type { ModelAgreement, ModelAgreementTier } from "@/lib/model-agreement";
+export { calculateModelAgreement } from "@/lib/model-agreement";
+export type { ShowDetails } from "@/lib/next-show";
 
 type JsonPrediction = Record<string, unknown>;
 type ProjectionRow = Record<string, unknown>;
@@ -42,9 +61,14 @@ export type PredictionSnapshot = {
 export type AccuracyRow = {
   showDate: string | null;
   venueName: string | null;
+  city: string | null;
+  state: string | null;
   k10Recall: number | null;
   k25Recall: number | null;
   k50Recall: number | null;
+  k10Precision: number | null;
+  k25Precision: number | null;
+  k50Precision: number | null;
 };
 
 export type SetlistSong = {
@@ -58,20 +82,24 @@ export type SetlistSnapshot = {
   songs: SetlistSong[];
 };
 
-export type ShowDetails = {
-  venueName: string | null;
-  city: string | null;
-  state: string | null;
-  country: string | null;
-  showDate: string | null;
-  raw: Record<string, unknown>;
-};
-
 export type ExplorerSnapshot = {
   availableDates: string[];
   selectedDate: string | null;
   predictions: PredictionSnapshot | null;
   setlist: SetlistSnapshot | null;
+};
+
+export type ReplayShowOption = {
+  showDate: string;
+  venueName: string | null;
+};
+
+export type ReplaySnapshot = {
+  availableShows: ReplayShowOption[];
+  selectedDate: string | null;
+  show: ShowDetails | null;
+  setlist: SetlistSnapshot | null;
+  snapshots: Record<ModelSlug, PredictionSnapshot | null>;
 };
 
 export type BandEntry = {
@@ -98,6 +126,23 @@ function parsePredictions(value: unknown): JsonPrediction[] {
   }
 
   return Array.isArray(value) ? (value as JsonPrediction[]) : [];
+}
+
+function parseStringArray(value: unknown): string[] {
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed)
+        ? parsed.filter((item): item is string => typeof item === "string")
+        : [];
+    } catch {
+      return [];
+    }
+  }
+
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string")
+    : [];
 }
 
 function parseNumber(value: unknown): number | null {
@@ -135,6 +180,85 @@ function getVenueNameFromRow(row: Record<string, unknown> | null): string | null
   }
 
   return null;
+}
+
+function getVenueCityFromRow(row: Record<string, unknown> | null): string | null {
+  if (!row) {
+    return null;
+  }
+
+  if (typeof row.venue_city === "string") {
+    return row.venue_city;
+  }
+
+  if (typeof row.city === "string") {
+    return row.city;
+  }
+
+  return null;
+}
+
+function getVenueRegionFromRow(row: Record<string, unknown> | null): string | null {
+  if (!row) {
+    return null;
+  }
+
+  if (typeof row.region === "string") {
+    return row.region;
+  }
+
+  if (typeof row.venue_state === "string") {
+    return row.venue_state;
+  }
+
+  if (typeof row.state === "string") {
+    return row.state;
+  }
+
+  if (typeof row.venue_country === "string") {
+    return row.venue_country;
+  }
+
+  if (typeof row.country === "string") {
+    return row.country;
+  }
+
+  return null;
+}
+
+const SUPABASE_PAGE_SIZE = 1000;
+const SHOW_ID_CHUNK_SIZE = 100;
+type SupabaseSelectQuery = ReturnType<ReturnType<SupabaseClient["from"]>["select"]>;
+
+async function fetchAllRecords(
+  client: SupabaseClient,
+  tableName: string,
+  selectClause: string,
+  configureQuery: (query: SupabaseSelectQuery) => SupabaseSelectQuery,
+): Promise<Record<string, unknown>[]> {
+  const rows: Record<string, unknown>[] = [];
+
+  for (let offset = 0; ; offset += SUPABASE_PAGE_SIZE) {
+    const { data, error } = await configureQuery(
+      client.from(tableName).select(selectClause),
+    ).range(offset, offset + SUPABASE_PAGE_SIZE - 1);
+
+    if (error) {
+      throw error;
+    }
+
+    const pageRows =
+      (data ?? [])
+        .map((row: unknown) => asRecord(row))
+        .filter((row): row is Record<string, unknown> => row !== null);
+    rows.push(...pageRows);
+
+    if (pageRows.length < SUPABASE_PAGE_SIZE) {
+      break;
+    }
+  }
+
+  return rows;
 }
 
 function computeTier(rank: number, probability: number | null): LikelihoodTier {
@@ -219,6 +343,8 @@ function buildPredictionSnapshotFromCanonicalRow(
     predictedAt:
       typeof row.predicted_at === "string"
         ? row.predicted_at
+        : typeof row.generated_at === "string"
+          ? row.generated_at
         : typeof row.created_at === "string"
           ? row.created_at
           : null,
@@ -282,6 +408,8 @@ async function fetchProjectedPredictionSnapshot(
     .eq("band", band)
     .eq("model_slug", model);
 
+  const todayIso = new Date().toISOString().slice(0, 10);
+
   if (referenceDate) {
     seedQuery = seedQuery.eq("reference_date", referenceDate);
   }
@@ -290,13 +418,28 @@ async function fetchProjectedPredictionSnapshot(
     .order("predicted_at", { ascending: false })
     .order("reference_date", { ascending: false })
     .order("rank", { ascending: true })
-    .limit(1);
+    .limit(referenceDate ? 1 : 100);
 
   if (seedError) {
     throw seedError;
   }
 
-  const seedRow = asRecord(seedRows?.[0]);
+  const seedRow = referenceDate
+    ? asRecord(seedRows?.[0])
+    : selectLivePredictionSeedRow(
+        (seedRows ?? [])
+          .map((item) => asRecord(item))
+          .filter((item): item is Record<string, unknown> => item !== null)
+          .map((row) => ({
+            reference_date:
+              typeof row.reference_date === "string" ? row.reference_date : null,
+            predicted_at:
+              typeof row.predicted_at === "string" ? row.predicted_at : null,
+            model_version:
+              typeof row.model_version === "string" ? row.model_version : null,
+          })),
+        { todayIso },
+      );
   const seedReferenceDate =
     seedRow && typeof seedRow.reference_date === "string"
       ? seedRow.reference_date
@@ -508,51 +651,6 @@ export const getLatestPredictions = cache(
   },
 );
 
-export type ModelAgreementTier = {
-  matchCount: number;
-  total: number;
-  percentage: number;
-};
-
-export type ModelAgreement = {
-  top10: ModelAgreementTier;
-  top25: ModelAgreementTier;
-  top50: ModelAgreementTier;
-  composite: number;
-};
-
-export function calculateModelAgreement(
-  primaryRows: PredictionRow[],
-  secondaryRows: PredictionRow[],
-): ModelAgreement | null {
-  if (!primaryRows.length || !secondaryRows.length) return null;
-
-  const primaryNames = primaryRows.map((r) => r.songName.toLowerCase());
-  const secondaryNames = secondaryRows.map((r) => r.songName.toLowerCase());
-  const secondarySet = new Set(secondaryNames);
-
-  function computeTier(k: number): ModelAgreementTier {
-    const primaryTopK = primaryNames.slice(0, k);
-    const secondaryTopK = secondaryNames.slice(0, k);
-    const actualK = Math.min(k, primaryTopK.length, secondaryTopK.length);
-    const matchCount = primaryTopK.filter((song) => secondarySet.has(song)).length;
-    const percentage = actualK > 0 ? matchCount / actualK : 0;
-    return { matchCount, total: actualK, percentage };
-  }
-
-  const top10 = computeTier(10);
-  const top25 = computeTier(25);
-  const top50 = computeTier(50);
-
-  // Weighted composite: top-10 counts 2x, others count 1x
-  // Max possible: (10*2 + 25 + 50) = 95
-  const maxWeight = 10 * 2 + 25 + 50;
-  const composite =
-    (top10.matchCount * 2 + top25.matchCount + top50.matchCount) / maxWeight;
-
-  return { top10, top25, top50, composite };
-}
-
 export const getPredictionsForDate = cache(
   async (
     bandInput: string | undefined,
@@ -750,7 +848,7 @@ export const getRecentAccuracy = cache(
       const modelVersion = await getCurrentModelVersion(client, band, model);
       const { data, error } = await client
         .from("accuracy_per_show")
-        .select("show_id, show_date, k10_recall, k25_recall, k50_recall")
+        .select("show_id, show_date, k10_recall, k25_recall, k50_recall, k10_precision, k25_precision, k50_precision")
         .eq("band", band)
         .eq("model_version", modelVersion)
         .order("show_date", { ascending: false })
@@ -770,6 +868,9 @@ export const getRecentAccuracy = cache(
           k10Recall: parseNumber(row.k10_recall),
           k25Recall: parseNumber(row.k25_recall),
           k50Recall: parseNumber(row.k50_recall),
+          k10Precision: parseNumber(row.k10_precision),
+          k25Precision: parseNumber(row.k25_precision),
+          k50Precision: parseNumber(row.k50_precision),
         })) ?? [];
 
       if (accuracyRows.length === 0) {
@@ -779,8 +880,14 @@ export const getRecentAccuracy = cache(
       const { idColumn, showsTable } = bandState.bandEntry;
       const showIds = [...new Set(accuracyRows.map((row) => row.showId).filter(Boolean))];
       const showDates = [...new Set(accuracyRows.map((row) => row.showDate).filter(Boolean))];
-      const venueByShowId = new Map<string, string | null>();
-      const venueByShowDate = new Map<string, string | null>();
+      const showMetaByShowId = new Map<
+        string,
+        { venueName: string | null; city: string | null; state: string | null }
+      >();
+      const showMetaByShowDate = new Map<
+        string,
+        { venueName: string | null; city: string | null; state: string | null }
+      >();
 
       if (showIds.length > 0) {
         const { data: showData, error: showError } = await client
@@ -798,14 +905,18 @@ export const getRecentAccuracy = cache(
             continue;
           }
 
-          const venueName = getVenueNameFromRow(row);
+          const showMeta = {
+            venueName: getVenueNameFromRow(row),
+            city: getVenueCityFromRow(row),
+            state: getVenueRegionFromRow(row),
+          };
           const showIdValue = row[idColumn];
           if (typeof showIdValue === "string" || typeof showIdValue === "number") {
-            venueByShowId.set(String(showIdValue), venueName);
+            showMetaByShowId.set(String(showIdValue), showMeta);
           }
 
           if (typeof row.show_date === "string") {
-            venueByShowDate.set(row.show_date, venueName);
+            showMetaByShowDate.set(row.show_date, showMeta);
           }
         }
       } else if (showDates.length > 0) {
@@ -824,24 +935,190 @@ export const getRecentAccuracy = cache(
             continue;
           }
 
-          venueByShowDate.set(row.show_date, getVenueNameFromRow(row));
+          showMetaByShowDate.set(row.show_date, {
+            venueName: getVenueNameFromRow(row),
+            city: getVenueCityFromRow(row),
+            state: getVenueRegionFromRow(row),
+          });
         }
       }
 
       const rows: AccuracyRow[] = accuracyRows.map((row) => ({
+        ...(row.showId ? showMetaByShowId.get(row.showId) : null) ??
+          (row.showDate ? showMetaByShowDate.get(row.showDate) : null) ?? {
+            venueName: null,
+            city: null,
+            state: null,
+          },
         showDate: row.showDate,
-        venueName:
-          (row.showId ? venueByShowId.get(row.showId) : null) ??
-          (row.showDate ? venueByShowDate.get(row.showDate) : null) ??
-          null,
         k10Recall: row.k10Recall,
         k25Recall: row.k25Recall,
         k50Recall: row.k50Recall,
+        k10Precision: row.k10Precision,
+        k25Precision: row.k25Precision,
+        k50Precision: row.k50Precision,
       }));
 
       return rows.length === 0
         ? { status: "empty" }
         : { status: "ready", band, model, rows };
+    } catch (error) {
+      return {
+        status: "error",
+        message: error instanceof Error ? error.message : "Unknown error",
+      };
+    }
+  },
+);
+
+export const getVenueAnalytics = cache(
+  async (
+    bandInput: string | undefined,
+    venueKeyInput: string | undefined,
+  ): Promise<
+    RouteState<{
+      band: BandSlug;
+      venues: VenueOption[];
+      selectedVenueKey: string | null;
+      snapshot: VenueAnalyticsSnapshot | null;
+      selectionError: string | null;
+    }>
+  > => {
+    const missingEnv = getClientOrState<{
+      band: BandSlug;
+      venues: VenueOption[];
+      selectedVenueKey: string | null;
+      snapshot: VenueAnalyticsSnapshot | null;
+      selectionError: string | null;
+    }>();
+    if (missingEnv) {
+      return missingEnv;
+    }
+
+    const bandState = await getBandContext(bandInput);
+    if (bandState.status !== "ready") {
+      return bandState as RouteState<{
+        band: BandSlug;
+        venues: VenueOption[];
+        selectedVenueKey: string | null;
+        snapshot: VenueAnalyticsSnapshot | null;
+        selectionError: string | null;
+      }>;
+    }
+
+    const client = getSupabaseServerClient();
+    if (!client) {
+      return { status: "missing_env" };
+    }
+
+    try {
+      const { band, bandEntry } = bandState;
+      const todayIso = new Date().toISOString().slice(0, 10);
+      const historicalShowRows = await fetchAllRecords(
+        client,
+        bandEntry.showsTable,
+        "*",
+        (query) =>
+          query
+            .lt("show_date", todayIso)
+            .order("show_date", { ascending: false }),
+      );
+      const shows: VenueShow[] = historicalShowRows.flatMap((row) => {
+        const showId = row[bandEntry.idColumn];
+        const venueName = getVenueNameFromRow(row);
+        const showDate = typeof row.show_date === "string" ? row.show_date : null;
+
+        if (
+          !(typeof showId === "string" || typeof showId === "number") ||
+          !venueName ||
+          !showDate
+        ) {
+          return [];
+        }
+
+        return [
+          {
+            showId: String(showId),
+            showDate,
+            venueName,
+            city: getVenueCityFromRow(row),
+            region: getVenueRegionFromRow(row),
+          },
+        ];
+      });
+
+      const venues = summarizeVenueOptions(shows);
+      if (venues.length === 0) {
+        return { status: "empty" };
+      }
+
+      const selectedVenueKey = venueKeyInput?.trim() || venues[0].key;
+      const matchingVenue = venues.find((venue) => venue.key === selectedVenueKey) ?? null;
+
+      if (!matchingVenue) {
+        return {
+          status: "ready",
+          band,
+          venues,
+          selectedVenueKey,
+          snapshot: null,
+          selectionError: `No venue analytics were found for "${selectedVenueKey}".`,
+        };
+      }
+
+      const selectedShows = shows.filter(
+        (show) =>
+          buildVenueKey({
+            venueName: show.venueName,
+            city: show.city,
+            region: show.region,
+          }) === selectedVenueKey,
+      );
+      const showIds = selectedShows.map((show) => show.showId);
+      const positionColumn = band === "phish" ? "position" : "song_position";
+      const setlistTable = `${band}_setlists_raw`;
+      const setlistRows: VenueSetlistEntry[] = [];
+
+      for (let index = 0; index < showIds.length; index += SHOW_ID_CHUNK_SIZE) {
+        const showIdChunk = showIds.slice(index, index + SHOW_ID_CHUNK_SIZE);
+        const chunkRows = await fetchAllRecords(
+          client,
+          setlistTable,
+          `${bandEntry.idColumn}, song_name, set_number, ${positionColumn}`,
+          (query) =>
+            query
+              .in(bandEntry.idColumn, showIdChunk)
+              .order(bandEntry.idColumn, { ascending: true })
+              .order("set_number", { ascending: true })
+              .order(positionColumn, { ascending: true }),
+        );
+
+        for (const row of chunkRows) {
+          const showId = row[bandEntry.idColumn];
+          const songName =
+            typeof row.song_name === "string" ? row.song_name.trim() : "";
+
+          if (!(typeof showId === "string" || typeof showId === "number") || !songName) {
+            continue;
+          }
+
+          setlistRows.push({
+            showId: String(showId),
+            songName,
+            setNumber: parseNumber(row.set_number),
+            position: parseNumber(row[positionColumn]),
+          });
+        }
+      }
+
+      return {
+        status: "ready",
+        band,
+        venues,
+        selectedVenueKey,
+        snapshot: buildVenueAnalyticsSnapshot(selectedShows, setlistRows),
+        selectionError: null,
+      };
     } catch (error) {
       return {
         status: "error",
@@ -896,34 +1173,85 @@ export const getShowDetailsByDate = cache(
       return {
         status: "ready",
         band,
-        show: {
-          venueName:
-            typeof row.venue_name === "string"
-              ? row.venue_name
-              : typeof row.venue === "string"
-                ? row.venue
-                : null,
-          city:
-            typeof row.venue_city === "string"
-              ? row.venue_city
-              : typeof row.city === "string"
-                ? row.city
-                : null,
-          state:
-            typeof row.venue_state === "string"
-              ? row.venue_state
-              : typeof row.state === "string"
-                ? row.state
-                : null,
-          country:
-            typeof row.venue_country === "string"
-              ? row.venue_country
-              : typeof row.country === "string"
-                ? row.country
-                : null,
-          showDate: typeof row.show_date === "string" ? row.show_date : null,
-          raw: row,
-        },
+        show: buildShowDetails(row),
+      };
+    } catch (error) {
+      return {
+        status: "error",
+        message: error instanceof Error ? error.message : "Unknown error",
+      };
+    }
+  },
+);
+
+export const getNextShowDetails = cache(
+  async (
+    bandInput: string | undefined,
+  ): Promise<RouteState<{ band: BandSlug; show: ShowDetails }>> => {
+    const missingEnv = getClientOrState<{ band: BandSlug; show: ShowDetails }>();
+    if (missingEnv) {
+      return missingEnv;
+    }
+
+    const bandState = await getBandContext(bandInput);
+    if (bandState.status !== "ready") {
+      return bandState as RouteState<{ band: BandSlug; show: ShowDetails }>;
+    }
+
+    const client = getSupabaseServerClient();
+    if (!client) {
+      return { status: "missing_env" };
+    }
+
+    try {
+      const todayIso = new Date().toISOString().slice(0, 10);
+      if (bandState.band === "um") {
+        const { data: upcomingData, error: upcomingError } = await client
+          .from("um_upcoming_shows")
+          .select("*")
+          .gte("starts_at_local", todayIso)
+          .order("starts_at_local", { ascending: true })
+          .order("starts_at", { ascending: true })
+          .limit(25);
+
+        if (upcomingError) {
+          return { status: "error", message: upcomingError.message };
+        }
+
+        const upcomingRows = (upcomingData ?? [])
+          .map((item) => asRecord(item))
+          .filter((item): item is Record<string, unknown> => item !== null);
+        const upcomingRow = selectUmUpcomingShowRow(upcomingRows);
+
+        if (upcomingRow) {
+          return {
+            status: "ready",
+            band: bandState.band,
+            show: buildShowDetails(upcomingRow),
+          };
+        }
+      }
+
+      const { data, error } = await client
+        .from(bandState.bandEntry.showsTable)
+        .select("*")
+        .gte("show_date", todayIso)
+        .order("show_date", { ascending: true })
+        .limit(1);
+
+      if (error) {
+        return { status: "error", message: error.message };
+      }
+
+      const row = asRecord(data?.[0]);
+      if (!row) {
+        return { status: "empty" };
+      }
+
+      return {
+        status: "ready",
+        band: bandState.band,
+        show: buildShowDetails(row),
       };
     } catch (error) {
       return {
@@ -1009,6 +1337,28 @@ async function getSetlistForDate(
   return {
     showDetails: detailResponse.data?.[0] ?? null,
     songs,
+  };
+}
+
+function buildFallbackSetlistFromHistoricalRow(
+  row: Record<string, unknown> | null,
+): SetlistSnapshot | null {
+  if (!row) {
+    return null;
+  }
+
+  const actualSongs = parseStringArray(row.actual_songs);
+  if (actualSongs.length === 0) {
+    return null;
+  }
+
+  return {
+    showDetails: null,
+    songs: actualSongs.map((songName, index) => ({
+      setNumber: null,
+      position: index + 1,
+      songName,
+    })),
   };
 }
 
@@ -1115,85 +1465,187 @@ export async function getExplorerSnapshot(
   };
 }
 
-export const getGlobalSearchData = cache(
-  async (): Promise<RouteState<{ items: { band: BandSlug; songName: string; rank: number }[] }>> => {
-    const missingEnv = getClientOrState<{ items: { band: BandSlug; songName: string; rank: number }[] }>();
-    if (missingEnv) return missingEnv;
+export const getReplaySnapshot = cache(
+  async (
+    bandInput: string | undefined,
+    selectedDateInput?: string,
+    replayWindow = 50,
+  ): Promise<RouteState<{ band: BandSlug; replay: ReplaySnapshot }>> => {
+    const missingEnv = getClientOrState<{ band: BandSlug; replay: ReplaySnapshot }>();
+    if (missingEnv) {
+      return missingEnv;
+    }
+
+    const bandState = await getBandContext(bandInput);
+    if (bandState.status !== "ready") {
+      return bandState as RouteState<{ band: BandSlug; replay: ReplaySnapshot }>;
+    }
 
     const client = getSupabaseServerClient();
-    if (!client) return { status: "missing_env" };
+    if (!client) {
+      return { status: "missing_env" };
+    }
 
     try {
-      const bandsState = await getBands();
-      if (bandsState.status !== "ready") {
-        return bandsState as RouteState<{
-          items: { band: BandSlug; songName: string; rank: number }[];
-        }>;
-      }
-
-      const bandSlugs = bandsState.bands.map((band) => band.slug);
-      const items: { band: BandSlug; songName: string; rank: number }[] = [];
-
-      await Promise.all(
-        bandSlugs.map(async (band) => {
-          // Default to fetching Notebook model for search index for now
-          const model: ModelSlug = "notebook";
-          const bandSlug = band;
-          
-          try {
-            const projectionSnapshot = await fetchProjectedPredictionSnapshot(client, {
-              band: bandSlug,
-              model,
-            });
-            
-            if (projectionSnapshot && projectionSnapshot.predictions) {
-              for (const p of projectionSnapshot.predictions) {
-                items.push({
-                  band: bandSlug,
-                  songName: p.songName,
-                  rank: p.rank,
-                });
-              }
-              return;
-            }
-          } catch (error) {
-            console.error(`Failed to load search data for ${bandSlug} (projection)`, error);
-          }
-
-          const { data } = await client
-            .from(`predictions_${model}`)
-            .select("*")
-            .eq("band", bandSlug)
-            .order("reference_date", { ascending: false })
-            .limit(1);
-
-          const row = data?.[0];
-          if (row) {
-            const snapshot = buildPredictionSnapshotFromCanonicalRow(row);
-            for (const p of snapshot.predictions) {
-              items.push({
-                band: bandSlug,
-                songName: p.songName,
-                rank: p.rank,
-              });
-            }
-          }
-        })
+      const band = bandState.band;
+      const { showsTable } = bandState.bandEntry;
+      const modelVersions = await Promise.all(
+        ACTIVE_MODELS.map(async (model) => ({
+          model,
+          version: await getCurrentModelVersion(client, band, model),
+        })),
       );
 
-      if (items.length === 0) return { status: "empty" };
+      const historicalRowsByModel = await Promise.all(
+        modelVersions.map(async ({ model, version }) => {
+          const { data, error } = await client
+            .from("historical_prediction_runs")
+            .select("target_show_date, generated_at")
+            .eq("band", band)
+            .eq("model_slug", model)
+            .eq("model_version", version)
+            .order("target_show_date", { ascending: false })
+            .order("generated_at", { ascending: false })
+            .limit(Math.max(replayWindow * 4, 100));
 
-      // Sort globally alphabetically
-      items.sort((a, b) => a.songName.localeCompare(b.songName));
-      return { status: "ready", items };
-      
+          if (error) {
+            throw new Error(error.message);
+          }
+
+          const dedupedDates: string[] = [];
+          const seen = new Set<string>();
+          for (const item of data ?? []) {
+            const row = asRecord(item);
+            const showDate =
+              row && typeof row.target_show_date === "string"
+                ? row.target_show_date
+                : null;
+            if (!showDate || seen.has(showDate)) {
+              continue;
+            }
+            seen.add(showDate);
+            dedupedDates.push(showDate);
+          }
+
+          return { model, dates: dedupedDates };
+        }),
+      );
+
+      const replayableDateSet = historicalRowsByModel.reduce<Set<string> | null>(
+        (shared, entry) => {
+          const dates = new Set(entry.dates);
+          if (!shared) {
+            return dates;
+          }
+
+          return new Set([...shared].filter((date) => dates.has(date)));
+        },
+        null,
+      );
+
+      const availableDates = [...(replayableDateSet ?? new Set<string>())]
+        .sort((left, right) => right.localeCompare(left))
+        .slice(0, replayWindow);
+
+      if (availableDates.length === 0) {
+        return { status: "empty" };
+      }
+
+      const selectedDate =
+        selectedDateInput && availableDates.includes(selectedDateInput)
+          ? selectedDateInput
+          : availableDates[0] ?? null;
+
+      if (!selectedDate) {
+        return { status: "empty" };
+      }
+
+      const { data: showRows, error: showError } = await client
+        .from(showsTable)
+        .select("*")
+        .in("show_date", availableDates);
+
+      if (showError) {
+        return { status: "error", message: showError.message };
+      }
+
+      const showByDate = new Map<string, Record<string, unknown>>();
+      for (const item of showRows ?? []) {
+        const row = asRecord(item);
+        if (!row || typeof row.show_date !== "string") {
+          continue;
+        }
+        showByDate.set(row.show_date, row);
+      }
+
+      const availableShows = availableDates.map((showDate) => ({
+        showDate,
+        venueName: getVenueNameFromRow(showByDate.get(showDate) ?? null),
+      }));
+
+      const historicalSnapshots = await Promise.all(
+        modelVersions.map(async ({ model, version }) => {
+          const { data, error } = await client
+            .from("historical_prediction_runs")
+            .select("*")
+            .eq("band", band)
+            .eq("model_slug", model)
+            .eq("model_version", version)
+            .eq("target_show_date", selectedDate)
+            .order("generated_at", { ascending: false })
+            .limit(1);
+
+          if (error) {
+            throw new Error(error.message);
+          }
+
+          const row = asRecord(data?.[0]);
+          return {
+            model,
+            row,
+            snapshot: row ? buildPredictionSnapshotFromCanonicalRow(row) : null,
+          };
+        }),
+      );
+
+      const snapshots = historicalSnapshots.reduce<Record<ModelSlug, PredictionSnapshot | null>>(
+        (acc, entry) => {
+          acc[entry.model] = entry.snapshot;
+          return acc;
+        },
+        {
+          notebook: null,
+          ckplus: null,
+          deal: null,
+        },
+      );
+
+      const setlist =
+        (await getSetlistForDate(band, selectedDate)) ??
+        buildFallbackSetlistFromHistoricalRow(
+          historicalSnapshots.find((entry) => entry.row)?.row ?? null,
+        );
+
+      const selectedShow = showByDate.get(selectedDate) ?? null;
+
+      return {
+        status: "ready",
+        band,
+        replay: {
+          availableShows,
+          selectedDate,
+          show: selectedShow ? buildShowDetails(selectedShow) : null,
+          setlist,
+          snapshots,
+        },
+      };
     } catch (error) {
       return {
         status: "error",
         message: error instanceof Error ? error.message : "Unknown error",
       };
     }
-  }
+  },
 );
 
 export const getBands = cache(

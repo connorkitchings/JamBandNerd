@@ -1,6 +1,9 @@
 import { defineConfig, devices } from "@playwright/test";
+import { normalizeHostedBaseUrl } from "./tests/smoke/hosted-target";
 
 const PORT = 3101;
+const hostedBaseUrl = normalizeHostedBaseUrl(process.env.SMOKE_BASE_URL);
+const useHostedBaseUrl = Boolean(hostedBaseUrl);
 
 export default defineConfig({
   testDir: "./tests/smoke",
@@ -11,15 +14,17 @@ export default defineConfig({
     timeout: 10_000,
   },
   use: {
-    baseURL: `http://127.0.0.1:${PORT}`,
+    baseURL: hostedBaseUrl ?? `http://127.0.0.1:${PORT}`,
     trace: "on-first-retry",
   },
-  webServer: {
-    command: `npm run start -- --hostname 127.0.0.1 --port ${PORT}`,
-    url: `http://127.0.0.1:${PORT}`,
-    reuseExistingServer: !process.env.CI,
-    timeout: 120_000,
-  },
+  webServer: useHostedBaseUrl
+    ? undefined
+    : {
+        command: `npm run start -- --hostname 127.0.0.1 --port ${PORT}`,
+        url: `http://127.0.0.1:${PORT}`,
+        reuseExistingServer: !process.env.CI,
+        timeout: 120_000,
+      },
   projects: [
     {
       name: "desktop-chromium",

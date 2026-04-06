@@ -65,13 +65,8 @@ export function SongSearch({ songs }: Props) {
         )}
       </div>
 
-      {showResults && (
+      {showResults && results.length > 0 && (
         <div className="absolute inset-x-0 top-full z-20 mt-2 overflow-hidden rounded-xl border border-outline-variant/30 bg-surface-container-high shadow-xl">
-          {results.length === 0 ? (
-            <div className="px-4 py-6 text-center text-sm text-on-surface-variant">
-              No songs matching &ldquo;{query.trim()}&rdquo;
-            </div>
-          ) : (
             <ul className="divide-y divide-outline-variant/15">
               {results.map((song) => {
                 const tierConfig = TIER_CONFIG[song.tier];
@@ -105,7 +100,6 @@ export function SongSearch({ songs }: Props) {
                 );
               })}
             </ul>
-          )}
         </div>
       )}
     </div>

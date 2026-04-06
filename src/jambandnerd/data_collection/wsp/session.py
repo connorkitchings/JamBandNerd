@@ -11,6 +11,8 @@ from playwright.sync_api import Browser, BrowserContext, Page, sync_playwright
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
+from jambandnerd.data_collection.config import JAMBANNERD_BOT_UA
+
 logger = logging.getLogger(__name__)
 
 # Detect if running in GitHub Actions
@@ -73,7 +75,7 @@ def create_enhanced_session() -> requests.Session:
     # Comprehensive browser-like headers to avoid 403 Forbidden
     session.headers.update(
         {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+            "User-Agent": JAMBANNERD_BOT_UA,
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
             "Accept-Language": "en-US,en;q=0.9",
             # NOTE: Don't set Accept-Encoding manually - let requests handle it automatically
@@ -189,7 +191,7 @@ def _get_playwright_browser() -> Browser:
             args=[],
         )
         _playwright_context = _playwright_browser.new_context(
-            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:133.0) Gecko/20100101 Firefox/133.0",
+            user_agent=JAMBANNERD_BOT_UA,
             viewport={"width": 1920, "height": 1080},
             locale="en-US",
             timezone_id="America/New_York",

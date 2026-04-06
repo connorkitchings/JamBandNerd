@@ -7,8 +7,8 @@ from typing import Any, Dict, List
 import numpy as np
 import pandas as pd
 
-from src.jambandnerd.config.bands import get_excluded_songs
-from src.jambandnerd.transformations.gaps import ModelData
+from jambandnerd.config.bands import get_excluded_songs
+from jambandnerd.transformations.gaps import ModelData
 
 from ..base import PredictionModel
 

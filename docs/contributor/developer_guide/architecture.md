@@ -65,27 +65,54 @@ graph TD
 
 ### Delivery
 
-- The website in `apps/web` is the target public surface.
+- The website in `apps/web` is the current public surface.
 - Supabase remains the shared storage and read layer for predictions and
   accuracy data.
-- The Streamlit app remains a legacy transition surface only.
+- Streamlit is no longer part of the active public delivery path, but it
+  remains in the repo for internal legacy/debugging use.
+- `apps/web/src/lib/data.ts` remains the compatibility import surface while domain ownership is split across `apps/web/src/lib/data/{bands,predictions,accuracy,replay,shows,venues}.ts`.
+- Route files should compose server-side results rather than reimplement query logic.
+- Client components are reserved for interactive islands, navigation hooks, and live subscriptions.
+
+Current website routes:
+- `/` - Homepage with band overview and upcoming shows
+- `/predictions` - Live predictions with model comparison and show outlook
+- `/performance` - Historical accuracy charts with K-value selection
+- `/compare` - Model board comparison against actual setlists
+- `/replay` - Canonical historical prediction replay with both model boards and
+  the actual setlist for one completed show
+- `/explorer` - Compatibility redirect to `/replay`
+- `/last-show` - Most recent completed show details
+- `/venues` - Venue analytics and tour patterns
+- `/about`, `/contact`, `/data-use` - Public informational pages
+
+Key shared components:
+- `page-hero`, `site-header`, `site-footer`, `dashboard-side-nav`
+- `prediction-hero`, `song-board`, `recall-chart`, `accuracy-table`
+- `show-outlook-popover`, `live-tracker`, `model-agreement`, `venue-analytics`
 
 ### Orchestration
 
 - `scripts/run_optimized_pipeline.py` is the canonical end-to-end local runner.
 - GitHub Actions executes the daily pipeline in production-like automation.
+- Pull requests targeting `main` should clear `Repo Quality` and `Verify Website` before merge.
 - Band metadata (slug, display name, raw table names, ID column) is managed in the
   `bands` Supabase table as the single write point. The website reads it dynamically;
   adding a new band requires only inserting a row into `bands` and creating a collector.
+- Supported bands: Goose, Phish, Eggy, Billy Strings, Widespread Panic, Umphrey's McGee
 
 ### Model Platform
 
-New prediction models are added through a documented 4-step process (see
-`docs/contributor/model_development.md`). Each model:
-1. Inherits `PredictionModel` and consumes the same `ModelData` contract
-2. Is wired into `generate_predictions.py` with its own output formatting block
-3. Registers its version string and legacy table name in the config modules
-4. Adds an entry to `MODEL_CONFIG` in the website for UI display
+The backend model platform is registry-based. The canonical model source of
+truth is `src/jambandnerd/models/registry.py`, which defines predictor class,
+table/version mapping, serializer, and orchestration capability flags.
+
+New prediction models are added through the registry workflow (see
+`docs/contributor/model_development.md`):
+1. Add a model package that consumes the shared `ModelData` contract
+2. Add a model-specific serializer module
+3. Add one `ModelDefinition` entry in the registry
+4. Optionally add frontend presentation metadata in website config
 
 All models write to `prediction_songs` via `replace_prediction_projection()`, making
 them automatically available to the website's analytics and explorer routes.
@@ -99,5 +126,5 @@ them automatically available to the website's analytics and explorer routes.
   source-faithful raw storage, shared normalized modeling inputs.
 - Band metadata lives in the `bands` Supabase table — the website reads it
   dynamically. Do not hardcode band lists in frontend code.
-- Models are wired via `MODEL_CONFIG` in the website and config modules — no
-  dynamic discovery required on the frontend.
+- Backend model registration lives in `models/registry.py`; frontend
+  `MODEL_CONFIG` is product presentation metadata only.

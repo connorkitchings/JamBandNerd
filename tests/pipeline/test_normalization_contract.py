@@ -47,3 +47,33 @@ def test_sort_normalized_shows_uses_show_id_as_same_day_tiebreaker():
     sorted_shows = sort_normalized_shows(shows_df)
 
     assert sorted_shows["show_id"].tolist() == ["show-a", "show-b", "show-c"]
+
+
+def test_prepare_band_data_excludes_configured_prediction_show_ids():
+    shows_df = pd.DataFrame(
+        [
+            {"show_id": "1755099318", "show_date": "2025-08-13"},
+            {"show_id": "1748090458", "show_date": "2025-05-25"},
+            {"show_id": "1736785860", "show_date": "2025-05-25"},
+            {"show_id": "goose-real", "show_date": "2025-08-14"},
+        ]
+    )
+    setlists_df = pd.DataFrame(
+        [
+            {"show_id": "1755099318", "song_name": "TV Song"},
+            {"show_id": "1748090458", "song_name": "Short Set Song"},
+            {"show_id": "1736785860", "song_name": "Full Set Song"},
+            {"show_id": "goose-real", "song_name": "Real Song"},
+        ]
+    )
+
+    prepared_shows, prepared_setlists = prepare_band_data(
+        shows_df, setlists_df, band="goose"
+    )
+
+    result_ids = prepared_shows["show_id"].tolist()
+    assert "goose-real" in result_ids
+    assert "1736785860" in result_ids
+    assert "1755099318" not in result_ids
+    assert "1748090458" not in result_ids
+    assert prepared_setlists["show_id"].tolist() == prepared_shows["show_id"].tolist()

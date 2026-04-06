@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint .",
     "test:smoke": "playwright test",
+    "test:smoke:hosted": "playwright test",
     "test:smoke:list": "playwright test --list"
   },
   "dependencies": {

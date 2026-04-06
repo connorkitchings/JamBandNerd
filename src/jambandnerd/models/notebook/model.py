@@ -4,9 +4,9 @@ from dataclasses import dataclass
 from datetime import timedelta
 from typing import Any, Dict, List
 
-from src.jambandnerd.config.bands import get_excluded_songs
-from src.jambandnerd.models.base import PredictionModel
-from src.jambandnerd.transformations.gaps import ModelData
+from jambandnerd.config.bands import get_excluded_songs
+from jambandnerd.models.base import PredictionModel
+from jambandnerd.transformations.gaps import ModelData
 
 
 @dataclass

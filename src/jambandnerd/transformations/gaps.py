@@ -28,9 +28,9 @@ def _stats_for_song(group: pd.DataFrame) -> pd.Series:
             "last_played_index": plays_idx[-1],
             "last_played_date": group["show_date"].max(),
             "avg_gap": pd.Series(gaps).mean() if gaps else float("nan"),
-            "recent_avg_gap": pd.Series(recent_gaps).mean()
-            if recent_gaps
-            else float("nan"),
+            "recent_avg_gap": (
+                pd.Series(recent_gaps).mean() if recent_gaps else float("nan")
+            ),
             "std_gap": pd.Series(gaps).std(ddof=0) if gaps else 0.0,
         }
     )
@@ -121,8 +121,13 @@ def _compute_base_features(
         print(f"Plays shape after filtering to historical shows: {plays.shape}")
 
     plays["show_index"] = plays["show_id"].map(show_idx_map)
+    show_context_columns = ["show_id", "show_date"]
+    for optional_column in ["venue_name", "city", "state", "country"]:
+        if optional_column in historical_shows.columns:
+            show_context_columns.append(optional_column)
+
     plays = plays.merge(
-        historical_shows[["show_id", "show_date"]], on="show_id", how="left"
+        historical_shows[show_context_columns], on="show_id", how="left"
     )
     if debug:
         print(f"Plays shape after merging with show_date: {plays.shape}")
@@ -181,7 +186,7 @@ def generate_model_data(
 
     # Get band-specific exclusion window if band is provided
     if band:
-        from src.jambandnerd.config import (
+        from jambandnerd.config import (
             BAND_EXCLUSION_WINDOWS,
             EXCLUSION_WINDOW_DEFAULT,
         )

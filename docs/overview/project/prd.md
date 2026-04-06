@@ -84,7 +84,7 @@ enhance their concert experience through data-driven insights.
 - **Prediction Display**: Show next song probabilities with confidence scores
 - **Historical Accuracy**: Display model performance trends over time
 - **Responsive Design**: Support desktop and mobile viewing
-- **Status**: The website at `apps/web` is the product surface. Streamlit has been retired.
+- **Status**: The website at `apps/web` is the product surface. Streamlit remains in the repo for internal legacy/debugging use only.
 
 #### Infrastructure
 
@@ -92,28 +92,25 @@ enhance their concert experience through data-driven insights.
 - **Automated Pipeline**: GitHub Actions for daily execution
 - **Modular Architecture**: Independent component updates without full system changes
 
-### Phase 2 Features
+### Phase 2 Features (Revised Roadmap)
 
-#### Enhanced Predictions
+Phase 2 focuses on high-engagement features for the community, interactive games, and deep-dive analytics, prioritizing feasible implementations over speculative features.
 
-- **CK+ Model Integration**: Add gap-based statistical model option
-- **Model Comparison**: Side-by-side model performance analysis
-- **Full Setlist Predictions**: Predict entire show structure beyond next song
-- **Encore Predictions**: Specialized models for encore song selection
+#### Active Exploration Areas
 
-#### Advanced Interface
+- **Real-Time Show Tracking**: Update predictions and provide live insights as shows progress (dependent on live setlist ingestion from APIs or social platforms like Bluesky/Twitter).
+- **Community Games**: Interactive prediction games without heavy social networking overhead.
+  - *Pick 5*: Users predict 5 songs for the upcoming show.
+  - *Fantasy Sets*: Song drafting with scoring based on rarity or placement.
+  - *Jamble*: A daily Wordle-style brain teaser based on song statistics.
+- **Analytics & Insights**: Leverage existing data for new visualizations.
+  - *Song Relationship Mapping*: Transition probabilities (e.g., how often does "Mike's Song" lead to "I Am Hydrogen").
+  - *Venue-Specific Patterns*: Historical bias for specific songs or jams at iconic venues (MSG, Dick's, Red Rocks).
 
-- **Interactive Setlist Builder**: Allow users to test prediction scenarios
-- **Real-Time Show Tracking**: Update predictions as shows progress
-- **Historical Show Exploration**: Browse past shows with prediction overlays
-- **User Prediction Challenges**: Community prediction competitions
+#### On Hold / Pre-requisite Required
 
-#### Analytics & Insights
-
-- **Venue-Specific Patterns**: Location-based prediction adjustments
-- **Tour Analysis**: Prediction accuracy trends across tour segments
-- **Song Relationship Mapping**: Visualize song transition probabilities
-- **Custom Model Parameters**: User-adjustable model settings
+- **Full Setlist & Encore Predictions**: Blocked until a new predictive model is developed that accounts for setlist positioning (openers, closers, encores).
+- **Interactive Setlist Builder**: On hold pending clear user demand.
 
 ---
 

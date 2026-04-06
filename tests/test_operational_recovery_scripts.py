@@ -141,8 +141,12 @@ def test_rebuild_band_outputs_clears_one_model_at_a_time(monkeypatch):
         "save_aggregate_accuracy",
         lambda **kwargs: events.append(("aggregate", kwargs["model"])),
     )
-    monkeypatch.setattr(rebuild_derived_data, "validate_predictions", lambda *args, **kwargs: 0)
-    monkeypatch.setattr(rebuild_derived_data, "validate_accuracy", lambda *args, **kwargs: 0)
+    monkeypatch.setattr(
+        rebuild_derived_data, "validate_predictions", lambda *args, **kwargs: 0
+    )
+    monkeypatch.setattr(
+        rebuild_derived_data, "validate_accuracy", lambda *args, **kwargs: 0
+    )
 
     rebuild_derived_data.rebuild_band_outputs(
         band="goose",
@@ -202,6 +206,7 @@ def test_clear_existing_outputs_deletes_selected_rows(monkeypatch):
     assert ("predictions_notebook", "band", "goose") in events
     assert ("predictions_ckplus", "band", "goose") in events
     assert ("prediction_songs", "band", "goose") in events
+    assert ("historical_prediction_runs", "band", "goose") in events
     assert ("accuracy_per_show", "band", "goose") in events
     assert ("notebook_accuracy", "band", "goose") in events
     assert ("accuracy_ckplus", "band", "goose") in events
