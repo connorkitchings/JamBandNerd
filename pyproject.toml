@@ -17,7 +17,7 @@ dependencies = [
     "pandas",
     "requests",
     "python-dotenv",
-    "lxml==4.9.3",
+    "lxml==6.0.2",
     "supabase",
     "beautifulsoup4",
     "psycopg2-binary",
