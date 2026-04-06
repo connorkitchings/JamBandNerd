@@ -8,6 +8,7 @@ import requests
 from bs4 import BeautifulSoup
 from tqdm import tqdm
 
+from .parser_profile import DEFAULT_PROFILE
 from .session import make_request
 
 if TYPE_CHECKING:
@@ -68,13 +69,14 @@ def collect_shows(
             def find_show_table(tag):
                 if tag.name != "table":
                     return False
-                # A valid show table should contain at least one link to a setlist page
-                # Handle both absolute and relative paths (../setlists/file.asp or setlist.asp)
                 return tag.find(
                     "a",
                     href=lambda href: href
                     and (
-                        ".asp" in href and ("setlist" in href or "/setlists/" in href)
+                        DEFAULT_PROFILE.tour_link_extension in href
+                        and any(
+                            p in href for p in DEFAULT_PROFILE.tour_link_href_patterns
+                        )
                     ),
                 )
 
@@ -89,7 +91,10 @@ def collect_shows(
             setlist_links = target_table.find_all(
                 "a",
                 href=lambda href: href
-                and (".asp" in href and ("setlist" in href or "/setlists/" in href)),
+                and (
+                    DEFAULT_PROFILE.tour_link_extension in href
+                    and any(p in href for p in DEFAULT_PROFILE.tour_link_href_patterns)
+                ),
             )
 
             for link in setlist_links:

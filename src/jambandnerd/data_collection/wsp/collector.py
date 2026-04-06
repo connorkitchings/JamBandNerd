@@ -16,6 +16,7 @@ from ..base import BandCollector
 from ..config import get_collector_config
 from ..setlist_reviewer import review_setlist
 from .parser import _validate_song_name, parse_setlist_from_text
+from .parser_profile import DEFAULT_PROFILE, fingerprint_page, validate_fingerprint
 from .session import (
     IS_GITHUB_ACTIONS,
     cleanup_playwright,
@@ -123,15 +124,27 @@ class WSPCollector(BandCollector):
 
             logger.debug(f"Text parsing failed for {show_url}, trying table parsing")
             tables = soup.find_all("table")
-            if len(tables) < 5:
+            if len(tables) < DEFAULT_PROFILE.song_table_min_tables:
                 return []
 
+            fp = fingerprint_page(soup, DEFAULT_PROFILE)
+            warnings = validate_fingerprint(fp, DEFAULT_PROFILE)
+            if warnings:
+                logger.warning(
+                    "WSP DOM fingerprint mismatch for %s: %s",
+                    show_url,
+                    "; ".join(warnings),
+                )
+
             setlist_table = None
-            for table in tables[4:8]:
+            lo, hi = DEFAULT_PROFILE.setlist_table_range
+            for table in tables[lo:hi]:
                 table_text = table.get_text()
                 if (
-                    "0:" in table_text or "1:" in table_text or "2:" in table_text
-                ) and "Song Stats" not in table_text:
+                    any(m in table_text for m in DEFAULT_PROFILE.setlist_set_markers)
+                ) and not any(
+                    m in table_text for m in DEFAULT_PROFILE.setlist_noise_markers
+                ):
                     if not setlist_table or len(table_text) < len(
                         setlist_table.get_text()
                     ):
@@ -238,14 +251,15 @@ class WSPCollector(BandCollector):
                 def find_show_table(tag):
                     if tag.name != "table":
                         return False
-                    # A valid show table should contain at least one link to a setlist page
-                    # Handle both absolute and relative paths (../setlists/file.asp or setlist.asp)
                     return tag.find(
                         "a",
                         href=lambda href: href
                         and (
-                            ".asp" in href
-                            and ("setlist" in href or "/setlists/" in href)
+                            DEFAULT_PROFILE.tour_link_extension in href
+                            and any(
+                                p in href
+                                for p in DEFAULT_PROFILE.tour_link_href_patterns
+                            )
                         ),
                     )
 
@@ -261,26 +275,26 @@ class WSPCollector(BandCollector):
                     "a",
                     href=lambda href: href
                     and (
-                        ".asp" in href and ("setlist" in href or "/setlists/" in href)
+                        DEFAULT_PROFILE.tour_link_extension in href
+                        and any(
+                            p in href for p in DEFAULT_PROFILE.tour_link_href_patterns
+                        )
                     ),
                 )
 
                 for link in setlist_links:
                     try:
-                        # Parse link text format: "01/18/24 Stifel Theatre, St. Louis, MO"
                         link_text = link.get_text().strip()
                         if not link_text:
                             continue
 
-                        # Extract date (first part before space)
                         parts = link_text.split(" ", 1)
                         if len(parts) < 2:
                             continue
 
-                        date_part = parts[0]  # "01/18/24"
-                        venue_location_part = parts[
-                            1
-                        ]  # "Stifel Theatre, St. Louis, MO"
+                        date_part = parts[0]
+
+                        venue_location_part = parts[1]
 
                         # Parse date - convert 2-digit year to 4-digit
                         try:
@@ -452,19 +466,14 @@ class WSPCollector(BandCollector):
             soup = BeautifulSoup(response.content, "html.parser")
             tables = soup.find_all("table")
 
-            if len(tables) < 5:
+            if len(tables) < DEFAULT_PROFILE.song_table_min_tables:
                 logger.error("Could not find the song table on the page.")
                 return []
 
-            songs_df = pd.read_html(StringIO(str(tables[4])))[0]
-            songs_df.columns = [
-                "code",
-                "song_name",
-                "first_played",
-                "last_played",
-                "times_played",
-                "aka",
-            ]
+            songs_df = pd.read_html(
+                StringIO(str(tables[DEFAULT_PROFILE.song_table_index]))
+            )[0]
+            songs_df.columns = list(DEFAULT_PROFILE.song_table_columns)
             songs_df.dropna(subset=["code", "song_name"], inplace=True)
 
             # Clean and format data
