@@ -2,6 +2,8 @@
 
 This repository runs a daily data pipeline via GitHub Actions.
 
+It also includes a dedicated Fantasy Goose workflow for Goose entry automation.
+
 ## Triggers
 
 - Scheduled: Daily at 19:00 UTC (3:00 PM ET during DST)
@@ -18,6 +20,28 @@ This repository runs a daily data pipeline via GitHub Actions.
 - Run freshness checks and write a run summary
 - GitHub-hosted Python jobs install dependencies through `uv` with the checked-in `uv.lock`
 - Publish per-band health states in the workflow summary (`success`, `degraded`, or `failed`)
+
+## Fantasy Goose Workflow
+
+- Workflow: `.github/workflows/fantasy-goose.yml`
+- Triggers:
+  - `workflow_run` after a successful `Daily Data Pipeline` run on `main`
+  - `workflow_dispatch` for manual dry-runs or date-targeted replays
+- Required secrets:
+  - `SUPABASE_URL`
+  - `SUPABASE_SERVICE_ROLE_KEY`
+  - `FG_USER_EMAIL`
+  - `FG_PASSWORD`
+- Behavior:
+  - Logs in to Fantasy Goose
+  - Reads the authenticated show dropdown and Fantasy Goose song catalog
+  - Selects the Goose show for the target Eastern date when the pick cutoff is still open
+  - Fetches Goose `notebook` predictions for the exact `reference_date`
+  - Maps the top 8 songs onto Fantasy Goose song ids and submits through the authenticated browser session
+  - Skips safely when there is no show, the cutoff passed, or a pick already exists
+- Failure policy:
+  - `mapping_failed` or `missing_predictions` fails the workflow
+  - `no_show_tonight`, `cutoff_passed`, `already_submitted`, and manual `dry_run` are non-error no-op outcomes
 
 ## Notes
 

@@ -1,0 +1,92 @@
+name: Fantasy Goose
+
+on:
+  workflow_run:
+    workflows:
+      - Daily Data Pipeline
+    types:
+      - completed
+  workflow_dispatch:
+    inputs:
+      date:
+        description: "Target show date (YYYY-MM-DD). Defaults to today in ET."
+        required: false
+        type: string
+      dry_run:
+        description: "Resolve the target show and picks but do not submit."
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  play-fantasy-goose:
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'main')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      FG_USER_EMAIL: ${{ secrets.FG_USER_EMAIL }}
+      FG_PASSWORD: ${{ secrets.FG_PASSWORD }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Validate required secrets
+        run: |
+          MISSING=()
+          [[ -z "$SUPABASE_URL" ]] && MISSING+=("SUPABASE_URL")
+          [[ -z "$SUPABASE_SERVICE_ROLE_KEY" ]] && MISSING+=("SUPABASE_SERVICE_ROLE_KEY")
+          [[ -z "$FG_USER_EMAIL" ]] && MISSING+=("FG_USER_EMAIL")
+          [[ -z "$FG_PASSWORD" ]] && MISSING+=("FG_PASSWORD")
+
+          if [[ ${#MISSING[@]} -gt 0 ]]; then
+            echo "::error::Missing required secrets: ${MISSING[*]}"
+            exit 1
+          fi
+
+      - name: Install dependencies
+        run: uv sync --locked --no-dev
+
+      - name: Install Playwright Browsers
+        run: uv run playwright install --with-deps chromium
+
+      - name: Play Fantasy Goose
+        id: play
+        run: |
+          CMD=(uv run python scripts/play_fantasy_goose.py)
+
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && -n "${{ github.event.inputs.date }}" ]]; then
+            CMD+=(--date "${{ github.event.inputs.date }}")
+          fi
+
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.dry_run }}" == "true" ]]; then
+            CMD+=(--dry-run)
+          fi
+
+          "${CMD[@]}"
+
+      - name: Fail on mapping or submission error
+        if: steps.play.outputs.status == 'mapping_failed' || steps.play.outputs.status == 'missing_predictions'
+        run: |
+          echo "::error::Fantasy Goose automation finished with status '${{ steps.play.outputs.status }}'"
+          exit 1

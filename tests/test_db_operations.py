@@ -264,6 +264,87 @@ def test_fetch_latest_prediction_songs_returns_ranked_rows(monkeypatch):
     assert [row["song_name"] for row in latest] == ["Song One", "Song Two"]
 
 
+def test_fetch_prediction_songs_for_date_returns_exact_reference_date(monkeypatch):
+    class _ResponseStub:
+        def __init__(self, data):
+            self.data = data
+
+    class _QueryStub:
+        def __init__(self, rows):
+            self._rows = rows
+            self._filters = []
+            self._orders = []
+            self._limit = None
+
+        def select(self, *_args, **_kwargs):
+            return self
+
+        def eq(self, column, value):
+            self._filters.append((column, value))
+            return self
+
+        def order(self, column, desc=False):
+            self._orders.append((column, desc))
+            return self
+
+        def limit(self, value):
+            self._limit = value
+            return self
+
+        def execute(self):
+            rows = list(self._rows)
+            for column, value in self._filters:
+                rows = [row for row in rows if row.get(column) == value]
+            for column, desc in reversed(self._orders):
+                rows.sort(key=lambda row: row.get(column), reverse=desc)
+            if self._limit is not None:
+                rows = rows[: self._limit]
+            return _ResponseStub(rows)
+
+    class _ClientStub:
+        def __init__(self, rows):
+            self._rows = rows
+
+        def table(self, _name: str):
+            return _QueryStub(self._rows)
+
+    rows = [
+        {
+            "band": "goose",
+            "model_slug": "notebook",
+            "model_version": "notebook_v1",
+            "reference_date": "2026-03-20",
+            "rank": 2,
+            "song_name": "Song Two",
+        },
+        {
+            "band": "goose",
+            "model_slug": "notebook",
+            "model_version": "notebook_v1",
+            "reference_date": "2026-03-20",
+            "rank": 1,
+            "song_name": "Song One",
+        },
+        {
+            "band": "goose",
+            "model_slug": "notebook",
+            "model_version": "notebook_v1",
+            "reference_date": "2026-03-21",
+            "rank": 1,
+            "song_name": "Wrong Date",
+        },
+    ]
+    monkeypatch.setattr(operations, "get_supabase_client", lambda: _ClientStub(rows))
+
+    matched = operations.fetch_prediction_songs_for_date(
+        band="goose",
+        model_slug="notebook",
+        reference_date="2026-03-20",
+    )
+
+    assert [row["song_name"] for row in matched] == ["Song One", "Song Two"]
+
+
 def test_upsert_historical_prediction_run_returns_inserted_id(monkeypatch):
     class _ResponseStub:
         def __init__(self, data):

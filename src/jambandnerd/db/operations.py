@@ -497,6 +497,30 @@ def fetch_latest_prediction_songs(
     return response.data or []
 
 
+def fetch_prediction_songs_for_date(
+    *,
+    band: str,
+    model_slug: str,
+    reference_date: str,
+    table_name: str = "prediction_songs",
+    limit: int | None = None,
+) -> list[dict[str, Any]]:
+    """Fetch projected songs for an exact band/model/reference_date ordered by rank."""
+    client = get_supabase_client()
+    query = (
+        client.table(table_name)
+        .select("*")
+        .eq("band", band)
+        .eq("model_slug", model_slug)
+        .eq("reference_date", reference_date)
+        .order("rank")
+    )
+    if limit is not None:
+        query = query.limit(limit)
+    response = query.execute()
+    return response.data or []
+
+
 def get_table_schema(
     table_name: str, *, use_cache: bool = True
 ) -> List[Dict[str, Any]]:

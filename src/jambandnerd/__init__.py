@@ -6,6 +6,7 @@ web interface capabilities for analyzing and predicting jam band setlists.
 Main modules:
 - data_collection: Band-specific data collectors with unified interfaces
 - db: Database connection, operations, and validation
+- integrations: External-service automation and workflow adapters
 - models: Prediction models (Notebook, CK+) with accuracy tracking
 - transformations: Feature engineering and data processing
 - web: Streamlit web interface for predictions and analytics
@@ -16,6 +17,7 @@ __version__ = "0.1.0"
 __all__ = [
     "data_collection",
     "db",
+    "integrations",
     "models",
     "predictions",
     "transformations",
