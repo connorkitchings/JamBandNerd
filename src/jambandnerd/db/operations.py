@@ -74,6 +74,45 @@ def _format_validation_warnings(
         )
 
 
+def dedupe_dataframe_on_conflict(
+    df: pd.DataFrame,
+    *,
+    conflict_columns: Sequence[str],
+    table_name: str,
+) -> pd.DataFrame:
+    """Drop duplicate conflict-key rows before issuing a batched upsert."""
+    if df.empty:
+        return df
+
+    missing_columns = [column for column in conflict_columns if column not in df.columns]
+    if missing_columns:
+        raise RuntimeError(
+            f"{table_name} missing conflict columns: {', '.join(missing_columns)}"
+        )
+
+    deduped = df.drop_duplicates(subset=list(conflict_columns), keep="last").copy()
+    removed = len(df) - len(deduped)
+    if removed > 0:
+        logger.warning(
+            "%s: removed %s duplicate row(s) for conflict columns %s before upsert",
+            table_name,
+            removed,
+            list(conflict_columns),
+        )
+
+    duplicate_mask = deduped.duplicated(subset=list(conflict_columns), keep=False)
+    if duplicate_mask.any():
+        sample = deduped.loc[duplicate_mask, list(conflict_columns)].head(5).to_dict(
+            orient="records"
+        )
+        raise RuntimeError(
+            f"{table_name} still contains duplicate conflict keys after in-memory "
+            f"dedupe: {sample}"
+        )
+
+    return deduped
+
+
 def prepare_dataframe_for_upsert(
     table_name: str,
     df: pd.DataFrame,
@@ -135,6 +174,11 @@ def validate_and_upsert_dataframe(
     )
     if prepared.empty:
         return
+    prepared = dedupe_dataframe_on_conflict(
+        prepared,
+        conflict_columns=conflict_columns,
+        table_name=table_name,
+    )
     upsert_dataframe(
         table_name=table_name,
         df=prepared,
@@ -257,6 +301,96 @@ def replace_prediction_projection(
         for prediction in predictions
     ]
     bulk_insert_dataframe(table_name, pd.DataFrame(rows))
+
+
+def upsert_historical_prediction_run(
+    *,
+    band: str,
+    model_slug: str,
+    model_version: str,
+    reference_date: str,
+    target_show_id: str,
+    target_show_date: str,
+    generated_at: str,
+    predictions: Sequence[dict[str, Any]],
+    actual_songs: Sequence[str],
+    table_name: str = "historical_prediction_runs",
+) -> int:
+    """Upsert a historical scored prediction run and return its stable id."""
+    client = get_supabase_client()
+    row = {
+        "band": band,
+        "model_slug": model_slug,
+        "model_version": model_version,
+        "run_type": "backtest",
+        "reference_date": reference_date,
+        "target_show_id": target_show_id,
+        "target_show_date": target_show_date,
+        "generated_at": generated_at,
+        "predictions": list(predictions),
+        "top_k": len(predictions),
+        "actual_songs": list(actual_songs),
+        "actual_song_count": len(actual_songs),
+    }
+    cleaned_row = {str(key): _clean_record_value(value) for key, value in row.items()}
+
+    response = (
+        client.table(table_name)
+        .upsert(
+            cleaned_row,
+            on_conflict="band,model_slug,model_version,reference_date,target_show_id",
+        )
+        .execute()
+    )
+    data = response.data or []
+    if data:
+        run_id = data[0].get("id")
+        if run_id is not None:
+            return int(run_id)
+
+    existing = (
+        client.table(table_name)
+        .select("id")
+        .eq("band", band)
+        .eq("model_slug", model_slug)
+        .eq("model_version", model_version)
+        .eq("reference_date", reference_date)
+        .eq("target_show_id", target_show_id)
+        .limit(1)
+        .execute()
+    )
+    existing_rows = existing.data or []
+    if not existing_rows or existing_rows[0].get("id") is None:
+        raise RuntimeError(
+            "Failed to resolve historical_prediction_runs.id after upsert"
+        )
+    return int(existing_rows[0]["id"])
+
+
+def fetch_historical_prediction_run(
+    *,
+    band: str,
+    model_slug: str,
+    model_version: str,
+    reference_date: str,
+    target_show_id: str,
+    table_name: str = "historical_prediction_runs",
+) -> dict[str, Any] | None:
+    """Fetch one historical scored run by its unique context."""
+    client = get_supabase_client()
+    response = (
+        client.table(table_name)
+        .select("*")
+        .eq("band", band)
+        .eq("model_slug", model_slug)
+        .eq("model_version", model_version)
+        .eq("reference_date", reference_date)
+        .eq("target_show_id", target_show_id)
+        .limit(1)
+        .execute()
+    )
+    rows = response.data or []
+    return rows[0] if rows else None
 
 
 def fetch_latest_prediction_songs(
@@ -456,3 +590,14 @@ def check_prediction_staleness(
             f"Error checking prediction staleness for {band}/{model_version}: {e}"
         )
         return False, None
+
+
+def fetch_active_bands() -> list[dict[str, Any]]:
+    """Fetch active bands from the bands registry table."""
+    try:
+        client = get_supabase_client()
+        response = client.table("bands").select("*").eq("is_active", True).execute()
+        return response.data or []
+    except Exception as e:
+        logger.warning(f"Failed to fetch active bands from registry: {e}")
+        return []

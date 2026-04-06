@@ -50,7 +50,7 @@ jobs:
       - id: set_bands
         run: |
           if [[ "${{ github.event.inputs.band }}" == "all" ]]; then
-            BANDS_JSON=$(python scripts/get_all_bands.py)
+            BANDS_JSON=$(python -m scripts.get_all_bands)
             echo "bands=$BANDS_JSON" >> $GITHUB_OUTPUT
           else
             echo "bands=[\"${{ github.event.inputs.band }}\"]" >> $GITHUB_OUTPUT
@@ -95,27 +95,24 @@ jobs:
           fi
           echo "✅ All required secrets are configured"
 
-      - name: Set up Python and UV
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Set up Python
         uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
-      - name: Install Dependencies
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-          uv venv
-          source .venv/bin/activate
-          uv pip install -e .
+      - name: Install dependencies
+        run: uv sync --locked --no-dev
 
       - name: Get prediction dates
         id: get_dates
         run: |
-          source .venv/bin/activate
           echo "::group::Fetching prediction dates for ${{ matrix.band }} / ${{ matrix.model }}"
-          DATES_JSON=$(python scripts/get_prediction_dates.py --band ${{ matrix.band }} --model ${{ matrix.model }} --limit 100)
+          DATES_JSON=$(uv run python scripts/get_prediction_dates.py --band ${{ matrix.band }} --model ${{ matrix.model }} --limit 100)
           echo "dates=$DATES_JSON" >> $GITHUB_OUTPUT
           DATE_COUNT=$(echo "$DATES_JSON" | python -c "import json,sys; print(len(json.load(sys.stdin)))")
           echo "date_count=$DATE_COUNT" >> $GITHUB_OUTPUT
@@ -133,13 +130,12 @@ jobs:
       - name: Regenerate predictions
         if: github.event.inputs.dry_run != 'true'
         run: |
-          source .venv/bin/activate
           echo "::group::Backfilling ${{ steps.get_dates.outputs.date_count }} dates for ${{ matrix.band }} / ${{ matrix.model }}"
 
           DATES='${{ steps.get_dates.outputs.dates }}'
           for DATE in $(echo "$DATES" | python -c "import json,sys; print(' '.join(json.load(sys.stdin)))"); do
             echo "Regenerating prediction for ${{ matrix.band }} / ${{ matrix.model }} on $DATE"
-            python scripts/generate_predictions.py --band ${{ matrix.band }} --model ${{ matrix.model }} --date "$DATE"
+            uv run python scripts/generate_predictions.py --band ${{ matrix.band }} --model ${{ matrix.model }} --date "$DATE"
           done
 
           echo "::endgroup::"
@@ -147,9 +143,8 @@ jobs:
       - name: Validate Prediction Tables
         if: github.event.inputs.dry_run != 'true'
         run: |
-          source .venv/bin/activate
           echo "::group::Validating prediction tables for ${{ matrix.band }} / ${{ matrix.model }}"
-          python scripts/validate_prediction_tables.py --band ${{ matrix.band }} --max-age-hours 168
+          uv run python scripts/validate_prediction_tables.py --band ${{ matrix.band }} --max-age-hours 168
           echo "::endgroup::"
 
   summary:

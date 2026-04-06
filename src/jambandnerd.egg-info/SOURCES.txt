@@ -45,8 +45,12 @@ src/jambandnerd/db/validation.py
 src/jambandnerd/models/__init__.py
 src/jambandnerd/models/accuracy.py
 src/jambandnerd/models/base.py
+src/jambandnerd/models/serialization.py
 src/jambandnerd/models/ckplus/__init__.py
 src/jambandnerd/models/ckplus/model.py
+src/jambandnerd/models/deal/__init__.py
+src/jambandnerd/models/deal/features.py
+src/jambandnerd/models/deal/model.py
 src/jambandnerd/models/notebook/__init__.py
 src/jambandnerd/models/notebook/model.py
 src/jambandnerd/predictions/__init__.py
@@ -55,11 +59,13 @@ src/jambandnerd/transformations/gaps.py
 src/jambandnerd/transformations/normalization.py
 src/jambandnerd/utils/__init__.py
 src/jambandnerd/utils/logging.py
+src/jambandnerd/utils/setlist_parser.py
 tests/test_collectors.py
 tests/test_data_collection.py
 tests/test_data_diagnostics_scripts.py
 tests/test_db.py
 tests/test_db_operations.py
+tests/test_generate_pipeline_summary.py
 tests/test_models.py
 tests/test_operational_recovery_scripts.py
 tests/test_validate_accuracy_tables.py

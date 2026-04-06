@@ -1,7 +1,14 @@
 # Website Delivery Strategy
 
-This document defines the current product target for JamBandNerd: the website in `apps/web`, not
-the legacy Streamlit deployment.
+This document defines the current delivery model for JamBandNerd: the website in `apps/web` is the
+active product surface and operating path.
+
+Current route split:
+
+- `/` is the public homepage and product entry page
+- `/predictions` is the primary live dashboard for repeat use
+- `/performance`, `/compare`, and `/replay` are the three historical analysis surfaces
+- `/?band=...&model=...` redirects to `/predictions?...` for compatibility
 
 ## Target Architecture
 
@@ -20,7 +27,23 @@ the legacy Streamlit deployment.
 - **Overflow safe**: data tables and dense views must remain usable on phones through scroll-safe wrappers rather than clipped content.
 - **Shared dense-data pattern**: tables and long data grids should use a single responsive wrapper/padding pattern instead of route-specific one-offs.
 - **Search-param navigation**: prefer URL-driven band/model/date state so pages are shareable and hydration stays light.
-- **Freshness over static caching**: prediction and explorer routes should favor dynamic server rendering while the marketing shell can stay static later.
+- **Freshness over static caching**: prediction and replay routes should favor dynamic server rendering while the marketing shell can stay static later.
+- **Hermetic builds**: prefer local assets and system fallbacks over build-time network fetches.
+
+## Web Module Ownership
+
+- `apps/web/src/app/**`: route composition, metadata, and search-param handling
+- `apps/web/src/components/**`: reusable presentation and client islands
+- `apps/web/src/lib/data.ts`: compatibility barrel for existing route imports
+- `apps/web/src/lib/data/bands.ts`: band discovery and selection helpers
+- `apps/web/src/lib/data/predictions.ts`: latest/current prediction reads
+- `apps/web/src/lib/data/accuracy.ts`: historical accuracy reads
+- `apps/web/src/lib/data/replay.ts`: replay timeline assembly
+- `apps/web/src/lib/data/shows.ts`: show detail, next show, and setlist reads
+- `apps/web/src/lib/data/venues.ts`: venue analytics assembly
+
+Client component rule:
+- Keep route-level Supabase reads on the server. Use `"use client"` only for interactive islands, navigation hooks, or live subscriptions.
 
 ## Visual Source Of Truth
 
@@ -35,26 +58,27 @@ The website should become the primary public surface for:
 
 - Multi-band prediction browsing
 - Model comparison
-- Historical explorer workflows
+- Replay workflows
+- Venue-specific historical analytics
 - Accuracy and performance views
 - Last-show details and explanatory content
 
-The website is now the default local and contributor-facing product surface. Remaining work is deployment hardening, final cutover, and eventual removal of the Streamlit fallback.
+The website is now the default local, contributor-facing, and public product surface. Remaining
+work is deployment hardening, hosted verification, and product refinement on the live website.
 
-## Migration Constraints
+## Operating Constraints
 
 - Keep `scripts/run_optimized_pipeline.py` as the canonical pipeline entrypoint.
 - Preserve existing Supabase prediction and accuracy tables unless the website exposes a real gap.
-- Treat the current Streamlit app as a legacy transition surface, not the destination architecture.
 - Avoid introducing a public API unless external-consumer requirements justify it later.
-- Keep legacy Streamlit run instructions out of primary onboarding docs.
+- Do not reintroduce Streamlit-specific guidance into primary onboarding or operations docs.
 
-## Delivery Order
+## Current Priorities
 
 1. Keep the website routes and shared shell production-ready.
 2. Make the website the default path in docs, onboarding, and workflow messaging.
 3. Harden Vercel deployment, preview verification, and production env management.
-4. Remove Streamlit from the primary operations path, then retire the fallback code in a later phase.
+4. Revisit public API work only after the website creates real external-consumer demand.
 
 ## Branch Strategy
 
@@ -73,6 +97,22 @@ npm run build:web
 npm run test:web:smoke
 ```
 
+## Release Versioning
+
+JamBandNerd should use a single public product version across the repo and website.
+
+- Current public version: `0.1.0`
+- Versioning style: Semantic Versioning (`MAJOR.MINOR.PATCH`)
+- Scope rule: keep `pyproject.toml`, `src/jambandnerd/__init__.py`, `apps/web/package.json`, and the website footer version in sync
+
+Use these bump rules:
+
+- Patch (`0.1.x`): UI polish, bug fixes, copy edits, test-only work, and non-breaking internal cleanup
+- Minor (`0.x.0`): new user-facing pages/features, notable analytics additions, or meaningful model/product improvements that do not break expected workflows
+- Major (`x.0.0`): breaking product changes, major route/navigation resets, incompatible data contracts, or the first stable public `1.0.0`
+
+Until the product is stable, stay on the `0.x` line. Treat `0.1.0` as the first visible website version rather than a finished general-availability release.
+
 ## Environment Variables
 
 The website currently expects the same two server-side variables in all environments:
@@ -88,6 +128,13 @@ For Vercel, add the same variable names to:
 
 - Preview
 - Production
+
+The internal admin setlist tooling additionally expects:
+
+- `ADMIN_PASSWORD`
+- `ADMIN_SESSION_SECRET`
+
+The admin route now authenticates into an httpOnly cookie-backed session instead of sending bearer credentials with browser-side write requests.
 
 ## Vercel Project Setup
 
@@ -108,8 +155,14 @@ The repo should verify the website in GitHub Actions before relying on Vercel pr
 1. `npm run lint:web`
 2. `npm run build:web`
 3. `npm run test:web:smoke`
+4. `Hosted Website Smoke` for deployed preview or production URLs when you need hosted verification
 
 This keeps deployment triggering in Vercel while GitHub Actions acts as the verification gate.
+
+For Vercel preview URLs protected by Deployment Protection, configure the
+`VERCEL_PROTECTION_BYPASS_TOKEN` GitHub secret and let the hosted smoke workflow
+bootstrap the preview URL with Vercel's documented bypass query parameters
+before running the normal route assertions.
 
 ## Deployment Expectations
 
@@ -117,13 +170,34 @@ This keeps deployment triggering in Vercel while GitHub Actions acts as the veri
 - Production deployment on the main website branch
 - Runtime secrets for Supabase configured through the hosting platform
 - Basic health checks and deploy verification as part of website operations
+- Pull request validation through GitHub Actions before `main` promotion
 
 ## Post-Deploy Verification
 
-After a preview or production deploy, manually verify:
+After a preview or production deploy, run hosted smoke verification against the deployed URL:
+
+```bash
+SMOKE_BASE_URL=https://jambandnerd.com npm run test:web:smoke:hosted
+```
+
+For a protected preview deployment, provide the bypass token in the environment:
+
+```bash
+SMOKE_BASE_URL=https://your-preview-url.vercel.app \
+VERCEL_PROTECTION_BYPASS_TOKEN=your-bypass-secret \
+npm run test:web:smoke:hosted
+```
+
+Use the `Hosted Website Smoke` GitHub Actions workflow for scheduled production
+checks or ad hoc preview verification by overriding the `base_url` workflow
+input. Preview workflow runs require the `VERCEL_PROTECTION_BYPASS_TOKEN`
+GitHub secret.
+
+After smoke verification, manually verify:
 
 - `/`
-- `/explorer`
+- `/replay`
+- `/venues`
 - `/compare`
 - `/performance`
 - `/last-show`
@@ -131,3 +205,5 @@ After a preview or production deploy, manually verify:
 Also confirm that pages render with server-side Supabase reads instead of the missing-env fallback state.
 
 The smoke test suite also covers `/about` and `/predictions` alongside the routes above.
+
+See [Main Branch Elevation](./main_branch_elevation.md) for the documented `main` branch promotion gate.

@@ -4,7 +4,7 @@ import { cache } from "react";
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-function getRequiredEnv(name: "SUPABASE_URL" | "SUPABASE_ANON_KEY"): string | null {
+function getRequiredEnv(name: "SUPABASE_URL" | "SUPABASE_ANON_KEY" | "SUPABASE_SERVICE_ROLE_KEY"): string | null {
   return process.env[name] ?? null;
 }
 
@@ -16,6 +16,15 @@ export function hasSupabaseEnv(): boolean {
   const url = getRequiredEnv("SUPABASE_URL");
   const key = getRequiredEnv("SUPABASE_ANON_KEY");
   return Boolean(url && key && !looksLikeSecretKey(key));
+}
+
+export function getServiceRoleClient(): SupabaseClient | null {
+  const url = getRequiredEnv("SUPABASE_URL");
+  const key = getRequiredEnv("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !key) {
+    return null;
+  }
+  return createClient(url, key) as SupabaseClient;
 }
 
 export const getSupabaseServerClient = cache((): SupabaseClient | null => {

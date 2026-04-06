@@ -90,7 +90,7 @@ The target website experience includes:
 - **Multi-band selection**: Switch between all dynamically discovered bands.
 - **Model comparison**: Toggle between Notebook and CK+ models.
 - **Live predictions**: View latest predictions with detailed metrics.
-- **Historical Explorer**: Browse past shows to view predictions vs. actual setlists for specific dates.
+- **Replay**: Browse recent retained shows to review both model boards against the actual setlist.
 - **Accuracy visualization**: Historical performance charts with configurable K values (K=10/25/50; selected K highlighted).
 - **Show details**: Prominent Next Show header with venue, plus model and prediction timestamp.
 
@@ -104,7 +104,7 @@ npm run lint:web
 npm run build:web
 ```
 
-The legacy Streamlit app remains in the repo only as an internal fallback during cutover. Its local run instructions now live in `docs/operations/streamlit_deploy.md` rather than the primary README path.
+The legacy Streamlit app remains in the repo only for internal legacy/debugging use. Its local run instructions now live in `docs/operations/streamlit_deploy.md` rather than the primary README path.
 
 The website delivery path now uses Vercel’s native GitHub integration model. Treat `main` as the production branch and use preview deployments for feature branches and pull requests.
 
@@ -189,8 +189,9 @@ that registry is fully unified.
 - Pluggable prediction models (Notebook, CK+).
 - Unified cross-band prediction and accuracy storage.
 - Supabase backend with automated validation.
-- Website-first product delivery with the current Streamlit app retained only as a legacy transition surface.
+- Website-first product delivery through the live `apps/web` surface.
 - **GitHub Actions automation** with daily pipeline execution.
+- **Per-band workflow health reporting** so upstream-specific issues can degrade gracefully without masking the rest of the platform.
 
 ### Widespread Panic Data & Fallback
 
@@ -203,7 +204,7 @@ The platform features comprehensive automation through GitHub Actions:
 - **Daily Pipeline**: Runs automatically at 3 PM ET every day.
 - **Dynamic Matrix**: The pipeline automatically discovers and runs for all supported bands.
 - **Manual Triggers**: On-demand execution with band selection via the GitHub UI.
-- **Error Resilience**: Parallel matrix execution with graceful failure handling.
+- **Error Resilience**: Parallel matrix execution with graceful failure handling and explicit degraded-mode reporting for volatile upstreams such as WSP.
 - **Secret Management**: Secure API key and database credential handling.
 - **Optional Notifications**: Discord webhook alerts can be re-enabled via a `notify-discord` job in `.github/workflows/daily-pipeline.yml` if needed.
 

@@ -40,6 +40,17 @@ from scripts.run_wsp_collection import run_wsp_collection
 from scripts.save_aggregate_accuracy import save_aggregate_accuracy
 from scripts.validate_accuracy_tables import validate_accuracy
 from scripts.validate_prediction_tables import validate_predictions
+from src.jambandnerd.config.bands import get_active_bands
+from src.jambandnerd.models.registry import list_backfill_models, list_pipeline_models
+
+try:
+    from scripts.backfill_predictions import backfill_band
+
+    HAS_BACKFILL = True
+except ImportError:
+    HAS_BACKFILL = False
+
+from scripts.collection_preflight import compute_band_preflight
 
 # Suppress noisy httpx logs
 logging.getLogger("httpx").setLevel(logging.WARNING)
@@ -84,7 +95,9 @@ def _validate_band_accuracy(*, band: str, max_age_hours: int = 72) -> None:
     failures = validate_accuracy(bands=[band], max_age_hours=max_age_hours)
 
     if failures:
-        raise RuntimeError(f"Accuracy validation failed for {band}: {failures} issue(s)")
+        raise RuntimeError(
+            f"Accuracy validation failed for {band}: {failures} issue(s)"
+        )
 
 
 def run_band_pipeline(band: str, skip_accuracy: bool = False) -> bool:
@@ -93,6 +106,19 @@ def run_band_pipeline(band: str, skip_accuracy: bool = False) -> bool:
     log_prefix = f"[{band.upper()}]"
 
     log_with_timestamp(f"{log_prefix} Starting full pipeline...")
+
+    try:
+        preflight = compute_band_preflight(band)
+        log_with_timestamp(
+            f"{log_prefix} Preflight: mode={preflight.collection_mode} "
+            f"execution={preflight.execution_mode} "
+            f"recent_completed={preflight.recent_completed_show_count} "
+            f"missing_recent_setlists={preflight.missing_recent_setlist_count} "
+            f"upcoming_soon={preflight.upcoming_show_count}"
+        )
+    except Exception as exc:
+        log_with_timestamp(f"{log_prefix} WARNING: preflight failed: {exc}")
+        preflight = None
 
     # Step 1: Data Collection
 
@@ -108,7 +134,13 @@ def run_band_pipeline(band: str, skip_accuracy: bool = False) -> bool:
     log_with_timestamp(f"[{band.upper()}] Starting: Data Collection")
 
     try:
-        collection_runners[band]()
+        if preflight is not None and not preflight.should_run_collection:
+            log_with_timestamp(
+                f"{log_prefix} Skipping collection after preflight "
+                f"({preflight.execution_mode})."
+            )
+        else:
+            collection_runners[band]()
 
         log_with_timestamp(f"[{band.upper()}] Finished: Data Collection")
 
@@ -120,7 +152,7 @@ def run_band_pipeline(band: str, skip_accuracy: bool = False) -> bool:
         return False
 
     # Step 2: Generate Predictions, Backtest, and Calculate Accuracy for each model
-    models = ["notebook", "ckplus"]
+    models = [definition.slug for definition in list_pipeline_models()]
     for model in models:
         if not run_step(
             generate_predictions,
@@ -156,6 +188,22 @@ def run_band_pipeline(band: str, skip_accuracy: bool = False) -> bool:
     if skip_accuracy:
         log_with_timestamp(f"{log_prefix} Skipping accuracy calculations.")
 
+    # Step 3: Backfill stale predictions
+    if HAS_BACKFILL:
+        backfill_models = [definition.slug for definition in list_backfill_models()]
+        for model in backfill_models:
+            log_with_timestamp(f"[{band.upper()}] Starting: {model.title()} Backfill")
+            try:
+                result = backfill_band(band, model, dry_run=False)
+                log_with_timestamp(
+                    f"[{band.upper()}] Finished: {model.title()} Backfill "
+                    f"({result['regenerated']} regenerated)"
+                )
+            except Exception as e:
+                log_with_timestamp(
+                    f"[{band.upper()}] WARNING: {model.title()} Backfill failed: {e}"
+                )
+
     if not run_step(
         _validate_band_predictions, band, "Prediction Validation", max_age_hours=72
     ):
@@ -178,7 +226,7 @@ def main():
     )
     parser.add_argument(
         "--band",
-        choices=["goose", "eggy", "phish", "wsp", "billy", "um", "all"],
+        choices=[*get_active_bands(), "all"],
         default="all",
         help="Band to process (default: all)",
     )
@@ -192,7 +240,7 @@ def main():
     overall_start_time = time.time()
     log_with_timestamp("🚀 Starting JamBandNerd Pipeline Orchestrator")
 
-    all_bands = ["goose", "eggy", "phish", "wsp", "billy", "um"]
+    all_bands = list(get_active_bands())
     bands_to_process = all_bands if args.band == "all" else [args.band]
     results = {}
 

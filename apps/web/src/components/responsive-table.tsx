@@ -19,7 +19,7 @@ export function ResponsiveTableFrame({
 }: ResponsiveTableFrameProps) {
   return (
     <div
-      className="overflow-x-auto rounded-xl border border-outline-variant/30 [scrollbar-gutter:stable] [-webkit-overflow-scrolling:touch]"
+      className="horizontal-scroll-surface rounded-xl border border-outline-variant/30"
       data-testid={testId ? `${testId}-frame` : undefined}
     >
       <table

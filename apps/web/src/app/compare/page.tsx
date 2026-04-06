@@ -1,22 +1,56 @@
 import type { Metadata } from "next";
+import Link from "next/link";
+import { CompareMetricSelect } from "@/components/compare-metric-select";
+import { DashboardSideNav } from "@/components/dashboard-side-nav";
 import { DataState } from "@/components/data-state";
-import { FilterLinks } from "@/components/filter-links";
-import { SongBoard } from "@/components/song-board";
+import { ExpandablePanel } from "@/components/expandable-panel";
+import { PageHero } from "@/components/page-hero";
 import { SectionCard } from "@/components/section-card";
-import { getBands, getLatestPredictions, getShowDetailsByDate, bandEntryBySlug, resolveBandSelection } from "@/lib/data";
-import {
-  buildLocationLabel,
-  formatCompactDateLabel,
-  formatDateLabel,
-} from "@/lib/format";
+import { getBands, bandEntryBySlug, resolveBandSelection, getRecentAccuracy } from "@/lib/data";
+import { ACTIVE_MODELS, MODEL_CONFIG, type ModelSlug } from "@/lib/config";
+import { buildLocationLabel, formatCompactDateLabel, formatPercent } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
+
+const COMPARISON_WINDOW = 50;
+const COMPARISON_METRIC_OPTIONS = [10, 25, 50] as const;
+const DEFAULT_COMPARISON_METRIC: ComparisonMetric = 10;
+
+type ComparisonMetric = (typeof COMPARISON_METRIC_OPTIONS)[number];
 
 type Props = {
   searchParams: Promise<{
     band?: string;
+    modelA?: string;
+    modelB?: string;
+    k?: string;
   }>;
 };
+
+function WinnerCrown({ tone, side }: { tone: "primary" | "tertiary"; side: "left" | "right" }) {
+  const toneClasses =
+    tone === "primary"
+      ? "border-primary/35 bg-primary/12 text-primary shadow-[0_8px_18px_rgba(255,191,105,0.18)]"
+      : "border-tertiary/35 bg-tertiary/10 text-tertiary shadow-[0_8px_18px_rgba(136,229,216,0.16)]";
+  const sideClasses =
+    side === "left"
+      ? "left-0 -translate-x-[22%]"
+      : "right-0 translate-x-[22%]";
+
+  return (
+    <span
+      aria-label="Winner"
+      className={`absolute top-0 flex size-7 -translate-y-[28%] items-center justify-center rounded-full border ${toneClasses} ${sideClasses}`}
+    >
+      <svg aria-hidden="true" className="size-4" viewBox="0 0 24 24">
+        <path
+          d="M4.5 18.5H19.5L18 9.5L14 12.2L12 5.5L10 12.2L6 9.5L4.5 18.5Z"
+          fill="currentColor"
+        />
+      </svg>
+    </span>
+  );
+}
 
 export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
   const params = await searchParams;
@@ -25,14 +59,60 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
   const bandSelection = resolveBandSelection(bands, params.band);
   const bandName = bandSelection.bandEntry?.displayName ?? bandSelection.requestedSlug;
 
+  const modelA = params.modelA ?? ACTIVE_MODELS[0] ?? "notebook";
+  const modelB = params.modelB ?? ACTIVE_MODELS[1] ?? ACTIVE_MODELS[0] ?? "ckplus";
+  const labelA = MODEL_CONFIG[modelA as ModelSlug]?.displayName ?? "Model A";
+  const labelB = MODEL_CONFIG[modelB as ModelSlug]?.displayName ?? "Model B";
+
   return {
     title: `${bandName} Model Compare | JamBandNerd`,
-    description: `Compare Notebook vs CK+ model predictions side-by-side for ${bandName}.`,
+    description: `Compare ${labelA} vs ${labelB} across the last ${COMPARISON_WINDOW} scored shows for ${bandName}.`,
   };
 }
 
-function normalizeSongName(value: string) {
-  return value.trim().toLowerCase();
+function averageMetric(values: Array<number | null>) {
+  const presentValues = values.filter((value): value is number => value !== null);
+  if (presentValues.length === 0) {
+    return null;
+  }
+
+  return presentValues.reduce((sum, value) => sum + value, 0) / presentValues.length;
+}
+
+function buildReplayHref(band: string | null | undefined, showDate: string | null) {
+  if (!band || !showDate) {
+    return null;
+  }
+
+  return `/replay?band=${band}&date=${showDate}`;
+}
+
+function resolveComparisonMetric(value: string | undefined): ComparisonMetric {
+  const requestedMetric = Number(value);
+  if (requestedMetric === 10 || requestedMetric === 25 || requestedMetric === 50) {
+    return requestedMetric;
+  }
+
+  return DEFAULT_COMPARISON_METRIC;
+}
+
+function getSelectedMetric(
+  row: {
+    nb10: number | null;
+    nb25: number | null;
+    nb50: number | null;
+    ck10: number | null;
+    ck25: number | null;
+    ck50: number | null;
+  },
+  model: "nb" | "ck",
+  metric: ComparisonMetric,
+) {
+  if (model === "nb") {
+    return metric === 10 ? row.nb10 : metric === 25 ? row.nb25 : row.nb50;
+  }
+
+  return metric === 10 ? row.ck10 : metric === 25 ? row.ck25 : row.ck50;
 }
 
 export default async function ComparePage({ searchParams }: Props) {
@@ -51,12 +131,19 @@ export default async function ComparePage({ searchParams }: Props) {
 
   const selectedBand =
     bandsResult.status === "ready" ? bandSelection.bandEntry?.slug : params.band;
-  const [notebook, ckplus] = await Promise.all([
-    getLatestPredictions(selectedBand, "notebook"),
-    getLatestPredictions(selectedBand, "ckplus"),
+  const modelASlug = (ACTIVE_MODELS.includes(params.modelA as ModelSlug) ? params.modelA : ACTIVE_MODELS[0]) as ModelSlug;
+  const modelBSlug = (ACTIVE_MODELS.includes(params.modelB as ModelSlug) ? params.modelB : (ACTIVE_MODELS[1] ?? ACTIVE_MODELS[0])) as ModelSlug;
+  const comparisonMetric = resolveComparisonMetric(params.k);
+
+  const labelA = MODEL_CONFIG[modelASlug].displayName;
+  const labelB = MODEL_CONFIG[modelBSlug].displayName;
+
+  const [notebookPerf, ckplusPerf] = await Promise.all([
+    getRecentAccuracy(selectedBand, modelASlug, COMPARISON_WINDOW),
+    getRecentAccuracy(selectedBand, modelBSlug, COMPARISON_WINDOW),
   ]);
 
-  if (notebook.status === "missing_env" || ckplus.status === "missing_env") {
+  if (notebookPerf.status === "missing_env" || ckplusPerf.status === "missing_env") {
     return (
       <DataState
         title="Supabase environment required"
@@ -65,184 +152,371 @@ export default async function ComparePage({ searchParams }: Props) {
     );
   }
 
-  if (notebook.status !== "ready" || ckplus.status !== "ready") {
+  if (notebookPerf.status !== "ready" || ckplusPerf.status !== "ready") {
     return (
       <DataState
         title="Comparison data unavailable"
-        body="Both latest model snapshots were not available for this band."
+        body="Historical accuracy rows were not available for both selected models."
       />
     );
   }
 
-  const bandEntry = bandEntryBySlug(bands, notebook.band);
-  const bandName = bandEntry?.displayName ?? notebook.band;
+  const bandEntry = bandEntryBySlug(bands, selectedBand ?? "");
+  const bandName = bandEntry?.displayName ?? selectedBand ?? "Band";
 
-  const notebookTop = notebook.snapshot.predictions.slice(0, 10);
-  const ckplusTop = ckplus.snapshot.predictions.slice(0, 10);
-  const notebookRanks = new Map(
-    notebookTop.map((row) => [normalizeSongName(row.songName), row.rank] as const),
-  );
-  const ckplusRanks = new Map(
-    ckplusTop.map((row) => [normalizeSongName(row.songName), row.rank] as const),
-  );
-  const sharedSongs = notebookTop
-    .filter((row) => ckplusRanks.has(normalizeSongName(row.songName)))
-    .map((row) => {
-      const key = normalizeSongName(row.songName);
+  const nbRows = notebookPerf.status === "ready" ? notebookPerf.rows : [];
+  const ckRows = ckplusPerf.status === "ready" ? ckplusPerf.rows : [];
+  
+  const sharedDates = new Set([...nbRows.map(r => r.showDate), ...ckRows.map(r => r.showDate)]);
+  const headToHeadRows = Array.from(sharedDates)
+    .filter((date): date is string => date !== null)
+    .map(date => {
+      const nbRow = nbRows.find(r => r.showDate === date);
+      const ckRow = ckRows.find(r => r.showDate === date);
+      if (!nbRow || !ckRow) {
+        return null;
+      }
+
       return {
-        songName: row.songName,
-        notebookRank: row.rank,
-        ckplusRank: ckplusRanks.get(key) ?? row.rank,
+        date,
+        venueName: nbRow.venueName ?? ckRow.venueName ?? "Unknown Venue",
+        city: nbRow.city ?? ckRow.city ?? null,
+        state: nbRow.state ?? ckRow.state ?? null,
+        nb10: nbRow.k10Recall ?? null,
+        nb25: nbRow.k25Recall ?? null,
+        nb50: nbRow.k50Recall ?? null,
+        nbPrec10: nbRow.k10Precision ?? null,
+        nbPrec25: nbRow.k25Precision ?? null,
+        nbPrec50: nbRow.k50Precision ?? null,
+        ck10: ckRow.k10Recall ?? null,
+        ck25: ckRow.k25Recall ?? null,
+        ck50: ckRow.k50Recall ?? null,
+        ckPrec10: ckRow.k10Precision ?? null,
+        ckPrec25: ckRow.k25Precision ?? null,
+        ckPrec50: ckRow.k50Precision ?? null,
       };
     })
-    .sort(
-      (left, right) =>
-        Math.abs(left.notebookRank - left.ckplusRank) -
-        Math.abs(right.notebookRank - right.ckplusRank),
-    );
-  const notebookOnly = notebookTop.filter(
-    (row) => !ckplusRanks.has(normalizeSongName(row.songName)),
-  );
-  const ckplusOnly = ckplusTop.filter(
-    (row) => !notebookRanks.has(normalizeSongName(row.songName)),
-  );
-  const referenceDate =
-    notebook.snapshot.referenceDate && ckplus.snapshot.referenceDate
-      ? notebook.snapshot.referenceDate >= ckplus.snapshot.referenceDate
-        ? notebook.snapshot.referenceDate
-        : ckplus.snapshot.referenceDate
-      : notebook.snapshot.referenceDate ?? ckplus.snapshot.referenceDate;
-  const showState = await getShowDetailsByDate(notebook.band, referenceDate);
-  const show = showState.status === "ready" ? showState.show : null;
-  const locationLabel = buildLocationLabel([
-    show?.city ?? null,
-    show?.state ?? show?.country ?? null,
-  ]);
-  const syncLabel =
-    notebook.snapshot.referenceDate === ckplus.snapshot.referenceDate
-      ? "Both models are reading the same show date."
-      : `Notebook: ${formatCompactDateLabel(notebook.snapshot.referenceDate)} • CK+: ${formatCompactDateLabel(ckplus.snapshot.referenceDate)}`;
+    .filter((row): row is NonNullable<typeof row> => row !== null)
+    .sort((a, b) => b.date.localeCompare(a.date));
+
+  let nbWins = 0;
+  let ckWins = 0;
+  let ties = 0;
+
+  headToHeadRows.forEach(r => {
+    const notebookValue = getSelectedMetric(r, "nb", comparisonMetric);
+    const ckplusValue = getSelectedMetric(r, "ck", comparisonMetric);
+    if (notebookValue === null || ckplusValue === null) {
+      return;
+    }
+
+    if (notebookValue > ckplusValue) nbWins++;
+    else if (ckplusValue > notebookValue) ckWins++;
+    else ties++;
+  });
+
+  const mobileHeadToHeadRows = headToHeadRows.slice(0, 5);
+  const remainingHeadToHeadRows = headToHeadRows.slice(5);
+  const averageHeadToHeadRow =
+    headToHeadRows.length > 0
+      ? {
+          date: "average",
+          venueName: "",
+          city: null,
+          state: null,
+          nb10: averageMetric(headToHeadRows.map((row) => row.nb10)),
+          nb25: averageMetric(headToHeadRows.map((row) => row.nb25)),
+          nb50: averageMetric(headToHeadRows.map((row) => row.nb50)),
+          nbPrec10: averageMetric(headToHeadRows.map((row) => row.nbPrec10)),
+          nbPrec25: averageMetric(headToHeadRows.map((row) => row.nbPrec25)),
+          nbPrec50: averageMetric(headToHeadRows.map((row) => row.nbPrec50)),
+          ck10: averageMetric(headToHeadRows.map((row) => row.ck10)),
+          ck25: averageMetric(headToHeadRows.map((row) => row.ck25)),
+          ck50: averageMetric(headToHeadRows.map((row) => row.ck50)),
+          ckPrec10: averageMetric(headToHeadRows.map((row) => row.ckPrec10)),
+          ckPrec25: averageMetric(headToHeadRows.map((row) => row.ckPrec25)),
+          ckPrec50: averageMetric(headToHeadRows.map((row) => row.ckPrec50)),
+        }
+      : null;
+  const headToHeadLedgerRows = averageHeadToHeadRow
+    ? [averageHeadToHeadRow, ...headToHeadRows]
+    : headToHeadRows;
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
-      <SectionCard title="Model Compare" eyebrow="Consensus Engine">
-        <FilterLinks pathname="/compare" band={notebook.band} bands={bands} />
-      </SectionCard>
+      <DashboardSideNav
+        band={selectedBand ?? modelASlug}
+        model={modelASlug}
+        bands={bands}
+        pathname="/compare"
+        hideSecondary
+        bandLinks={bands.map((item) => ({
+          href: `/compare?band=${item.slug}&modelA=${modelASlug}&modelB=${modelBSlug}&k=${comparisonMetric}`,
+          label: item.displayName,
+          active: item.slug === selectedBand,
+        }))}
+      />
 
-      <section className="rounded-xl border border-outline-variant/30 bg-surface-container p-8 md:p-10">
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(280px,0.8fr)]">
-          <div>
-            <p className="font-label text-[10px] uppercase tracking-[0.24em] text-on-surface-variant">
-              Model divergence
-            </p>
-            <h1 className="mt-3 font-headline text-4xl font-semibold uppercase tracking-[-0.04em] text-on-surface md:text-5xl">
-              {bandName} comparison board
-            </h1>
-            <p className="mt-3 font-headline text-base uppercase tracking-[0.08em] text-primary">
-              {show?.venueName ?? "Latest prediction snapshot"}
-              {locationLabel ? ` • ${locationLabel}` : ""}
-            </p>
-            <p className="mt-3 max-w-3xl text-sm leading-6 text-on-surface-variant">
-              Read both latest model snapshots side by side, then look at where they converge,
-              where they split, and which songs move the most between the two rankings.
-            </p>
-          </div>
-          <div className="rounded-xl border border-outline-variant/20 bg-surface-container-low p-5">
-            <p className="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">
-              Snapshot sync
-            </p>
-            <p className="mt-3 font-headline text-2xl font-semibold text-on-surface">
-              {formatDateLabel(referenceDate)}
-            </p>
-            <p className="mt-2 text-sm leading-6 text-on-surface-variant">{syncLabel}</p>
-          </div>
+      <PageHero
+        kicker="Historical Performance"
+        eyebrow=""
+        title={`${bandName} comparison board`}
+        meta={`${labelA} vs ${labelB} • last ${COMPARISON_WINDOW} scored shows`}
+        description={`Track ${labelA} versus ${labelB} across the recent scoring window and read where one model has been outperforming the other over time.`}
+        descriptionClassName="max-w-5xl"
+      />
+
+      <section className="editorial-chip flex flex-col gap-3 rounded-[1.5rem] p-4 md:flex-row md:items-center md:justify-between">
+        <div className="space-y-1">
+          <p className="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">
+            Top-X Threshold
+          </p>
+          <p className="text-sm leading-6 text-on-surface-variant">
+            Choose which threshold to compare by.
+          </p>
+        </div>
+        <CompareMetricSelect
+          selectedMetric={comparisonMetric}
+          options={[...COMPARISON_METRIC_OPTIONS]}
+        />
+      </section>
+
+      <section className="grid grid-cols-3 gap-3 md:gap-4">
+        <div className="editorial-panel px-3 py-4 text-center md:p-6">
+          <p className="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">
+            <span className="block">{labelA}</span>
+            <span className="block">Wins</span>
+          </p>
+          <p className="mt-2 font-headline text-2xl font-bold text-primary md:mt-3 md:text-4xl">{nbWins}</p>
+          <p className="mt-1 text-[10px] font-medium text-on-surface-variant">Top-{comparisonMetric} accuracy match-ups</p>
+        </div>
+        <div className="editorial-panel px-3 py-4 text-center md:p-6">
+          <p className="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">
+            <span className="block">{labelB}</span>
+            <span className="block">Wins</span>
+          </p>
+          <p className="mt-2 font-headline text-2xl font-bold text-tertiary md:mt-3 md:text-4xl">{ckWins}</p>
+          <p className="mt-1 text-[10px] font-medium text-on-surface-variant">Top-{comparisonMetric} accuracy match-ups</p>
+        </div>
+        <div className="editorial-panel px-3 py-4 text-center md:p-6">
+          <p className="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">
+            <span className="block">Ties</span>
+            <span className="block">&nbsp;</span>
+          </p>
+          <p className="mt-2 font-headline text-2xl font-bold text-on-surface md:mt-3 md:text-4xl">{ties}</p>
+          <p className="mt-1 text-[10px] font-medium text-on-surface-variant">Identical Top-{comparisonMetric} accuracy</p>
         </div>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-3">
-        <SectionCard title={`${sharedSongs.length}/10`} eyebrow="Top-10 overlap">
-          <p className="text-sm leading-6 text-on-surface-variant">
-            Shared songs across both current top-10 lists.
-          </p>
-        </SectionCard>
-        <SectionCard title={String(notebookOnly.length)} eyebrow="Notebook only">
-          <p className="text-sm leading-6 text-on-surface-variant">
-            Songs unique to the notebook model’s current top slice.
-          </p>
-        </SectionCard>
-        <SectionCard title={String(ckplusOnly.length)} eyebrow="CK+ only">
-          <p className="text-sm leading-6 text-on-surface-variant">
-            Songs unique to the CK+ model’s current top slice.
-          </p>
-        </SectionCard>
-      </section>
+      {headToHeadRows.length > 0 && (
+        <SectionCard title="Historical Performance">
+          <div className="space-y-4 md:hidden">
+            {mobileHeadToHeadRows.map((row) => {
+              const notebookValue = getSelectedMetric(row, "nb", comparisonMetric);
+              const ckplusValue = getSelectedMetric(row, "ck", comparisonMetric);
+              const isNbWin =
+                notebookValue !== null && ckplusValue !== null && notebookValue > ckplusValue;
+              const isCkWin =
+                notebookValue !== null && ckplusValue !== null && ckplusValue > notebookValue;
+              const replayHref = buildReplayHref(selectedBand, row.date);
+              const locationLabel = buildLocationLabel([row.city, row.state]);
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(280px,0.9fr)]">
-        <SectionCard title="Consensus Board" eyebrow="Shared songs">
-          {sharedSongs.length > 0 ? (
-            <div className="space-y-3">
-              {sharedSongs.slice(0, 6).map((row) => (
+              return (
                 <div
-                  key={row.songName}
-                  className="flex items-center justify-between rounded-xl border border-outline-variant/20 bg-surface-container-low px-4 py-3"
+                  key={row.date}
+                  className="rounded-[1.35rem] border border-outline-variant/20 bg-surface-container-low px-4 py-4"
                 >
-                  <div>
-                    <p className="font-headline text-lg font-medium text-on-surface">
-                      {row.songName}
+                  <div className="flex items-center justify-between gap-4 pt-1">
+                    <p className="shrink-0 font-headline text-lg font-semibold text-on-surface">
+                      {formatCompactDateLabel(row.date)}
                     </p>
-                    <p className="text-xs text-on-surface-variant">
-                      Average rank {(row.notebookRank + row.ckplusRank) / 2}
-                    </p>
+                    <div className="min-w-0 text-right">
+                      <p className="text-xs leading-5 text-on-surface-variant">
+                        {row.venueName || "Venue unavailable"}
+                      </p>
+                      <p className="text-xs leading-5 text-on-surface-variant">
+                        {locationLabel || "Location unavailable"}
+                      </p>
+                    </div>
                   </div>
-                  <div className="text-right text-sm text-on-surface-variant">
-                    <p>N {row.notebookRank}</p>
-                    <p>C {row.ckplusRank}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <DataState
-              title="No overlap"
-              body="The current model slices do not share any songs in the top 10."
-            />
-          )}
-        </SectionCard>
 
-        <SectionCard title="Divergence Watch" eyebrow="Unique songs">
-          <div className="space-y-4">
-            <div className="rounded-xl border border-outline-variant/20 bg-surface-container-low p-4">
-              <p className="font-label text-[10px] uppercase tracking-[0.2em] text-primary">
-                Notebook angle
-              </p>
-              <p className="mt-3 text-sm leading-6 text-on-surface-variant">
-                {notebookOnly.length > 0
-                  ? notebookOnly.map((row) => row.songName).join(", ")
-                  : "Notebook is currently aligned with CK+ across the visible top 10."}
-              </p>
-            </div>
-            <div className="rounded-xl border border-outline-variant/20 bg-surface-container-low p-4">
-              <p className="font-label text-[10px] uppercase tracking-[0.2em] text-tertiary">
-                CK+ angle
-              </p>
-              <p className="mt-3 text-sm leading-6 text-on-surface-variant">
-                {ckplusOnly.length > 0
-                  ? ckplusOnly.map((row) => row.songName).join(", ")
-                  : "CK+ is currently aligned with Notebook across the visible top 10."}
-              </p>
-            </div>
+                  <div className="mt-5 grid grid-cols-2 gap-3">
+                    <div className="relative rounded-2xl bg-surface/70 px-3 py-3 text-center">
+                      {isNbWin ? <WinnerCrown tone="primary" side="left" /> : null}
+                      <p className="font-label text-[9px] uppercase tracking-[0.16rem] text-primary">
+                        {labelA}
+                      </p>
+                      <p className="mt-1 font-headline text-base font-bold text-primary">
+                        {formatPercent(notebookValue)}
+                      </p>
+                    </div>
+                    <div className="relative rounded-2xl bg-surface/70 px-3 py-3 text-center">
+                      {isCkWin ? <WinnerCrown tone="tertiary" side="right" /> : null}
+                      <p className="font-label text-[9px] uppercase tracking-[0.16rem] text-tertiary">
+                        {labelB}
+                      </p>
+                      <p className="mt-1 font-headline text-base font-bold text-tertiary">
+                        {formatPercent(ckplusValue)}
+                      </p>
+                    </div>
+                  </div>
+
+                  {!isNbWin && !isCkWin ? (
+                    <p className="mt-3 text-center font-label text-[10px] uppercase tracking-[0.16rem] text-on-surface-variant">
+                      Tie
+                    </p>
+                  ) : null}
+
+                  {replayHref ? (
+                    <div className="mt-4 flex justify-center">
+                      <Link
+                        href={replayHref}
+                        className="touch-manipulation inline-flex min-h-11 w-full items-center justify-center rounded-full border border-outline-variant/30 bg-surface/75 px-4 py-2 font-headline text-[10px] uppercase tracking-[0.14rem] text-on-surface transition hover:border-primary/35 hover:text-primary"
+                      >
+                        View Replay
+                      </Link>
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
+
+            {remainingHeadToHeadRows.length > 0 ? (
+              <ExpandablePanel
+                bodyClassName="space-y-4 px-3 pt-3"
+                buttonClassName="w-full rounded-[1.35rem] border border-outline-variant/20 bg-surface-container-low px-4 py-4 text-center font-headline text-sm uppercase tracking-[0.12em] text-on-surface"
+                containerClassName="rounded-[1.35rem] border border-outline-variant/20 bg-surface-container-low"
+              >
+                  {remainingHeadToHeadRows.map((row) => {
+                    const notebookValue = getSelectedMetric(row, "nb", comparisonMetric);
+                    const ckplusValue = getSelectedMetric(row, "ck", comparisonMetric);
+                    const isNbWin =
+                      notebookValue !== null && ckplusValue !== null && notebookValue > ckplusValue;
+                    const isCkWin =
+                      notebookValue !== null && ckplusValue !== null && ckplusValue > notebookValue;
+                    const replayHref = buildReplayHref(selectedBand, row.date);
+                    const locationLabel = buildLocationLabel([row.city, row.state]);
+
+                    return (
+                      <div
+                        key={row.date}
+                        className="rounded-[1.2rem] border border-outline-variant/20 bg-surface/70 px-4 py-4"
+                      >
+                        <div className="flex items-center justify-between gap-4 pt-1">
+                          <p className="shrink-0 font-headline text-lg font-semibold text-on-surface">
+                            {formatCompactDateLabel(row.date)}
+                          </p>
+                          <div className="min-w-0 text-right">
+                            <p className="text-xs leading-5 text-on-surface-variant">
+                              {row.venueName || "Venue unavailable"}
+                            </p>
+                            <p className="text-xs leading-5 text-on-surface-variant">
+                              {locationLabel || "Location unavailable"}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="mt-5 grid grid-cols-2 gap-3">
+                          <div className="relative rounded-2xl bg-surface-container px-3 py-3 text-center">
+                            {isNbWin ? <WinnerCrown tone="primary" side="left" /> : null}
+                            <p className="font-label text-[9px] uppercase tracking-[0.16rem] text-primary">
+                              {labelA}
+                            </p>
+                            <p className="mt-1 font-headline text-base font-bold text-primary">
+                              {formatPercent(notebookValue)}
+                            </p>
+                          </div>
+                          <div className="relative rounded-2xl bg-surface-container px-3 py-3 text-center">
+                            {isCkWin ? <WinnerCrown tone="tertiary" side="right" /> : null}
+                            <p className="font-label text-[9px] uppercase tracking-[0.16rem] text-tertiary">
+                              {labelB}
+                            </p>
+                            <p className="mt-1 font-headline text-base font-bold text-tertiary">
+                              {formatPercent(ckplusValue)}
+                            </p>
+                          </div>
+                        </div>
+
+                        {!isNbWin && !isCkWin ? (
+                          <p className="mt-3 text-center font-label text-[10px] uppercase tracking-[0.16rem] text-on-surface-variant">
+                            Tie
+                          </p>
+                        ) : null}
+
+                        {replayHref ? (
+                          <div className="mt-4 flex justify-center">
+                            <Link
+                              href={replayHref}
+                              className="touch-manipulation inline-flex min-h-11 w-full items-center justify-center rounded-full border border-outline-variant/30 bg-surface/75 px-4 py-2 font-headline text-[10px] uppercase tracking-[0.14rem] text-on-surface transition hover:border-primary/35 hover:text-primary"
+                            >
+                              View Replay
+                            </Link>
+                          </div>
+                        ) : null}
+                      </div>
+                    );
+                  })}
+              </ExpandablePanel>
+            ) : null}
+          </div>
+
+          <div className="hidden overflow-x-auto md:block">
+            <table className="w-full text-left text-sm whitespace-nowrap">
+              <thead>
+                <tr className="border-b border-outline-variant/20 bg-surface-container-low">
+                  <th className="py-3 px-4 font-label uppercase tracking-wider text-on-surface-variant text-[10px] font-semibold">Show Date</th>
+                  <th className="py-3 px-4 font-label uppercase tracking-wider text-on-surface-variant text-[10px] font-semibold">Venue</th>
+                  <th className="py-3 px-4 font-label uppercase tracking-wider text-on-surface-variant text-[10px] font-semibold">Location</th>
+                  <th className="py-3 px-4 text-center font-label uppercase tracking-wider text-primary text-[10px] font-semibold">
+                    {labelA} Top {comparisonMetric}
+                  </th>
+                  <th className="py-3 px-4 text-center font-label uppercase tracking-wider text-tertiary text-[10px] font-semibold">
+                    {labelB} Top {comparisonMetric}
+                  </th>
+                  <th className="py-3 px-4 text-right font-label uppercase tracking-wider text-on-surface-variant text-[10px] font-semibold">Winner</th>
+                </tr>
+              </thead>
+              <tbody>
+                {headToHeadLedgerRows.map((row) => {
+                  const isAverageRow = row.date === "average";
+                  const notebookValue = getSelectedMetric(row, "nb", comparisonMetric);
+                  const ckplusValue = getSelectedMetric(row, "ck", comparisonMetric);
+                  const isNbWin =
+                    notebookValue !== null && ckplusValue !== null && notebookValue > ckplusValue;
+                  const isCkWin =
+                    notebookValue !== null && ckplusValue !== null && ckplusValue > notebookValue;
+                  return (
+                    <tr
+                      key={row.date}
+                      className={`border-b border-outline-variant/10 last:border-0 transition ${
+                        isAverageRow ? "bg-surface-container" : "hover:bg-surface-container"
+                      }`}
+                    >
+                      <td className="py-3 px-4 font-headline font-medium text-on-surface">
+                        {isAverageRow ? "Average" : formatCompactDateLabel(row.date)}
+                      </td>
+                      <td className="py-3 px-4 text-on-surface-variant truncate max-w-[200px]">{row.venueName}</td>
+                      <td className="py-3 px-4 text-on-surface-variant truncate max-w-[140px]">
+                        {isAverageRow ? "" : (buildLocationLabel([row.city, row.state]) || "—")}
+                      </td>
+                      <td className={`py-3 px-4 text-center ${isNbWin ? "bg-primary/5" : ""}`}>
+                        <span className={`font-bold tabular-nums ${isNbWin ? "text-primary" : "text-on-surface"}`}>{formatPercent(notebookValue)}</span>
+                      </td>
+                      <td className={`py-3 px-4 text-center ${isCkWin ? "bg-tertiary/5" : ""}`}>
+                        <span className={`font-bold tabular-nums ${isCkWin ? "text-tertiary" : "text-on-surface"}`}>{formatPercent(ckplusValue)}</span>
+                      </td>
+                      <td className="py-3 px-4 text-right font-label text-[10px] uppercase tracking-wider font-bold">
+                        {isNbWin ? <span className="text-primary tracking-[0.24em] uppercase">{modelASlug}</span> : isCkWin ? <span className="text-tertiary tracking-[0.24em] uppercase">{modelBSlug}</span> : <span className="text-on-surface-variant">Tie</span>}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         </SectionCard>
-      </div>
+      )}
 
-      <div className="grid gap-6 xl:grid-cols-2">
-        <SectionCard title="Notebook" eyebrow={notebook.snapshot.referenceDate ?? "No date"}>
-          <SongBoard rows={notebook.snapshot.predictions} compact />
-        </SectionCard>
-        <SectionCard title="CK+" eyebrow={ckplus.snapshot.referenceDate ?? "No date"}>
-          <SongBoard rows={ckplus.snapshot.predictions} compact />
-        </SectionCard>
-      </div>
     </div>
   );
 }

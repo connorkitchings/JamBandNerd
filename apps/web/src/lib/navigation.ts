@@ -9,10 +9,17 @@ export type NavItem = {
 export const DESKTOP_NAV_ITEMS: NavItem[] = [
   {
     href: "/",
+    label: "Home",
+    mobileLabel: "Home",
+    icon: "◉",
+    matches: ["/"],
+  },
+  {
+    href: "/predictions",
     label: "Predictions",
     mobileLabel: "Predict",
     icon: "◈",
-    matches: ["/", "/predictions"],
+    matches: ["/predictions"],
   },
   {
     href: "/performance",
@@ -22,28 +29,28 @@ export const DESKTOP_NAV_ITEMS: NavItem[] = [
     matches: ["/performance"],
   },
   {
-    href: "/explorer",
-    label: "Analysis",
-    mobileLabel: "Explore",
+    href: "/compare",
+    label: "Compare",
+    mobileLabel: "Compare",
     icon: "◎",
-    matches: ["/explorer", "/compare"],
+    matches: ["/compare"],
   },
   {
-    href: "/about",
-    label: "About",
-    mobileLabel: "About",
-    icon: "○",
-    matches: ["/about"],
+    href: "/replay",
+    label: "Replay",
+    mobileLabel: "Replay",
+    icon: "◧",
+    matches: ["/replay", "/explorer"],
   },
 ];
 
 export const MOBILE_NAV_ITEMS: NavItem[] = [
   {
-    href: "/explorer",
-    label: "Analysis",
-    mobileLabel: "Explore",
-    icon: "◎",
-    matches: ["/explorer", "/compare"],
+    href: "/",
+    label: "Home",
+    mobileLabel: "Home",
+    icon: "◉",
+    matches: ["/"],
   },
   {
     href: "/performance",
@@ -53,25 +60,25 @@ export const MOBILE_NAV_ITEMS: NavItem[] = [
     matches: ["/performance"],
   },
   {
-    href: "/",
+    href: "/predictions",
     label: "Predictions",
     mobileLabel: "Predict",
     icon: "◈",
-    matches: ["/", "/predictions"],
+    matches: ["/predictions"],
   },
   {
-    href: "/last-show",
-    label: "Last Show",
-    mobileLabel: "Last Show",
+    href: "/compare",
+    label: "Compare",
+    mobileLabel: "Compare",
+    icon: "◎",
+    matches: ["/compare"],
+  },
+  {
+    href: "/replay",
+    label: "Replay",
+    mobileLabel: "Replay",
     icon: "◧",
-    matches: ["/last-show"],
-  },
-  {
-    href: "/about",
-    label: "About",
-    mobileLabel: "About",
-    icon: "○",
-    matches: ["/about"],
+    matches: ["/replay", "/explorer"],
   },
 ];
 
