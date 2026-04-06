@@ -46,21 +46,44 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v3
+        uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
-          version: "latest"
 
       - name: Setup Python 3.12
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
-          
-      - name: Install Dependencies
-        run: uv pip install --system -e .
+
+      - name: Validate required secrets
+        run: |
+          MISSING=()
+          BAND="${{ inputs.band }}"
+
+          if [[ -z "${{ secrets.SUPABASE_URL }}" ]]; then
+            MISSING+=("SUPABASE_URL")
+          fi
+
+          if [[ -z "${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" ]]; then
+            MISSING+=("SUPABASE_SERVICE_ROLE_KEY")
+          fi
+
+          if [[ "$BAND" == "phish" && -z "${{ secrets.PHISH_API_KEY }}" ]]; then
+            MISSING+=("PHISH_API_KEY (required for phish only)")
+          fi
+
+          if [[ ${#MISSING[@]} -gt 0 ]]; then
+            echo "::error::Missing required secrets: ${MISSING[*]}"
+            exit 1
+          fi
+
+          echo "✅ All required secrets are configured"
+
+      - name: Install dependencies
+        run: uv sync --locked --no-dev
 
       - name: Run Live Tracker
         env:
@@ -68,7 +91,7 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           PHISH_API_KEY: ${{ secrets.PHISH_API_KEY }}
         run: |
-          python scripts/run_live_tracker.py \
+          uv run python scripts/run_live_tracker.py \
             --band ${{ inputs.band }} \
             --date ${{ inputs.date }} \
             --interval ${{ inputs.interval }} \

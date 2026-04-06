@@ -191,6 +191,7 @@ that registry is fully unified.
 - Supabase backend with automated validation.
 - Website-first product delivery through the live `apps/web` surface.
 - **GitHub Actions automation** with daily pipeline execution.
+- **Per-band workflow health reporting** so upstream-specific issues can degrade gracefully without masking the rest of the platform.
 
 ### Widespread Panic Data & Fallback
 
@@ -203,7 +204,7 @@ The platform features comprehensive automation through GitHub Actions:
 - **Daily Pipeline**: Runs automatically at 3 PM ET every day.
 - **Dynamic Matrix**: The pipeline automatically discovers and runs for all supported bands.
 - **Manual Triggers**: On-demand execution with band selection via the GitHub UI.
-- **Error Resilience**: Parallel matrix execution with graceful failure handling.
+- **Error Resilience**: Parallel matrix execution with graceful failure handling and explicit degraded-mode reporting for volatile upstreams such as WSP.
 - **Secret Management**: Secure API key and database credential handling.
 - **Optional Notifications**: Discord webhook alerts can be re-enabled via a `notify-discord` job in `.github/workflows/daily-pipeline.yml` if needed.
 

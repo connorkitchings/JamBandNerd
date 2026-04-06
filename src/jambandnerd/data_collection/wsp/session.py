@@ -11,7 +11,7 @@ from playwright.sync_api import Browser, BrowserContext, Page, sync_playwright
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
-from src.jambandnerd.data_collection.config import JAMBANNERD_BOT_UA
+from jambandnerd.data_collection.config import JAMBANNERD_BOT_UA
 
 logger = logging.getLogger(__name__)
 

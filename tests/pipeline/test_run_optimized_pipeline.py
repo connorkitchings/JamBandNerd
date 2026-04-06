@@ -5,6 +5,7 @@ from typing import Any
 import pytest
 
 from scripts import run_optimized_pipeline
+from scripts.collection_preflight import CollectionPreflight
 
 from .fixtures import BANDS
 
@@ -19,7 +20,32 @@ COLLECTION_RUNNERS = {
 
 
 @pytest.fixture
-def pipeline_recorder(monkeypatch):
+def preflight_stub(monkeypatch):
+    monkeypatch.setattr(run_optimized_pipeline, "HAS_BACKFILL", False)
+    monkeypatch.setattr(
+        run_optimized_pipeline,
+        "compute_band_preflight",
+        lambda band: CollectionPreflight(
+            band=band,
+            collection_mode="always_refresh",
+            execution_mode="full_refresh",
+            should_run_collection=True,
+            recent_completed_show_count=0,
+            missing_recent_setlist_count=0,
+            upcoming_show_count=0,
+            has_upcoming_show_soon=False,
+            last_successful_collection_at=None,
+            supports_upstream_update_timestamp=False,
+            skip_existing_setlists=False,
+            recent_window_start="2026-03-10",
+            recent_window_end="2026-03-16",
+            lookahead_end="2026-03-31",
+        ),
+    )
+
+
+@pytest.fixture
+def pipeline_recorder(monkeypatch, preflight_stub):
     events: list[tuple[str, dict[str, Any]]] = []
 
     def record(name: str):
@@ -138,7 +164,9 @@ def test_run_band_pipeline_skip_accuracy_preserves_predictions_and_validation(
 
 
 @pytest.mark.parametrize("band", BANDS)
-def test_run_band_pipeline_stops_after_collection_failure(band, monkeypatch):
+def test_run_band_pipeline_stops_after_collection_failure(
+    band, monkeypatch, preflight_stub
+):
     events: list[str] = []
 
     def fail_collection():
@@ -161,7 +189,9 @@ def test_run_band_pipeline_stops_after_collection_failure(band, monkeypatch):
 
 
 @pytest.mark.parametrize("band", BANDS)
-def test_run_band_pipeline_stops_after_prediction_failure(band, monkeypatch):
+def test_run_band_pipeline_stops_after_prediction_failure(
+    band, monkeypatch, preflight_stub
+):
     events: list[tuple[str, str]] = []
 
     monkeypatch.setattr(

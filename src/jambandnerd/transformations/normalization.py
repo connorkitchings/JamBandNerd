@@ -10,7 +10,7 @@ from typing import Iterable
 
 import pandas as pd
 
-from src.jambandnerd.config.bands import BAND_ID_COLUMNS
+from jambandnerd.config.bands import BAND_ID_COLUMNS
 
 SHOW_DATE_CANDIDATES = ("show_date", "showdate")
 SONG_NAME_CANDIDATES = ("song_name", "song")

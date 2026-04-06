@@ -1,0 +1,7 @@
+# Default owner for production-sensitive paths.
+* @connorkitchings
+
+/apps/web/** @connorkitchings
+/.github/workflows/** @connorkitchings
+/src/jambandnerd/models/** @connorkitchings
+/docs/operations/** @connorkitchings

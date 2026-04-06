@@ -29,16 +29,17 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, project_root)
 
 from scripts.common import fetch_table, prepare_band_data, resolve_reference_date
-from src.jambandnerd.config import MODEL_VERSIONS, PREDICTION_TABLES
 from src.jambandnerd.config.bands import get_active_bands
 from src.jambandnerd.db.operations import (
     replace_prediction_projection,
     upsert_dataframe,
 )
-from src.jambandnerd.models.ckplus.model import CKPlusPredictor
-from src.jambandnerd.models.deal import DealPredictor
-from src.jambandnerd.models.notebook.model import NotebookPredictor
-from src.jambandnerd.models.serialization import serialize_predictions
+from src.jambandnerd.models.registry import (
+    build_predictor,
+    get_model_definition,
+    list_model_slugs,
+    serialize_model_predictions,
+)
 from src.jambandnerd.transformations.gaps import generate_model_data
 
 
@@ -102,38 +103,43 @@ def generate_predictions(
     )
 
     # 2. Select and run model
+    model_definition = get_model_definition(model)
+    predictor = build_predictor(model, band=band)
     predictions: List[Any] = []
-    if model == "notebook":
-        predictor = NotebookPredictor(band=band)
-        preds, diagnostics = predictor.predict(model_data=model_data, top_k=50)
-        predictions = preds
+
+    if model_definition.supports_training:
+        if retrain:
+            print(f"{log_prefix} Force retrain enabled, clearing model cache...")
+            get_model_path = getattr(predictor, "_get_model_path", None)
+            if callable(get_model_path):
+                model_path = get_model_path(band)
+                if model_path.exists():
+                    model_path.unlink()
+        predictor.train(model_data)
+
+    prediction_output = predictor.predict(
+        model_data=model_data,
+        top_k=model_definition.default_top_k,
+    )
+    if isinstance(prediction_output, tuple):
+        predictions, diagnostics = prediction_output
         print(f"{log_prefix} --- Model Diagnostics ---")
         print(json.dumps(diagnostics, indent=2, cls=NpEncoder))
         print(
             f"{log_prefix} Recently played songs (excluded): {model_data.recently_played_songs}"
         )
         print(f"{log_prefix} -------------------------")
-    elif model == "ckplus":
-        predictor = CKPlusPredictor(band=band)
-        predictions = predictor.predict(model_data=model_data, top_k=50)
-    elif model == "deal":
-        predictor = DealPredictor(band=band)
-        if retrain:
-            print(f"{log_prefix} Force retrain enabled, clearing model cache...")
-            model_path = predictor._get_model_path(band)
-            if model_path.exists():
-                model_path.unlink()
-        predictor.train(model_data)
-        predictions = predictor.predict(model_data=model_data, top_k=50)
+    else:
+        predictions = prediction_output
 
     if not predictions:
         print(f"{log_prefix} No predictions were generated.")
         return
 
     # 3. Format and save results
-    predictions_list = serialize_predictions(model_slug=model, predictions=predictions)
-    table_name = PREDICTION_TABLES[model]
-    model_version = MODEL_VERSIONS[model]
+    predictions_list = serialize_model_predictions(model, predictions)
+    table_name = model_definition.prediction_table
+    model_version = model_definition.version
 
     predicted_at = datetime.now(timezone.utc).isoformat()
     output_row = {
@@ -182,13 +188,13 @@ def main() -> None:
         "--model",
         type=str,
         required=True,
-        choices=["notebook", "ckplus", "deal"],
+        choices=list_model_slugs(),
         help="The model to use for predictions.",
     )
     parser.add_argument(
         "--retrain",
         action="store_true",
-        help="Force retrain the Deal model (only applicable for deal model).",
+        help="Force retrain for training-capable models.",
     )
     parser.add_argument(
         "--date",
@@ -201,6 +207,13 @@ def main() -> None:
         help="Number of recent shows to exclude songs from (default: 3).",
     )
     args = parser.parse_args()
+
+    model_definition = get_model_definition(args.model)
+    if args.retrain and not model_definition.supports_training:
+        parser.error(
+            "--retrain is only supported for training-capable "
+            f"models; got {args.model}"
+        )
 
     generate_predictions(
         band=args.band,

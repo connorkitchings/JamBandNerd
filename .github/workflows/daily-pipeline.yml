@@ -40,7 +40,11 @@ jobs:
           python-version: '3.12'
       - id: get_bands
         run: |
-          BANDS_JSON=$(python scripts/get_all_bands.py)
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.band || 'all' }}" != "all" ]]; then
+            BANDS_JSON='["${{ github.event.inputs.band }}"]'
+          else
+            BANDS_JSON=$(python -m scripts.get_all_bands)
+          fi
           echo "bands=$BANDS_JSON" >> $GITHUB_OUTPUT
           echo "bands_list=$BANDS_JSON" >> $GITHUB_OUTPUT
 
@@ -59,26 +63,16 @@ jobs:
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       PHISH_API_KEY: ${{ secrets.PHISH_API_KEY }}
 
-    outputs:
-      band_status: ${{ steps.set_status.outputs.status }}
-
     steps:
-      - name: Check if job should run
-        id: check
-        run: |
-          BAND_INPUT="${{ github.event.inputs.band || 'all' }}"
-          if [[ "${{ github.event_name }}" == "schedule" || "$BAND_INPUT" == "all" || "$BAND_INPUT" == "${{ matrix.band }}" ]]; then
-            echo "should_run=true" >> $GITHUB_OUTPUT
-          else
-            echo "should_run=false" >> $GITHUB_OUTPUT
-          fi
-
       - name: Checkout repository
-        if: steps.check.outputs.should_run == 'true'
         uses: actions/checkout@v6
 
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
       - name: Validate required secrets
-        if: steps.check.outputs.should_run == 'true'
         run: |
           MISSING=()
           BAND="${{ matrix.band }}"
@@ -104,77 +98,138 @@ jobs:
           
           echo "✅ All required secrets are configured"
 
-      - name: Set up Python and UV
-        if: steps.check.outputs.should_run == 'true'
+      - name: Set up Python
         uses: actions/setup-python@v6
         with:
           python-version: '3.12'
-      
-      - name: Install Dependencies
-        if: steps.check.outputs.should_run == 'true'
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-          uv venv
-          source .venv/bin/activate
-          uv pip install .
+
+      - name: Install dependencies
+        run: uv sync --locked --no-dev
 
       - name: Install Playwright Browsers
-        if: steps.check.outputs.should_run == 'true' && matrix.band == 'wsp'
+        if: matrix.band == 'wsp'
+        run: uv run playwright install --with-deps firefox
+
+      - name: Compute Collection Preflight
+        id: preflight
+        env:
+          BAND: ${{ matrix.band }}
         run: |
-          source .venv/bin/activate
-          playwright install --with-deps firefox
+          echo "::group::Computing collection preflight for ${{ matrix.band }}"
+          uv run python scripts/collection_preflight.py --band "${{ matrix.band }}"
+          echo "::endgroup::"
 
       - name: Run Data Collection
-        if: steps.check.outputs.should_run == 'true'
+        id: collection
+        if: steps.preflight.outputs.should_run_collection == 'true'
         run: |
-          source .venv/bin/activate
           echo "::group::Collecting data for ${{ matrix.band }}"
-          
-          # Verify collection script exists
-          SCRIPT_PATH="scripts/run_${{ matrix.band }}_collection.py"
+
+          BAND="${{ matrix.band }}"
+          SCRIPT_PATH="scripts/run_${BAND}_collection.py"
           if [[ ! -f "$SCRIPT_PATH" ]]; then
             echo "::error::Collection script not found: $SCRIPT_PATH"
             exit 1
           fi
-          
-          # Use retry logic for all bands for consistency
+
           MAX_RETRIES=3
           RETRY_COUNT=0
           RETRY_DELAY=30
-          
-          while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-            echo "Attempt $((RETRY_COUNT + 1)) of $MAX_RETRIES for ${{ matrix.band }} collection"
-            
-            if python "$SCRIPT_PATH"; then
-              echo "✅ Collection for ${{ matrix.band }} successful"
-              break
-            else
+          STEP_OUTPUT="$GITHUB_OUTPUT"
+          ATTEMPT_OUTPUT="$(mktemp)"
+
+          if [[ "$BAND" == "wsp" ]]; then
+            FINAL_EXIT_CODE=0
+            WORKFLOW_STATE="failed"
+            SHOULD_RETRY="true"
+
+            while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+              echo "Attempt $((RETRY_COUNT + 1)) of $MAX_RETRIES for ${BAND} collection"
+              : > "$ATTEMPT_OUTPUT"
+
+              set +e
+              GITHUB_OUTPUT="$ATTEMPT_OUTPUT" uv run python "$SCRIPT_PATH"
+              FINAL_EXIT_CODE=$?
+              set -e
+
+              WORKFLOW_STATE="$(grep '^workflow_state=' "$ATTEMPT_OUTPUT" | tail -n 1 | cut -d= -f2-)"
+              SHOULD_RETRY="$(grep '^should_retry_collection=' "$ATTEMPT_OUTPUT" | tail -n 1 | cut -d= -f2-)"
+
+              if [[ $FINAL_EXIT_CODE -eq 0 ]]; then
+                if [[ "$WORKFLOW_STATE" == "degraded" ]]; then
+                  echo "::warning::Collection for ${BAND} completed in degraded mode"
+                else
+                  echo "✅ Collection for ${BAND} successful"
+                fi
+                break
+              fi
+
+              if [[ "$SHOULD_RETRY" != "true" ]]; then
+                echo "::warning::Collection for ${BAND} produced a non-retryable outcome"
+                break
+              fi
+
               RETRY_COUNT=$((RETRY_COUNT + 1))
               if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
-                echo "⚠️ Collection for ${{ matrix.band }} failed, retrying in ${RETRY_DELAY} seconds..."
+                echo "⚠️ Collection for ${BAND} failed, retrying in ${RETRY_DELAY} seconds..."
                 sleep $RETRY_DELAY
               else
-                echo "::error::Collection for ${{ matrix.band }} failed after $MAX_RETRIES attempts"
+                echo "::error::Collection for ${BAND} failed after $MAX_RETRIES attempts"
+              fi
+            done
+
+            cat "$ATTEMPT_OUTPUT" >> "$STEP_OUTPUT"
+
+            if [[ $FINAL_EXIT_CODE -ne 0 && "${WORKFLOW_STATE:-failed}" == "failed" ]]; then
+              exit $FINAL_EXIT_CODE
+            fi
+          else
+            while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+              echo "Attempt $((RETRY_COUNT + 1)) of $MAX_RETRIES for ${BAND} collection"
+
+              if uv run python "$SCRIPT_PATH"; then
+                echo "✅ Collection for ${BAND} successful"
+                break
+              fi
+
+              RETRY_COUNT=$((RETRY_COUNT + 1))
+              if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+                echo "⚠️ Collection for ${BAND} failed, retrying in ${RETRY_DELAY} seconds..."
+                sleep $RETRY_DELAY
+              else
+                echo "::error::Collection for ${BAND} failed after $MAX_RETRIES attempts"
                 exit 1
               fi
-            fi
-          done
+            done
+
+            echo "workflow_state=success" >> "$STEP_OUTPUT"
+            echo "outcome_code=success" >> "$STEP_OUTPUT"
+            echo "should_retry_collection=false" >> "$STEP_OUTPUT"
+            echo "recent_data_usable=true" >> "$STEP_OUTPUT"
+            echo "prediction_action=generated" >> "$STEP_OUTPUT"
+          fi
           
           echo "::endgroup::"
 
+      - name: Seed Verify-Only Collection Outputs
+        id: collection_idle
+        if: steps.preflight.outputs.should_run_collection != 'true'
+        run: |
+          echo "workflow_state=success" >> "$GITHUB_OUTPUT"
+          echo "outcome_code=success" >> "$GITHUB_OUTPUT"
+          echo "should_retry_collection=false" >> "$GITHUB_OUTPUT"
+          echo "recent_data_usable=true" >> "$GITHUB_OUTPUT"
+          echo "prediction_action=skipped_idle" >> "$GITHUB_OUTPUT"
+
       - name: Verify Data Freshness
-        if: steps.check.outputs.should_run == 'true'
         id: data_check
+        if: success() || steps.collection.outputs.workflow_state == 'degraded'
         env:
           BAND: ${{ matrix.band }}
         run: |
-          source .venv/bin/activate
           echo "::group::Verifying data freshness for ${{ matrix.band }}"
           
-          python scripts/verify_data_freshness.py
+          uv run python scripts/verify_data_freshness.py
           
           echo "::endgroup::"
           
@@ -184,28 +239,33 @@ jobs:
           MISSING_COUNT: ${{ steps.data_check.outputs.missing_count }}
         run: |
           COUNT=${MISSING_COUNT:-0}
-          echo "::error::Critical: ${COUNT} recent ${{ matrix.band }} shows are missing setlist data!"
-          echo "This may cause predictions to include songs that were recently played."
-          echo "Consider running the collection script manually to fetch missing setlists."
+          if [[ "${{ matrix.band }}" == "wsp" && "${{ steps.collection.outputs.workflow_state }}" == "degraded" ]]; then
+            echo "::warning::WSP degraded: ${COUNT} recent completed shows are missing setlist data."
+            echo "Predictions will be reused or skipped rather than failing the full daily pipeline."
+          else
+            echo "::error::Critical: ${COUNT} recent ${{ matrix.band }} shows are missing setlist data!"
+            echo "This may cause predictions to include songs that were recently played."
+            echo "Consider running the collection script manually to fetch missing setlists."
+          fi
           
       - name: Generate Predictions (Notebook & CK+)
-        if: steps.check.outputs.should_run == 'true'
+        id: predictions
+        if: steps.preflight.outputs.should_run_collection == 'true' && steps.collection.outputs.workflow_state != 'degraded'
         run: |
-          source .venv/bin/activate
           echo "::group::Generating predictions for ${{ matrix.band }}"
           
           # Generate for the next upcoming show (default behavior)
-          python scripts/generate_predictions.py --band ${{ matrix.band }} --model notebook
-          python scripts/generate_predictions.py --band ${{ matrix.band }} --model ckplus
+          uv run python scripts/generate_predictions.py --band ${{ matrix.band }} --model notebook
+          uv run python scripts/generate_predictions.py --band ${{ matrix.band }} --model ckplus
           
           # Also generate for the most recent completed show to power setlist highlighting
           echo "Finding last completed show date..."
-          LAST_COMPLETED_DATE=$(python scripts/get_last_completed_show_date.py --band ${{ matrix.band }})
+          LAST_COMPLETED_DATE=$(uv run python scripts/get_last_completed_show_date.py --band ${{ matrix.band }})
           
           if [[ -n "$LAST_COMPLETED_DATE" ]]; then
             echo "Last completed show date is $LAST_COMPLETED_DATE. Generating predictions for this date."
-            python scripts/generate_predictions.py --band ${{ matrix.band }} --model notebook --date $LAST_COMPLETED_DATE
-            python scripts/generate_predictions.py --band ${{ matrix.band }} --model ckplus --date $LAST_COMPLETED_DATE
+            uv run python scripts/generate_predictions.py --band ${{ matrix.band }} --model notebook --date $LAST_COMPLETED_DATE
+            uv run python scripts/generate_predictions.py --band ${{ matrix.band }} --model ckplus --date $LAST_COMPLETED_DATE
           else
             echo "Could not determine last completed show date. Skipping predictions for it."
           fi
@@ -213,46 +273,139 @@ jobs:
           echo "::endgroup::"
 
       - name: Validate Prediction Tables
-        if: steps.check.outputs.should_run == 'true'
+        id: prediction_validation
+        if: steps.preflight.outputs.should_run_collection == 'true' && steps.collection.outputs.workflow_state != 'degraded'
         run: |
-          source .venv/bin/activate
           echo "::group::Validating prediction table freshness for ${{ matrix.band }}"
-          python scripts/validate_prediction_tables.py --band ${{ matrix.band }} --max-age-hours 72
+          uv run python scripts/validate_prediction_tables.py --band ${{ matrix.band }} --max-age-hours 72
           echo "::endgroup::"
 
       - name: Run Backtest and Calculate Aggregate Accuracy
-        if: steps.check.outputs.should_run == 'true' && (github.event.inputs.skip_accuracy != 'true')
+        id: accuracy_calc
+        if: github.event.inputs.skip_accuracy != 'true' && steps.preflight.outputs.should_run_collection == 'true' && steps.collection.outputs.workflow_state != 'degraded'
         run: |
-          source .venv/bin/activate
           echo "::group::Running backtest for ${{ matrix.band }}"
           
           # Run backtest for last 100 shows to populate per-show accuracy
-          python scripts/run_backtest.py --band ${{ matrix.band }} --model notebook --shows 100
-          python scripts/run_backtest.py --band ${{ matrix.band }} --model ckplus --shows 100
+          uv run python scripts/run_backtest.py --band ${{ matrix.band }} --model notebook --shows 100
+          uv run python scripts/run_backtest.py --band ${{ matrix.band }} --model ckplus --shows 100
           
           echo "::endgroup::"
           
           echo "::group::Calculating aggregate accuracy for ${{ matrix.band }}"
           
           # Calculate aggregate accuracy from the per-show data
-          python scripts/save_aggregate_accuracy.py --band ${{ matrix.band }} --model notebook --shows 100
-          python scripts/save_aggregate_accuracy.py --band ${{ matrix.band }} --model ckplus --shows 100
+          uv run python scripts/save_aggregate_accuracy.py --band ${{ matrix.band }} --model notebook --shows 100
+          uv run python scripts/save_aggregate_accuracy.py --band ${{ matrix.band }} --model ckplus --shows 100
           
           echo "::endgroup::"
 
       - name: Validate Accuracy Tables
-        if: steps.check.outputs.should_run == 'true' && (github.event.inputs.skip_accuracy != 'true')
+        id: accuracy_validation
+        if: github.event.inputs.skip_accuracy != 'true' && steps.preflight.outputs.should_run_collection == 'true' && steps.collection.outputs.workflow_state != 'degraded'
         run: |
-          source .venv/bin/activate
           echo "::group::Validating accuracy tables for ${{ matrix.band }}"
-          python scripts/validate_accuracy_tables.py --band ${{ matrix.band }} --max-age-hours 72
+          uv run python scripts/validate_accuracy_tables.py --band ${{ matrix.band }} --max-age-hours 72
           echo "::endgroup::"
 
-      - name: Set Job Status Output
-        id: set_status
+      - name: Write Band Status
         if: always()
+        env:
+          BAND: ${{ matrix.band }}
+          WORKFLOW_STATE: ${{ steps.collection.outputs.workflow_state || steps.collection_idle.outputs.workflow_state || (job.status == 'success' && 'success' || 'failed') }}
+          OUTCOME_CODE: ${{ steps.collection.outputs.outcome_code || steps.collection_idle.outputs.outcome_code || (job.status == 'success' && 'success' || 'failed_internal') }}
+          RECENT_DATA_USABLE: ${{ steps.collection.outputs.recent_data_usable || steps.collection_idle.outputs.recent_data_usable || 'false' }}
+          FALLBACK_SHOWS_FILLED: ${{ steps.collection.outputs.fallback_shows_filled || '0' }}
+          FALLBACK_SETLISTS_COLLECTED: ${{ steps.collection.outputs.fallback_setlists_collected || '0' }}
+          COLLECTOR_MISSING_SETLISTS: ${{ steps.collection.outputs.collector_missing_setlists || '0' }}
+          REQUEST_BLOCKED_MISSING_SETLISTS: ${{ steps.collection.outputs.request_blocked_missing_setlists || '0' }}
+          UPSTREAM_MISSING_SETLISTS: ${{ steps.collection.outputs.upstream_missing_setlists || '0' }}
+          FALLBACK_AVAILABLE_MISSING_SETLISTS: ${{ steps.collection.outputs.fallback_available_missing_setlists || '0' }}
+          FAILURE_REASON: ${{ steps.collection.outputs.failure_reason || '' }}
+          MISSING_DATA: ${{ steps.data_check.outputs.missing_data || 'false' }}
+          MISSING_COUNT: ${{ steps.data_check.outputs.missing_count || '0' }}
+          PREDICTIONS_OUTCOME: ${{ steps.predictions.outcome || '' }}
+          ACCURACY_SKIPPED: ${{ github.event.inputs.skip_accuracy == 'true' }}
+          COLLECTION_MODE: ${{ steps.preflight.outputs.collection_mode || 'unknown' }}
+          EXECUTION_MODE: ${{ steps.preflight.outputs.execution_mode || 'unknown' }}
+          SHOULD_RUN_COLLECTION: ${{ steps.preflight.outputs.should_run_collection || 'false' }}
+          RECENT_COMPLETED_SHOW_COUNT: ${{ steps.preflight.outputs.recent_completed_show_count || '0' }}
+          MISSING_RECENT_SETLIST_COUNT: ${{ steps.preflight.outputs.missing_recent_setlist_count || '0' }}
+          UPCOMING_SHOW_COUNT: ${{ steps.preflight.outputs.upcoming_show_count || '0' }}
+          LAST_SUCCESSFUL_COLLECTION_AT: ${{ steps.preflight.outputs.last_successful_collection_at || '' }}
         run: |
-          echo "status=${{ job.status }}" >> $GITHUB_OUTPUT
+          mkdir -p .github/workflow-status
+          python - <<'PY'
+          import json
+          import os
+
+          workflow_state = os.environ.get("WORKFLOW_STATE", "failed")
+          missing_data = os.environ.get("MISSING_DATA", "false") == "true"
+          recent_data_usable = os.environ.get("RECENT_DATA_USABLE", "false") == "true"
+
+          if workflow_state == "degraded":
+              prediction_action = "reused_existing" if recent_data_usable and not missing_data else "skipped"
+          elif os.environ.get("PREDICTIONS_OUTCOME") == "success":
+              prediction_action = "generated"
+          elif os.environ.get("WORKFLOW_STATE") == "failed":
+              prediction_action = "skipped"
+          else:
+              prediction_action = os.environ.get("prediction_action", "pending")
+
+          payload = {
+              "band": os.environ["BAND"],
+              "workflow_state": workflow_state,
+              "outcome_code": os.environ.get("OUTCOME_CODE", "failed_internal"),
+              "recent_data_usable": recent_data_usable,
+              "missing_data": missing_data,
+              "missing_count": int(os.environ.get("MISSING_COUNT", "0") or 0),
+              "prediction_action": prediction_action,
+              "collection_mode": os.environ.get("COLLECTION_MODE", "unknown"),
+              "execution_mode": os.environ.get("EXECUTION_MODE", "unknown"),
+              "should_run_collection": os.environ.get("SHOULD_RUN_COLLECTION", "false") == "true",
+              "recent_completed_show_count": int(os.environ.get("RECENT_COMPLETED_SHOW_COUNT", "0") or 0),
+              "missing_recent_setlist_count": int(os.environ.get("MISSING_RECENT_SETLIST_COUNT", "0") or 0),
+              "upcoming_show_count": int(os.environ.get("UPCOMING_SHOW_COUNT", "0") or 0),
+              "last_successful_collection_at": os.environ.get("LAST_SUCCESSFUL_COLLECTION_AT", ""),
+              "fallback_shows_filled": int(os.environ.get("FALLBACK_SHOWS_FILLED", "0") or 0),
+              "fallback_setlists_collected": int(os.environ.get("FALLBACK_SETLISTS_COLLECTED", "0") or 0),
+              "collector_missing_setlists": int(os.environ.get("COLLECTOR_MISSING_SETLISTS", "0") or 0),
+              "request_blocked_missing_setlists": int(os.environ.get("REQUEST_BLOCKED_MISSING_SETLISTS", "0") or 0),
+              "upstream_missing_setlists": int(os.environ.get("UPSTREAM_MISSING_SETLISTS", "0") or 0),
+              "fallback_available_missing_setlists": int(os.environ.get("FALLBACK_AVAILABLE_MISSING_SETLISTS", "0") or 0),
+              "failure_reason": os.environ.get("FAILURE_REASON", ""),
+              "accuracy_skipped": os.environ.get("ACCURACY_SKIPPED", "false") == "true",
+          }
+
+          path = f".github/workflow-status/{payload['band']}.json"
+          with open(path, "w", encoding="utf-8") as handle:
+              json.dump(payload, handle)
+          print(f"Wrote {path}")
+          PY
+
+      - name: Upload Band Status
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: band-status-${{ matrix.band }}
+          path: .github/workflow-status/${{ matrix.band }}.json
+          if-no-files-found: error
+
+      - name: Append Band Summary
+        if: always()
+        env:
+          BAND: ${{ matrix.band }}
+          WORKFLOW_STATE: ${{ steps.collection.outputs.workflow_state || steps.collection_idle.outputs.workflow_state || (job.status == 'success' && 'success' || 'failed') }}
+          OUTCOME_CODE: ${{ steps.collection.outputs.outcome_code || steps.collection_idle.outputs.outcome_code || (job.status == 'success' && 'success' || 'failed_internal') }}
+          MISSING_COUNT: ${{ steps.data_check.outputs.missing_count || '0' }}
+          EXECUTION_MODE: ${{ steps.preflight.outputs.execution_mode || 'unknown' }}
+        run: |
+          echo "### ${BAND^^}" >> $GITHUB_STEP_SUMMARY
+          echo "- Execution mode: ${EXECUTION_MODE}" >> $GITHUB_STEP_SUMMARY
+          echo "- State: ${WORKFLOW_STATE}" >> $GITHUB_STEP_SUMMARY
+          echo "- Outcome: ${OUTCOME_CODE}" >> $GITHUB_STEP_SUMMARY
+          echo "- Missing recent setlists: ${MISSING_COUNT}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
 
   pipeline-summary:
     name: Pipeline Summary
@@ -268,33 +421,68 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+
+      - name: Download band status artifacts
+        uses: actions/download-artifact@v8
+        with:
+          pattern: band-status-*
+          path: .github/workflow-status
+          merge-multiple: true
         
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
           python-version: '3.12'
-          
-      - name: Install minimal dependencies
-        run: |
-          pip install pandas supabase python-dotenv
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --locked --no-dev
           
       - name: Generate pipeline summary header
         run: |
           echo "## Daily Pipeline Summary - $(date)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          
-          if [[ "${{ needs.daily-pipeline.result }}" == "success" ]]; then
-            echo "✅ **All band pipelines completed successfully!**" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "⚠️ **One or more band pipelines failed, were skipped, or were cancelled.**" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "Please check the logs for the 'daily-pipeline' job matrix for details." >> $GITHUB_STEP_SUMMARY
-          fi
+
+          python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          from pathlib import Path
+
+          status_dir = Path(".github/workflow-status")
+          statuses = []
+          if status_dir.exists():
+              for path in sorted(status_dir.glob("*.json")):
+                  with open(path, encoding="utf-8") as handle:
+                      statuses.append(json.load(handle))
+
+          has_failed = any(item.get("workflow_state") == "failed" for item in statuses)
+          has_degraded = any(item.get("workflow_state") == "degraded" for item in statuses)
+
+          if has_failed:
+              print("⚠️ **One or more band pipelines failed.**")
+              print("")
+              print("Please check the failed band jobs and the run health table below.")
+          elif has_degraded:
+              print("⚠️ **All band pipelines completed, but at least one band ran in degraded mode.**")
+              print("")
+              print("Review the band run health table below for partial upstream issues.")
+          else:
+              print("✅ **All band pipelines completed successfully.**")
+          PY
 
       - name: Generate monitoring summary
         run: |
           echo "" >> $GITHUB_STEP_SUMMARY
-          python scripts/generate_pipeline_summary.py --bands-json "$BAND_LIST_JSON" >> $GITHUB_STEP_SUMMARY
+          STATUS_ARGS=()
+          for file in .github/workflow-status/*.json; do
+            if [[ -f "$file" ]]; then
+              STATUS_ARGS+=(--status-file "$file")
+            fi
+          done
+          uv run python scripts/generate_pipeline_summary.py --bands-json "$BAND_LIST_JSON" "${STATUS_ARGS[@]}" >> $GITHUB_STEP_SUMMARY
           
       - name: Add next steps
         run: |

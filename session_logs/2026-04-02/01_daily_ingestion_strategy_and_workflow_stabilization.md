@@ -1,0 +1,36 @@
+# Session Log
+
+- Goal: Implement band-aware daily ingestion preflight support, stabilize workflow reporting, fix the UM duplicate-upsert failure mode, add solo-maintainer branch protections, and prepare a Supabase RLS hardening migration.
+- Constraints: Preserve existing script entrypoints and daily schedule, keep WSP degraded-mode behavior for usable upstream-blocked runs, avoid breaking anon-key website reads when enabling RLS, and configure GitHub protections for a solo-maintainer workflow without adding review bureaucracy.
+- Commands run:
+  - `git status --short --branch`
+  - `uv run pytest -q tests/test_collection_preflight.py tests/test_db_operations.py tests/test_generate_pipeline_summary.py tests/data_collection/wsp/test_status.py tests/pipeline/test_run_optimized_pipeline.py tests/pipeline/test_run_um_collection.py`
+  - `uv run ruff check src tests scripts`
+  - `gh api repos/connorkitchings/JamBandNerd/git/refs -f ref=refs/heads/dev -f sha=b5ff4914dddf3f5462cc21d88cd3a318f0c4fbff`
+  - `gh api --method PUT repos/connorkitchings/JamBandNerd/branches/main/protection --input /tmp/main_branch_protection.json`
+  - `gh api --method PUT repos/connorkitchings/JamBandNerd/branches/dev/protection --input /tmp/dev_branch_protection.json`
+  - `gh api repos/connorkitchings/JamBandNerd/branches/main/protection`
+  - `gh api repos/connorkitchings/JamBandNerd/branches/dev/protection`
+- Files changed or artifacts produced:
+  - `.github/workflows/daily-pipeline.yml`
+  - `docs/operations/github_actions.md`
+  - `scripts/collection_preflight.py`
+  - `scripts/generate_pipeline_summary.py`
+  - `scripts/run_optimized_pipeline.py`
+  - `scripts/run_um_collection.py`
+  - `src/jambandnerd/config/bands.py`
+  - `src/jambandnerd/data_collection/wsp/status.py`
+  - `src/jambandnerd/db/operations.py`
+  - `tests/test_collection_preflight.py`
+  - `tests/test_db_operations.py`
+  - `tests/test_generate_pipeline_summary.py`
+  - `tests/data_collection/wsp/test_status.py`
+  - `tests/pipeline/test_run_optimized_pipeline.py`
+  - `tests/pipeline/test_run_um_collection.py`
+  - `supabase/migrations/20260402193000_harden_public_schema_rls.sql`
+- Validation status:
+  - Passed: `uv run pytest -q tests/test_collection_preflight.py tests/test_db_operations.py tests/test_generate_pipeline_summary.py tests/data_collection/wsp/test_status.py tests/pipeline/test_run_optimized_pipeline.py tests/pipeline/test_run_um_collection.py`
+  - Passed: `uv run ruff check src tests scripts`
+  - Verified: remote `dev` branch created and GitHub branch protections applied to `main` and `dev`
+  - Not run here: live Supabase migration apply, because this session does not have Supabase credentials loaded
+- Next step: Apply `supabase/migrations/20260402193000_harden_public_schema_rls.sql` to the hosted Supabase project, then run the updated `daily-pipeline.yml` in GitHub Actions to confirm the new preflight/status reporting and UM upsert hardening in production.

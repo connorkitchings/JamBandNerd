@@ -253,3 +253,55 @@ def test_render_summary_reports_per_band_errors_without_crashing():
     assert "- ❌ Error checking data: boom" in summary
     assert "| GOOSE | 1/1 | 1 | 2026-03-16 |" in summary
     assert "| PHISH | Error | n/a | boom |" in summary
+
+
+def test_render_summary_includes_band_health_states():
+    client = _ClientStub(
+        {
+            "goose_shows_raw": [{"show_id": "played", "show_date": "2026-03-16"}],
+            "goose_setlists_raw": [{"show_id": "played", "song_name": "Song A"}],
+            "predictions_notebook": [
+                {
+                    "band": "goose",
+                    "reference_date": "2026-03-16",
+                    "predicted_at": "2026-03-16T12:00:00+00:00",
+                    "predictions": json.dumps([{"song_name": "Song A"}]),
+                }
+            ],
+            "wsp_shows_raw": [],
+            "wsp_setlists_raw": [],
+        }
+    )
+
+    summary = render_summary(
+        client,
+        bands=["goose", "wsp"],
+        band_statuses=[
+            {
+                "band": "goose",
+                "workflow_state": "success",
+                "outcome_code": "success",
+                "execution_mode": "full_refresh",
+                "missing_count": 0,
+                "prediction_action": "generated",
+            },
+            {
+                "band": "wsp",
+                "workflow_state": "degraded",
+                "outcome_code": "degraded_upstream_blocked",
+                "execution_mode": "bounded_refresh",
+                "missing_count": 0,
+                "prediction_action": "reused_existing",
+                "fallback_shows_filled": 2,
+            },
+        ],
+        days=7,
+        today=date(2026, 3, 17),
+    )
+
+    assert "### Band Run Health" in summary
+    assert "| GOOSE | success | success | full_refresh | 0 | generated | n/a |" in summary
+    assert (
+        "| WSP | degraded | degraded_upstream_blocked | bounded_refresh | 0 | reused_existing | "
+        "fallback shows filled=2 |" in summary
+    )

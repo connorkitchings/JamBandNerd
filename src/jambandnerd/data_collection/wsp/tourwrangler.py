@@ -14,7 +14,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import requests
 from bs4 import BeautifulSoup
 
-from src.jambandnerd.data_collection.config import JAMBANNERD_BOT_UA
+from jambandnerd.data_collection.config import JAMBANNERD_BOT_UA
 
 session = requests.Session()
 session.headers.update(

@@ -7,11 +7,14 @@ from datetime import datetime, timezone
 from typing import Dict, Iterable, List
 
 from jambandnerd.config import (
-    ACCURACY_TABLES,
     HISTORICAL_PREDICTION_RUNS_TABLE,
-    MODEL_VERSIONS,
 )
+from jambandnerd.config.bands import get_active_bands
 from jambandnerd.db.connection import get_supabase_client
+from jambandnerd.models.registry import (
+    get_aggregate_accuracy_table,
+    list_accuracy_validation_models,
+)
 
 
 def _parse_timestamp(value: str | None) -> datetime | None:
@@ -131,13 +134,18 @@ def validate_accuracy(
 ) -> int:
     client = get_supabase_client()
 
-    band_list = list(bands) or ["goose", "eggy", "phish", "wsp", "billy", "um"]
+    band_list = list(bands) or list(get_active_bands())
     failures = 0
 
-    for model_slug in ("notebook", "ckplus"):
-        model_version = MODEL_VERSIONS[model_slug]
-        per_show_table = ACCURACY_TABLES["per_show"]
-        aggregate_table = ACCURACY_TABLES[model_slug]
+    for definition in list_accuracy_validation_models():
+        model_slug = definition.slug
+        model_version = definition.version
+        per_show_table = "accuracy_per_show"
+        aggregate_table = get_aggregate_accuracy_table(model_slug)
+        if not aggregate_table:
+            raise RuntimeError(
+                f"No aggregate accuracy table configured for model: {model_slug}"
+            )
         print(f"\n== Validating {model_slug} accuracy ({model_version}) ==")
 
         for band in band_list:

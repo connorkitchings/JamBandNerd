@@ -6,7 +6,7 @@ import hashlib
 import re
 from typing import Dict, List
 
-from src.jambandnerd.db.connection import get_supabase_client
+from jambandnerd.db.connection import get_supabase_client
 
 
 def parse_setlist_text(text: str) -> List[Dict]:
