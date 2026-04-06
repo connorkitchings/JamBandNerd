@@ -385,7 +385,7 @@ jobs:
 
       - name: Upload Band Status
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: band-status-${{ matrix.band }}
           path: .github/workflow-status/${{ matrix.band }}.json
