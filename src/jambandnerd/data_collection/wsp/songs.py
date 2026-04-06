@@ -8,6 +8,7 @@ import pandas as pd
 import requests
 from bs4 import BeautifulSoup
 
+from .parser_profile import DEFAULT_PROFILE
 from .session import make_request
 
 if TYPE_CHECKING:
@@ -30,19 +31,14 @@ def collect_songs(
         soup = BeautifulSoup(response.content, "html.parser")
         tables = soup.find_all("table")
 
-        if len(tables) < 5:
+        if len(tables) < DEFAULT_PROFILE.song_table_min_tables:
             logger.error("Could not find the song table on the page.")
             return []
 
-        songs_df = pd.read_html(StringIO(str(tables[4])))[0]
-        songs_df.columns = [
-            "code",
-            "song_name",
-            "first_played",
-            "last_played",
-            "times_played",
-            "aka",
-        ]
+        songs_df = pd.read_html(
+            StringIO(str(tables[DEFAULT_PROFILE.song_table_index]))
+        )[0]
+        songs_df.columns = list(DEFAULT_PROFILE.song_table_columns)
         songs_df.dropna(subset=["code", "song_name"], inplace=True)
 
         # Clean and format data
