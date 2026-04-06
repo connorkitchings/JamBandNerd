@@ -88,12 +88,30 @@ def test_replace_prediction_projection_rewrites_rows(monkeypatch):
         def __init__(self, table_name: str):
             self.table_name = table_name
 
+        def select(self, *columns):
+            events.append(("select", self.table_name))
+            return self
+
         def delete(self):
             events.append(("delete", self.table_name))
             return self
 
         def eq(self, column: str, value: object):
             events.append((f"filter:{column}", value))
+            return self
+
+        def lt(self, column: str, value: object):
+            events.append((f"lt:{column}", value))
+            return self
+
+        def neq(self, column: str, value: object):
+            events.append((f"neq:{column}", value))
+            return self
+
+        def order(self, column: str, *, desc: bool = False):
+            return self
+
+        def limit(self, n: int):
             return self
 
         def execute(self):

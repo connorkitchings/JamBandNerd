@@ -78,6 +78,44 @@ def _validate_projection(
     return 0
 
 
+def _check_stale_projection_rows(
+    *,
+    band: str,
+    model_slug: str,
+    model_version: str,
+    max_age_hours: int,
+) -> int:
+    """Flag stale reference_date entries in prediction_songs."""
+    from datetime import timedelta
+
+    client = get_supabase_client()
+
+    resp = (
+        client.table("prediction_songs")
+        .select("reference_date")
+        .eq("band", band)
+        .eq("model_version", model_version)
+        .execute()
+    )
+    rows = resp.data or []
+    if not rows:
+        return 0
+
+    distinct_dates = sorted({r["reference_date"] for r in rows})
+    cutoff = (datetime.now(timezone.utc) - timedelta(hours=max_age_hours)).date()
+
+    stale = [d for d in distinct_dates if d < cutoff.isoformat()]
+    if not stale:
+        return 0
+
+    for ref in stale:
+        print(
+            f"[STALE] {band}/{model_slug}: prediction_songs reference_date={ref} "
+            f"is older than {max_age_hours}h cutoff"
+        )
+    return len(stale)
+
+
 def validate_predictions(
     bands: Iterable[str], max_age_hours: int, *, validate_projection: bool = True
 ) -> int:
@@ -153,6 +191,13 @@ def validate_predictions(
                     parsed_predictions=parsed,
                     reference_date=row.get("reference_date"),
                 )
+
+            failures += _check_stale_projection_rows(
+                band=band,
+                model_slug=model_slug,
+                model_version=model_version,
+                max_age_hours=max_age_hours,
+            )
 
     return failures
 

@@ -156,6 +156,14 @@ def generate_predictions(
     print(
         f"{log_prefix} Generated {len(predictions_list)} predictions. Saving to {table_name}..."
     )
+    # Two-step write sequence:
+    # 1. Upsert the canonical JSON row (predictions_notebook / predictions_ckplus).
+    #    This is the source-of-truth prediction record keyed on
+    #    (band, reference_date, model_version).
+    # 2. Replace the derived prediction_songs projection for the same key.
+    #    prediction_songs is a flat per-song table consumed by the website.
+    #    The replace call also triggers stale-row cleanup for older
+    #    reference_date entries (>30 days, never the most recent).
     upsert_dataframe(
         table_name=table_name,
         df=output_df,
@@ -211,8 +219,7 @@ def main() -> None:
     model_definition = get_model_definition(args.model)
     if args.retrain and not model_definition.supports_training:
         parser.error(
-            "--retrain is only supported for training-capable "
-            f"models; got {args.model}"
+            f"--retrain is only supported for training-capable models; got {args.model}"
         )
 
     generate_predictions(
