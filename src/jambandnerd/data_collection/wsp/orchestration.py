@@ -30,6 +30,11 @@ from .normalizer import (
     normalize_venues,
 )
 from .parser import parse_setlist_from_text
+from .parser_profile import (
+    DEFAULT_PROFILE,
+    fingerprint_page,
+    validate_fingerprint,
+)
 from .session import cleanup_playwright, create_enhanced_session, decode_ec_response
 from .status import CollectionStatus
 from .tourwrangler import fetch_setlist_from_tourwrangler
@@ -43,18 +48,28 @@ def _page_has_setlist_table(page_html: str, show_id: str) -> bool:
     """Return True when an EC page appears to expose a parseable setlist."""
     soup = BeautifulSoup(page_html, "html.parser")
 
+    fp = fingerprint_page(soup, DEFAULT_PROFILE)
+    warnings = validate_fingerprint(fp, DEFAULT_PROFILE)
+    if warnings:
+        logging.warning(
+            "WSP DOM fingerprint mismatch for show_id=%s: %s",
+            show_id,
+            "; ".join(warnings),
+        )
+
     if parse_setlist_from_text(soup, show_id):
         return True
 
     tables = soup.find_all("table")
-    if len(tables) < 5:
+    if len(tables) < DEFAULT_PROFILE.song_table_min_tables:
         return False
 
-    for table in tables[4:8]:
+    lo, hi = DEFAULT_PROFILE.setlist_table_range
+    for table in tables[lo:hi]:
         table_text = table.get_text()
         if (
-            "0:" in table_text or "1:" in table_text or "2:" in table_text
-        ) and "Song Stats" not in table_text:
+            any(m in table_text for m in DEFAULT_PROFILE.setlist_set_markers)
+        ) and not any(m in table_text for m in DEFAULT_PROFILE.setlist_noise_markers):
             return True
 
     return False

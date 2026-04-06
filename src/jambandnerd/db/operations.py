@@ -261,6 +261,59 @@ def upsert_dataframe(
         ).execute()
 
 
+def _cleanup_stale_prediction_songs(
+    *,
+    band: str,
+    model_version: str,
+    max_age_days: int = 30,
+    table_name: str = "prediction_songs",
+) -> None:
+    """Delete stale prediction_songs rows older than *max_age_days*.
+
+    Never deletes the most recent ``reference_date`` for a given
+    ``(band, model_version)`` so that the website always has data to render.
+    """
+    from datetime import timedelta
+
+    client = get_supabase_client()
+
+    latest_resp = (
+        client.table(table_name)
+        .select("reference_date")
+        .eq("band", band)
+        .eq("model_version", model_version)
+        .order("reference_date", desc=True)
+        .limit(1)
+        .execute()
+    )
+    latest_rows = latest_resp.data or []
+    if not latest_rows:
+        return
+    latest_ref = latest_rows[0]["reference_date"]
+
+    cutoff = (date.today() - timedelta(days=max_age_days)).isoformat()
+
+    resp = (
+        client.table(table_name)
+        .delete()
+        .eq("band", band)
+        .eq("model_version", model_version)
+        .lt("reference_date", cutoff)
+        .neq("reference_date", latest_ref)
+        .execute()
+    )
+
+    deleted = len(resp.data or [])
+    if deleted:
+        logger.info(
+            "Cleaned %d stale prediction_songs rows for %s/%s (cutoff=%s)",
+            deleted,
+            band,
+            model_version,
+            cutoff,
+        )
+
+
 def replace_prediction_projection(
     *,
     band: str,
@@ -271,7 +324,17 @@ def replace_prediction_projection(
     predictions: Sequence[dict[str, Any]],
     table_name: str = "prediction_songs",
 ) -> None:
-    """Replace the per-song projection for a canonical prediction row."""
+    """Replace the per-song projection for a canonical prediction row.
+
+    ``prediction_songs`` is a derived projection of the canonical prediction
+    tables (``predictions_notebook``, ``predictions_ckplus``).  It is fully
+    rebuildable via ``scripts/rebuild_prediction_songs.py``.
+
+    The delete-then-insert pattern prevents duplicate rows for the *current*
+    ``reference_date`` but does not remove rows from older dates.  Stale rows
+    are cleaned up by ``_cleanup_stale_prediction_songs()`` which is called
+    after each projection write.
+    """
     client = get_supabase_client()
 
     (
@@ -284,6 +347,7 @@ def replace_prediction_projection(
     )
 
     if not predictions:
+        _cleanup_stale_prediction_songs(band=band, model_version=model_version)
         return
 
     rows = [
@@ -301,6 +365,8 @@ def replace_prediction_projection(
         for prediction in predictions
     ]
     bulk_insert_dataframe(table_name, pd.DataFrame(rows))
+
+    _cleanup_stale_prediction_songs(band=band, model_version=model_version)
 
 
 def upsert_historical_prediction_run(
@@ -424,6 +490,30 @@ def fetch_latest_prediction_songs(
         .order("rank")
         .execute()
     )
+    return response.data or []
+
+
+def fetch_prediction_songs_for_date(
+    *,
+    band: str,
+    model_slug: str,
+    reference_date: str,
+    table_name: str = "prediction_songs",
+    limit: int | None = None,
+) -> list[dict[str, Any]]:
+    """Fetch projected songs for an exact band/model/reference_date ordered by rank."""
+    client = get_supabase_client()
+    query = (
+        client.table(table_name)
+        .select("*")
+        .eq("band", band)
+        .eq("model_slug", model_slug)
+        .eq("reference_date", reference_date)
+        .order("rank")
+    )
+    if limit is not None:
+        query = query.limit(limit)
+    response = query.execute()
     return response.data or []
 
 

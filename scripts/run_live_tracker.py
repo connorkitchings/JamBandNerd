@@ -53,8 +53,6 @@ def run_live_tracker(
         table_name = "phish_setlists_raw"
         conflict_cols = ["api_unique_id"]
         required_cols = ["set_number", "position"]
-        # Phish uses api_show_id in normalized shows dataframe, but the raw requires something else
-        # Actually phish setlist raw uses api_unique_id
         collector = Collector()
     elif band == "goose":
         from scripts.run_goose_collection import _normalize_setlists, _normalize_shows
@@ -129,11 +127,7 @@ def run_live_tracker(
                     time.sleep(interval)
                     continue
 
-                # The show ID column name depends on the band's normalization logic
-                if band == "phish":
-                    show_id_col = "api_show_id"
-                else:
-                    show_id_col = "show_id"
+                show_id_col = "show_id"
 
                 show_id = str(target_show.iloc[0][show_id_col])
 

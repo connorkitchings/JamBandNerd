@@ -23,7 +23,7 @@ def get_last_completed_show_date(band: str) -> str | None:
     client = get_supabase_client()
     shows_tbl = f"{band}_shows_raw"
     sets_tbl = f"{band}_setlists_raw"
-    id_col = "api_show_id" if band == "phish" else "show_id"
+    id_col = "show_id"
     date_col = "show_date"
 
     try:

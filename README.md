@@ -31,6 +31,8 @@ A cloud-based data platform for collecting, transforming, and predicting jam ban
     SUPABASE_URL=your_supabase_url
     SUPABASE_SERVICE_ROLE_KEY=your_pipeline_service_role_key
     PHISH_API_KEY=your_phish_net_key  # Optional, for Phish data only
+    FG_USER_EMAIL=your_fantasy_goose_login  # Optional, for Fantasy Goose automation
+    FG_PASSWORD=your_fantasy_goose_password  # Optional, for Fantasy Goose automation
     ```
 
     For the website, use `apps/web/.env.local` with:
@@ -202,6 +204,7 @@ The WSP data collector scrapes `everydaycompanion.com`. This process is enhanced
 The platform features comprehensive automation through GitHub Actions:
 
 - **Daily Pipeline**: Runs automatically at 3 PM ET every day.
+- **Fantasy Goose**: A dedicated GitHub Actions workflow can auto-submit Goose notebook picks when Fantasy Goose exposes an eligible show and the required secrets are configured.
 - **Dynamic Matrix**: The pipeline automatically discovers and runs for all supported bands.
 - **Manual Triggers**: On-demand execution with band selection via the GitHub UI.
 - **Error Resilience**: Parallel matrix execution with graceful failure handling and explicit degraded-mode reporting for volatile upstreams such as WSP.

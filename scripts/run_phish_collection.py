@@ -73,7 +73,7 @@ def _normalize_shows(raw: Iterable[Dict[str, Any]]) -> pd.DataFrame:
     now = datetime.now(timezone.utc).isoformat()
     normalized = [
         {
-            "api_show_id": item.get("showid"),
+            "show_id": item.get("showid"),
             "show_year": item.get("showyear"),
             "show_month": item.get("showmonth"),
             "show_day": item.get("showday"),
@@ -161,7 +161,7 @@ def _normalize_setlists(raw: Iterable[Dict[str, Any]]) -> pd.DataFrame:
             continue
         row = {
             "api_unique_id": item.get("uniqueid"),
-            "api_show_id": item.get("showid"),
+            "show_id": item.get("showid"),
             "show_date": item.get("showdate"),
             "permalink": item.get("permalink"),
             "api_song_id": item.get("songid"),
@@ -303,7 +303,7 @@ def run_phish_collection(
             )
 
     if not only_setlists and not shows_df.empty:
-        upsert_dataframe("phish_shows_raw", shows_df, conflict_columns=["api_show_id"])
+        upsert_dataframe("phish_shows_raw", shows_df, conflict_columns=["show_id"])
         logging.info(f"Upserted {len(shows_df)} shows into phish_shows_raw.")
         if not only_setlists:
             venues_df = _normalize_venues(shows_data)
@@ -314,7 +314,7 @@ def run_phish_collection(
                 logging.info(f"Upserted {len(venues_df)} venues into phish_venues_raw.")
 
     # Collect setlists for the (optionally filtered) shows
-    show_ids = filtered_shows_df["api_show_id"].dropna().astype(str).tolist()
+    show_ids = filtered_shows_df["show_id"].dropna().astype(str).tolist()
     upsert_table(
         "phish_setlists_raw",
         lambda: collector.collect_setlists(show_ids=show_ids),
