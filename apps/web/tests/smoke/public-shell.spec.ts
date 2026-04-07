@@ -67,6 +67,14 @@ test("desktop routes render the public shell", async ({ page }, testInfo) => {
 
   await page.goto("/data-use");
   await expect(page.getByRole("heading", { name: "Data Use" })).toBeVisible();
+
+  await page.goto("/admin/setlist");
+  await expect(
+    page
+      .getByRole("heading", { name: "Admin Access" })
+      .or(page.getByRole("heading", { name: "Admin Unavailable" }))
+      .or(page.getByRole("heading", { name: "Add Setlist" })),
+  ).toBeVisible();
 });
 
 test("mobile navigation uses thumb-first ordering", async ({ page }, testInfo) => {
