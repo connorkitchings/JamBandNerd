@@ -9,7 +9,7 @@ from typing import Dict, Iterable, List
 
 from jambandnerd.config.bands import get_active_bands
 from jambandnerd.db.connection import get_supabase_client
-from jambandnerd.db.operations import fetch_latest_prediction_songs
+from jambandnerd.db.operations import fetch_prediction_songs_for_date
 from jambandnerd.models.registry import list_pipeline_models
 
 
@@ -47,16 +47,17 @@ def _validate_projection(
     parsed_predictions: list[dict],
     reference_date: str | None,
 ) -> int:
-    projection_rows = fetch_latest_prediction_songs(band=band, model_slug=model_slug)
-    if not projection_rows:
-        print(f"[FAIL] {band}: no projected song rows found")
+    if not reference_date:
+        print(f"[FAIL] {band}: canonical prediction row is missing reference_date")
         return 1
 
-    first_projection = projection_rows[0]
-    if reference_date and first_projection.get("reference_date") != reference_date:
-        print(
-            f"[FAIL] {band}: projection reference_date={first_projection.get('reference_date')} does not match canonical {reference_date}"
-        )
+    projection_rows = fetch_prediction_songs_for_date(
+        band=band,
+        model_slug=model_slug,
+        reference_date=reference_date,
+    )
+    if not projection_rows:
+        print(f"[FAIL] {band}: no projected song rows found for reference_date={reference_date}")
         return 1
 
     if len(projection_rows) != top_k:
@@ -92,7 +93,7 @@ def _check_stale_projection_rows(
 
     resp = (
         client.table("prediction_songs")
-        .select("reference_date")
+        .select("reference_date, predicted_at")
         .eq("band", band)
         .eq("model_version", model_version)
         .execute()
@@ -101,17 +102,39 @@ def _check_stale_projection_rows(
     if not rows:
         return 0
 
-    distinct_dates = sorted({r["reference_date"] for r in rows})
-    cutoff = (datetime.now(timezone.utc) - timedelta(hours=max_age_hours)).date()
+    latest_key = max(
+        (
+            (
+                _parse_timestamp(row.get("predicted_at")) or datetime.min.replace(tzinfo=timezone.utc),
+                row.get("reference_date") or "",
+            )
+            for row in rows
+        ),
+        default=None,
+    )
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=max_age_hours)
+    projected_by_ref: dict[str, datetime] = {}
+    for row in rows:
+        reference_date = row.get("reference_date")
+        predicted_at = _parse_timestamp(row.get("predicted_at"))
+        if not reference_date or predicted_at is None:
+            continue
+        current = projected_by_ref.get(reference_date)
+        if current is None or predicted_at > current:
+            projected_by_ref[reference_date] = predicted_at
 
-    stale = [d for d in distinct_dates if d < cutoff.isoformat()]
+    stale = [
+        ref
+        for ref, predicted_at in sorted(projected_by_ref.items())
+        if predicted_at < cutoff and (predicted_at, ref) != latest_key
+    ]
     if not stale:
         return 0
 
     for ref in stale:
         print(
             f"[STALE] {band}/{model_slug}: prediction_songs reference_date={ref} "
-            f"is older than {max_age_hours}h cutoff"
+            f"has predicted_at older than {max_age_hours}h cutoff"
         )
     return len(stale)
 
