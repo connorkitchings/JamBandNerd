@@ -325,7 +325,6 @@ def _cleanup_stale_prediction_songs(
             .execute()
         )
         deleted += len(resp.data or [])
-
     if deleted:
         logger.info(
             "Cleaned %d stale prediction_songs rows for %s/%s (cutoff=%s)",
