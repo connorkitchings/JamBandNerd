@@ -50,7 +50,7 @@ JamBandNerd has a production-ready website-first product surface and a productio
 
 ### Website
 
-- 11 public routes: `/`, `/predictions`, `/performance`, `/compare`, `/replay`, `/explorer` (redirect), `/last-show`, `/venues`, `/about`, `/contact`, `/data-use`
+- 10 public routes: `/`, `/predictions`, `/performance`, `/compare`, `/replay`, `/explorer` (redirect), `/last-show`, `/about`, `/contact`, `/data-use`
 - Admin setlist submission at `/admin/setlist`
 - Dynamic band and model discovery from Supabase
 - Vercel deployment with native GitHub integration

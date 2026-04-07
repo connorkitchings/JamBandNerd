@@ -49,9 +49,6 @@ test("desktop routes render the public shell", async ({ page }, testInfo) => {
   await page.goto("/replay");
   await expectPrimaryHeadingOrMissingEnv(page);
 
-  await page.goto("/venues");
-  await expectPrimaryHeadingOrMissingEnv(page);
-
   await page.goto("/compare");
   await expectPrimaryHeadingOrMissingEnv(page);
 

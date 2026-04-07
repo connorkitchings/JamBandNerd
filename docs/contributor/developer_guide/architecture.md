@@ -85,13 +85,12 @@ Current website routes:
   the actual setlist for one completed show
 - `/explorer` - Compatibility redirect to `/replay`
 - `/last-show` - Most recent completed show details
-- `/venues` - Venue analytics and tour patterns
 - `/about`, `/contact`, `/data-use` - Public informational pages
 
 Key shared components:
 - `page-hero`, `site-header`, `site-footer`, `dashboard-side-nav`
 - `prediction-hero`, `song-board`, `recall-chart`, `accuracy-table`
-- `show-outlook-popover`, `live-tracker`, `model-agreement`, `venue-analytics`
+- `show-outlook-popover`, `live-tracker`, `model-agreement`
 
 ### Orchestration
 

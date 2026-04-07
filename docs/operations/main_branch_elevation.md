@@ -42,7 +42,6 @@ This repository cannot enforce those remote GitHub settings from code alone, so 
 - `/performance`
 - `/compare`
 - `/replay`
-- `/venues`
 - `/last-show`
 
 Run:

@@ -19,7 +19,7 @@ npm run test:web:smoke
 - Use Server Components by default.
 - Read Supabase on the server for core product views.
 - Keep client-side state light and URL-driven.
-- Keep `@/lib/data` as the stable import surface while new domain ownership lives under `src/lib/data/{bands,predictions,accuracy,replay,shows,venues}.ts`.
+- Keep `@/lib/data` as the stable import surface while new domain ownership lives under `src/lib/data/{bands,predictions,accuracy,replay,shows}.ts`.
 - Design mobile-first and avoid clipped table content.
 - Use safe-area-aware mobile navigation and content padding.
 - Keep dense data views on a shared responsive table pattern.
@@ -33,7 +33,7 @@ npm run test:web:smoke
 - `src/app/**` owns route composition and metadata.
 - `src/components/**` owns shared UI and interactive islands.
 - `src/lib/data.ts` remains the compatibility barrel for route imports.
-- `src/lib/data/*.ts` owns server-side reads by domain: bands, predictions, accuracy, replay, shows, and venues.
+- `src/lib/data/*.ts` owns server-side reads by domain: bands, predictions, accuracy, replay, and shows.
 - `src/lib/supabase/server.ts` is the single server-side Supabase entry point.
 - `"use client"` is reserved for interactive controls, navigation hooks, and live subscriptions.
 
