@@ -71,16 +71,22 @@ def build_deal_fixture() -> tuple[pd.DataFrame, pd.DataFrame]:
 
 def test_deal_feature_generation_respects_reference_boundary() -> None:
     shows_df, setlists_df = build_deal_fixture()
-    model_data = generate_model_data(shows_df, setlists_df, date(2024, 3, 5), band="goose")
+    model_data = generate_model_data(
+        shows_df, setlists_df, date(2024, 3, 5), band="goose"
+    )
 
-    candidates = get_candidate_features(model_data, min_plays_threshold=2, retired_gap_threshold=200)
+    candidates = get_candidate_features(
+        model_data, min_plays_threshold=2, retired_gap_threshold=200
+    )
 
     assert "Late Debut" not in set(candidates["song_name"])
 
 
 def test_deal_training_frame_builds_true_per_show_rows() -> None:
     shows_df, setlists_df = build_deal_fixture()
-    model_data = generate_model_data(shows_df, setlists_df, date(2024, 3, 20), band="goose")
+    model_data = generate_model_data(
+        shows_df, setlists_df, date(2024, 3, 20), band="goose"
+    )
 
     training_frame, summary = build_training_frame(
         model_data,
@@ -98,9 +104,13 @@ def test_deal_training_frame_builds_true_per_show_rows() -> None:
     assert summary.negative_rows > summary.positive_rows
 
 
-def test_deal_predictor_produces_non_uniform_probabilities(tmp_path, monkeypatch) -> None:
+def test_deal_predictor_produces_non_uniform_probabilities(
+    tmp_path, monkeypatch
+) -> None:
     shows_df, setlists_df = build_deal_fixture()
-    model_data = generate_model_data(shows_df, setlists_df, date(2024, 3, 20), band="goose")
+    model_data = generate_model_data(
+        shows_df, setlists_df, date(2024, 3, 20), band="goose"
+    )
 
     monkeypatch.setattr(DealPredictor, "MODEL_DIR", tmp_path)
     predictor = DealPredictor(band="goose", min_plays_threshold=2)
@@ -115,7 +125,9 @@ def test_deal_predictor_produces_non_uniform_probabilities(tmp_path, monkeypatch
 
 def test_deal_model_roundtrip_preserves_ranking(tmp_path, monkeypatch) -> None:
     shows_df, setlists_df = build_deal_fixture()
-    model_data = generate_model_data(shows_df, setlists_df, date(2024, 3, 20), band="goose")
+    model_data = generate_model_data(
+        shows_df, setlists_df, date(2024, 3, 20), band="goose"
+    )
 
     monkeypatch.setattr(DealPredictor, "MODEL_DIR", tmp_path)
     predictor = DealPredictor(band="goose", min_plays_threshold=2)

@@ -44,7 +44,7 @@ The legacy Streamlit app remains available only for internal legacy/debugging us
 
 For debugging or more granular control, you can run individual pipeline components using the new consolidated scripts.
 
-- **Data Collection**: `run_goose_collection.py`, `run_phish_collection.py`, `run_wsp_collection.py`
+- **Data Collection**: `run_goose_collection.py`, `run_phish_collection.py`, `run_wsp_collection.py`, `run_eggy_collection.py`, `run_billy_collection.py`, `run_um_collection.py`
 - **Prediction Generation**: `scripts/generate_predictions.py --band <band> --model <model>`
 - **Backtesting & Accuracy**: `scripts/run_backtest.py --band <band> --model <model>`, `scripts/save_aggregate_accuracy.py --band <band> --model <model>`
 

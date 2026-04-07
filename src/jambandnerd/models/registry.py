@@ -108,17 +108,27 @@ def list_models() -> list[ModelDefinition]:
 
 def list_pipeline_models() -> list[ModelDefinition]:
     """Return models enabled for regular production pipeline runs."""
-    return [definition for definition in _MODEL_DEFINITIONS if definition.enabled_for_pipeline]
+    return [
+        definition
+        for definition in _MODEL_DEFINITIONS
+        if definition.enabled_for_pipeline
+    ]
 
 
 def list_web_models() -> list[ModelDefinition]:
     """Return models enabled for website surfaces."""
-    return [definition for definition in _MODEL_DEFINITIONS if definition.enabled_for_web]
+    return [
+        definition for definition in _MODEL_DEFINITIONS if definition.enabled_for_web
+    ]
 
 
 def list_backfill_models() -> list[ModelDefinition]:
     """Return models enabled for stale-prediction backfill."""
-    return [definition for definition in _MODEL_DEFINITIONS if definition.enabled_for_backfill]
+    return [
+        definition
+        for definition in _MODEL_DEFINITIONS
+        if definition.enabled_for_backfill
+    ]
 
 
 def list_accuracy_validation_models() -> list[ModelDefinition]:
@@ -132,7 +142,9 @@ def list_accuracy_validation_models() -> list[ModelDefinition]:
 
 def list_backtest_models() -> list[ModelDefinition]:
     """Return models that support backtest workloads."""
-    return [definition for definition in _MODEL_DEFINITIONS if definition.supports_backtest]
+    return [
+        definition for definition in _MODEL_DEFINITIONS if definition.supports_backtest
+    ]
 
 
 def list_aggregate_accuracy_models() -> list[ModelDefinition]:

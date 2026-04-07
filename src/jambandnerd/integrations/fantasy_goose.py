@@ -140,9 +140,7 @@ def select_target_show(
         )
 
     open_shows = [
-        show
-        for show in same_day
-        if show.cutoff_at is None or show.cutoff_at > now_et
+        show for show in same_day if show.cutoff_at is None or show.cutoff_at > now_et
     ]
     if not open_shows:
         latest = min(
@@ -274,9 +272,7 @@ def format_console_summary(result: FantasyGooseRunResult) -> str:
             for item in result.picks
         )
     if result.missing_predictions:
-        lines.append(
-            "Missing song mappings: " + ", ".join(result.missing_predictions)
-        )
+        lines.append("Missing song mappings: " + ", ".join(result.missing_predictions))
     return "\n".join(lines)
 
 
@@ -295,7 +291,9 @@ async def login_to_fantasy_goose(page: Page, *, email: str, password: str) -> No
         raise RuntimeError("Fantasy Goose login did not complete successfully.")
 
 
-async def fetch_entry_context(page: Page) -> tuple[list[FantasyGooseShow], list[FantasyGooseSong]]:
+async def fetch_entry_context(
+    page: Page,
+) -> tuple[list[FantasyGooseShow], list[FantasyGooseSong]]:
     """Read show options and song catalog from the authenticated entry page."""
     await page.goto(ENTRY_CREATE_URL, wait_until="networkidle")
     if "/login" in page.url:

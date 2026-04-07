@@ -57,7 +57,9 @@ def _validate_projection(
         reference_date=reference_date,
     )
     if not projection_rows:
-        print(f"[FAIL] {band}: no projected song rows found for reference_date={reference_date}")
+        print(
+            f"[FAIL] {band}: no projected song rows found for reference_date={reference_date}"
+        )
         return 1
 
     if len(projection_rows) != top_k:
@@ -105,7 +107,8 @@ def _check_stale_projection_rows(
     latest_key = max(
         (
             (
-                _parse_timestamp(row.get("predicted_at")) or datetime.min.replace(tzinfo=timezone.utc),
+                _parse_timestamp(row.get("predicted_at"))
+                or datetime.min.replace(tzinfo=timezone.utc),
                 row.get("reference_date") or "",
             )
             for row in rows

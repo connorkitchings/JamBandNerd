@@ -23,9 +23,7 @@ def test_decide_collection_execution_mode_keeps_mutable_sources_on_daily_refresh
 
 def test_compute_band_preflight_runs_when_recent_show_has_missing_setlist(monkeypatch):
     client = object()
-    monkeypatch.setattr(
-        collection_preflight, "get_supabase_client", lambda: client
-    )
+    monkeypatch.setattr(collection_preflight, "get_supabase_client", lambda: client)
     monkeypatch.setattr(
         collection_preflight,
         "get_collection_policy",
@@ -69,9 +67,7 @@ def test_compute_band_preflight_runs_when_recent_show_has_missing_setlist(monkey
 
 def test_compute_band_preflight_allows_verify_only_for_idle_policy(monkeypatch):
     client = object()
-    monkeypatch.setattr(
-        collection_preflight, "get_supabase_client", lambda: client
-    )
+    monkeypatch.setattr(collection_preflight, "get_supabase_client", lambda: client)
     monkeypatch.setattr(
         collection_preflight,
         "get_collection_policy",
@@ -86,7 +82,9 @@ def test_compute_band_preflight_allows_verify_only_for_idle_policy(monkeypatch):
     monkeypatch.setattr(
         collection_preflight, "get_band_id_column", lambda _band: "show_id"
     )
-    monkeypatch.setattr(collection_preflight, "fetch_table_rows", lambda *_args, **_kwargs: [])
+    monkeypatch.setattr(
+        collection_preflight, "fetch_table_rows", lambda *_args, **_kwargs: []
+    )
     monkeypatch.setattr(
         collection_preflight,
         "fetch_column_values_for_ids",
@@ -104,4 +102,3 @@ def test_compute_band_preflight_allows_verify_only_for_idle_policy(monkeypatch):
 
     assert preflight.execution_mode == "verify_only"
     assert preflight.should_run_collection is False
-

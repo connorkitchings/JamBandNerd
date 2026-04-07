@@ -32,7 +32,9 @@ def load_legacy_reference() -> dict[str, float] | None:
     if not matches:
         return None
 
-    return {label.lower().replace("+", "plus"): float(value) for label, value in matches}
+    return {
+        label.lower().replace("+", "plus"): float(value) for label, value in matches
+    }
 
 
 def build_evaluation_predictor(model_slug: str, band: str):
@@ -56,7 +58,9 @@ def evaluate_model_window(
 
     for _, show_row in show_rows.iterrows():
         reference_date = pd.Timestamp(show_row["show_date"]).date()
-        model_data = generate_model_data(shows_df, setlists_df, reference_date, band=band)
+        model_data = generate_model_data(
+            shows_df, setlists_df, reference_date, band=band
+        )
 
         if model_definition.supports_training:
             predictor.train(model_data)
@@ -69,8 +73,14 @@ def evaluate_model_window(
             predictions = predictions[0]
 
         predicted_song_names = [prediction.song_name for prediction in predictions]
-        actual_songs = setlists_df[setlists_df["show_id"] == show_row["show_id"]]["song_name"].astype(str).tolist()
-        per_show.append(compute_per_show_metrics(predicted_song_names, actual_songs, 10))
+        actual_songs = (
+            setlists_df[setlists_df["show_id"] == show_row["show_id"]]["song_name"]
+            .astype(str)
+            .tolist()
+        )
+        per_show.append(
+            compute_per_show_metrics(predicted_song_names, actual_songs, 10)
+        )
 
     metrics = aggregate_metrics(per_show, 10)
     return {
@@ -95,14 +105,19 @@ def generate_report(band: str, shows: int) -> dict[str, Any]:
 
     shows_df, setlists_df = prepare_band_data(shows_df, setlists_df, band=band)
     reference_date = resolve_reference_date(None, shows_df, upcoming_df=upcoming_df)
-    current_model_data = generate_model_data(shows_df, setlists_df, reference_date, band=band)
+    current_model_data = generate_model_data(
+        shows_df, setlists_df, reference_date, band=band
+    )
     deal_definition = get_model_definition("deal")
     deal_predictor = build_evaluation_predictor("deal", band)
     deal_predictor.train(current_model_data)
     report = deal_predictor.build_evaluation_report(current_model_data)
 
     completed_show_rows = (
-        shows_df[pd.to_datetime(shows_df["show_date"], errors="coerce").dt.date < reference_date]
+        shows_df[
+            pd.to_datetime(shows_df["show_date"], errors="coerce").dt.date
+            < reference_date
+        ]
         .sort_values("show_date")
         .tail(shows)
     )
@@ -128,18 +143,22 @@ def generate_report(band: str, shows: int) -> dict[str, Any]:
         "deltas": {
             "deal_minus_ckplus": deal_hit_rate - ckplus_hit_rate,
             "deal_minus_notebook": deal_hit_rate - comparison["notebook"]["hit_rate"],
-            "deal_minus_legacy_reference": None
-            if legacy_reference is None or "deal" not in legacy_reference
-            else deal_hit_rate - legacy_reference["deal"],
+            "deal_minus_legacy_reference": (
+                None
+                if legacy_reference is None or "deal" not in legacy_reference
+                else deal_hit_rate - legacy_reference["deal"]
+            ),
         },
     }
     report["promotion_gate"] = {
         "model_slug": deal_definition.slug,
         "model_version": deal_definition.version,
         "enabled_for_web": deal_definition.enabled_for_web,
-        "beats_legacy_deal_by_0_05": False
-        if legacy_reference is None or "deal" not in legacy_reference
-        else deal_hit_rate >= legacy_reference["deal"] + 0.05,
+        "beats_legacy_deal_by_0_05": (
+            False
+            if legacy_reference is None or "deal" not in legacy_reference
+            else deal_hit_rate >= legacy_reference["deal"] + 0.05
+        ),
         "matches_or_beats_ckplus": deal_hit_rate >= ckplus_hit_rate,
     }
     report["legacy_reference"] = legacy_reference
@@ -147,7 +166,9 @@ def generate_report(band: str, shows: int) -> dict[str, Any]:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Evaluate the Deal model and emit a JSON report.")
+    parser = argparse.ArgumentParser(
+        description="Evaluate the Deal model and emit a JSON report."
+    )
     parser.add_argument("--band", required=True, choices=get_active_bands())
     parser.add_argument("--shows", type=int, default=50)
     parser.add_argument("--output", help="Optional path to write the JSON report.")

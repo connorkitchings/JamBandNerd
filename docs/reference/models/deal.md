@@ -27,7 +27,7 @@ uv run python scripts/run_optimized_pipeline.py --band <band_name>
 **Advanced: Individual Model Execution**
 ```bash
 # Generate Deal predictions only
-uv run python scripts/generate_predictions.py --band <band_name> --model xgboost
+uv run python scripts/generate_predictions.py --band <band_name> --model deal
 ```
 
 This will:
@@ -191,37 +191,42 @@ For debugging or granular control, you can use the consolidated individual scrip
 
 - **Generate predictions for any band/model combination**:
   ```bash
-  uv run python scripts/generate_predictions.py --band goose --model xgboost
+  uv run python scripts/generate_predictions.py --band goose --model deal
   ```
 
 - **Backtest over a window of show dates**:
   ```bash
-  uv run python scripts/run_backtest.py --band goose --model xgboost --start YYYY-MM-DD --end YYYY-MM-DD
-  uv run python scripts/run_backtest.py --band goose --model xgboost --shows 50
+  uv run python scripts/run_backtest.py --band goose --model deal --start YYYY-MM-DD --end YYYY-MM-DD
+  uv run python scripts/run_backtest.py --band goose --model deal --shows 50
   ```
 
 - **Save accuracy summary**:
   ```bash
-  uv run python scripts/save_aggregate_accuracy.py --band goose --model xgboost --shows 50
+  uv run python scripts/save_aggregate_accuracy.py --band goose --model deal --shows 50
   ```
 
 ### Storage
 
-- Predictions: `predictions_xgboost` (upserted by `(band, reference_date, model_version)`).
+- Predictions: `predictions_deal` (upserted by `(band, reference_date, model_version)`).
 - Per-song projection: `prediction_songs` (derived from canonical prediction rows).
-- Accuracy summaries: `accuracy_xgboost` (band, model_version, window_start/window_end, metrics at K=10/25/50).
-- Model artifacts: `models/xgboost_{band}_{date}.json` (Deal booster format)
+- Accuracy summaries: `accuracy_deal` (band, model_version, window_start/window_end, metrics at K=10/25/50).
+- Model artifacts: `models/deal/{band}_{date}.json` (XGBoost booster format)
 
 ### Website Visibility Control
 
-The Deal model is hidden from the public website until explicitly approved. This is controlled via the `ENABLED_MODELS` configuration:
+The Deal model is hidden from the public website until explicitly approved. This is controlled via the model registry and website config:
 
 ```python
-# Default (xgboost hidden)
-ENABLED_MODELS = ["notebook", "ckplus"]
+# Backend: src/jambandnerd/models/metadata.py
+enabled_for_web = False  # Gate website visibility
+```
 
-# When approved (xgboost visible)
-ENABLED_MODELS = ["notebook", "ckplus", "xgboost"]
+```typescript
+// Frontend: apps/web/src/lib/config.ts
+deal: {
+  displayName: "Deal",
+  enabled: false, // Hidden until approved
+}
 ```
 
 The model is fully wired in the backend and generates predictions on each pipeline run, allowing for review via admin tools before public launch.
@@ -256,18 +261,7 @@ uv run python scripts/generate_predictions.py --band goose --model deal --retrai
 uv run python scripts/run_backtest.py --band goose --model deal --shows 50
 ```
 
-### Website Visibility Control
-
-The model is hidden from the public website (see `apps/web/src/lib/config.ts`):
-
-```typescript
-deal: {
-  displayName: "Deal",
-  enabled: false, // Hidden until approved
-}
-```
-
-To enable public visibility, flip the flag to `enabled: true`.
+To enable public visibility, set `enabled_for_web = True` in `metadata.py` and `enabled: true` in `config.ts`.
 
 ### Next Steps
 

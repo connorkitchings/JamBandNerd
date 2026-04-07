@@ -54,7 +54,9 @@ def test_regenerate_prediction_serializes_tuple_predictions(monkeypatch):
     monkeypatch.setattr(
         module,
         "fetch_table",
-        lambda table: [{"show_date": "2026-03-20", "show_id": "goose-1", "song_name": "Song A"}],
+        lambda table: [
+            {"show_date": "2026-03-20", "show_id": "goose-1", "song_name": "Song A"}
+        ],
     )
     monkeypatch.setattr(
         module,
@@ -65,7 +67,9 @@ def test_regenerate_prediction_serializes_tuple_predictions(monkeypatch):
         ),
     )
     monkeypatch.setattr(module, "generate_model_data", lambda *args, **kwargs: object())
-    monkeypatch.setattr(module, "build_predictor", lambda slug, *, band, **kwargs: _TuplePredictor())
+    monkeypatch.setattr(
+        module, "build_predictor", lambda slug, *, band, **kwargs: _TuplePredictor()
+    )
     monkeypatch.setattr(
         module,
         "get_model_definition",
@@ -74,7 +78,9 @@ def test_regenerate_prediction_serializes_tuple_predictions(monkeypatch):
     monkeypatch.setattr(
         module,
         "serialize_model_predictions",
-        lambda slug, predictions: [{"song_name": prediction.song_name} for prediction in predictions],
+        lambda slug, predictions: [
+            {"song_name": prediction.song_name} for prediction in predictions
+        ],
     )
     monkeypatch.setattr(
         module,
@@ -85,9 +91,10 @@ def test_regenerate_prediction_serializes_tuple_predictions(monkeypatch):
     )
     monkeypatch.setattr(module, "replace_prediction_projection", lambda **kwargs: None)
 
-    success = module.regenerate_prediction("goose", "notebook", "2026-03-21", exclusion_window=3)
+    success = module.regenerate_prediction(
+        "goose", "notebook", "2026-03-21", exclusion_window=3
+    )
 
     assert success is True
     assert captured["table"] == get_model_definition("notebook").prediction_table
     assert captured["payload"] == [{"song_name": "Song A"}]
-

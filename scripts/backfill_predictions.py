@@ -172,7 +172,11 @@ def regenerate_prediction(
         model_data=model_data,
         top_k=model_definition.default_top_k,
     )
-    predictions = prediction_output[0] if isinstance(prediction_output, tuple) else prediction_output
+    predictions = (
+        prediction_output[0]
+        if isinstance(prediction_output, tuple)
+        else prediction_output
+    )
 
     if not predictions:
         logger.error(f"No predictions generated for {reference_date_str}")

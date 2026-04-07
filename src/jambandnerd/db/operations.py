@@ -84,7 +84,9 @@ def dedupe_dataframe_on_conflict(
     if df.empty:
         return df
 
-    missing_columns = [column for column in conflict_columns if column not in df.columns]
+    missing_columns = [
+        column for column in conflict_columns if column not in df.columns
+    ]
     if missing_columns:
         raise RuntimeError(
             f"{table_name} missing conflict columns: {', '.join(missing_columns)}"
@@ -102,8 +104,10 @@ def dedupe_dataframe_on_conflict(
 
     duplicate_mask = deduped.duplicated(subset=list(conflict_columns), keep=False)
     if duplicate_mask.any():
-        sample = deduped.loc[duplicate_mask, list(conflict_columns)].head(5).to_dict(
-            orient="records"
+        sample = (
+            deduped.loc[duplicate_mask, list(conflict_columns)]
+            .head(5)
+            .to_dict(orient="records")
         )
         raise RuntimeError(
             f"{table_name} still contains duplicate conflict keys after in-memory "

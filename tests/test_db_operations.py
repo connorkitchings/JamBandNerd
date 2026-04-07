@@ -182,7 +182,9 @@ def test_replace_prediction_projection_rewrites_rows(monkeypatch):
     ]
 
 
-def test_cleanup_stale_prediction_songs_uses_predicted_at_not_reference_date(monkeypatch):
+def test_cleanup_stale_prediction_songs_uses_predicted_at_not_reference_date(
+    monkeypatch,
+):
     deleted_refs: list[str] = []
 
     class _ResponseStub:

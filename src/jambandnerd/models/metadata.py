@@ -74,4 +74,3 @@ MODEL_METADATA: tuple[ModelMetadata, ...] = (
         notes="Experimental: not yet promoted to website surfaces.",
     ),
 )
-

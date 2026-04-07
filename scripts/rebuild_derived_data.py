@@ -72,7 +72,9 @@ def clear_model_outputs(
     if clear_accuracy:
         aggregate_table = get_aggregate_accuracy_table(model)
         if not aggregate_table:
-            raise RuntimeError(f"No aggregate accuracy table configured for model: {model}")
+            raise RuntimeError(
+                f"No aggregate accuracy table configured for model: {model}"
+            )
         print(f"[{band.upper()}/{model.upper()}] Clearing existing accuracy rows...")
         (
             client.table(HISTORICAL_PREDICTION_RUNS_TABLE)

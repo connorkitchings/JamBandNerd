@@ -56,7 +56,9 @@ def _clean_plays(plays: pd.DataFrame) -> pd.DataFrame:
     return cleaned
 
 
-def _compute_ltp_features(plays_idx: List[int], reference_index: int) -> Dict[str, float]:
+def _compute_ltp_features(
+    plays_idx: List[int], reference_index: int
+) -> Dict[str, float]:
     if not plays_idx:
         return {
             "avg_ltp": 0.0,
@@ -89,7 +91,14 @@ def generate_deal_features(
 ) -> pd.DataFrame:
     plays = _clean_plays(model_data.historical_plays)
     if plays.empty:
-        return pd.DataFrame(columns=["song_name", *DEAL_FEATURE_COLUMNS, "last_played_date", "total_plays"])
+        return pd.DataFrame(
+            columns=[
+                "song_name",
+                *DEAL_FEATURE_COLUMNS,
+                "last_played_date",
+                "total_plays",
+            ]
+        )
 
     reference_date = pd.Timestamp(model_data.reference_date)
     reference_index = model_data.reference_index
@@ -151,16 +160,22 @@ def generate_deal_features(
                 "pct_shows_all_time": pct_shows_all_time,
                 "diff_6mo_to_1yr": pct_shows_6mo - pct_shows_1yr,
                 "diff_1yr_to_alltime": pct_shows_1yr - pct_shows_all_time,
-                "n_shows_same_venue": int(
-                    song_plays[song_plays["venue_name"] == venue_name]["show_index"].nunique()
-                )
-                if venue_name
-                else 0,
-                "n_shows_same_state": int(
-                    song_plays[song_plays["state"] == state]["show_index"].nunique()
-                )
-                if state
-                else 0,
+                "n_shows_same_venue": (
+                    int(
+                        song_plays[song_plays["venue_name"] == venue_name][
+                            "show_index"
+                        ].nunique()
+                    )
+                    if venue_name
+                    else 0
+                ),
+                "n_shows_same_state": (
+                    int(
+                        song_plays[song_plays["state"] == state]["show_index"].nunique()
+                    )
+                    if state
+                    else 0
+                ),
                 "last_played_date": pd.Timestamp(last_play_row["show_date"]),
                 "total_plays": int(total_plays),
             }
@@ -197,12 +212,18 @@ def build_training_frame(
     plays = _clean_plays(model_data.historical_plays)
     empty_summary = DealTrainingSummary(0, 0, 0, 0, 0.0, 0, 0)
     if plays.empty:
-        return pd.DataFrame(columns=[*DEAL_FEATURE_COLUMNS, "song_name", "label"]), empty_summary
+        return (
+            pd.DataFrame(columns=[*DEAL_FEATURE_COLUMNS, "song_name", "label"]),
+            empty_summary,
+        )
 
     exclusion_window = BAND_EXCLUSION_WINDOWS.get(band, EXCLUSION_WINDOW_DEFAULT)
     show_indices = sorted(plays["show_index"].unique().tolist())
     if len(show_indices) <= min_training_shows:
-        return pd.DataFrame(columns=[*DEAL_FEATURE_COLUMNS, "song_name", "label"]), empty_summary
+        return (
+            pd.DataFrame(columns=[*DEAL_FEATURE_COLUMNS, "song_name", "label"]),
+            empty_summary,
+        )
 
     start_offset = max(min_training_shows, len(show_indices) - training_window_shows)
     target_indices = show_indices[start_offset:]
@@ -222,7 +243,9 @@ def build_training_frame(
         recently_played = sorted(
             set(
                 history[
-                    history["show_index"].between(recent_window_start, target_show_index - 1)
+                    history["show_index"].between(
+                        recent_window_start, target_show_index - 1
+                    )
                 ]["song_name"].tolist()
             )
         )
@@ -252,11 +275,16 @@ def build_training_frame(
         candidates = candidates.copy()
         candidates["label"] = candidates["song_name"].isin(actual_songs).astype(int)
         candidates["target_show_index"] = target_show_index
-        candidates["target_show_date"] = target_rows["show_date"].iloc[0].date().isoformat()
+        candidates["target_show_date"] = (
+            target_rows["show_date"].iloc[0].date().isoformat()
+        )
         rows.append(candidates)
 
     if not rows:
-        return pd.DataFrame(columns=[*DEAL_FEATURE_COLUMNS, "song_name", "label"]), empty_summary
+        return (
+            pd.DataFrame(columns=[*DEAL_FEATURE_COLUMNS, "song_name", "label"]),
+            empty_summary,
+        )
 
     training_frame = pd.concat(rows, ignore_index=True)
     label_counts = Counter(training_frame["label"].tolist())
@@ -265,7 +293,9 @@ def build_training_frame(
         positive_rows=int(label_counts.get(1, 0)),
         negative_rows=int(label_counts.get(0, 0)),
         sampled_show_count=len(candidate_counts),
-        avg_candidates_per_show=float(np.mean(candidate_counts)) if candidate_counts else 0.0,
+        avg_candidates_per_show=(
+            float(np.mean(candidate_counts)) if candidate_counts else 0.0
+        ),
         min_candidates_per_show=min(candidate_counts) if candidate_counts else 0,
         max_candidates_per_show=max(candidate_counts) if candidate_counts else 0,
     )

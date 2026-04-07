@@ -58,7 +58,9 @@ graph TD
 ### Models and Evaluation
 
 - `ModelData` is the canonical handoff from transforms into models.
-- Notebook and CK+ both rely on the same ordered historical show sequence and
+- Notebook and CK+ are the production models. Deal (XGBoost-based) is registered and
+  fully wired but gated off from pipeline and web surfaces while experimental.
+- All three models rely on the same ordered historical show sequence and
   the same `reference_date` anti-leakage rule.
 - `accuracy_per_show` is the granular evaluation source; aggregate accuracy
   tables are derived summaries.
@@ -106,6 +108,14 @@ Key shared components:
 The backend model platform is registry-based. The canonical model source of
 truth is `src/jambandnerd/models/registry.py`, which defines predictor class,
 table/version mapping, serializer, and orchestration capability flags.
+
+Three models are registered:
+
+| Model | Slug | Status | Prediction Table |
+|-------|------|--------|-----------------|
+| Notebook | `notebook` | Production | `predictions_notebook` |
+| CK+ | `ckplus` | Production | `predictions_ckplus` |
+| Deal | `deal` | Experimental (gated) | `predictions_deal` |
 
 New prediction models are added through the registry workflow (see
 `docs/contributor/model_development.md`):
