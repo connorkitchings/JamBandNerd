@@ -141,3 +141,46 @@ def test_deal_model_roundtrip_preserves_ranking(tmp_path, monkeypatch) -> None:
     assert [prediction.song_name for prediction in original[:5]] == [
         prediction.song_name for prediction in restored[:5]
     ]
+
+
+def test_deal_training_frame_excludes_same_day_history() -> None:
+    shows_df = pd.DataFrame(
+        [
+            {"show_id": "show-1", "show_date": "2024-01-01"},
+            {"show_id": "show-2", "show_date": "2024-01-02"},
+            {"show_id": "show-3", "show_date": "2024-01-03"},
+            {"show_id": "show-4", "show_date": "2024-01-04"},
+            {"show_id": "show-5", "show_date": "2024-01-10"},
+            {"show_id": "show-6", "show_date": "2024-01-10"},
+        ]
+    )
+    setlists_df = pd.DataFrame(
+        [
+            {"show_id": "show-1", "song_name": "Anchor Song"},
+            {"show_id": "show-2", "song_name": "Bridge Song"},
+            {"show_id": "show-3", "song_name": "Bridge Song"},
+            {"show_id": "show-4", "song_name": "Bridge Song"},
+            {"show_id": "show-5", "song_name": "Leak Song"},
+            {"show_id": "show-6", "song_name": "Target Song"},
+        ]
+    )
+
+    model_data = generate_model_data(
+        shows_df,
+        setlists_df,
+        date(2024, 1, 12),
+        band="goose",
+    )
+
+    training_frame, _summary = build_training_frame(
+        model_data,
+        band="goose",
+        min_plays_threshold=1,
+        retired_gap_threshold=200,
+        min_training_shows=1,
+        training_window_shows=10,
+    )
+
+    target_rows = training_frame[training_frame["target_show_index"] == 6]
+    assert "Anchor Song" in set(target_rows["song_name"])
+    assert "Leak Song" not in set(target_rows["song_name"])

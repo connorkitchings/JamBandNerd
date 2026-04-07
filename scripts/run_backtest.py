@@ -36,6 +36,11 @@ from src.jambandnerd.db.operations import (
     upsert_historical_prediction_run,
 )
 from src.jambandnerd.models.accuracy import aggregate_metrics, compute_per_show_metrics
+from src.jambandnerd.models.evaluation import (
+    get_evaluation_reference_date,
+    list_completed_shows,
+    select_target_shows,
+)
 from src.jambandnerd.models.registry import (
     build_predictor,
     get_model_definition,
@@ -43,7 +48,6 @@ from src.jambandnerd.models.registry import (
     serialize_model_predictions,
 )
 from src.jambandnerd.transformations.gaps import generate_model_data
-from src.jambandnerd.transformations.normalization import sort_normalized_shows
 
 
 def run_backtest(
@@ -70,20 +74,17 @@ def run_backtest(
     shows_df, sets_df = prepare_band_data(shows_df, sets_df, band=band)
 
     # 2. Determine target shows for backtesting
-    completed_show_ids = sets_df["show_id"].dropna().astype(str).unique().tolist()
-    completed_shows = sort_normalized_shows(
-        shows_df[shows_df["show_id"].isin(completed_show_ids)].copy()
-    )
+    completed_shows = list_completed_shows(shows_df, sets_df)
 
     if all_history:
-        target_shows = completed_shows
+        target_shows = select_target_shows(completed_shows, all_history=True)
         window_start = target_shows["show_date"].min()
         window_end = target_shows["show_date"].max()
         print(
             f"{log_prefix} Backtesting across full completed-show history: {len(target_shows)} shows from {window_start} to {window_end}"
         )
     elif shows and shows > 0:
-        target_shows = completed_shows.tail(shows)
+        target_shows = select_target_shows(completed_shows, shows=shows)
         window_start = target_shows["show_date"].min()
         window_end = target_shows["show_date"].max()
         print(
@@ -96,10 +97,7 @@ def run_backtest(
             else (date.today() - timedelta(days=365 * 10))
         )
         end_d = pd.to_datetime(end).date() if end else date.today()
-        target_shows = completed_shows[
-            (completed_shows["show_date"] >= start_d)
-            & (completed_shows["show_date"] <= end_d)
-        ]
+        target_shows = select_target_shows(completed_shows, start=start, end=end)
         print(
             f"{log_prefix} Backtesting on {len(target_shows)} completed shows from {start_d} to {end_d}"
         )
@@ -142,13 +140,13 @@ def run_backtest(
             continue
 
         try:
-            # Use the day before the show for more realistic backtesting
-            # This prevents data leakage from the actual show date
-            prediction_date = (
-                ref_date - timedelta(days=1) if isinstance(ref_date, date) else ref_date
-            )
+            prediction_date = get_evaluation_reference_date(ref_date)
             model_data = generate_model_data(
-                shows_df, sets_df, prediction_date, exclusion_window=exclusion_window
+                shows_df,
+                sets_df,
+                prediction_date,
+                exclusion_window=exclusion_window,
+                band=band,
             )
 
             if definition.supports_training:

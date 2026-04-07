@@ -65,8 +65,27 @@ promotion evidence is documented:
 - `enabled_for_aggregate_accuracy=False`
 - `enabled_for_web=False`
 
-Promotion evidence should include backtest deltas versus current production
-models and explicit threshold outcomes before any website exposure.
+Promotion evidence should come from the canonical comparison workflow:
+
+```bash
+uv run python scripts/compare_models.py --candidate-model <slug> --band all --fresh-training
+```
+
+Promotion evidence should include:
+
+- current standard window: `last_50`
+- metric bundle at `K=10/25/50`: `hit_rate`, `avg_matches`, `precision`, `recall`, `f1`
+- per-band results, cross-band averages, and candidate-minus-baseline deltas
+- explicit promotion-gate outcomes versus CK+
+
+Experimental feature work should also start with a shared-input audit:
+
+```bash
+uv run python scripts/audit_shared_model_inputs.py --band all
+```
+
+Only fields that can be normalized for every active band should move into the
+shared model core.
 
 ## Capability Flags
 
@@ -88,10 +107,13 @@ Inclusion flags control where the model is active:
 - Unit test model ranking and serialization shape.
 - Run script-level tests that rely on registry-driven model selection.
 - Verify no script adds slug-specific branching for registration decisions.
+- For experimental models, add or update comparison-report and promotion-gate
+  regression tests.
 
 Suggested commands:
 
 ```bash
 uv run ruff check src tests scripts
 uv run pytest tests/models tests/pipeline/test_run_backtest.py tests/pipeline/test_run_optimized_pipeline.py
+uv run pytest tests/pipeline/test_compare_models.py
 ```

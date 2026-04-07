@@ -11,6 +11,7 @@ import numpy as np
 import pandas as pd
 
 from jambandnerd.config import BAND_EXCLUSION_WINDOWS, EXCLUSION_WINDOW_DEFAULT
+from jambandnerd.models.evaluation import get_evaluation_reference_date
 from jambandnerd.transformations.gaps import ModelData
 
 DEAL_FEATURE_COLUMNS: list[str] = [
@@ -126,13 +127,16 @@ def generate_deal_features(
             continue
 
         n_shows_6mo = song_plays[
-            song_plays["show_date"] >= reference_date - timedelta(days=182)
+            (song_plays["show_date"] >= reference_date - timedelta(days=182))
+            & (song_plays["show_date"] < reference_date)
         ]["show_index"].nunique()
         n_shows_1yr = song_plays[
-            song_plays["show_date"] >= reference_date - timedelta(days=365)
+            (song_plays["show_date"] >= reference_date - timedelta(days=365))
+            & (song_plays["show_date"] < reference_date)
         ]["show_index"].nunique()
         n_shows_2yr = song_plays[
-            song_plays["show_date"] >= reference_date - timedelta(days=730)
+            (song_plays["show_date"] >= reference_date - timedelta(days=730))
+            & (song_plays["show_date"] < reference_date)
         ]["show_index"].nunique()
 
         ltp = _compute_ltp_features(plays_idx, reference_index)
@@ -231,20 +235,25 @@ def build_training_frame(
     candidate_counts: list[int] = []
 
     for target_show_index in target_indices:
-        history = plays[plays["show_index"] < target_show_index].copy()
-        if history["show_index"].nunique() < min_training_shows:
-            continue
-
         target_rows = plays[plays["show_index"] == target_show_index]
         if target_rows.empty:
             continue
 
-        recent_window_start = max(1, target_show_index - exclusion_window)
+        target_show_date = pd.Timestamp(target_rows["show_date"].iloc[0]).normalize()
+        prediction_date = pd.Timestamp(
+            get_evaluation_reference_date(target_show_date.date())
+        )
+        history = plays[plays["show_date"] <= prediction_date].copy()
+        if history["show_index"].nunique() < min_training_shows:
+            continue
+
+        reference_index = int(history["show_index"].max()) + 1
+        recent_window_start = max(1, reference_index - exclusion_window)
         recently_played = sorted(
             set(
                 history[
                     history["show_index"].between(
-                        recent_window_start, target_show_index - 1
+                        recent_window_start, reference_index - 1
                     )
                 ]["song_name"].tolist()
             )
@@ -253,12 +262,13 @@ def build_training_frame(
         sub_model_data = ModelData(
             historical_plays=history,
             master_feature_set=pd.DataFrame(),
-            reference_date=target_rows["show_date"].iloc[0].date(),
-            reference_index=target_show_index,
+            reference_date=prediction_date.date(),
+            reference_index=reference_index,
             recently_played_songs=recently_played,
             diagnostics={
-                "reference_date": target_rows["show_date"].iloc[0].date().isoformat(),
-                "reference_index": target_show_index,
+                "reference_date": prediction_date.date().isoformat(),
+                "reference_index": reference_index,
+                "target_show_date": target_show_date.date().isoformat(),
             },
         )
 
