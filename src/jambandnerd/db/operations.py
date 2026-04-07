@@ -270,18 +270,19 @@ def _cleanup_stale_prediction_songs(
 ) -> None:
     """Delete stale prediction_songs rows older than *max_age_days*.
 
-    Never deletes the most recent ``reference_date`` for a given
+    Never deletes the most recently written projection for a given
     ``(band, model_version)`` so that the website always has data to render.
     """
-    from datetime import timedelta
+    from datetime import datetime, timedelta, timezone
 
     client = get_supabase_client()
 
     latest_resp = (
         client.table(table_name)
-        .select("reference_date")
+        .select("reference_date, predicted_at")
         .eq("band", band)
         .eq("model_version", model_version)
+        .order("predicted_at", desc=True)
         .order("reference_date", desc=True)
         .limit(1)
         .execute()
@@ -289,28 +290,49 @@ def _cleanup_stale_prediction_songs(
     latest_rows = latest_resp.data or []
     if not latest_rows:
         return
-    latest_ref = latest_rows[0]["reference_date"]
+    latest_ref = latest_rows[0].get("reference_date")
 
-    cutoff = (date.today() - timedelta(days=max_age_days)).isoformat()
-
-    resp = (
+    all_rows = (
         client.table(table_name)
-        .delete()
+        .select("reference_date, predicted_at")
         .eq("band", band)
         .eq("model_version", model_version)
-        .lt("reference_date", cutoff)
-        .neq("reference_date", latest_ref)
         .execute()
     )
+    rows = all_rows.data or []
+    if not rows:
+        return
 
-    deleted = len(resp.data or [])
+    cutoff = datetime.now(timezone.utc) - timedelta(days=max_age_days)
+    stale_refs: set[str] = set()
+    for row in rows:
+        reference_date = row.get("reference_date")
+        predicted_at = row.get("predicted_at")
+        if not reference_date or reference_date == latest_ref or not predicted_at:
+            continue
+        parsed = datetime.fromisoformat(predicted_at.replace("Z", "+00:00"))
+        if parsed < cutoff:
+            stale_refs.add(reference_date)
+
+    deleted = 0
+    for stale_ref in sorted(stale_refs):
+        resp = (
+            client.table(table_name)
+            .delete()
+            .eq("band", band)
+            .eq("model_version", model_version)
+            .eq("reference_date", stale_ref)
+            .execute()
+        )
+        deleted += len(resp.data or [])
+
     if deleted:
         logger.info(
             "Cleaned %d stale prediction_songs rows for %s/%s (cutoff=%s)",
             deleted,
             band,
             model_version,
-            cutoff,
+            cutoff.isoformat(),
         )
 
 

@@ -110,10 +110,10 @@ def test_validate_predictions_uses_latest_predicted_at(monkeypatch, capsys):
         lambda: _ClientStub(rows),
     )
     monkeypatch.setattr(
-        "scripts.validate_prediction_tables.fetch_latest_prediction_songs",
-        lambda band, model_slug: [
+        "scripts.validate_prediction_tables.fetch_prediction_songs_for_date",
+        lambda band, model_slug, reference_date: [
             {
-                "reference_date": "2026-03-20",
+                "reference_date": reference_date,
                 "song_name": "Fresh Song",
                 "rank": 1,
             }
@@ -140,8 +140,8 @@ def test_validate_predictions_fails_on_invalid_latest_json(monkeypatch, capsys):
         lambda: _ClientStub(rows),
     )
     monkeypatch.setattr(
-        "scripts.validate_prediction_tables.fetch_latest_prediction_songs",
-        lambda band, model_slug: [],
+        "scripts.validate_prediction_tables.fetch_prediction_songs_for_date",
+        lambda band, model_slug, reference_date: [],
     )
 
     failures = validate_predictions(bands=["goose"], max_age_hours=48)
@@ -160,8 +160,8 @@ def test_validate_predictions_warns_on_missing_latest_predicted_at(monkeypatch, 
         lambda: _ClientStub(rows),
     )
     monkeypatch.setattr(
-        "scripts.validate_prediction_tables.fetch_latest_prediction_songs",
-        lambda band, model_slug: [],
+        "scripts.validate_prediction_tables.fetch_prediction_songs_for_date",
+        lambda band, model_slug, reference_date: [],
     )
 
     failures = validate_predictions(bands=["goose"], max_age_hours=48)
@@ -183,15 +183,15 @@ def test_validate_predictions_fails_on_projection_mismatch(monkeypatch, capsys):
         lambda: _ClientStub(rows),
     )
     monkeypatch.setattr(
-        "scripts.validate_prediction_tables.fetch_latest_prediction_songs",
-        lambda band, model_slug: [
+        "scripts.validate_prediction_tables.fetch_prediction_songs_for_date",
+        lambda band, model_slug, reference_date: [
             {
-                "reference_date": "2026-03-20",
+                "reference_date": reference_date,
                 "song_name": "Wrong Song",
                 "rank": 1,
             },
             {
-                "reference_date": "2026-03-20",
+                "reference_date": reference_date,
                 "song_name": "Second Song",
                 "rank": 2,
             },
@@ -205,3 +205,66 @@ def test_validate_predictions_fails_on_projection_mismatch(monkeypatch, capsys):
     assert (
         "projection top_song=Wrong Song does not match canonical Fresh Song" in captured
     )
+
+
+def test_validate_predictions_ignores_stale_future_projection_dates(monkeypatch, capsys):
+    now = datetime.now(timezone.utc)
+    rows = _prediction_rows(
+        latest_predictions=[
+            {"song_name": "Fresh Song"},
+            {"song_name": "Second Song"},
+        ],
+        latest_predicted_at=now,
+    )
+    rows["prediction_songs"] = [
+        {
+            "band": "goose",
+            "model_version": "notebook_v1",
+            "reference_date": "2026-04-16",
+            "predicted_at": (now - timedelta(days=7)).isoformat(),
+        },
+        {
+            "band": "goose",
+            "model_version": "notebook_v1",
+            "reference_date": "2026-03-20",
+            "predicted_at": now.isoformat(),
+        },
+        {
+            "band": "goose",
+            "model_version": "ckplus_v1",
+            "reference_date": "2026-04-16",
+            "predicted_at": (now - timedelta(days=7)).isoformat(),
+        },
+        {
+            "band": "goose",
+            "model_version": "ckplus_v1",
+            "reference_date": "2026-03-20",
+            "predicted_at": now.isoformat(),
+        },
+    ]
+    monkeypatch.setattr(
+        "scripts.validate_prediction_tables.get_supabase_client",
+        lambda: _ClientStub(rows),
+    )
+    monkeypatch.setattr(
+        "scripts.validate_prediction_tables.fetch_prediction_songs_for_date",
+        lambda band, model_slug, reference_date: [
+            {
+                "reference_date": reference_date,
+                "song_name": "Fresh Song",
+                "rank": 1,
+            },
+            {
+                "reference_date": reference_date,
+                "song_name": "Second Song",
+                "rank": 2,
+            },
+        ],
+    )
+
+    failures = validate_predictions(bands=["goose"], max_age_hours=48)
+
+    assert failures == 2
+    captured = capsys.readouterr().out
+    assert "projection reference_date=2026-04-16 does not match canonical" not in captured
+    assert "prediction_songs reference_date=2026-04-16 has predicted_at older than 48h cutoff" in captured

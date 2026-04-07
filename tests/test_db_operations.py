@@ -182,6 +182,85 @@ def test_replace_prediction_projection_rewrites_rows(monkeypatch):
     ]
 
 
+def test_cleanup_stale_prediction_songs_uses_predicted_at_not_reference_date(monkeypatch):
+    deleted_refs: list[str] = []
+
+    class _ResponseStub:
+        def __init__(self, data):
+            self.data = data
+
+    class _QueryStub:
+        def __init__(self, rows):
+            self._rows = rows
+            self._filters: list[tuple[str, object]] = []
+            self._mode = "select"
+            self._orders: list[tuple[str, bool]] = []
+
+        def select(self, *_args, **_kwargs):
+            self._mode = "select"
+            return self
+
+        def delete(self):
+            self._mode = "delete"
+            return self
+
+        def eq(self, column, value):
+            self._filters.append((column, value))
+            return self
+
+        def order(self, *_args, **_kwargs):
+            column = _args[0]
+            desc = _kwargs.get("desc", False)
+            self._orders.append((column, desc))
+            return self
+
+        def limit(self, *_args, **_kwargs):
+            return self
+
+        def execute(self):
+            rows = list(self._rows)
+            for column, value in self._filters:
+                rows = [row for row in rows if row.get(column) == value]
+            for column, desc in reversed(self._orders):
+                rows.sort(key=lambda row: row.get(column), reverse=desc)
+            if self._mode == "delete":
+                if rows:
+                    deleted_refs.append(rows[0]["reference_date"])
+                return _ResponseStub(rows)
+            return _ResponseStub(rows)
+
+    class _ClientStub:
+        def __init__(self, rows):
+            self._rows = rows
+
+        def table(self, _name):
+            return _QueryStub(self._rows)
+
+    rows = [
+        {
+            "band": "goose",
+            "model_version": "notebook_v1",
+            "reference_date": "2026-04-16",
+            "predicted_at": "2026-03-20T12:00:00+00:00",
+        },
+        {
+            "band": "goose",
+            "model_version": "notebook_v1",
+            "reference_date": "2026-01-31",
+            "predicted_at": "2026-04-06T19:24:08+00:00",
+        },
+    ]
+    monkeypatch.setattr(operations, "get_supabase_client", lambda: _ClientStub(rows))
+
+    operations._cleanup_stale_prediction_songs(
+        band="goose",
+        model_version="notebook_v1",
+        max_age_days=7,
+    )
+
+    assert deleted_refs == ["2026-04-16"]
+
+
 def test_fetch_latest_prediction_songs_returns_ranked_rows(monkeypatch):
     class _ResponseStub:
         def __init__(self, data):
