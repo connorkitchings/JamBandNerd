@@ -1,0 +1,335 @@
+{
+  "baseline_models": [
+    {
+      "slug": "ckplus",
+      "version": "ckplus_v1"
+    },
+    {
+      "slug": "notebook",
+      "version": "notebook_v1"
+    }
+  ],
+  "candidate_model": {
+    "slug": "deal",
+    "version": "deal_v2"
+  },
+  "completed_bands": [
+    "goose"
+  ],
+  "experiment_metadata": {
+    "evaluation_windows": [
+      "last_50"
+    ],
+    "exclusion_window": 3,
+    "feature_set_label": "shared_core_v1",
+    "fresh_training": true,
+    "generated_at": "2026-04-07T18:27:41.317273+00:00",
+    "hyperparameters": {
+      "epochs": 400,
+      "learning_rate": 0.05,
+      "min_plays_threshold": 5,
+      "regularization": 0.01,
+      "retired_gap_threshold": 100
+    },
+    "model_slug": "deal",
+    "model_version": "deal_v2",
+    "training_window": {
+      "min_training_shows": 25,
+      "training_window_shows": 75
+    }
+  },
+  "report_status": "complete",
+  "requested_bands": [
+    "goose"
+  ],
+  "windows": {
+    "last_50": {
+      "cross_band_summary": {
+        "ckplus": {
+          "bands_evaluated": 1,
+          "metrics": {
+            "k10": {
+              "avg_matches": 1.46,
+              "f1": 0.12506534206534206,
+              "hit_rate": 0.82,
+              "precision": 0.146,
+              "recall": 0.11026166317342788
+            },
+            "k25": {
+              "avg_matches": 3.58,
+              "f1": 0.18696977733007078,
+              "hit_rate": 0.94,
+              "precision": 0.1432,
+              "recall": 0.27453911284793636
+            },
+            "k50": {
+              "avg_matches": 6.54,
+              "f1": 0.20700193972701175,
+              "hit_rate": 1.0,
+              "precision": 0.1308,
+              "recall": 0.5150812145370969
+            }
+          },
+          "shows_evaluated": 50
+        },
+        "deal": {
+          "bands_evaluated": 1,
+          "metrics": {
+            "k10": {
+              "avg_matches": 2.4,
+              "f1": 0.20731033579473476,
+              "hit_rate": 0.9,
+              "precision": 0.24,
+              "recall": 0.18564828472181413
+            },
+            "k25": {
+              "avg_matches": 4.9,
+              "f1": 0.25639535599334984,
+              "hit_rate": 0.94,
+              "precision": 0.196,
+              "recall": 0.38038075160133983
+            },
+            "k50": {
+              "avg_matches": 6.54,
+              "f1": 0.20634032602778415,
+              "hit_rate": 0.98,
+              "precision": 0.1308,
+              "recall": 0.5012629527335409
+            }
+          },
+          "shows_evaluated": 50
+        },
+        "notebook": {
+          "bands_evaluated": 1,
+          "metrics": {
+            "k10": {
+              "avg_matches": 2.68,
+              "f1": 0.23338730817349743,
+              "hit_rate": 0.94,
+              "precision": 0.268,
+              "recall": 0.2115812765665707
+            },
+            "k25": {
+              "avg_matches": 4.92,
+              "f1": 0.2576041174216235,
+              "hit_rate": 0.96,
+              "precision": 0.1968,
+              "recall": 0.38253436759319115
+            },
+            "k50": {
+              "avg_matches": 6.66,
+              "f1": 0.21002328106557788,
+              "hit_rate": 0.98,
+              "precision": 0.1332,
+              "recall": 0.5091732091437974
+            }
+          },
+          "shows_evaluated": 50
+        }
+      },
+      "deltas": {
+        "vs_ckplus": {
+          "baseline_model": "ckplus",
+          "by_band": {
+            "goose": {
+              "k10": {
+                "avg_matches": 0.94,
+                "f1": 0.0822449937293927,
+                "hit_rate": 0.08000000000000007,
+                "precision": 0.094,
+                "recall": 0.07538662154838625
+              },
+              "k25": {
+                "avg_matches": 1.3200000000000003,
+                "f1": 0.06942557866327906,
+                "hit_rate": 0.0,
+                "precision": 0.052800000000000014,
+                "recall": 0.10584163875340347
+              },
+              "k50": {
+                "avg_matches": 0.0,
+                "f1": -0.0006616136992275978,
+                "hit_rate": -0.020000000000000018,
+                "precision": 0.0,
+                "recall": -0.013818261803555942
+              }
+            }
+          },
+          "cross_band": {
+            "k10": {
+              "avg_matches": 0.94,
+              "f1": 0.0822449937293927,
+              "hit_rate": 0.08000000000000007,
+              "precision": 0.094,
+              "recall": 0.07538662154838625
+            },
+            "k25": {
+              "avg_matches": 1.3200000000000003,
+              "f1": 0.06942557866327906,
+              "hit_rate": 0.0,
+              "precision": 0.052800000000000014,
+              "recall": 0.10584163875340347
+            },
+            "k50": {
+              "avg_matches": 0.0,
+              "f1": -0.0006616136992275978,
+              "hit_rate": -0.020000000000000018,
+              "precision": 0.0,
+              "recall": -0.013818261803555942
+            }
+          }
+        },
+        "vs_notebook": {
+          "baseline_model": "notebook",
+          "by_band": {
+            "goose": {
+              "k10": {
+                "avg_matches": -0.28000000000000025,
+                "f1": -0.026076972378762664,
+                "hit_rate": -0.039999999999999925,
+                "precision": -0.028000000000000025,
+                "recall": -0.02593299184475656
+              },
+              "k25": {
+                "avg_matches": -0.019999999999999574,
+                "f1": -0.0012087614282736414,
+                "hit_rate": -0.020000000000000018,
+                "precision": -0.0007999999999999952,
+                "recall": -0.002153615991851321
+              },
+              "k50": {
+                "avg_matches": -0.1200000000000001,
+                "f1": -0.003682955037793728,
+                "hit_rate": 0.0,
+                "precision": -0.0024000000000000132,
+                "recall": -0.007910256410256444
+              }
+            }
+          },
+          "cross_band": {
+            "k10": {
+              "avg_matches": -0.28000000000000025,
+              "f1": -0.026076972378762664,
+              "hit_rate": -0.039999999999999925,
+              "precision": -0.028000000000000025,
+              "recall": -0.02593299184475656
+            },
+            "k25": {
+              "avg_matches": -0.019999999999999574,
+              "f1": -0.0012087614282736414,
+              "hit_rate": -0.020000000000000018,
+              "precision": -0.0007999999999999952,
+              "recall": -0.002153615991851321
+            },
+            "k50": {
+              "avg_matches": -0.1200000000000001,
+              "f1": -0.003682955037793728,
+              "hit_rate": 0.0,
+              "precision": -0.0024000000000000132,
+              "recall": -0.007910256410256444
+            }
+          }
+        }
+      },
+      "metrics_by_band": {
+        "goose": {
+          "ckplus": {
+            "metrics": {
+              "k10": {
+                "avg_matches": 1.46,
+                "f1": 0.12506534206534206,
+                "hit_rate": 0.82,
+                "precision": 0.146,
+                "recall": 0.11026166317342788
+              },
+              "k25": {
+                "avg_matches": 3.58,
+                "f1": 0.18696977733007078,
+                "hit_rate": 0.94,
+                "precision": 0.1432,
+                "recall": 0.27453911284793636
+              },
+              "k50": {
+                "avg_matches": 6.54,
+                "f1": 0.20700193972701175,
+                "hit_rate": 1.0,
+                "precision": 0.1308,
+                "recall": 0.5150812145370969
+              }
+            },
+            "shows_evaluated": 50
+          },
+          "deal": {
+            "metrics": {
+              "k10": {
+                "avg_matches": 2.4,
+                "f1": 0.20731033579473476,
+                "hit_rate": 0.9,
+                "precision": 0.24,
+                "recall": 0.18564828472181413
+              },
+              "k25": {
+                "avg_matches": 4.9,
+                "f1": 0.25639535599334984,
+                "hit_rate": 0.94,
+                "precision": 0.196,
+                "recall": 0.38038075160133983
+              },
+              "k50": {
+                "avg_matches": 6.54,
+                "f1": 0.20634032602778415,
+                "hit_rate": 0.98,
+                "precision": 0.1308,
+                "recall": 0.5012629527335409
+              }
+            },
+            "shows_evaluated": 50
+          },
+          "notebook": {
+            "metrics": {
+              "k10": {
+                "avg_matches": 2.68,
+                "f1": 0.23338730817349743,
+                "hit_rate": 0.94,
+                "precision": 0.268,
+                "recall": 0.2115812765665707
+              },
+              "k25": {
+                "avg_matches": 4.92,
+                "f1": 0.2576041174216235,
+                "hit_rate": 0.96,
+                "precision": 0.1968,
+                "recall": 0.38253436759319115
+              },
+              "k50": {
+                "avg_matches": 6.66,
+                "f1": 0.21002328106557788,
+                "hit_rate": 0.98,
+                "precision": 0.1332,
+                "recall": 0.5091732091437974
+              }
+            },
+            "shows_evaluated": 50
+          }
+        }
+      },
+      "promotion_gate": {
+        "bands_evaluated": 1,
+        "baseline_model": "ckplus",
+        "candidate_model": "deal",
+        "candidate_model_version": "deal_v2",
+        "checks": {
+          "avg_recall_k10_beats_ckplus": true,
+          "avg_recall_k25_beats_ckplus": true,
+          "no_band_regresses_more_than_0_02_on_recall_k25": true,
+          "wins_at_least_required_bands_on_recall_k10": true
+        },
+        "metric": "recall",
+        "passes": true,
+        "recall_k10_band_wins": 1,
+        "required_band_wins": 1,
+        "worst_recall_k25_delta_by_band": 0.0
+      }
+    }
+  }
+}

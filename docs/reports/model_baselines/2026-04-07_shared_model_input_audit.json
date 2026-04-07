@@ -1,0 +1,220 @@
+{
+  "bands": {
+    "billy": {
+      "row_counts": {
+        "setlists": 19391,
+        "shows": 1211
+      },
+      "show_fields": {
+        "city": {
+          "non_null_ratio": 0.0,
+          "non_null_rows": 0,
+          "present": false,
+          "total_rows": 1211
+        },
+        "country": {
+          "non_null_ratio": 0.0,
+          "non_null_rows": 0,
+          "present": false,
+          "total_rows": 1211
+        },
+        "state": {
+          "non_null_ratio": 0.0,
+          "non_null_rows": 0,
+          "present": false,
+          "total_rows": 1211
+        },
+        "venue_name": {
+          "non_null_ratio": 1.0,
+          "non_null_rows": 1211,
+          "present": true,
+          "total_rows": 1211
+        }
+      },
+      "status": "ok"
+    },
+    "eggy": {
+      "row_counts": {
+        "setlists": 5752,
+        "shows": 775
+      },
+      "show_fields": {
+        "city": {
+          "non_null_ratio": 0.0,
+          "non_null_rows": 0,
+          "present": false,
+          "total_rows": 775
+        },
+        "country": {
+          "non_null_ratio": 0.0,
+          "non_null_rows": 0,
+          "present": false,
+          "total_rows": 775
+        },
+        "state": {
+          "non_null_ratio": 0.0,
+          "non_null_rows": 0,
+          "present": false,
+          "total_rows": 775
+        },
+        "venue_name": {
+          "non_null_ratio": 1.0,
+          "non_null_rows": 775,
+          "present": true,
+          "total_rows": 775
+        }
+      },
+      "status": "ok"
+    },
+    "goose": {
+      "row_counts": {
+        "setlists": 6951,
+        "shows": 828
+      },
+      "show_fields": {
+        "city": {
+          "non_null_ratio": 0.0,
+          "non_null_rows": 0,
+          "present": false,
+          "total_rows": 828
+        },
+        "country": {
+          "non_null_ratio": 0.0,
+          "non_null_rows": 0,
+          "present": false,
+          "total_rows": 828
+        },
+        "state": {
+          "non_null_ratio": 0.0,
+          "non_null_rows": 0,
+          "present": false,
+          "total_rows": 828
+        },
+        "venue_name": {
+          "non_null_ratio": 1.0,
+          "non_null_rows": 828,
+          "present": true,
+          "total_rows": 828
+        }
+      },
+      "status": "ok"
+    },
+    "phish": {
+      "row_counts": {
+        "setlists": 39359,
+        "shows": 2250
+      },
+      "show_fields": {
+        "city": {
+          "non_null_ratio": 0.0,
+          "non_null_rows": 0,
+          "present": false,
+          "total_rows": 2250
+        },
+        "country": {
+          "non_null_ratio": 0.0,
+          "non_null_rows": 0,
+          "present": false,
+          "total_rows": 2250
+        },
+        "state": {
+          "non_null_ratio": 0.0,
+          "non_null_rows": 0,
+          "present": false,
+          "total_rows": 2250
+        },
+        "venue_name": {
+          "non_null_ratio": 1.0,
+          "non_null_rows": 2250,
+          "present": true,
+          "total_rows": 2250
+        }
+      },
+      "status": "ok"
+    },
+    "um": {
+      "row_counts": {
+        "setlists": 47806,
+        "shows": 2928
+      },
+      "show_fields": {
+        "city": {
+          "non_null_ratio": 0.0,
+          "non_null_rows": 0,
+          "present": false,
+          "total_rows": 2928
+        },
+        "country": {
+          "non_null_ratio": 0.0,
+          "non_null_rows": 0,
+          "present": false,
+          "total_rows": 2928
+        },
+        "state": {
+          "non_null_ratio": 0.0,
+          "non_null_rows": 0,
+          "present": false,
+          "total_rows": 2928
+        },
+        "venue_name": {
+          "non_null_ratio": 1.0,
+          "non_null_rows": 2928,
+          "present": true,
+          "total_rows": 2928
+        }
+      },
+      "status": "ok"
+    },
+    "wsp": {
+      "row_counts": {
+        "setlists": 63085,
+        "shows": 3265
+      },
+      "show_fields": {
+        "city": {
+          "non_null_ratio": 1.0,
+          "non_null_rows": 3265,
+          "present": true,
+          "total_rows": 3265
+        },
+        "country": {
+          "non_null_ratio": 0.0,
+          "non_null_rows": 0,
+          "present": false,
+          "total_rows": 3265
+        },
+        "state": {
+          "non_null_ratio": 1.0,
+          "non_null_rows": 3265,
+          "present": true,
+          "total_rows": 3265
+        },
+        "venue_name": {
+          "non_null_ratio": 1.0,
+          "non_null_rows": 3265,
+          "present": true,
+          "total_rows": 3265
+        }
+      },
+      "status": "ok"
+    }
+  },
+  "universal_show_fields": {
+    "city": {
+      "min_non_null_ratio": 0.0,
+      "present_in_all_bands": false
+    },
+    "country": {
+      "min_non_null_ratio": 0.0,
+      "present_in_all_bands": false
+    },
+    "state": {
+      "min_non_null_ratio": 0.0,
+      "present_in_all_bands": false
+    },
+    "venue_name": {
+      "min_non_null_ratio": 1.0,
+      "present_in_all_bands": true
+    }
+  }
+}

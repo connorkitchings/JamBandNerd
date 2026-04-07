@@ -45,8 +45,10 @@ Prediction entry points (band-specific wrappers):
 
 - `diagnose_band_data.py` — diagnose raw table completeness/consistency for a band
 - `audit_raw_data.py` — run the raw-data audit across one band or all supported bands
+- `audit_shared_model_inputs.py` — audit normalized shared model-input field availability across bands before adding cross-band features
 - `check_recent_avg_gap.py` — check recent average gap for a band/model (requires `--band` and `--model`)
-- `evaluate_deal_model.py` — evaluate the Deal model for a band with train/test metrics
+- `compare_models.py` — compare any backtestable candidate model against Notebook/CK+ baselines over the current standard `last_50` window
+- `evaluate_deal_model.py` — compatibility wrapper that runs the generic comparison workflow for Deal
 
 ## Admin scripts
 

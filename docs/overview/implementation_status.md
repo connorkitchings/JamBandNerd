@@ -20,7 +20,7 @@ JamBandNerd has a production-ready website-first product surface and a productio
 - Supabase raw tables plus unified prediction and accuracy storage
 - In-memory transforms with `reference_date` protection
 - Notebook and CK+ production prediction models
-- Deal (XGBoost-based) model registered and wired, gated off from pipeline and web while experimental
+- Deal experimental logistic ranking model registered and wired, gated off from pipeline and web while experimental
 - Backtesting and rolling accuracy aggregation
 - Unified `show_id` convention across all bands (Phish migration complete)
 

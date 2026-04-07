@@ -28,7 +28,7 @@ While the optimized pipeline is recommended for end-to-end runs, the core logic 
 Generates and saves predictions for a given band and model.
 
 - `--band <active-band-slug>`: (Required) The band to process. The script accepts any active band returned by the registry/config layer.
-- `--model {notebook,ckplus}`: (Required) The model to use.
+- `--model <registered-model-slug>`: (Required) The model to use.
 - `--date {YYYY-MM-DD}`: (Optional) The reference date for predictions. Defaults to the next upcoming show.
 - `--exclusion-window {N}`: (Optional) For the Notebook model, the number of recent shows to exclude songs from. Defaults to 3.
 
@@ -40,7 +40,7 @@ Runs a historical backtest, storing the scored ranked board in
 `prediction_run_id` rows through `validate_accuracy_tables.py`.
 
 - `--band <active-band-slug>`: (Required) The band to process. The script accepts any active band returned by the registry/config layer.
-- `--model {notebook,ckplus}`: (Required) The model to backtest.
+- `--model <registered-backtest-model-slug>`: (Required) The model to backtest.
 - `--shows {N}`: (Optional) Backtest the last N completed shows.
 - `--start {YYYY-MM-DD}` / `--end {YYYY-MM-DD}`: (Optional) Define a specific date range for the backtest.
 - `--exclusion-window {N}`: (Optional) For the Notebook model, the number of recent shows to exclude songs from. Defaults to 3.
@@ -50,8 +50,29 @@ Runs a historical backtest, storing the scored ranked board in
 Calculates and saves a single aggregate accuracy record based on the results from the backtest.
 
 - `--band <active-band-slug>`: (Required) The band to process. The script accepts any active band returned by the registry/config layer.
-- `--model {notebook,ckplus}`: (Required) The model to aggregate.
+- `--model <registered-aggregate-model-slug>`: (Required) The model to aggregate.
 - `--shows {N}`: (Optional) The number of recent shows from `accuracy_per_show` to include in the aggregation. Defaults to 100.
+
+### `compare_models.py`
+
+Compares a candidate model against fixed baseline models using the same
+historical scoring contract as the backtest flow.
+
+- `--candidate-model <registered-backtest-model-slug>`: (Required) Candidate model to evaluate.
+- `--band <slug[,slug...]|all>`: (Optional) Bands to include. Defaults to `all`.
+- `--baseline-model <slug>`: (Optional, repeatable) Override baseline models. Defaults to `ckplus` and `notebook`.
+- `--window <N>`: (Optional, repeatable) Comparison windows as positive integer show counts. Defaults to `50`.
+- `--feature-set-label <label>`: (Optional) Human-readable label for the feature set under test.
+- `--fresh-training`: (Optional) Disable persisted artifacts for training-capable candidate models during the comparison run.
+- `--include-candidate-diagnostics`: (Optional) Include model-specific diagnostics when the candidate supports them.
+
+### `audit_shared_model_inputs.py`
+
+Audits the normalized show-context fields that could be considered for future
+shared model features.
+
+- `--band <slug[,slug...]|all>`: (Optional) Bands to audit. Defaults to `all`.
+- `--output <path>`: (Optional) Write the JSON audit report to disk.
 
 ### Future Considerations: `jbn` CLI
 
