@@ -41,15 +41,21 @@ def _setup_common_monkeypatches(monkeypatch):
         "prepare_band_data",
         lambda shows_df, setlists_df, band: (shows_df, setlists_df),
     )
-    monkeypatch.setattr(module, "resolve_reference_date", lambda *_args, **_kwargs: date(2026, 3, 27))
-    monkeypatch.setattr(module, "generate_model_data", lambda *_args, **_kwargs: _ModelData())
+    monkeypatch.setattr(
+        module, "resolve_reference_date", lambda *_args, **_kwargs: date(2026, 3, 27)
+    )
+    monkeypatch.setattr(
+        module, "generate_model_data", lambda *_args, **_kwargs: _ModelData()
+    )
 
 
 def test_generate_predictions_uses_registry_for_tuple_predictors(monkeypatch):
     _setup_common_monkeypatches(monkeypatch)
 
     records: dict[str, object] = {}
-    monkeypatch.setattr(module, "build_predictor", lambda slug, *, band, **kwargs: _TuplePredictor())
+    monkeypatch.setattr(
+        module, "build_predictor", lambda slug, *, band, **kwargs: _TuplePredictor()
+    )
     monkeypatch.setattr(
         module,
         "get_model_definition",
@@ -58,7 +64,9 @@ def test_generate_predictions_uses_registry_for_tuple_predictors(monkeypatch):
     monkeypatch.setattr(
         module,
         "serialize_model_predictions",
-        lambda slug, predictions: [{"song_name": prediction.song_name} for prediction in predictions],
+        lambda slug, predictions: [
+            {"song_name": prediction.song_name} for prediction in predictions
+        ],
     )
     monkeypatch.setattr(
         module,
@@ -85,20 +93,32 @@ def test_generate_predictions_uses_registry_for_tuple_predictors(monkeypatch):
     )
 
     assert records["table"] == get_model_definition("notebook").prediction_table
-    assert records["df"].iloc[0]["model_version"] == get_model_definition("notebook").version
-    assert records["projection"]["model_version"] == get_model_definition("notebook").version
+    assert (
+        records["df"].iloc[0]["model_version"]
+        == get_model_definition("notebook").version
+    )
+    assert (
+        records["projection"]["model_version"]
+        == get_model_definition("notebook").version
+    )
 
 
 def test_generate_predictions_trains_training_capable_models(monkeypatch):
     _setup_common_monkeypatches(monkeypatch)
 
     predictor = _TrainingPredictor()
-    monkeypatch.setattr(module, "build_predictor", lambda slug, *, band, **kwargs: predictor)
-    monkeypatch.setattr(module, "get_model_definition", lambda slug: get_model_definition("deal"))
+    monkeypatch.setattr(
+        module, "build_predictor", lambda slug, *, band, **kwargs: predictor
+    )
+    monkeypatch.setattr(
+        module, "get_model_definition", lambda slug: get_model_definition("deal")
+    )
     monkeypatch.setattr(
         module,
         "serialize_model_predictions",
-        lambda slug, predictions: [{"song_name": prediction.song_name} for prediction in predictions],
+        lambda slug, predictions: [
+            {"song_name": prediction.song_name} for prediction in predictions
+        ],
     )
     monkeypatch.setattr(module, "upsert_dataframe", lambda **kwargs: None)
     monkeypatch.setattr(module, "replace_prediction_projection", lambda **kwargs: None)
@@ -114,7 +134,9 @@ def test_generate_predictions_trains_training_capable_models(monkeypatch):
 
 
 def test_main_rejects_retrain_for_non_training_models(monkeypatch):
-    monkeypatch.setattr(module, "get_model_definition", lambda slug: get_model_definition("notebook"))
+    monkeypatch.setattr(
+        module, "get_model_definition", lambda slug: get_model_definition("notebook")
+    )
     monkeypatch.setattr(
         module,
         "generate_predictions",
@@ -135,4 +157,3 @@ def test_main_rejects_retrain_for_non_training_models(monkeypatch):
 
     with pytest.raises(SystemExit):
         module.main()
-

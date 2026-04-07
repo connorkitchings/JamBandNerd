@@ -75,7 +75,9 @@ def _summarize_probabilities(probabilities: np.ndarray) -> dict[str, float]:
     }
 
 
-def _build_calibration_summary(probabilities: np.ndarray, labels: np.ndarray) -> list[dict[str, float]]:
+def _build_calibration_summary(
+    probabilities: np.ndarray, labels: np.ndarray
+) -> list[dict[str, float]]:
     if probabilities.size == 0:
         return []
 
@@ -140,7 +142,9 @@ class DealPredictor(PredictionModel):
         if not model_path.exists():
             return True
 
-        age_days = (datetime.now() - datetime.fromtimestamp(model_path.stat().st_mtime)).days
+        age_days = (
+            datetime.now() - datetime.fromtimestamp(model_path.stat().st_mtime)
+        ).days
         return age_days >= DEAL_RETRAIN_INTERVAL_DAYS
 
     def _load_model(self, model_path: Path) -> DealModelArtifact:
@@ -181,8 +185,15 @@ class DealPredictor(PredictionModel):
         X_scaled = (X - means) / stds
 
         coefficients = np.zeros(X_scaled.shape[1], dtype=float)
-        intercept = float(np.log(np.clip(y.mean(), 1e-6, 1 - 1e-6) / (1 - np.clip(y.mean(), 1e-6, 1 - 1e-6))))
-        positive_weight = max(training_summary.negative_rows / max(training_summary.positive_rows, 1), 1.0)
+        intercept = float(
+            np.log(
+                np.clip(y.mean(), 1e-6, 1 - 1e-6)
+                / (1 - np.clip(y.mean(), 1e-6, 1 - 1e-6))
+            )
+        )
+        positive_weight = max(
+            training_summary.negative_rows / max(training_summary.positive_rows, 1), 1.0
+        )
         sample_weights = np.where(y == 1.0, positive_weight, 1.0)
 
         for _ in range(self.epochs):
@@ -199,7 +210,9 @@ class DealPredictor(PredictionModel):
         fitted_probabilities = _sigmoid(X_scaled @ coefficients + intercept)
         artifact = DealModelArtifact(
             model_version=self.MODEL_VERSION,
-            trained_at=datetime.now(UTC).isoformat(timespec="seconds").replace("+00:00", "Z"),
+            trained_at=datetime.now(UTC)
+            .isoformat(timespec="seconds")
+            .replace("+00:00", "Z"),
             feature_columns=list(DEAL_FEATURE_COLUMNS),
             feature_means=means.tolist(),
             feature_stds=stds.tolist(),
@@ -219,7 +232,11 @@ class DealPredictor(PredictionModel):
         if self.model is None:
             return np.array([])
 
-        X = candidate_features[self.model.feature_columns].fillna(0.0).to_numpy(dtype=float)
+        X = (
+            candidate_features[self.model.feature_columns]
+            .fillna(0.0)
+            .to_numpy(dtype=float)
+        )
         means = np.asarray(self.model.feature_means, dtype=float)
         stds = np.asarray(self.model.feature_stds, dtype=float)
         stds[stds == 0] = 1.0
@@ -248,12 +265,17 @@ class DealPredictor(PredictionModel):
             return []
 
         candidate_features = candidate_features.copy()
-        candidate_features["probability"] = self._predict_probabilities(candidate_features)
+        candidate_features["probability"] = self._predict_probabilities(
+            candidate_features
+        )
 
         excluded_songs = get_excluded_songs(self.band)
         if excluded_songs:
             candidate_features = candidate_features[
-                ~candidate_features["song_name"].str.lower().str.strip().isin(excluded_songs)
+                ~candidate_features["song_name"]
+                .str.lower()
+                .str.strip()
+                .isin(excluded_songs)
             ]
 
         ranked = candidate_features.sort_values(
@@ -268,7 +290,11 @@ class DealPredictor(PredictionModel):
                 current_gap=int(row["current_gap"]),
                 plays_past_year=int(row["plays_past_year"]),
                 times_played=int(row["total_plays"]),
-                LTP=row["last_played_date"].isoformat() if pd.notna(row["last_played_date"]) else None,
+                LTP=(
+                    row["last_played_date"].isoformat()
+                    if pd.notna(row["last_played_date"])
+                    else None
+                ),
             )
             for _, row in ranked.iterrows()
         ]

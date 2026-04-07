@@ -89,7 +89,9 @@ def test_save_aggregate_accuracy_uses_registry_version_and_table(monkeypatch):
     monkeypatch.setattr(
         module,
         "get_model_definition",
-        lambda slug: replace(get_model_definition("notebook"), version="custom_notebook_v9"),
+        lambda slug: replace(
+            get_model_definition("notebook"), version="custom_notebook_v9"
+        ),
     )
     monkeypatch.setattr(
         module,
@@ -105,7 +107,11 @@ def test_save_aggregate_accuracy_uses_registry_version_and_table(monkeypatch):
 
 
 def test_main_rejects_model_not_in_aggregate_choices(monkeypatch):
-    monkeypatch.setattr(module, "list_aggregate_accuracy_models", lambda: [get_model_definition("notebook")])
+    monkeypatch.setattr(
+        module,
+        "list_aggregate_accuracy_models",
+        lambda: [get_model_definition("notebook")],
+    )
     monkeypatch.setattr(
         module,
         "save_aggregate_accuracy",
@@ -125,4 +131,3 @@ def test_main_rejects_model_not_in_aggregate_choices(monkeypatch):
 
     with pytest.raises(SystemExit):
         module.main()
-

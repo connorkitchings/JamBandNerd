@@ -41,7 +41,11 @@ class CollectionPreflight:
     def as_github_outputs(self) -> dict[str, str]:
         payload = asdict(self)
         return {
-            key: ("" if value is None else str(value).lower() if isinstance(value, bool) else str(value))
+            key: (
+                ""
+                if value is None
+                else str(value).lower() if isinstance(value, bool) else str(value)
+            )
             for key, value in payload.items()
         }
 
@@ -65,7 +69,9 @@ def decide_collection_execution_mode(
         return "full_refresh", True
 
     if collection_mode == "verify_only_when_idle":
-        return ("bounded_refresh", True) if has_recent_activity else ("verify_only", False)
+        return (
+            ("bounded_refresh", True) if has_recent_activity else ("verify_only", False)
+        )
 
     if collection_mode == "window_refresh":
         if has_recent_activity or not allows_verify_only_when_idle:
@@ -116,7 +122,9 @@ def compute_band_preflight(
         filters=[("gte", "show_date", recent_start), ("lte", "show_date", recent_end)],
         client=client,
     )
-    recent_show_ids = [row.get(id_column) for row in recent_rows if row.get(id_column) is not None]
+    recent_show_ids = [
+        row.get(id_column) for row in recent_rows if row.get(id_column) is not None
+    ]
     setlist_ids = fetch_column_values_for_ids(
         f"{band}_setlists_raw",
         id_column=id_column,
@@ -130,7 +138,10 @@ def compute_band_preflight(
     upcoming_rows = fetch_table_rows(
         f"{band}_shows_raw",
         select=f"{id_column}, show_date",
-        filters=[("gte", "show_date", today.isoformat()), ("lte", "show_date", lookahead_end)],
+        filters=[
+            ("gte", "show_date", today.isoformat()),
+            ("lte", "show_date", lookahead_end),
+        ],
         client=client,
     )
 

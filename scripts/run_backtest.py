@@ -157,7 +157,11 @@ def run_backtest(
                 model_data=model_data,
                 top_k=definition.default_top_k,
             )
-            preds = prediction_output[0] if isinstance(prediction_output, tuple) else prediction_output
+            preds = (
+                prediction_output[0]
+                if isinstance(prediction_output, tuple)
+                else prediction_output
+            )
 
             if not preds:
                 print(f"{log_prefix} No predictions generated for {ref_date}, skipping")

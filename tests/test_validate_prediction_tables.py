@@ -207,7 +207,9 @@ def test_validate_predictions_fails_on_projection_mismatch(monkeypatch, capsys):
     )
 
 
-def test_validate_predictions_ignores_stale_future_projection_dates(monkeypatch, capsys):
+def test_validate_predictions_ignores_stale_future_projection_dates(
+    monkeypatch, capsys
+):
     now = datetime.now(timezone.utc)
     rows = _prediction_rows(
         latest_predictions=[
@@ -266,5 +268,10 @@ def test_validate_predictions_ignores_stale_future_projection_dates(monkeypatch,
 
     assert failures == 2
     captured = capsys.readouterr().out
-    assert "projection reference_date=2026-04-16 does not match canonical" not in captured
-    assert "prediction_songs reference_date=2026-04-16 has predicted_at older than 48h cutoff" in captured
+    assert (
+        "projection reference_date=2026-04-16 does not match canonical" not in captured
+    )
+    assert (
+        "prediction_songs reference_date=2026-04-16 has predicted_at older than 48h cutoff"
+        in captured
+    )

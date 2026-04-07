@@ -38,9 +38,7 @@ def main() -> None:
     args = parser.parse_args()
 
     load_dotenv()
-    target_date = (
-        datetime.strptime(args.date, "%Y-%m-%d").date() if args.date else None
-    )
+    target_date = datetime.strptime(args.date, "%Y-%m-%d").date() if args.date else None
     result = run_fantasy_goose_sync(target_date=target_date, dry_run=args.dry_run)
     append_github_output(result)
 

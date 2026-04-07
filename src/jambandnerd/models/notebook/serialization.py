@@ -17,4 +17,3 @@ def serialize_predictions(predictions: Sequence[Any]) -> list[dict[str, Any]]:
         }
         for i, prediction in enumerate(predictions)
     ]
-

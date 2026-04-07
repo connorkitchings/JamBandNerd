@@ -107,7 +107,10 @@ def test_match_predictions_to_fg_songs_uses_normalization():
 
 
 def test_match_predictions_to_fg_songs_reports_unresolved_names():
-    predictions = [{"rank": 1, "song_name": "Arcadia"}, {"rank": 2, "song_name": "Madhuvan"}]
+    predictions = [
+        {"rank": 1, "song_name": "Arcadia"},
+        {"rank": 2, "song_name": "Madhuvan"},
+    ]
     songs = [FantasyGooseSong(id="1", name="Arcadia")]
 
     matches, missing = match_predictions_to_fg_songs(predictions, songs, limit=2)
@@ -131,11 +134,12 @@ def test_has_existing_entry_matches_show_label_and_venue():
 
 
 def test_has_entry_for_date_detects_existing_pick_by_date():
-    assert has_entry_for_date("My Picks\n04/10/2026 - ExploreAsheville.com Arena", date(2026, 4, 10))
+    assert has_entry_for_date(
+        "My Picks\n04/10/2026 - ExploreAsheville.com Arena", date(2026, 4, 10)
+    )
 
 
 def test_normalize_song_name_canonicalizes_punctuation():
-    assert (
-        normalize_song_name("Turbulence & The Night Rays")
-        == normalize_song_name("Turbulence and The Night Rays")
+    assert normalize_song_name("Turbulence & The Night Rays") == normalize_song_name(
+        "Turbulence and The Night Rays"
     )

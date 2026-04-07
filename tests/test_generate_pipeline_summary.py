@@ -300,7 +300,9 @@ def test_render_summary_includes_band_health_states():
     )
 
     assert "### Band Run Health" in summary
-    assert "| GOOSE | success | success | full_refresh | 0 | generated | n/a |" in summary
+    assert (
+        "| GOOSE | success | success | full_refresh | 0 | generated | n/a |" in summary
+    )
     assert (
         "| WSP | degraded | degraded_upstream_blocked | bounded_refresh | 0 | reused_existing | "
         "fallback shows filled=2 |" in summary
