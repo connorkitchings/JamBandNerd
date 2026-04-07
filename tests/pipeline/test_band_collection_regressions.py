@@ -104,6 +104,12 @@ class _WSPQueryStub:
     def in_(self, *_args, **_kwargs):
         return self
 
+    def insert(self, *_args, **_kwargs):
+        return self
+
+    def delete(self, *_args, **_kwargs):
+        return self
+
     def execute(self):
         return SimpleNamespace(data=self.response_data)
 
@@ -308,6 +314,11 @@ def test_wsp_process_uses_paginated_existing_setlist_reads(monkeypatch):
         wsp_orchestration,
         "normalize_setlists",
         lambda rows: pd.DataFrame(rows),
+    )
+    monkeypatch.setattr(
+        wsp_orchestration,
+        "classify_missing_recent_setlists",
+        lambda *_args, **_kwargs: [],
     )
 
     wsp_orchestration.process_wsp_data(
