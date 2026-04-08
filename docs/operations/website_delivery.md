@@ -40,7 +40,6 @@ Current route split:
 - `apps/web/src/lib/data/accuracy.ts`: historical accuracy reads
 - `apps/web/src/lib/data/replay.ts`: replay timeline assembly
 - `apps/web/src/lib/data/shows.ts`: show detail, next show, and setlist reads
-- `apps/web/src/lib/data/venues.ts`: venue analytics assembly
 
 Client component rule:
 - Keep route-level Supabase reads on the server. Use `"use client"` only for interactive islands, navigation hooks, or live subscriptions.
@@ -59,7 +58,6 @@ The website should become the primary public surface for:
 - Multi-band prediction browsing
 - Model comparison
 - Replay workflows
-- Venue-specific historical analytics
 - Accuracy and performance views
 - Last-show details and explanatory content
 
@@ -197,7 +195,6 @@ After smoke verification, manually verify:
 
 - `/`
 - `/replay`
-- `/venues`
 - `/compare`
 - `/performance`
 - `/last-show`

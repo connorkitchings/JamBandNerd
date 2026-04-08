@@ -58,8 +58,9 @@ graph TD
 ### Models and Evaluation
 
 - `ModelData` is the canonical handoff from transforms into models.
-- Notebook and CK+ are the production models. Deal (XGBoost-based) is registered and
-  fully wired but gated off from pipeline and web surfaces while experimental.
+- Notebook and CK+ are the production models. Deal is registered and fully
+  wired as an experimental logistic ranking model, but it remains gated off
+  from pipeline and web surfaces.
 - All three models rely on the same ordered historical show sequence and
   the same `reference_date` anti-leakage rule.
 - `accuracy_per_show` is the granular evaluation source; aggregate accuracy
@@ -85,13 +86,12 @@ Current website routes:
   the actual setlist for one completed show
 - `/explorer` - Compatibility redirect to `/replay`
 - `/last-show` - Most recent completed show details
-- `/venues` - Venue analytics and tour patterns
 - `/about`, `/contact`, `/data-use` - Public informational pages
 
 Key shared components:
 - `page-hero`, `site-header`, `site-footer`, `dashboard-side-nav`
 - `prediction-hero`, `song-board`, `recall-chart`, `accuracy-table`
-- `show-outlook-popover`, `live-tracker`, `model-agreement`, `venue-analytics`
+- `show-outlook-popover`, `live-tracker`, `model-agreement`
 
 ### Orchestration
 

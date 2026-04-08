@@ -76,7 +76,6 @@ Show summary context first. Allow users to drill into details.
 |-------|---------|---------------------------|
 | `/` | Next-show predictions dashboard | Show Outlook, Model Agreement, Track Record |
 | `/replay` | Historical prediction replay | Shared show context, both model boards, Predicted vs Actual overlay |
-| `/venues` | Venue-specific history and repeat patterns | Historical bias can be suggestive, not predictive |
 | `/compare` | Model comparison side-by-side | Tier alignment, agreement breakdown |
 | `/performance` | Accuracy tracking | Recall percentages, trend deltas, baseline comparisons |
 | `/last-show` | Most recent completed show | Predicted vs Actual, accuracy for that show |
@@ -90,7 +89,7 @@ Show summary context first. Allow users to drill into details.
 - **Desktop**: Side navigation with full labels
 - **State**: URL-driven via search params (`?band=goose&model=ckplus`)
 - **Search**: Global search in header; song-specific search on song board
-- **Analysis routes**: Replay, Compare, and Venue Analytics share the same navigation grouping
+- **Analysis routes**: Replay and Compare share the same navigation grouping
 
 ---
 

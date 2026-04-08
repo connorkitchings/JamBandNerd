@@ -269,7 +269,7 @@ def _cleanup_stale_prediction_songs(
     *,
     band: str,
     model_version: str,
-    max_age_days: int = 30,
+    max_age_days: int = 7,
     table_name: str = "prediction_songs",
 ) -> None:
     """Delete stale prediction_songs rows older than *max_age_days*.

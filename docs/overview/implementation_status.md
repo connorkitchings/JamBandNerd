@@ -20,7 +20,7 @@ JamBandNerd has a production-ready website-first product surface and a productio
 - Supabase raw tables plus unified prediction and accuracy storage
 - In-memory transforms with `reference_date` protection
 - Notebook and CK+ production prediction models
-- Deal (XGBoost-based) model registered and wired, gated off from pipeline and web while experimental
+- Deal experimental logistic ranking model registered and wired, gated off from pipeline and web while experimental
 - Backtesting and rolling accuracy aggregation
 - Unified `show_id` convention across all bands (Phish migration complete)
 
@@ -50,7 +50,7 @@ JamBandNerd has a production-ready website-first product surface and a productio
 
 ### Website
 
-- 11 public routes: `/`, `/predictions`, `/performance`, `/compare`, `/replay`, `/explorer` (redirect), `/last-show`, `/venues`, `/about`, `/contact`, `/data-use`
+- 10 public routes: `/`, `/predictions`, `/performance`, `/compare`, `/replay`, `/explorer` (redirect), `/last-show`, `/about`, `/contact`, `/data-use`
 - Admin setlist submission at `/admin/setlist`
 - Dynamic band and model discovery from Supabase
 - Vercel deployment with native GitHub integration
