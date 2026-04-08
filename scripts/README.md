@@ -49,7 +49,7 @@ Prediction entry points (band-specific wrappers):
 - `check_recent_avg_gap.py` — check recent average gap for a band/model (requires `--band` and `--model`)
 - `compare_models.py` — compare any backtestable candidate model against Notebook/CK+ baselines over the current standard `last_50` window; supports `--deal-overrides` JSON for hyperparameter/feature-subset ablations
 - `evaluate_deal_model.py` — compatibility wrapper that runs the generic comparison workflow for Deal
-- `analyze_ablations.py` — print a ranked markdown comparison table from a batch directory of ablation JSON reports
+- `analyze_ablations.py` — rank ablation JSON reports against the canonical Deal baseline and Notebook anchor, then print Batch 2 eligibility and suggested combo experiments
 
 ## Admin scripts
 
