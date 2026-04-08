@@ -1,5 +1,5 @@
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from scripts.validate_prediction_tables import validate_predictions
 
@@ -207,10 +207,10 @@ def test_validate_predictions_fails_on_projection_mismatch(monkeypatch, capsys):
     )
 
 
-def test_validate_predictions_ignores_stale_future_projection_dates(
-    monkeypatch, capsys
-):
+def test_validate_predictions_flags_stale_recent_projection_dates(monkeypatch, capsys):
     now = datetime.now(timezone.utc)
+    recent_ref = (date.today() + timedelta(days=2)).isoformat()
+    old_ref = (date.today() - timedelta(days=14)).isoformat()
     rows = _prediction_rows(
         latest_predictions=[
             {"song_name": "Fresh Song"},
@@ -222,25 +222,25 @@ def test_validate_predictions_ignores_stale_future_projection_dates(
         {
             "band": "goose",
             "model_version": "notebook_v1",
-            "reference_date": "2026-04-16",
+            "reference_date": recent_ref,
             "predicted_at": (now - timedelta(days=7)).isoformat(),
         },
         {
             "band": "goose",
             "model_version": "notebook_v1",
-            "reference_date": "2026-03-20",
+            "reference_date": old_ref,
             "predicted_at": now.isoformat(),
         },
         {
             "band": "goose",
             "model_version": "ckplus_v1",
-            "reference_date": "2026-04-16",
+            "reference_date": recent_ref,
             "predicted_at": (now - timedelta(days=7)).isoformat(),
         },
         {
             "band": "goose",
             "model_version": "ckplus_v1",
-            "reference_date": "2026-03-20",
+            "reference_date": old_ref,
             "predicted_at": now.isoformat(),
         },
     ]
@@ -269,9 +269,60 @@ def test_validate_predictions_ignores_stale_future_projection_dates(
     assert failures == 2
     captured = capsys.readouterr().out
     assert (
-        "projection reference_date=2026-04-16 does not match canonical" not in captured
-    )
-    assert (
-        "prediction_songs reference_date=2026-04-16 has predicted_at older than 48h cutoff"
+        f"prediction_songs reference_date={recent_ref} has predicted_at older than 48h cutoff"
         in captured
     )
+    assert f"prediction_songs reference_date={old_ref}" not in captured
+
+
+def test_validate_predictions_ignores_stale_old_projection_outside_window(
+    monkeypatch, capsys
+):
+    now = datetime.now(timezone.utc)
+    old_ref = (date.today() - timedelta(days=14)).isoformat()
+    rows = _prediction_rows(
+        latest_predictions=[
+            {"song_name": "Fresh Song"},
+            {"song_name": "Second Song"},
+        ],
+        latest_predicted_at=now,
+    )
+    rows["prediction_songs"] = [
+        {
+            "band": "goose",
+            "model_version": "notebook_v1",
+            "reference_date": old_ref,
+            "predicted_at": (now - timedelta(days=10)).isoformat(),
+        },
+        {
+            "band": "goose",
+            "model_version": "ckplus_v1",
+            "reference_date": old_ref,
+            "predicted_at": (now - timedelta(days=10)).isoformat(),
+        },
+    ]
+    monkeypatch.setattr(
+        "scripts.validate_prediction_tables.get_supabase_client",
+        lambda: _ClientStub(rows),
+    )
+    monkeypatch.setattr(
+        "scripts.validate_prediction_tables.fetch_prediction_songs_for_date",
+        lambda band, model_slug, reference_date: [
+            {
+                "reference_date": reference_date,
+                "song_name": "Fresh Song",
+                "rank": 1,
+            },
+            {
+                "reference_date": reference_date,
+                "song_name": "Second Song",
+                "rank": 2,
+            },
+        ],
+    )
+
+    failures = validate_predictions(bands=["goose"], max_age_hours=48)
+
+    assert failures == 0
+    captured = capsys.readouterr().out
+    assert f"prediction_songs reference_date={old_ref}" not in captured
