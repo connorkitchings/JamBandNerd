@@ -87,9 +87,15 @@ def _check_stale_projection_rows(
     model_slug: str,
     model_version: str,
     max_age_hours: int,
+    reference_window_days: int = 7,
 ) -> int:
-    """Flag stale reference_date entries in prediction_songs."""
-    from datetime import timedelta
+    """Flag stale reference_date entries in prediction_songs.
+
+    Only checks entries whose *reference_date* falls within
+    ``reference_window_days`` of today.  Older entries are archival and
+    should not cause freshness failures.
+    """
+    from datetime import date, timedelta
 
     client = get_supabase_client()
 
@@ -116,11 +122,16 @@ def _check_stale_projection_rows(
         default=None,
     )
     cutoff = datetime.now(timezone.utc) - timedelta(hours=max_age_hours)
+    ref_window_start = (
+        date.today() - timedelta(days=reference_window_days)
+    ).isoformat()
     projected_by_ref: dict[str, datetime] = {}
     for row in rows:
         reference_date = row.get("reference_date")
         predicted_at = _parse_timestamp(row.get("predicted_at"))
         if not reference_date or predicted_at is None:
+            continue
+        if reference_date < ref_window_start:
             continue
         current = projected_by_ref.get(reference_date)
         if current is None or predicted_at > current:
