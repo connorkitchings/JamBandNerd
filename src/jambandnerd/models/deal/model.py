@@ -118,6 +118,11 @@ class DealPredictor(PredictionModel):
         regularization: float = DEAL_L2_REGULARIZATION,
         min_plays_threshold: int = DEAL_MIN_PLAYS_THRESHOLD,
         persist_artifacts: bool = True,
+        retired_gap_threshold: Optional[int] = None,
+        training_window_shows: int = DEAL_TRAINING_WINDOW_SHOWS,
+        min_training_shows: int = DEAL_MIN_TRAINING_SHOWS,
+        feature_columns: Optional[List[str]] = None,
+        positive_weight_cap: Optional[float] = None,
     ):
         self.band = band
         self.learning_rate = learning_rate
@@ -125,9 +130,19 @@ class DealPredictor(PredictionModel):
         self.regularization = regularization
         self.min_plays_threshold = min_plays_threshold
         self.persist_artifacts = persist_artifacts
-        self.retired_gap_threshold = DEAL_RETIREMENT_GAP.get(
-            band, DEAL_RETIREMENT_GAP["default"]
+        self.retired_gap_threshold = (
+            retired_gap_threshold
+            if retired_gap_threshold is not None
+            else DEAL_RETIREMENT_GAP.get(band, DEAL_RETIREMENT_GAP["default"])
         )
+        self.training_window_shows = training_window_shows
+        self.min_training_shows = min_training_shows
+        self.feature_columns = (
+            feature_columns
+            if feature_columns is not None
+            else list(DEAL_FEATURE_COLUMNS)
+        )
+        self.positive_weight_cap = positive_weight_cap
         self.model: Optional[DealModelArtifact] = None
         self.model_path: Optional[Path] = None
         self.latest_training_summary: Optional[DealTrainingSummary] = None
@@ -168,8 +183,8 @@ class DealPredictor(PredictionModel):
             band=self.band,
             min_plays_threshold=self.min_plays_threshold,
             retired_gap_threshold=self.retired_gap_threshold,
-            min_training_shows=DEAL_MIN_TRAINING_SHOWS,
-            training_window_shows=DEAL_TRAINING_WINDOW_SHOWS,
+            min_training_shows=self.min_training_shows,
+            training_window_shows=self.training_window_shows,
         )
         self.latest_training_summary = training_summary
 
@@ -177,7 +192,13 @@ class DealPredictor(PredictionModel):
             self.model = None
             return
 
-        X = training_frame[DEAL_FEATURE_COLUMNS].fillna(0.0).to_numpy(dtype=float)
+        missing = [c for c in self.feature_columns if c not in training_frame.columns]
+        if missing:
+            raise ValueError(
+                f"feature_columns contains columns not in training frame: {missing}"
+            )
+
+        X = training_frame[self.feature_columns].fillna(0.0).to_numpy(dtype=float)
         y = training_frame["label"].to_numpy(dtype=float)
         means = X.mean(axis=0)
         stds = X.std(axis=0)
@@ -194,6 +215,8 @@ class DealPredictor(PredictionModel):
         positive_weight = max(
             training_summary.negative_rows / max(training_summary.positive_rows, 1), 1.0
         )
+        if self.positive_weight_cap is not None:
+            positive_weight = min(positive_weight, self.positive_weight_cap)
         sample_weights = np.where(y == 1.0, positive_weight, 1.0)
 
         for _ in range(self.epochs):
@@ -213,7 +236,7 @@ class DealPredictor(PredictionModel):
             trained_at=datetime.now(UTC)
             .isoformat(timespec="seconds")
             .replace("+00:00", "Z"),
-            feature_columns=list(DEAL_FEATURE_COLUMNS),
+            feature_columns=list(self.feature_columns),
             feature_means=means.tolist(),
             feature_stds=stds.tolist(),
             coefficients=coefficients.tolist(),

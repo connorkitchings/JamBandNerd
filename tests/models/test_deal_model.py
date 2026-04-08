@@ -184,3 +184,67 @@ def test_deal_training_frame_excludes_same_day_history() -> None:
     target_rows = training_frame[training_frame["target_show_index"] == 6]
     assert "Anchor Song" in set(target_rows["song_name"])
     assert "Leak Song" not in set(target_rows["song_name"])
+
+
+def test_deal_predictor_feature_columns_override_restricts_training(
+    tmp_path, monkeypatch
+) -> None:
+    shows_df, setlists_df = build_deal_fixture()
+    model_data = generate_model_data(
+        shows_df, setlists_df, date(2024, 3, 20), band="goose"
+    )
+
+    gap_only = [
+        "current_gap",
+        "avg_ltp",
+        "recent_avg_ltp",
+        "overdue_metric",
+        "gap_z_score",
+    ]
+    monkeypatch.setattr(DealPredictor, "MODEL_DIR", tmp_path)
+    predictor = DealPredictor(
+        band="goose", min_plays_threshold=2, feature_columns=gap_only
+    )
+    predictor.train(model_data)
+
+    assert predictor.model is not None
+    assert predictor.model.feature_columns == gap_only
+    predictions = predictor.predict(model_data, top_k=10)
+    assert len(predictions) > 0
+
+
+def test_deal_predictor_positive_weight_cap_is_applied(tmp_path, monkeypatch) -> None:
+    shows_df, setlists_df = build_deal_fixture()
+    model_data = generate_model_data(
+        shows_df, setlists_df, date(2024, 3, 20), band="goose"
+    )
+
+    monkeypatch.setattr(DealPredictor, "MODEL_DIR", tmp_path)
+    predictor = DealPredictor(
+        band="goose", min_plays_threshold=2, positive_weight_cap=1.5
+    )
+    predictor.train(model_data)
+
+    # The capped predictor should still train and produce predictions.
+    assert predictor.model is not None
+    predictions = predictor.predict(model_data, top_k=10)
+    assert len(predictions) > 0
+
+
+def test_deal_predictor_invalid_feature_columns_raises() -> None:
+    shows_df, setlists_df = build_deal_fixture()
+    model_data = generate_model_data(
+        shows_df, setlists_df, date(2024, 3, 20), band="goose"
+    )
+
+    predictor = DealPredictor(
+        band="goose",
+        min_plays_threshold=2,
+        persist_artifacts=False,
+        feature_columns=["current_gap", "nonexistent_feature"],
+    )
+    try:
+        predictor.train(model_data)
+        assert False, "Expected ValueError for invalid feature columns"
+    except ValueError as exc:
+        assert "nonexistent_feature" in str(exc)

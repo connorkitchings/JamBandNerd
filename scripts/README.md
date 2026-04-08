@@ -47,8 +47,9 @@ Prediction entry points (band-specific wrappers):
 - `audit_raw_data.py` — run the raw-data audit across one band or all supported bands
 - `audit_shared_model_inputs.py` — audit normalized shared model-input field availability across bands before adding cross-band features
 - `check_recent_avg_gap.py` — check recent average gap for a band/model (requires `--band` and `--model`)
-- `compare_models.py` — compare any backtestable candidate model against Notebook/CK+ baselines over the current standard `last_50` window
+- `compare_models.py` — compare any backtestable candidate model against Notebook/CK+ baselines over the current standard `last_50` window; supports `--deal-overrides` JSON for hyperparameter/feature-subset ablations
 - `evaluate_deal_model.py` — compatibility wrapper that runs the generic comparison workflow for Deal
+- `analyze_ablations.py` — print a ranked markdown comparison table from a batch directory of ablation JSON reports
 
 ## Admin scripts
 

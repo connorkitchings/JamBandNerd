@@ -135,12 +135,14 @@ def _build_base_report(
     exclusion_window: int,
     feature_set_label: str,
     fresh_training: bool,
+    candidate_overrides: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     candidate_definition = get_model_definition(candidate_model)
     candidate_predictor = build_evaluation_predictor(
         candidate_model,
         band=requested_bands[0],
         fresh_training=fresh_training,
+        candidate_overrides=candidate_overrides,
     )
 
     return {
@@ -162,6 +164,7 @@ def _build_base_report(
             exclusion_window=exclusion_window,
             window_labels=_window_labels(windows),
             fresh_training=fresh_training,
+            candidate_overrides=candidate_overrides,
         ),
         "requested_bands": list(requested_bands),
         "completed_bands": [],
@@ -182,6 +185,7 @@ def _load_resumable_report(
     exclusion_window: int,
     feature_set_label: str,
     fresh_training: bool,
+    candidate_overrides: dict[str, Any] | None = None,
 ) -> dict[str, Any] | None:
     if not output_path.exists():
         return None
@@ -223,6 +227,10 @@ def _load_resumable_report(
         raise RuntimeError(f"Cannot resume {output_path}: feature set mismatch.")
     if metadata.get("fresh_training") != fresh_training:
         raise RuntimeError(f"Cannot resume {output_path}: training mode mismatch.")
+    if metadata.get("candidate_overrides") != (candidate_overrides or None):
+        raise RuntimeError(
+            f"Cannot resume {output_path}: candidate overrides mismatch."
+        )
 
     completed_bands = existing_report.get("completed_bands", [])
     if not isinstance(completed_bands, list) or any(
@@ -361,6 +369,7 @@ def generate_report(
     include_candidate_diagnostics: bool,
     output_path: Path | None = None,
     existing_report: dict[str, Any] | None = None,
+    candidate_overrides: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     requested_bands = list(bands)
     report = (
@@ -374,6 +383,7 @@ def generate_report(
             exclusion_window=exclusion_window,
             feature_set_label=feature_set_label,
             fresh_training=fresh_training,
+            candidate_overrides=candidate_overrides,
         )
     )
     diagnostics_by_band = _extract_diagnostics_by_band(report)
@@ -420,6 +430,7 @@ def generate_report(
                 reference_date=context.reference_date,
                 exclusion_window=exclusion_window,
                 fresh_training=fresh_training,
+                candidate_overrides=candidate_overrides,
             )
             if diagnostics is not None:
                 diagnostics_by_band[context.band] = diagnostics
@@ -457,6 +468,9 @@ def generate_report(
                     target_shows=target_shows,
                     exclusion_window=exclusion_window,
                     fresh_training=fresh_training and model_slug == candidate_model,
+                    candidate_overrides=(
+                        candidate_overrides if model_slug == candidate_model else None
+                    ),
                     progress_callback=lambda **progress: _log_progress(
                         "[compare] "
                         f"{context.band} {window_label} {progress['model_slug']}: "
@@ -567,12 +581,32 @@ def main() -> None:
         help="Include optional candidate diagnostics when supported by the model.",
     )
     parser.add_argument("--output", help="Optional path to write the JSON report.")
+    parser.add_argument(
+        "--deal-overrides",
+        default=None,
+        help=(
+            "JSON string of keyword arguments forwarded to the candidate Deal predictor. "
+            "Example: '{\"min_plays_threshold\": 3}'"
+        ),
+    )
     args = parser.parse_args()
 
     band_list = _parse_bands(args.band)
     baseline_models = args.baseline_models or list(DEFAULT_BASELINES)
     window_specs = _parse_window_specs(args.windows or list(DEFAULT_WINDOWS))
     output_path = Path(args.output) if args.output else None
+
+    candidate_overrides: dict[str, Any] | None = None
+    if args.deal_overrides:
+        try:
+            candidate_overrides = json.loads(args.deal_overrides)
+        except json.JSONDecodeError as exc:
+            raise ValueError(
+                f"--deal-overrides must be valid JSON. Got: {args.deal_overrides!r}"
+            ) from exc
+        if not isinstance(candidate_overrides, dict):
+            raise ValueError("--deal-overrides must be a JSON object.")
+
     existing_report = None
     if output_path is not None:
         existing_report = _load_resumable_report(
@@ -584,6 +618,7 @@ def main() -> None:
             exclusion_window=args.exclusion_window,
             feature_set_label=args.feature_set_label,
             fresh_training=args.fresh_training,
+            candidate_overrides=candidate_overrides,
         )
         if existing_report is not None:
             _log_progress(
@@ -603,6 +638,7 @@ def main() -> None:
         include_candidate_diagnostics=args.include_candidate_diagnostics,
         output_path=output_path,
         existing_report=existing_report,
+        candidate_overrides=candidate_overrides,
     )
     output = _serialize_report(report)
     print(output)

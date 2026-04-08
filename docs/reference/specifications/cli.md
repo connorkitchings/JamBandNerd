@@ -65,6 +65,7 @@ historical scoring contract as the backtest flow.
 - `--feature-set-label <label>`: (Optional) Human-readable label for the feature set under test.
 - `--fresh-training`: (Optional) Disable persisted artifacts for training-capable candidate models during the comparison run.
 - `--include-candidate-diagnostics`: (Optional) Include model-specific diagnostics when the candidate supports them.
+- `--deal-overrides <json>`: (Optional) JSON object of keyword arguments forwarded to the Deal predictor constructor (e.g. `'{"min_plays_threshold": 3}'`). Stored in `experiment_metadata.candidate_overrides` for reproducibility.
 
 ### `audit_shared_model_inputs.py`
 
