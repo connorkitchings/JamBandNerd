@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime
 
 from scripts import audit_raw_data, rebuild_derived_data
 from scripts import rebuild_prediction_songs as rebuild_prediction_projection
@@ -218,6 +219,7 @@ def test_clear_existing_outputs_deletes_selected_rows(monkeypatch):
 def test_rebuild_prediction_songs_bounded_window_rebuilds_multiple_dates(monkeypatch):
     replace_calls: list[dict[str, object]] = []
     deleted_refs: list[str] = []
+    refreshed_at = "2026-04-09T13:45:00+00:00"
 
     class _ResponseStub:
         def __init__(self, data):
@@ -354,6 +356,19 @@ def test_rebuild_prediction_songs_bounded_window_rebuilds_multiple_dates(monkeyp
     )
     monkeypatch.setattr(
         rebuild_prediction_projection,
+        "datetime",
+        type(
+            "_FrozenDateTime",
+            (),
+            {
+                "now": staticmethod(
+                    lambda tz=None: datetime(2026, 4, 9, 13, 45, tzinfo=tz)
+                )
+            },
+        ),
+    )
+    monkeypatch.setattr(
+        rebuild_prediction_projection,
         "replace_prediction_projection",
         lambda **kwargs: replace_calls.append(kwargs),
     )
@@ -368,6 +383,10 @@ def test_rebuild_prediction_songs_bounded_window_rebuilds_multiple_dates(monkeyp
     assert [call["reference_date"] for call in replace_calls] == [
         "2026-04-01",
         "2026-04-02",
+    ]
+    assert [call["predicted_at"] for call in replace_calls] == [
+        refreshed_at,
+        refreshed_at,
     ]
     assert deleted_refs == ["2026-04-01", "2026-04-02"]
     assert rows_by_table["prediction_songs"] == [
@@ -522,7 +541,7 @@ def test_rebuild_prediction_songs_bounded_window_deletes_orphans(monkeypatch):
 
 
 def test_rebuild_prediction_songs_legacy_mode_rebuilds_latest_only(monkeypatch):
-    replace_calls: list[str] = []
+    replace_calls: list[dict[str, object]] = []
     delete_called = False
 
     class _ResponseStub:
@@ -606,7 +625,7 @@ def test_rebuild_prediction_songs_legacy_mode_rebuilds_latest_only(monkeypatch):
     monkeypatch.setattr(
         rebuild_prediction_projection,
         "replace_prediction_projection",
-        lambda **kwargs: replace_calls.append(str(kwargs["reference_date"])),
+        lambda **kwargs: replace_calls.append(kwargs),
     )
 
     rebuild_prediction_projection.rebuild_prediction_songs(
@@ -614,5 +633,6 @@ def test_rebuild_prediction_songs_legacy_mode_rebuilds_latest_only(monkeypatch):
         model="notebook",
     )
 
-    assert replace_calls == ["2026-04-02"]
+    assert [call["reference_date"] for call in replace_calls] == ["2026-04-02"]
+    assert replace_calls[0]["predicted_at"] == "2026-04-08T19:30:02+00:00"
     assert delete_called is False
