@@ -14,7 +14,7 @@ import argparse
 import json
 import os
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -95,6 +95,7 @@ def _rebuild_band_model(
     reference_date_from: str | None,
     reference_date_to: str | None,
 ) -> bool:
+    refresh_projection_timestamps = bool(reference_date_from and reference_date_to)
     model_version, rows = _load_prediction_rows(
         band=band,
         model_slug=model_slug,
@@ -113,13 +114,16 @@ def _rebuild_band_model(
             print(f"  [{model_slug}] no canonical rows found — skipping")
         return False
 
-    if reference_date_from and reference_date_to:
+    if refresh_projection_timestamps:
         _clear_projection_window(
             band=band,
             model_slug=model_slug,
             reference_date_from=reference_date_from,
             reference_date_to=reference_date_to,
         )
+        projection_predicted_at = datetime.now(timezone.utc).isoformat()
+    else:
+        projection_predicted_at = None
 
     rebuilt_count = 0
     rebuilt_refs: list[str] = []
@@ -143,7 +147,7 @@ def _rebuild_band_model(
             model_slug=model_slug,
             model_version=model_version,
             reference_date=row["reference_date"],
-            predicted_at=row["predicted_at"],
+            predicted_at=projection_predicted_at or row["predicted_at"],
             predictions=parsed,
         )
         rebuilt_count += 1
