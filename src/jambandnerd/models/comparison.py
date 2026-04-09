@@ -26,6 +26,7 @@ def build_evaluation_predictor(
     *,
     band: str,
     fresh_training: bool = False,
+    candidate_overrides: dict[str, Any] | None = None,
 ):
     """Build a predictor for comparison runs.
 
@@ -38,6 +39,8 @@ def build_evaluation_predictor(
     definition = get_model_definition(model_slug)
     if fresh_training and definition.supports_training:
         kwargs["persist_artifacts"] = False
+    if candidate_overrides:
+        kwargs.update(candidate_overrides)
     return build_predictor(model_slug, band=band, **kwargs)
 
 
@@ -49,6 +52,7 @@ def extract_experiment_metadata(
     exclusion_window: int,
     window_labels: Sequence[str],
     fresh_training: bool,
+    candidate_overrides: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Collect reproducible experiment metadata for a comparison run."""
 
@@ -73,7 +77,7 @@ def extract_experiment_metadata(
             "min_training_shows": DEAL_MIN_TRAINING_SHOWS,
         }
 
-    return {
+    metadata: dict[str, Any] = {
         "model_slug": model_slug,
         "model_version": get_model_definition(model_slug).version,
         "feature_set_label": feature_set_label,
@@ -84,6 +88,9 @@ def extract_experiment_metadata(
         "fresh_training": fresh_training,
         "generated_at": pd.Timestamp.now(tz=timezone.utc).isoformat(),
     }
+    if candidate_overrides:
+        metadata["candidate_overrides"] = dict(candidate_overrides)
+    return metadata
 
 
 def maybe_build_model_diagnostics(
@@ -95,6 +102,7 @@ def maybe_build_model_diagnostics(
     reference_date,
     exclusion_window: int,
     fresh_training: bool,
+    candidate_overrides: dict[str, Any] | None = None,
 ) -> dict[str, Any] | None:
     """Build optional candidate diagnostics when the predictor supports it."""
 
@@ -102,6 +110,7 @@ def maybe_build_model_diagnostics(
         model_slug,
         band=band,
         fresh_training=fresh_training,
+        candidate_overrides=candidate_overrides,
     )
     if not hasattr(predictor, "build_evaluation_report"):
         return None
@@ -129,6 +138,7 @@ def score_model_on_target_shows(
     target_shows: pd.DataFrame,
     exclusion_window: int,
     fresh_training: bool = False,
+    candidate_overrides: dict[str, Any] | None = None,
     progress_callback: Any | None = None,
 ) -> list[dict[str, Any]]:
     """Score a model across a target completed-show window."""
@@ -138,6 +148,7 @@ def score_model_on_target_shows(
         model_slug,
         band=band,
         fresh_training=fresh_training,
+        candidate_overrides=candidate_overrides,
     )
     scored_rows: list[dict[str, Any]] = []
 

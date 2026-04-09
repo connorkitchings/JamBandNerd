@@ -36,7 +36,7 @@ Prediction entry points (band-specific wrappers):
 
 ## Recovery and rebuild
 
-- `rebuild_prediction_songs.py` — rebuild the `prediction_songs` projection from canonical prediction tables
+- `rebuild_prediction_songs.py` — rebuild the `prediction_songs` projection from canonical prediction tables; supports bounded `--reference-date-from/--reference-date-to` window reconciliation
 - `rebuild_derived_data.py` — rebuild predictions, `prediction_songs`, and/or accuracy tables band by band with per-model phase logging and just-in-time clearing
 - `backfill_predictions.py` — regenerate historical predictions for one or more band/model combinations
 - `wipe_band_data.py` — clear derived outputs per band/model
@@ -47,8 +47,9 @@ Prediction entry points (band-specific wrappers):
 - `audit_raw_data.py` — run the raw-data audit across one band or all supported bands
 - `audit_shared_model_inputs.py` — audit normalized shared model-input field availability across bands before adding cross-band features
 - `check_recent_avg_gap.py` — check recent average gap for a band/model (requires `--band` and `--model`)
-- `compare_models.py` — compare any backtestable candidate model against Notebook/CK+ baselines over the current standard `last_50` window
+- `compare_models.py` — compare any backtestable candidate model against Notebook/CK+ baselines over the current standard `last_50` window; supports `--deal-overrides` JSON for hyperparameter/feature-subset ablations
 - `evaluate_deal_model.py` — compatibility wrapper that runs the generic comparison workflow for Deal
+- `analyze_ablations.py` — rank ablation JSON reports against the canonical Deal baseline and Notebook anchor, then print Batch 2 eligibility and suggested combo experiments
 
 ## Admin scripts
 

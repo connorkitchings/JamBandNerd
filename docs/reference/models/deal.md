@@ -86,6 +86,22 @@ The standard metric bundle is reported at `K=10/25/50`:
 - `recall`
 - `f1`
 
+## Latest Ablation Result
+
+Batch 1 single-factor ablations are now complete under
+`docs/reports/model_baselines/ablations/batch1/`.
+
+Outcome:
+
+- every Batch 1 config retained a passing CK+ promotion gate
+- no single-factor config satisfied the stricter Batch 2 rule of improving the
+  Deal baseline while materially closing the Notebook gap on at least two of
+  Goose, Phish, and Billy
+
+The next Deal iteration should therefore focus on new shared-safe features,
+not additional Batch 2 hyperparameter combinations from the current search
+space.
+
 ## Promotion Gate
 
 Deal remains experimental until the comparison report shows it clearing the
