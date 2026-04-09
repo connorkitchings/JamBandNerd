@@ -30,6 +30,7 @@ sys.path.insert(0, project_root)
 import logging
 
 from scripts.generate_predictions import generate_predictions
+from scripts.rebuild_prediction_songs import rebuild_prediction_songs
 from scripts.run_backtest import run_backtest
 from scripts.run_billy_collection import run_billy_collection
 from scripts.run_eggy_collection import run_eggy_collection
@@ -50,7 +51,7 @@ try:
 except ImportError:
     HAS_BACKFILL = False
 
-from scripts.collection_preflight import compute_band_preflight
+from scripts.collection_preflight import CollectionPreflight, compute_band_preflight
 
 # Suppress noisy httpx logs
 logging.getLogger("httpx").setLevel(logging.WARNING)
@@ -98,6 +99,25 @@ def _validate_band_accuracy(*, band: str, max_age_hours: int = 72) -> None:
         raise RuntimeError(
             f"Accuracy validation failed for {band}: {failures} issue(s)"
         )
+
+
+def _rebuild_band_prediction_projection(
+    *,
+    band: str,
+    preflight: CollectionPreflight | None,
+) -> None:
+    reference_date_from = None
+    reference_date_to = None
+    if preflight is not None:
+        reference_date_from = preflight.recent_window_start
+        reference_date_to = preflight.lookahead_end
+
+    rebuild_prediction_songs(
+        band=band,
+        model=None,
+        reference_date_from=reference_date_from,
+        reference_date_to=reference_date_to,
+    )
 
 
 def run_band_pipeline(band: str, skip_accuracy: bool = False) -> bool:
@@ -203,6 +223,14 @@ def run_band_pipeline(band: str, skip_accuracy: bool = False) -> bool:
                 log_with_timestamp(
                     f"[{band.upper()}] WARNING: {model.title()} Backfill failed: {e}"
                 )
+
+    if not run_step(
+        _rebuild_band_prediction_projection,
+        band,
+        "Prediction Projection Rebuild",
+        preflight=preflight,
+    ):
+        return False
 
     if not run_step(
         _validate_band_predictions, band, "Prediction Validation", max_age_hours=72

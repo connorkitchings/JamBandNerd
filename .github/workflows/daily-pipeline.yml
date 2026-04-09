@@ -272,6 +272,18 @@ jobs:
           
           echo "::endgroup::"
 
+      - name: Rebuild Prediction Projection Window
+        if: steps.preflight.outputs.should_run_collection == 'true' && steps.collection.outputs.workflow_state != 'degraded'
+        run: |
+          echo "::group::Rebuilding prediction_songs window for ${{ matrix.band }}"
+
+          uv run python scripts/rebuild_prediction_songs.py \
+            --band ${{ matrix.band }} \
+            --reference-date-from "${{ steps.preflight.outputs.recent_window_start }}" \
+            --reference-date-to "${{ steps.preflight.outputs.lookahead_end }}"
+
+          echo "::endgroup::"
+
       - name: Validate Prediction Tables
         id: prediction_validation
         if: steps.preflight.outputs.should_run_collection == 'true' && steps.collection.outputs.workflow_state != 'degraded'

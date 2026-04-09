@@ -14,6 +14,10 @@ from jambandnerd.config.bands import BAND_ID_COLUMNS
 
 SHOW_DATE_CANDIDATES = ("show_date", "showdate")
 SONG_NAME_CANDIDATES = ("song_name", "song")
+VENUE_NAME_CANDIDATES = ("venue_name",)
+CITY_CANDIDATES = ("city", "venue_city")
+STATE_CANDIDATES = ("state", "venue_state")
+COUNTRY_CANDIDATES = ("country", "venue_country")
 
 
 def _copy_first_available_column(
@@ -74,6 +78,18 @@ def normalize_prediction_inputs(
     )
     setlists = _copy_first_available_column(
         setlists, target="song_name", candidates=SONG_NAME_CANDIDATES
+    )
+    shows = _copy_first_available_column(
+        shows, target="venue_name", candidates=VENUE_NAME_CANDIDATES
+    )
+    shows = _copy_first_available_column(
+        shows, target="city", candidates=CITY_CANDIDATES
+    )
+    shows = _copy_first_available_column(
+        shows, target="state", candidates=STATE_CANDIDATES
+    )
+    shows = _copy_first_available_column(
+        shows, target="country", candidates=COUNTRY_CANDIDATES
     )
 
     _require_columns(shows, label="shows", required_columns=("show_id", "show_date"))

@@ -36,7 +36,7 @@ Prediction entry points (band-specific wrappers):
 
 ## Recovery and rebuild
 
-- `rebuild_prediction_songs.py` — rebuild the `prediction_songs` projection from canonical prediction tables
+- `rebuild_prediction_songs.py` — rebuild the `prediction_songs` projection from canonical prediction tables; supports bounded `--reference-date-from/--reference-date-to` window reconciliation
 - `rebuild_derived_data.py` — rebuild predictions, `prediction_songs`, and/or accuracy tables band by band with per-model phase logging and just-in-time clearing
 - `backfill_predictions.py` — regenerate historical predictions for one or more band/model combinations
 - `wipe_band_data.py` — clear derived outputs per band/model

@@ -29,6 +29,9 @@ DEAL_FEATURE_COLUMNS: list[str] = [
     "diff_1yr_to_alltime",
     "n_shows_same_venue",
     "n_shows_same_state",
+    "debut_age_shows",
+    "career_play_pct",
+    "novelty_rank",
 ]
 
 
@@ -141,6 +144,8 @@ def generate_deal_features(
 
         ltp = _compute_ltp_features(plays_idx, reference_index)
         total_plays = len(plays_idx)
+        debut_show_index = plays_idx[0]
+        debut_age_shows = reference_index - debut_show_index
         pct_shows_6mo = n_shows_6mo / shows_in_6mo
         pct_shows_1yr = n_shows_1yr / shows_in_1yr
         pct_shows_all_time = total_plays / total_shows
@@ -180,12 +185,29 @@ def generate_deal_features(
                     if state
                     else 0
                 ),
+                "debut_age_shows": debut_age_shows,
+                "career_play_pct": (
+                    total_plays / debut_age_shows if debut_age_shows > 0 else 0.0
+                ),
+                "novelty_rank": 0,
                 "last_played_date": pd.Timestamp(last_play_row["show_date"]),
                 "total_plays": int(total_plays),
+                "_debut_show_index": debut_show_index,
             }
         )
 
-    return pd.DataFrame(features)
+    result = pd.DataFrame(features)
+    if not result.empty:
+        debuts = result["_debut_show_index"].to_numpy()
+        totals = result["total_plays"].to_numpy()
+        debut_broadcast = debuts[:, np.newaxis]
+        total_broadcast = totals[:, np.newaxis]
+        newer_mask = debut_broadcast < debuts
+        overtaken_mask = total_broadcast < totals
+        result["novelty_rank"] = (newer_mask & overtaken_mask).sum(axis=1)
+        result = result.drop(columns=["_debut_show_index"])
+
+    return result
 
 
 def get_candidate_features(

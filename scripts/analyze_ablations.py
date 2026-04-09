@@ -115,8 +115,12 @@ def _count_focus_band_improvements(
         baseline_notebook_k25 = _extract_band_recall(
             baseline_report, window, band, "notebook", "k25"
         )
-        candidate_k10 = _extract_band_recall(report, window, band, candidate_slug, "k10")
-        candidate_k25 = _extract_band_recall(report, window, band, candidate_slug, "k25")
+        candidate_k10 = _extract_band_recall(
+            report, window, band, candidate_slug, "k10"
+        )
+        candidate_k25 = _extract_band_recall(
+            report, window, band, candidate_slug, "k25"
+        )
         notebook_k10 = _extract_band_recall(report, window, band, "notebook", "k10")
         notebook_k25 = _extract_band_recall(report, window, band, "notebook", "k25")
         values = [

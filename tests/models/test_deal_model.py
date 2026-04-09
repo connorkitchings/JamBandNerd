@@ -248,3 +248,90 @@ def test_deal_predictor_invalid_feature_columns_raises() -> None:
         assert False, "Expected ValueError for invalid feature columns"
     except ValueError as exc:
         assert "nonexistent_feature" in str(exc)
+
+
+def test_debut_features_are_present_in_candidates() -> None:
+    shows_df, setlists_df = build_deal_fixture()
+    model_data = generate_model_data(
+        shows_df, setlists_df, date(2024, 3, 20), band="goose"
+    )
+
+    candidates = get_candidate_features(
+        model_data, min_plays_threshold=2, retired_gap_threshold=200
+    )
+
+    for col in ("debut_age_shows", "career_play_pct", "novelty_rank"):
+        assert col in candidates.columns
+
+    assert (candidates["debut_age_shows"] > 0).all()
+    assert (candidates["career_play_pct"] >= 0).all()
+    assert (candidates["career_play_pct"] <= 1).all()
+    assert (candidates["novelty_rank"] >= 0).all()
+
+
+def test_debut_age_increases_for_late_debuting_songs() -> None:
+    shows_df, setlists_df = build_deal_fixture()
+    model_data = generate_model_data(
+        shows_df, setlists_df, date(2024, 3, 20), band="goose"
+    )
+
+    candidates = get_candidate_features(
+        model_data, min_plays_threshold=2, retired_gap_threshold=200
+    )
+
+    song_d_row = candidates[candidates["song_name"] == "Song D"]
+    assert not song_d_row.empty
+    song_d_debut_age = song_d_row["debut_age_shows"].iloc[0]
+    assert song_d_debut_age > 0
+
+
+def test_career_play_pct_higher_for_staple_songs() -> None:
+    shows_df, setlists_df = build_deal_fixture()
+    model_data = generate_model_data(
+        shows_df, setlists_df, date(2024, 3, 20), band="goose"
+    )
+
+    candidates = get_candidate_features(
+        model_data, min_plays_threshold=2, retired_gap_threshold=200
+    )
+
+    song_d_pct = candidates.loc[
+        candidates["song_name"] == "Song D", "career_play_pct"
+    ].iloc[0]
+    song_k_pct = candidates.loc[
+        candidates["song_name"] == "Song K", "career_play_pct"
+    ].iloc[0]
+    assert song_d_pct > song_k_pct
+
+
+def test_novelty_rank_respects_debut_and_play_count() -> None:
+    shows_df, setlists_df = build_deal_fixture()
+    model_data = generate_model_data(
+        shows_df, setlists_df, date(2024, 3, 20), band="goose"
+    )
+
+    candidates = get_candidate_features(
+        model_data, min_plays_threshold=2, retired_gap_threshold=200
+    )
+
+    assert "novelty_rank" in candidates.columns
+    assert (candidates["novelty_rank"] >= 0).all()
+
+
+def test_debut_features_in_training_frame() -> None:
+    shows_df, setlists_df = build_deal_fixture()
+    model_data = generate_model_data(
+        shows_df, setlists_df, date(2024, 3, 20), band="goose"
+    )
+
+    training_frame, _summary = build_training_frame(
+        model_data,
+        band="goose",
+        min_plays_threshold=2,
+        retired_gap_threshold=200,
+        min_training_shows=10,
+        training_window_shows=20,
+    )
+
+    for col in ("debut_age_shows", "career_play_pct", "novelty_rank"):
+        assert col in training_frame.columns

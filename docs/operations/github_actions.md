@@ -31,10 +31,11 @@ The primary production workflow. Collects raw data, generates predictions, runs 
   2. Run data collection via `scripts/run_{band}_collection.py` (with retry logic)
   3. Verify data freshness via `scripts/verify_data_freshness.py`
   4. Generate predictions for Notebook and CK+ models via `scripts/generate_predictions.py`
-  5. Validate prediction tables via `scripts/validate_prediction_tables.py`
-  6. Run backtests and save aggregate accuracy (skippable via `skip_accuracy`)
-  7. Validate accuracy tables via `scripts/validate_accuracy_tables.py`
-  8. Write per-band status summary
+  5. Rebuild the bounded `prediction_songs` projection window via `scripts/rebuild_prediction_songs.py --reference-date-from ... --reference-date-to ...`
+  6. Validate prediction tables via `scripts/validate_prediction_tables.py`
+  7. Run backtests and save aggregate accuracy (skippable via `skip_accuracy`)
+  8. Validate accuracy tables via `scripts/validate_accuracy_tables.py`
+  9. Write per-band status summary
 
 - **Band matrix**: Dynamically built from `scripts/get_all_bands.py`. Current bands: goose, phish, eggy, billy, um, wsp.
 - **Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`; `PHISH_API_KEY` for Phish only.

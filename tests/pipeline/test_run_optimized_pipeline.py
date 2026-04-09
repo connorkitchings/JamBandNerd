@@ -70,6 +70,11 @@ def pipeline_recorder(monkeypatch, preflight_stub):
     )
     monkeypatch.setattr(
         run_optimized_pipeline,
+        "rebuild_prediction_songs",
+        record("rebuild_prediction_songs"),
+    )
+    monkeypatch.setattr(
+        run_optimized_pipeline,
         "_validate_band_predictions",
         record("validate_predictions"),
     )
@@ -95,6 +100,7 @@ def test_run_band_pipeline_executes_full_orchestrator_path(band, pipeline_record
         "generate_predictions",
         "run_backtest",
         "save_aggregate_accuracy",
+        "rebuild_prediction_songs",
         "validate_predictions",
         "validate_accuracy",
     ]
@@ -136,8 +142,14 @@ def test_run_band_pipeline_executes_full_orchestrator_path(band, pipeline_record
     }
     assert notebook_accuracy == {"band": band, "model": "notebook", "shows": 100}
     assert ckplus_accuracy == {"band": band, "model": "ckplus", "shows": 100}
-    assert pipeline_recorder[7][1]["kwargs"] == {"band": band, "max_age_hours": 72}
+    assert pipeline_recorder[7][1]["kwargs"] == {
+        "band": band,
+        "model": None,
+        "reference_date_from": "2026-03-10",
+        "reference_date_to": "2026-03-31",
+    }
     assert pipeline_recorder[8][1]["kwargs"] == {"band": band, "max_age_hours": 72}
+    assert pipeline_recorder[9][1]["kwargs"] == {"band": band, "max_age_hours": 72}
 
 
 @pytest.mark.parametrize("band", BANDS)
@@ -159,6 +171,7 @@ def test_run_band_pipeline_skip_accuracy_preserves_predictions_and_validation(
         f"{band}:collect",
         "generate_predictions",
         "generate_predictions",
+        "rebuild_prediction_songs",
         "validate_predictions",
     ]
 
