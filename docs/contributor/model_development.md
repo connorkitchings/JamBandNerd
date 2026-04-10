@@ -71,12 +71,30 @@ Promotion evidence should come from the canonical comparison workflow:
 uv run python scripts/compare_models.py --candidate-model <slug> --band all --fresh-training
 ```
 
+`compare_models.py` now maintains a local per-show cache under
+`docs/reports/model_baselines/cache/` by default so repeated development runs
+reuse exact historical scored boards instead of recomputing every show. Use
+`--no-local-cache` to disable it or `--cache-dir` to redirect the cache root.
+
 Promotion evidence should include:
 
 - current standard window: `last_50`
 - metric bundle at `K=10/25/50`: `hit_rate`, `avg_matches`, `precision`, `recall`, `f1`
 - per-band results, cross-band averages, and candidate-minus-baseline deltas
 - explicit promotion-gate outcomes versus CK+
+- `replacement_readiness` output that answers:
+  - whether the CK+ gate passed
+  - which bands remain weak
+  - whether failures look like ranking, probability quality, or both
+  - whether the model looks safe for internal shadow/canary use
+
+For experimental model work, the default loop is now:
+
+1. change the model or feature set
+2. run `compare_models.py` with local cache enabled
+3. inspect `replacement_readiness`, `candidate_weak_shows`, and diagnostics
+4. iterate on model quality
+5. only after that consider promotion or pipeline/web exposure
 
 Experimental feature work should also start with a shared-input audit:
 
