@@ -180,8 +180,8 @@ function TierDesktopTable({
               Song
             </th>
             {isDeal ? (
-              <th className="w-36 px-4 py-2.5 font-label text-[10px] font-medium uppercase tracking-[0.18rem] text-on-surface-variant text-right">
-                Probability
+              <th className="w-28 px-4 py-2.5 font-label text-[10px] font-medium uppercase tracking-[0.18rem] text-on-surface-variant text-right">
+                Times Played
               </th>
             ) : (
               <th className="w-32 px-4 py-2.5 font-label text-[10px] font-medium uppercase tracking-[0.18rem] text-on-surface-variant text-right">
@@ -197,8 +197,8 @@ function TierDesktopTable({
               </th>
             ) : null}
             {isDeal ? (
-              <th className="w-28 px-4 py-2.5 font-label text-[10px] font-medium uppercase tracking-[0.18rem] text-on-surface-variant text-right">
-                Times Played
+              <th className="w-36 px-4 py-2.5 font-label text-[10px] font-medium uppercase tracking-[0.18rem] text-on-surface-variant text-right">
+                Probability
               </th>
             ) : null}
             {highlightSongs ? (
@@ -229,8 +229,8 @@ function TierDesktopTable({
                   </span>
                 </td>
                 {isDeal ? (
-                  <td className="px-4 py-3.5">
-                    <ProbabilityBar probability={row.probability} />
+                  <td className="whitespace-nowrap px-4 py-3.5 text-right text-sm tabular-nums text-on-surface-variant">
+                    {row.timesPlayed !== null ? row.timesPlayed : "—"}
                   </td>
                 ) : (
                   <td className="whitespace-nowrap px-4 py-3.5 text-right text-sm tabular-nums text-on-surface-variant">
@@ -248,8 +248,8 @@ function TierDesktopTable({
                   </td>
                 ) : null}
                 {isDeal ? (
-                  <td className="whitespace-nowrap px-4 py-3.5 text-right text-sm tabular-nums text-on-surface-variant">
-                    {row.timesPlayed !== null ? row.timesPlayed : "—"}
+                  <td className="px-4 py-3.5">
+                    <ProbabilityBar probability={row.probability} />
                   </td>
                 ) : null}
                 {highlightSongs ? (
