@@ -65,16 +65,7 @@ historical scoring contract as the backtest flow.
 - `--feature-set-label <label>`: (Optional) Human-readable label for the feature set under test.
 - `--fresh-training`: (Optional) Disable persisted artifacts for training-capable candidate models during the comparison run.
 - `--include-candidate-diagnostics`: (Optional) Include model-specific diagnostics when the candidate supports them.
-- `--cache-dir <path>`: (Optional) Override the local per-show cache root. By default, `compare_models.py` writes and reuses cache artifacts under `docs/reports/model_baselines/cache/`.
-- `--no-local-cache`: (Optional) Disable local per-show cache reads and writes for the comparison run.
-- `--publish-historical-runs`: (Optional) Publish scored per-show records into `historical_prediction_runs` in addition to the local cache. Not supported with `--deal-overrides`.
 - `--deal-overrides <json>`: (Optional) JSON object of keyword arguments forwarded to the Deal predictor constructor (e.g. `'{"min_plays_threshold": 3}'`). Stored in `experiment_metadata.candidate_overrides` for reproducibility.
-
-The comparison report now also includes:
-
-- `cache_summary`: cache hit/miss/write counters plus the local cache directory
-- `candidate_weak_shows`: historically scored shows where the candidate loses most to the readiness baseline
-- `replacement_readiness`: a compact decision summary covering CK+ gate status, weak bands, likely failure drivers, and internal canary/shadow safety
 
 ### `audit_shared_model_inputs.py`
 

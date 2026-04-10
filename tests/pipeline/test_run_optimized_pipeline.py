@@ -106,11 +106,11 @@ def test_run_band_pipeline_executes_full_orchestrator_path(band, pipeline_record
     ]
 
     notebook_prediction = pipeline_recorder[1][1]["kwargs"]
-    deal_prediction = pipeline_recorder[4][1]["kwargs"]
+    ckplus_prediction = pipeline_recorder[4][1]["kwargs"]
     notebook_backtest = pipeline_recorder[2][1]["kwargs"]
-    deal_backtest = pipeline_recorder[5][1]["kwargs"]
+    ckplus_backtest = pipeline_recorder[5][1]["kwargs"]
     notebook_accuracy = pipeline_recorder[3][1]["kwargs"]
-    deal_accuracy = pipeline_recorder[6][1]["kwargs"]
+    ckplus_accuracy = pipeline_recorder[6][1]["kwargs"]
 
     assert notebook_prediction == {
         "band": band,
@@ -118,9 +118,9 @@ def test_run_band_pipeline_executes_full_orchestrator_path(band, pipeline_record
         "date_str": None,
         "exclusion_window": 3,
     }
-    assert deal_prediction == {
+    assert ckplus_prediction == {
         "band": band,
-        "model": "deal",
+        "model": "ckplus",
         "date_str": None,
         "exclusion_window": 3,
     }
@@ -132,16 +132,16 @@ def test_run_band_pipeline_executes_full_orchestrator_path(band, pipeline_record
         "shows": 100,
         "exclusion_window": 3,
     }
-    assert deal_backtest == {
+    assert ckplus_backtest == {
         "band": band,
-        "model": "deal",
+        "model": "ckplus",
         "start": None,
         "end": None,
         "shows": 100,
         "exclusion_window": 3,
     }
     assert notebook_accuracy == {"band": band, "model": "notebook", "shows": 100}
-    assert deal_accuracy == {"band": band, "model": "deal", "shows": 100}
+    assert ckplus_accuracy == {"band": band, "model": "ckplus", "shows": 100}
     assert pipeline_recorder[7][1]["kwargs"] == {
         "band": band,
         "model": None,

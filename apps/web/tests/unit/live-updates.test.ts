@@ -39,7 +39,7 @@ test("matchesPredictionUpdateScope rejects non-matching updates", () => {
     matchesPredictionUpdateScope(
       {
         band: "goose",
-        model_slug: "deal",
+        model_slug: "ckplus",
         reference_date: "2026-03-26",
       },
       scope,

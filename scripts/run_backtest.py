@@ -29,15 +29,13 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, project_root)
 
 from scripts.common import fetch_table, prepare_band_data
+from src.jambandnerd.config import HISTORICAL_PREDICTION_RUNS_TABLE
 from src.jambandnerd.config.bands import get_active_bands
 from src.jambandnerd.db.operations import (
     upsert_dataframe,
+    upsert_historical_prediction_run,
 )
-from src.jambandnerd.models.accuracy import aggregate_metrics
-from src.jambandnerd.models.comparison import (
-    build_scored_run_record,
-    publish_scored_run_record,
-)
+from src.jambandnerd.models.accuracy import aggregate_metrics, compute_per_show_metrics
 from src.jambandnerd.models.evaluation import (
     get_evaluation_reference_date,
     list_completed_shows,
@@ -168,6 +166,9 @@ def run_backtest(
                 continue
 
             serialized_predictions = serialize_model_predictions(model, preds)
+            pred_songs = [
+                prediction["song_name"] for prediction in serialized_predictions
+            ]
         except (ValueError, AttributeError, KeyError, TypeError) as e:
             print(f"{log_prefix} Error generating predictions for {ref_date}: {e}")
             continue
@@ -176,18 +177,18 @@ def run_backtest(
             continue
 
         generated_at = pd.Timestamp.now(tz=timezone.utc).isoformat()
-        scored_run = build_scored_run_record(
+        prediction_run_id = upsert_historical_prediction_run(
             band=band,
             model_slug=model,
             model_version=model_version,
-            show_id=show_id,
-            target_show_date=ref_date.isoformat(),
             reference_date=prediction_date.isoformat(),
-            actual_songs=actual_songs,
-            predictions=serialized_predictions,
+            target_show_id=show_id,
+            target_show_date=ref_date.isoformat(),
             generated_at=generated_at,
+            predictions=serialized_predictions,
+            actual_songs=actual_songs,
+            table_name=HISTORICAL_PREDICTION_RUNS_TABLE,
         )
-        prediction_run_id = publish_scored_run_record(scored_run)
 
         show_metrics = {
             "band": band,
@@ -200,7 +201,7 @@ def run_backtest(
         }
 
         for k in [10, 25, 50]:
-            metrics = scored_run["metrics"][f"k{k}"]
+            metrics = compute_per_show_metrics(pred_songs, actual_songs, k)
             show_metrics[f"k{k}_hit"] = int(metrics["hit"])
             show_metrics[f"k{k}_matches"] = int(metrics["matches"])
             show_metrics[f"k{k}_precision"] = metrics["precision"]

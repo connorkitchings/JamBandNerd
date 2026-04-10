@@ -15,8 +15,9 @@ function buildRow(songName: string, rank: number): PredictionRow {
     recentAvgGap: null,
     gapRatio: null,
     gapZScore: null,
-
+    ckplusScore: null,
     probability: null,
+    timesPlayed: null,
     tier: "expected",
   };
 }
