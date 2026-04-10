@@ -20,24 +20,15 @@ DEAL_FEATURE_COLUMNS: list[str] = [
     "recent_avg_ltp",
     "overdue_metric",
     "gap_z_score",
-    "gap_vs_recent_ratio",
-    "gap_percentile",
-    "recent_gap_delta",
     "plays_past_year",
     "plays_past_2yr",
-    "plays_past_90d",
     "pct_shows_6mo",
     "pct_shows_1yr",
     "pct_shows_all_time",
-    "pct_shows_90d",
-    "diff_90d_to_1yr",
     "diff_6mo_to_1yr",
     "diff_1yr_to_alltime",
-    "recent_play_share_90d",
-    "decayed_play_sum_180d",
     "n_shows_same_venue",
     "n_shows_same_state",
-    "days_since_last_play",
     "debut_age_shows",
     "career_play_pct",
     "novelty_rank",
@@ -88,9 +79,6 @@ def _compute_ltp_features(
     current_gap = reference_index - plays_idx[-1]
     std_gap = float(np.std(gaps, ddof=0)) if gaps else 0.0
     gap_z_score = (current_gap - avg_ltp) / std_gap if std_gap > 0 else 0.0
-    gap_percentile = (
-        float(sum(gap <= current_gap for gap in gaps) / len(gaps)) if gaps else 0.0
-    )
 
     return {
         "avg_ltp": avg_ltp,
@@ -98,11 +86,6 @@ def _compute_ltp_features(
         "overdue_metric": current_gap / avg_ltp if avg_ltp > 0 else 0.0,
         "gap_z_score": gap_z_score,
         "current_gap": current_gap,
-        "gap_vs_recent_ratio": (
-            current_gap / recent_avg_ltp if recent_avg_ltp > 0 else 0.0
-        ),
-        "gap_percentile": gap_percentile,
-        "recent_gap_delta": current_gap - recent_avg_ltp,
     }
 
 
@@ -132,13 +115,6 @@ def generate_deal_features(
             & (plays["show_date"] < reference_date)
         ]["show_index"].nunique(),
     )
-    shows_in_90d = max(
-        1,
-        plays[
-            (plays["show_date"] >= reference_date - timedelta(days=90))
-            & (plays["show_date"] < reference_date)
-        ]["show_index"].nunique(),
-    )
     shows_in_1yr = max(
         1,
         plays[
@@ -157,10 +133,6 @@ def generate_deal_features(
             (song_plays["show_date"] >= reference_date - timedelta(days=182))
             & (song_plays["show_date"] < reference_date)
         ]["show_index"].nunique()
-        n_shows_90d = song_plays[
-            (song_plays["show_date"] >= reference_date - timedelta(days=90))
-            & (song_plays["show_date"] < reference_date)
-        ]["show_index"].nunique()
         n_shows_1yr = song_plays[
             (song_plays["show_date"] >= reference_date - timedelta(days=365))
             & (song_plays["show_date"] < reference_date)
@@ -174,20 +146,13 @@ def generate_deal_features(
         total_plays = len(plays_idx)
         debut_show_index = plays_idx[0]
         debut_age_shows = reference_index - debut_show_index
-        pct_shows_90d = n_shows_90d / shows_in_90d
         pct_shows_6mo = n_shows_6mo / shows_in_6mo
         pct_shows_1yr = n_shows_1yr / shows_in_1yr
         pct_shows_all_time = total_plays / total_shows
 
         last_play_row = song_plays.sort_values("show_index").iloc[-1]
-        last_played_date = pd.Timestamp(last_play_row["show_date"])
-        days_since_last_play = int((reference_date - last_played_date).days)
         venue_name = last_play_row.get("venue_name")
         state = last_play_row.get("state")
-        days_since_play = (
-            reference_date - pd.to_datetime(song_plays["show_date"], errors="coerce")
-        ).dt.days.clip(lower=0)
-        decayed_play_sum_180d = float(np.exp(-days_since_play / 180.0).sum())
 
         features.append(
             {
@@ -197,23 +162,13 @@ def generate_deal_features(
                 "recent_avg_ltp": ltp["recent_avg_ltp"],
                 "overdue_metric": ltp["overdue_metric"],
                 "gap_z_score": ltp["gap_z_score"],
-                "gap_vs_recent_ratio": ltp["gap_vs_recent_ratio"],
-                "gap_percentile": ltp["gap_percentile"],
-                "recent_gap_delta": ltp["recent_gap_delta"],
                 "plays_past_year": int(n_shows_1yr),
                 "plays_past_2yr": int(n_shows_2yr),
-                "plays_past_90d": int(n_shows_90d),
-                "pct_shows_90d": pct_shows_90d,
                 "pct_shows_6mo": pct_shows_6mo,
                 "pct_shows_1yr": pct_shows_1yr,
                 "pct_shows_all_time": pct_shows_all_time,
-                "diff_90d_to_1yr": pct_shows_90d - pct_shows_1yr,
                 "diff_6mo_to_1yr": pct_shows_6mo - pct_shows_1yr,
                 "diff_1yr_to_alltime": pct_shows_1yr - pct_shows_all_time,
-                "recent_play_share_90d": (
-                    n_shows_90d / n_shows_1yr if n_shows_1yr > 0 else 0.0
-                ),
-                "decayed_play_sum_180d": decayed_play_sum_180d,
                 "n_shows_same_venue": (
                     int(
                         song_plays[song_plays["venue_name"] == venue_name][
@@ -230,13 +185,12 @@ def generate_deal_features(
                     if state
                     else 0
                 ),
-                "days_since_last_play": days_since_last_play,
                 "debut_age_shows": debut_age_shows,
                 "career_play_pct": (
                     total_plays / debut_age_shows if debut_age_shows > 0 else 0.0
                 ),
                 "novelty_rank": 0,
-                "last_played_date": last_played_date,
+                "last_played_date": pd.Timestamp(last_play_row["show_date"]),
                 "total_plays": int(total_plays),
                 "_debut_show_index": debut_show_index,
             }

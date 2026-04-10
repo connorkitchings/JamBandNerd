@@ -138,36 +138,17 @@ function TierSectionHeader({
   );
 }
 
-function ProbabilityBar({ probability }: { probability: number | null }) {
-  if (probability === null) return <span className="text-sm tabular-nums text-on-surface-variant">—</span>;
-  const pct = Math.round(probability * 1000) / 10; // one decimal, e.g. 12.3
-  const fillPct = Math.min(probability * 100, 100);
-  return (
-    <div className="relative flex h-6 w-full items-center overflow-hidden rounded-full bg-surface-container">
-      <div
-        className="absolute inset-y-0 left-0 rounded-full bg-primary/20"
-        style={{ width: `${fillPct}%` }}
-      />
-      <span className="relative w-full pr-2.5 text-right font-mono text-xs font-medium tabular-nums text-on-surface-variant">
-        {pct.toFixed(1)}%
-      </span>
-    </div>
-  );
-}
-
 function TierDesktopTable({
   compact,
   highlightSongs,
+  isCkPlus,
   rows,
-  modelSlug,
 }: {
   compact?: boolean;
   highlightSongs?: Set<string>;
+  isCkPlus: boolean;
   rows: PredictionRow[];
-  modelSlug?: string;
 }) {
-  const isDeal = modelSlug === "deal";
-
   return (
     <div className="hidden w-full overflow-x-auto md:block">
       <table className="w-full table-fixed border-collapse text-left text-sm">
@@ -176,29 +157,32 @@ function TierDesktopTable({
             <th className="w-16 px-4 py-2.5 font-label text-[10px] font-medium uppercase tracking-[0.18rem] text-on-surface-variant">
               Rank
             </th>
-            <th className="w-[36%] px-4 py-2.5 font-label text-[10px] font-medium uppercase tracking-[0.18rem] text-on-surface-variant">
+            <th
+              className={`px-4 py-2.5 font-label text-[10px] font-medium uppercase tracking-[0.18rem] text-on-surface-variant ${isCkPlus ? "w-[34%]" : "w-[44%]"}`}
+            >
               Song
             </th>
-            {isDeal ? (
-              <th className="w-36 px-4 py-2.5 font-label text-[10px] font-medium uppercase tracking-[0.18rem] text-on-surface-variant text-right">
-                Probability
-              </th>
-            ) : (
+            {!isCkPlus ? (
               <th className="w-32 px-4 py-2.5 font-label text-[10px] font-medium uppercase tracking-[0.18rem] text-on-surface-variant text-right">
                 Plays Last Year
               </th>
-            )}
+            ) : null}
             <th className="w-28 px-4 py-2.5 font-label text-[10px] font-medium uppercase tracking-[0.18rem] text-on-surface-variant text-right">
               Current Gap
             </th>
+            {isCkPlus ? (
+              <>
+                <th className="w-28 px-4 py-2.5 font-label text-[10px] font-medium uppercase tracking-[0.18rem] text-on-surface-variant text-right">
+                  Avg Gap
+                </th>
+                <th className="w-28 px-4 py-2.5 font-label text-[10px] font-medium uppercase tracking-[0.18rem] text-on-surface-variant text-right">
+                  Gap Ratio
+                </th>
+              </>
+            ) : null}
             {!compact ? (
               <th className="w-32 px-4 py-2.5 font-label text-[10px] font-medium uppercase tracking-[0.18rem] text-on-surface-variant text-right">
                 Last Played
-              </th>
-            ) : null}
-            {isDeal ? (
-              <th className="w-28 px-4 py-2.5 font-label text-[10px] font-medium uppercase tracking-[0.18rem] text-on-surface-variant text-right">
-                Times Played
               </th>
             ) : null}
             {highlightSongs ? (
@@ -228,28 +212,29 @@ function TierDesktopTable({
                     {row.songName}
                   </span>
                 </td>
-                {isDeal ? (
-                  <td className="px-4 py-3.5">
-                    <ProbabilityBar probability={row.probability} />
-                  </td>
-                ) : (
+                {!isCkPlus ? (
                   <td className="whitespace-nowrap px-4 py-3.5 text-right text-sm tabular-nums text-on-surface-variant">
                     {row.playsPastYear !== null ? row.playsPastYear : "—"}
                   </td>
-                )}
+                ) : null}
                 <td className="whitespace-nowrap px-4 py-3.5 text-right">
                   <span className="rounded-full bg-surface-container px-2.5 py-1 font-mono text-xs font-medium text-on-surface-variant">
                     {row.currentGap !== null ? row.currentGap : "—"}
                   </span>
                 </td>
+                {isCkPlus ? (
+                  <>
+                    <td className="whitespace-nowrap px-4 py-3.5 text-right text-sm tabular-nums text-on-surface-variant">
+                      {row.avgGap !== null ? row.avgGap.toFixed(1) : "—"}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3.5 text-right text-sm tabular-nums text-on-surface-variant">
+                      {row.gapRatio !== null ? `${row.gapRatio.toFixed(1)}x` : "—"}
+                    </td>
+                  </>
+                ) : null}
                 {!compact ? (
                   <td className="whitespace-nowrap px-4 py-3.5 text-right text-sm text-on-surface-variant">
                     {row.lastPlayed ? formatMMDDYYYY(row.lastPlayed) : "—"}
-                  </td>
-                ) : null}
-                {isDeal ? (
-                  <td className="whitespace-nowrap px-4 py-3.5 text-right text-sm tabular-nums text-on-surface-variant">
-                    {row.timesPlayed !== null ? row.timesPlayed : "—"}
                   </td>
                 ) : null}
                 {highlightSongs ? (
@@ -268,15 +253,11 @@ function TierMobileList({
   rows,
   highlightSongs,
   secondarySongs,
-  modelSlug,
 }: {
   rows: PredictionRow[];
   highlightSongs?: Set<string>;
   secondarySongs?: Set<string>;
-  modelSlug?: string;
 }) {
-  const isDeal = modelSlug === "deal";
-
   return (
     <div className="divide-y divide-outline-variant/10 md:hidden">
       {rows.map((row) => {
@@ -291,11 +272,11 @@ function TierMobileList({
             key={`${row.rank}-${row.songName}`}
             className={`flex items-center justify-between px-4 py-4 ${isHighlighted ? "bg-green-950/20" : ""}`}
           >
-            <div className="flex min-w-0 flex-1 items-center gap-3">
-              <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-surface-container-high/60 font-headline text-sm font-bold tabular-nums text-on-surface-variant">
+            <div className="flex items-center gap-3">
+              <span className="flex size-8 items-center justify-center rounded-full bg-surface-container-high/60 font-headline text-sm font-bold tabular-nums text-on-surface-variant">
                 {row.rank}
               </span>
-              <div className="min-w-0 flex-1">
+              <div>
                 <p
                   className={`font-headline text-sm font-medium ${isHighlighted ? "text-green-300" : "text-on-surface"}`}
                 >
@@ -311,34 +292,17 @@ function TierMobileList({
                     </span>
                   ) : null}
                 </p>
-                {isDeal ? (
-                  <p className="text-xs text-on-surface-variant">
-                    {row.probability !== null
-                      ? `${(row.probability * 100).toFixed(1)}% probability`
-                      : ""}
-                    {row.currentGap !== null
-                      ? ` · ${row.currentGap} ${row.currentGap === 1 ? "show" : "shows"} ago`
-                      : ""}
-                    {row.lastPlayed ? ` · ${formatMMDDYYYY(row.lastPlayed)}` : ""}
-                  </p>
-                ) : (
-                  <p className="text-xs text-on-surface-variant">
-                    {row.currentGap !== null
-                      ? `${row.currentGap} ${row.currentGap === 1 ? "show" : "shows"} ago`
-                      : "Current gap unknown"}
-                    {row.playsPastYear !== null
-                      ? ` · ${row.playsPastYear} play${row.playsPastYear === 1 ? "" : "s"} last year`
-                      : ""}
-                    {row.lastPlayed ? ` · ${formatMMDDYYYY(row.lastPlayed)}` : ""}
-                  </p>
-                )}
+                <p className="text-xs text-on-surface-variant">
+                  {row.currentGap !== null
+                    ? `${row.currentGap} ${row.currentGap === 1 ? "show" : "shows"} ago`
+                    : "Current gap unknown"}
+                  {row.playsPastYear !== null
+                    ? ` · ${row.playsPastYear} play${row.playsPastYear === 1 ? "" : "s"} last year`
+                    : ""}
+                  {row.lastPlayed ? ` · ${formatMMDDYYYY(row.lastPlayed)}` : ""}
+                </p>
               </div>
             </div>
-            {isDeal && row.timesPlayed !== null ? (
-              <span className="ml-3 shrink-0 text-right font-mono text-xs tabular-nums text-on-surface-variant">
-                {row.timesPlayed}×
-              </span>
-            ) : null}
           </div>
         );
       })}
@@ -359,6 +323,8 @@ function TierSection({
 
   if (rows.length === 0) return null;
 
+  const isCkPlus = modelSlug === "ckplus";
+
   return (
     <div className="editorial-panel overflow-hidden rounded-[1.5rem]">
       <TierSectionHeader
@@ -376,14 +342,13 @@ function TierSection({
         <TierDesktopTable
           compact={compact}
           highlightSongs={highlightSongs}
+          isCkPlus={isCkPlus}
           rows={rows}
-          modelSlug={modelSlug}
         />
         <TierMobileList
           rows={rows}
           highlightSongs={highlightSongs}
           secondarySongs={secondarySongs}
-          modelSlug={modelSlug}
         />
 
         <div className="border-t border-outline-variant/10 px-4 py-3">

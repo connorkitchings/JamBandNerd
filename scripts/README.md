@@ -47,7 +47,7 @@ Prediction entry points (band-specific wrappers):
 - `audit_raw_data.py` — run the raw-data audit across one band or all supported bands
 - `audit_shared_model_inputs.py` — audit normalized shared model-input field availability across bands before adding cross-band features
 - `check_recent_avg_gap.py` — check recent average gap for a band/model (requires `--band` and `--model`)
-- `compare_models.py` — compare any backtestable candidate model against Notebook/CK+ baselines over the current standard `last_50` window; now writes and reuses a local per-show model-test cache by default, supports `--cache-dir`, `--no-local-cache`, `--publish-historical-runs`, and `--deal-overrides` JSON for hyperparameter/feature-subset ablations, and emits `replacement_readiness` plus `candidate_weak_shows` to guide the next experimental-model iteration
+- `compare_models.py` — compare any backtestable candidate model against Notebook/CK+ baselines over the current standard `last_50` window; supports `--deal-overrides` JSON for hyperparameter/feature-subset ablations
 - `evaluate_deal_model.py` — compatibility wrapper that runs the generic comparison workflow for Deal
 - `analyze_ablations.py` — rank ablation JSON reports against the canonical Deal baseline and Notebook anchor, then print Batch 2 eligibility and suggested combo experiments
 

@@ -24,23 +24,23 @@ def test_registry_includes_expected_models() -> None:
 def test_registry_capability_lists_are_flag_driven() -> None:
     assert [definition.slug for definition in list_pipeline_models()] == [
         "notebook",
-        "deal",
+        "ckplus",
     ]
     assert [definition.slug for definition in list_web_models()] == [
         "notebook",
-        "deal",
+        "ckplus",
     ]
     assert [definition.slug for definition in list_backfill_models()] == [
         "notebook",
-        "deal",
+        "ckplus",
     ]
     assert [definition.slug for definition in list_accuracy_validation_models()] == [
         "notebook",
-        "deal",
+        "ckplus",
     ]
     assert [definition.slug for definition in list_aggregate_accuracy_models()] == [
         "notebook",
-        "deal",
+        "ckplus",
     ]
 
 

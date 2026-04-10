@@ -53,8 +53,8 @@ export default function DataUsePage() {
             derived analytics.
           </p>
           <p>
-            The Notebook method is based on the method developed by Phish.net. Deal is a
-            personally developed logistic ranking model created for this site.
+            The Notebook method is based on the method developed by Phish.net. CK+ is a
+            personally developed model created for this site.
           </p>
         </div>
       </SectionCard>

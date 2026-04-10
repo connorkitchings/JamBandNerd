@@ -36,6 +36,7 @@ export type PredictionRow = {
   recentAvgGap: number | null;
   gapRatio: number | null;
   gapZScore: number | null;
+  ckplusScore: number | null;
   probability: number | null;
   timesPlayed: number | null;
   tier: LikelihoodTier;
@@ -287,6 +288,7 @@ function normalizePredictionRows(rows: JsonPrediction[]): PredictionRow[] {
       recentAvgGap: parseNumber(row.recent_avg_gap),
       gapRatio: parseNumber(row.gap_ratio),
       gapZScore: parseNumber(row.gap_z_score),
+      ckplusScore: parseNumber(row.ckplus_score),
       probability,
       timesPlayed: parseNumber(row.times_played),
       tier: computeTier(rank, probability),
@@ -318,6 +320,7 @@ function normalizeProjectedPredictionRows(rows: ProjectionRow[]): PredictionRow[
       recentAvgGap: parseNumber(payload.recent_avg_gap),
       gapRatio: parseNumber(payload.gap_ratio),
       gapZScore: parseNumber(payload.gap_z_score),
+      ckplusScore: parseNumber(payload.ckplus_score),
       probability,
       timesPlayed: parseNumber(payload.times_played),
       tier: computeTier(rank, probability),
@@ -399,7 +402,7 @@ async function fetchProjectedPredictionSnapshot(
     .eq("band", band)
     .eq("model_slug", model);
 
-  const todayIso = new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
+  const todayIso = new Date().toISOString().slice(0, 10);
 
   if (referenceDate) {
     seedQuery = seedQuery.eq("reference_date", referenceDate);
@@ -1038,7 +1041,7 @@ export const getNextShowDetails = cache(
     }
 
     try {
-      const todayIso = new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
+      const todayIso = new Date().toISOString().slice(0, 10);
       if (bandState.band === "um") {
         const { data: upcomingData, error: upcomingError } = await client
           .from("um_upcoming_shows")
@@ -1217,7 +1220,7 @@ export const getLastShowSetlist = cache(
 
     try {
       const { showsTable } = bandState.bandEntry;
-      const todayIso = new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
+      const todayIso = new Date().toISOString().slice(0, 10);
 
       const { data: recentShows, error } = await client
         .from(showsTable)
@@ -1447,7 +1450,11 @@ export const getReplaySnapshot = cache(
           acc[entry.model] = entry.snapshot;
           return acc;
         },
-        Object.fromEntries(ACTIVE_MODELS.map((slug) => [slug, null])) as Record<ModelSlug, PredictionSnapshot | null>,
+        {
+          notebook: null,
+          ckplus: null,
+          deal: null,
+        },
       );
 
       const setlist =

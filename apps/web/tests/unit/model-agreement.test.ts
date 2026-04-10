@@ -15,7 +15,7 @@ function buildRows(songNames: string[]): PredictionRow[] {
     recentAvgGap: null,
     gapRatio: null,
     gapZScore: null,
-
+    ckplusScore: null,
     probability: null,
     timesPlayed: null,
     tier: "possible",

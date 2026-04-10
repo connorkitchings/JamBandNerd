@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "jambandnerd"
-version = "0.2.0"
+version = "0.1.0"
 description = "Modular data science platform for jam band setlists, pipelines, and analytics."
 authors = [
   { name = "Connor Kitchings" }
@@ -48,6 +48,7 @@ collect-phish = "scripts.run_phish_collection:main"
 collect-billy = "scripts.run_billy_collection:main"
 collect-um = "scripts.run_um_collection:main"
 predict-billy = "scripts.generate_billy_predictions:main"
+predict-billy-ckplus = "scripts.generate_billy_ckplus_predictions:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

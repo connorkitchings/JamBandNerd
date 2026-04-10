@@ -19,25 +19,16 @@ sys.path.insert(0, project_root)
 from scripts.common import fetch_table, prepare_band_data, resolve_reference_date
 from src.jambandnerd.config.bands import get_active_bands
 from src.jambandnerd.models.comparison import (
-    PRIMARY_BASELINE_SLUG,
-    build_candidate_weak_show_summary,
     build_cross_band_summary,
     build_delta_summary,
     build_evaluation_predictor,
     build_promotion_gate,
-    build_replacement_readiness_summary,
     extract_experiment_metadata,
     maybe_build_model_diagnostics,
     score_model_on_target_shows,
     summarize_scored_rows,
 )
 from src.jambandnerd.models.evaluation import list_completed_shows, select_target_shows
-from src.jambandnerd.models.model_test_cache import (
-    DEFAULT_MODEL_TEST_CACHE_ROOT,
-    LocalModelTestCache,
-    build_default_cache_dir,
-    build_experiment_cache_identity,
-)
 from src.jambandnerd.models.registry import (
     get_model_definition,
     list_backtest_models,
@@ -126,8 +117,6 @@ def _build_empty_window_report() -> dict[str, Any]:
         "metrics_by_band": {},
         "cross_band_summary": {},
         "deltas": {},
-        "candidate_weak_shows": {},
-        "replacement_readiness": {},
         "promotion_gate": {
             "candidate_model": "",
             "baseline_model": "",
@@ -135,38 +124,6 @@ def _build_empty_window_report() -> dict[str, Any]:
             "reason": "missing_summary",
         },
     }
-
-
-def _build_local_cache(
-    *,
-    candidate_model: str,
-    baseline_models: list[str],
-    requested_bands: list[str],
-    windows: list[dict[str, Any]],
-    exclusion_window: int,
-    feature_set_label: str,
-    fresh_training: bool,
-    candidate_overrides: dict[str, Any] | None = None,
-    cache_root: Path | None = None,
-) -> LocalModelTestCache:
-    identity = build_experiment_cache_identity(
-        candidate_model=candidate_model,
-        baseline_models=baseline_models,
-        bands=requested_bands,
-        windows=windows,
-        exclusion_window=exclusion_window,
-        feature_set_label=feature_set_label,
-        fresh_training=fresh_training,
-        candidate_overrides=candidate_overrides,
-    )
-    cache_dir = build_default_cache_dir(
-        identity=identity,
-        cache_root=cache_root,
-    )
-    return LocalModelTestCache(
-        cache_dir=cache_dir,
-        experiment_identity=identity,
-    )
 
 
 def _build_base_report(
@@ -355,49 +312,6 @@ def _extract_diagnostics_by_band(report: dict[str, Any]) -> dict[str, Any]:
     return diagnostics_by_band
 
 
-def _build_candidate_diagnostics_summary(
-    diagnostics_by_band: dict[str, Any],
-) -> dict[str, Any]:
-    if not diagnostics_by_band:
-        return {
-            "bands_with_diagnostics": 0,
-            "status": "missing",
-        }
-
-    def _average(path: tuple[str, ...]) -> float:
-        values: list[float] = []
-        for diagnostics in diagnostics_by_band.values():
-            current: Any = diagnostics
-            for key in path:
-                if not isinstance(current, dict) or key not in current:
-                    current = None
-                    break
-                current = current[key]
-            if isinstance(current, (int, float)):
-                values.append(float(current))
-        return float(sum(values) / len(values)) if values else 0.0
-
-    return {
-        "bands_with_diagnostics": len(diagnostics_by_band),
-        "status": "available",
-        "avg_training_probability_gap": _average(
-            ("training_separation_summary", "probability_gap")
-        ),
-        "avg_current_probability_std": _average(
-            ("current_candidate_probability_distribution", "std")
-        ),
-        "avg_current_probability_range": _average(
-            ("current_candidate_probability_quality", "probability_range")
-        ),
-        "avg_top_10_mass_share": _average(
-            ("current_candidate_probability_quality", "top_10_mass_share")
-        ),
-        "avg_expected_calibration_error": _average(
-            ("calibration_error_summary", "expected_calibration_error")
-        ),
-    }
-
-
 def _refresh_window_reports(
     *,
     report: dict[str, Any],
@@ -406,11 +320,6 @@ def _refresh_window_reports(
     diagnostics_by_band: dict[str, Any],
 ) -> None:
     model_slugs = [candidate_model, *baseline_models]
-    readiness_baseline = (
-        PRIMARY_BASELINE_SLUG
-        if PRIMARY_BASELINE_SLUG in baseline_models
-        else baseline_models[0]
-    )
     for window_report in report["windows"].values():
         metrics_by_band = window_report.get("metrics_by_band", {})
         cross_band_summary = build_cross_band_summary(
@@ -432,22 +341,10 @@ def _refresh_window_reports(
             cross_band_summary=cross_band_summary,
             candidate_slug=candidate_model,
         )
-        window_report["replacement_readiness"] = build_replacement_readiness_summary(
-            metrics_by_band=metrics_by_band,
-            cross_band_summary=cross_band_summary,
-            candidate_slug=candidate_model,
-            baseline_slug=readiness_baseline,
-            diagnostics_by_band=diagnostics_by_band,
-            weak_show_summaries=window_report.get("candidate_weak_shows", {}),
-        )
         if diagnostics_by_band:
             window_report["candidate_diagnostics"] = dict(diagnostics_by_band)
-            window_report["candidate_diagnostics_summary"] = (
-                _build_candidate_diagnostics_summary(diagnostics_by_band)
-            )
         else:
             window_report.pop("candidate_diagnostics", None)
-            window_report.pop("candidate_diagnostics_summary", None)
 
 
 def _mark_band_completed(report: dict[str, Any], band: str) -> None:
@@ -473,8 +370,6 @@ def generate_report(
     output_path: Path | None = None,
     existing_report: dict[str, Any] | None = None,
     candidate_overrides: dict[str, Any] | None = None,
-    local_cache: LocalModelTestCache | None = None,
-    publish_historical_runs: bool = False,
 ) -> dict[str, Any]:
     requested_bands = list(bands)
     report = (
@@ -491,8 +386,6 @@ def generate_report(
             candidate_overrides=candidate_overrides,
         )
     )
-    if local_cache is not None:
-        report["cache_summary"] = local_cache.build_summary()
     diagnostics_by_band = _extract_diagnostics_by_band(report)
     completed_bands = report.get("completed_bands", [])
     pending_bands = [band for band in requested_bands if band not in completed_bands]
@@ -505,8 +398,6 @@ def generate_report(
             diagnostics_by_band=diagnostics_by_band,
         )
         report["report_status"] = "complete"
-        if local_cache is not None:
-            report["cache_summary"] = local_cache.build_summary()
         if output_path is not None:
             _write_json_report(output_path, report)
         return report
@@ -565,7 +456,6 @@ def generate_report(
             )
             metrics_by_band = window_report.setdefault("metrics_by_band", {})
             metrics_by_band[context.band] = {}
-            scored_rows_by_model: dict[str, list[dict[str, Any]]] = {}
             for model_slug in model_slugs:
                 _log_progress(
                     f"[compare] {context.band} {window_label}: running {model_slug}..."
@@ -588,38 +478,11 @@ def generate_report(
                         f"({progress['target_show_date'].isoformat()}, "
                         f"id={progress['show_id']})"
                     ),
-                    local_cache=local_cache,
-                    publish_historical_runs=publish_historical_runs,
-                    experiment_context={
-                        "window_label": window_label,
-                        "feature_set_label": feature_set_label,
-                        "fresh_training": fresh_training,
-                        "exclusion_window": exclusion_window,
-                        "candidate_overrides": candidate_overrides or None,
-                    },
                 )
-                scored_rows_by_model[model_slug] = scored_rows
                 metrics_by_band[context.band][model_slug] = summarize_scored_rows(
                     scored_rows
                 )
                 band_scored = True
-
-            readiness_baseline = (
-                PRIMARY_BASELINE_SLUG
-                if PRIMARY_BASELINE_SLUG in scored_rows_by_model
-                else baseline_models[0]
-            )
-            if (
-                candidate_model in scored_rows_by_model
-                and readiness_baseline in scored_rows_by_model
-            ):
-                candidate_weak_shows = window_report.setdefault(
-                    "candidate_weak_shows", {}
-                )
-                candidate_weak_shows[context.band] = build_candidate_weak_show_summary(
-                    candidate_rows=scored_rows_by_model[candidate_model],
-                    baseline_rows=scored_rows_by_model[readiness_baseline],
-                )
 
         if not band_scored:
             _log_progress(
@@ -635,8 +498,6 @@ def generate_report(
             diagnostics_by_band=diagnostics_by_band,
         )
         if output_path is not None:
-            if local_cache is not None:
-                report["cache_summary"] = local_cache.build_summary()
             _write_json_report(output_path, report)
 
     if not any(
@@ -658,8 +519,6 @@ def generate_report(
         if report.get("completed_bands", []) == requested_bands
         else "partial"
     )
-    if local_cache is not None:
-        report["cache_summary"] = local_cache.build_summary()
     if output_path is not None:
         _write_json_report(output_path, report)
 
@@ -723,26 +582,6 @@ def main() -> None:
     )
     parser.add_argument("--output", help="Optional path to write the JSON report.")
     parser.add_argument(
-        "--cache-dir",
-        help=(
-            "Optional root directory for local per-show model-test cache artifacts. "
-            f"Defaults to {DEFAULT_MODEL_TEST_CACHE_ROOT}."
-        ),
-    )
-    parser.add_argument(
-        "--no-local-cache",
-        action="store_true",
-        help="Disable local per-show cache reads and writes for this run.",
-    )
-    parser.add_argument(
-        "--publish-historical-runs",
-        action="store_true",
-        help=(
-            "Publish scored per-show records into historical_prediction_runs in "
-            "addition to local cache artifacts."
-        ),
-    )
-    parser.add_argument(
         "--deal-overrides",
         default=None,
         help=(
@@ -768,12 +607,6 @@ def main() -> None:
         if not isinstance(candidate_overrides, dict):
             raise ValueError("--deal-overrides must be a JSON object.")
 
-    if args.publish_historical_runs and candidate_overrides:
-        raise ValueError(
-            "--publish-historical-runs is not supported with candidate overrides "
-            "because historical_prediction_runs cannot distinguish experimental variants."
-        )
-
     existing_report = None
     if output_path is not None:
         existing_report = _load_resumable_report(
@@ -794,24 +627,6 @@ def main() -> None:
                 f"{', '.join(existing_report.get('completed_bands', [])) or 'none'}."
             )
 
-    local_cache = None
-    if not args.no_local_cache:
-        cache_root = Path(args.cache_dir) if args.cache_dir else None
-        local_cache = _build_local_cache(
-            candidate_model=args.candidate_model,
-            baseline_models=baseline_models,
-            requested_bands=band_list,
-            windows=window_specs,
-            exclusion_window=args.exclusion_window,
-            feature_set_label=args.feature_set_label,
-            fresh_training=args.fresh_training,
-            candidate_overrides=candidate_overrides,
-            cache_root=cache_root,
-        )
-        _log_progress(
-            f"[compare] Using local model-test cache at {local_cache.cache_dir}."
-        )
-
     report = generate_report(
         candidate_model=args.candidate_model,
         baseline_models=baseline_models,
@@ -824,8 +639,6 @@ def main() -> None:
         output_path=output_path,
         existing_report=existing_report,
         candidate_overrides=candidate_overrides,
-        local_cache=local_cache,
-        publish_historical_runs=args.publish_historical_runs,
     )
     output = _serialize_report(report)
     print(output)

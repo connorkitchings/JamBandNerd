@@ -248,24 +248,24 @@ jobs:
             echo "Consider running the collection script manually to fetch missing setlists."
           fi
           
-      - name: Generate Predictions (Notebook & Deal)
+      - name: Generate Predictions (Notebook & CK+)
         id: predictions
         if: steps.preflight.outputs.should_run_collection == 'true' && steps.collection.outputs.workflow_state != 'degraded'
         run: |
           echo "::group::Generating predictions for ${{ matrix.band }}"
-
+          
           # Generate for the next upcoming show (default behavior)
           uv run python scripts/generate_predictions.py --band ${{ matrix.band }} --model notebook
-          uv run python scripts/generate_predictions.py --band ${{ matrix.band }} --model deal
-
+          uv run python scripts/generate_predictions.py --band ${{ matrix.band }} --model ckplus
+          
           # Also generate for the most recent completed show to power setlist highlighting
           echo "Finding last completed show date..."
           LAST_COMPLETED_DATE=$(uv run python scripts/get_last_completed_show_date.py --band ${{ matrix.band }})
-
+          
           if [[ -n "$LAST_COMPLETED_DATE" ]]; then
             echo "Last completed show date is $LAST_COMPLETED_DATE. Generating predictions for this date."
             uv run python scripts/generate_predictions.py --band ${{ matrix.band }} --model notebook --date $LAST_COMPLETED_DATE
-            uv run python scripts/generate_predictions.py --band ${{ matrix.band }} --model deal --date $LAST_COMPLETED_DATE
+            uv run python scripts/generate_predictions.py --band ${{ matrix.band }} --model ckplus --date $LAST_COMPLETED_DATE
           else
             echo "Could not determine last completed show date. Skipping predictions for it."
           fi
@@ -300,15 +300,15 @@ jobs:
           
           # Run backtest for last 100 shows to populate per-show accuracy
           uv run python scripts/run_backtest.py --band ${{ matrix.band }} --model notebook --shows 100
-          uv run python scripts/run_backtest.py --band ${{ matrix.band }} --model deal --shows 100
-
+          uv run python scripts/run_backtest.py --band ${{ matrix.band }} --model ckplus --shows 100
+          
           echo "::endgroup::"
-
+          
           echo "::group::Calculating aggregate accuracy for ${{ matrix.band }}"
-
+          
           # Calculate aggregate accuracy from the per-show data
           uv run python scripts/save_aggregate_accuracy.py --band ${{ matrix.band }} --model notebook --shows 100
-          uv run python scripts/save_aggregate_accuracy.py --band ${{ matrix.band }} --model deal --shows 100
+          uv run python scripts/save_aggregate_accuracy.py --band ${{ matrix.band }} --model ckplus --shows 100
           
           echo "::endgroup::"
 

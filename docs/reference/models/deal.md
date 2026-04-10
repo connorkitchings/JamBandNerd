@@ -29,13 +29,9 @@ Deal only uses features that can be derived from the shared historical play
 contract. The active feature set includes:
 
 - current gap and last-time-played gap summaries
-- gap-pressure features relative to recent cadence, including percentile and
-  ratio views of the current gap
 - overdue and gap z-score signals
-- recent-play frequency windows, including 90-day, 6-month, 1-year, and
-  decayed-recency counts
+- recent-play frequency windows
 - recent-vs-long-term play-rate deltas
-- last-play recency in calendar days
 - optional normalized show-context counts when present in shared inputs
 
 All feature generation is gated by the same anti-leakage rule used elsewhere in
@@ -73,33 +69,7 @@ This emits a JSON report with:
 - `cross_band_summary`
 - `deltas`
 - `promotion_gate`
-- `replacement_readiness`
-- `candidate_weak_shows`
 - `experiment_metadata`
-- optional `candidate_diagnostics` and `candidate_diagnostics_summary` when
-  diagnostics are requested
-
-The Deal diagnostics now include:
-
-- training and current-candidate probability distributions
-- current-candidate probability spread and top-mass summaries
-- training positive-vs-negative separation summaries
-- calibration buckets plus aggregate calibration-error summaries
-
-The `replacement_readiness` section is the decision surface for internal Deal
-testing. It summarizes:
-
-- whether Deal clears the CK+ promotion gate
-- cross-band recall deltas against CK+
-- which bands are still weak
-- whether each weak band looks like a ranking issue, a probability-quality
-  issue, or both
-- whether Deal looks safe for internal shadow/canary use even if it is not yet
-  promotion-ready
-
-`candidate_weak_shows` highlights the historically scored shows where Deal
-loses most to the readiness baseline, so the next feature/debug loop can focus
-on concrete failures instead of only aggregate metrics.
 
 The current standard comparison window is:
 
@@ -173,9 +143,3 @@ for every active band.
   it now delegates to the generic comparison workflow.
 - When running historical comparisons, prefer `--fresh-training` so Deal uses
   newly trained in-memory artifacts rather than stale files on disk.
-- Prefer the cache-first loop for Deal development: seed one full
-  `--band all --fresh-training` run, then reuse the local per-show cache for
-  repeated report and diagnostics iteration.
-- The current readiness focus is internal replacement evaluation against CK+.
-  Deal should remain off pipeline and web surfaces until the comparison report
-  clears the explicit promotion gate.

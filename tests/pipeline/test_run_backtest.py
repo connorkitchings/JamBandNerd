@@ -59,8 +59,8 @@ def test_run_backtest_persists_string_show_ids(monkeypatch):
         captured["df"] = df.copy()
         captured["conflict_columns"] = list(conflict_columns)
 
-    def capture_historical_run(record):  # noqa: ANN001
-        historical_runs.append(dict(record))
+    def capture_historical_run(**kwargs):  # noqa: ANN003
+        historical_runs.append(dict(kwargs))
         return 987
 
     monkeypatch.setattr(run_backtest_module, "fetch_table", fetch_table)
@@ -94,7 +94,7 @@ def test_run_backtest_persists_string_show_ids(monkeypatch):
     monkeypatch.setattr(run_backtest_module, "upsert_dataframe", capture_upsert)
     monkeypatch.setattr(
         run_backtest_module,
-        "publish_scored_run_record",
+        "upsert_historical_prediction_run",
         capture_historical_run,
     )
 
@@ -117,9 +117,10 @@ def test_run_backtest_persists_string_show_ids(monkeypatch):
     assert historical_runs[0]["model_slug"] == "notebook"
     assert historical_runs[0]["model_version"] == "notebook_v1"
     assert historical_runs[0]["reference_date"] == "2024-01-19"
-    assert historical_runs[0]["show_id"] == "goose-show-3"
+    assert historical_runs[0]["target_show_id"] == "goose-show-3"
     assert historical_runs[0]["target_show_date"] == "2024-01-20"
     assert historical_runs[0]["actual_songs"] == ["Song A", "Song G", "Song H"]
+    assert historical_runs[0]["table_name"] == "historical_prediction_runs"
     assert historical_runs[0]["predictions"] == [
         {
             "rank": 1,
@@ -143,4 +144,3 @@ def test_run_backtest_persists_string_show_ids(monkeypatch):
             "last_played_date": "2023-12-31",
         },
     ]
-    assert set(historical_runs[0]["metrics"].keys()) == {"k10", "k25", "k50"}
