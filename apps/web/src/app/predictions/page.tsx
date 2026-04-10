@@ -138,11 +138,11 @@ export default async function PredictionsPage({ searchParams }: Props) {
     nextShow?.city ?? null,
     nextShow?.state ?? nextShow?.country ?? null,
   ]);
-  const today = new Date().toISOString().slice(0, 10);
+  const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
   const isLiveShow = heroDate === today;
   const statusLabel =
     isLiveShow
-      ? "LIVE"
+      ? "Tonight!"
       : nextShow?.showDate
         ? "Next Show"
         : "Prediction Outlook";
