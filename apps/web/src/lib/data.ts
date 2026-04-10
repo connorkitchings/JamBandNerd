@@ -37,6 +37,7 @@ export type PredictionRow = {
   gapRatio: number | null;
   gapZScore: number | null;
   probability: number | null;
+  timesPlayed: number | null;
   tier: LikelihoodTier;
 };
 
@@ -287,6 +288,7 @@ function normalizePredictionRows(rows: JsonPrediction[]): PredictionRow[] {
       gapRatio: parseNumber(row.gap_ratio),
       gapZScore: parseNumber(row.gap_z_score),
       probability,
+      timesPlayed: parseNumber(row.times_played),
       tier: computeTier(rank, probability),
     };
   });
@@ -317,6 +319,7 @@ function normalizeProjectedPredictionRows(rows: ProjectionRow[]): PredictionRow[
       gapRatio: parseNumber(payload.gap_ratio),
       gapZScore: parseNumber(payload.gap_z_score),
       probability,
+      timesPlayed: parseNumber(payload.times_played),
       tier: computeTier(rank, probability),
     };
   });

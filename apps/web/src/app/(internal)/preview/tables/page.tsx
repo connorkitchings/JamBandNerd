@@ -24,6 +24,7 @@ const predictionRows = [
     gapRatio: 1.4,
     gapZScore: 1.2,
     probability: 0.96,
+    timesPlayed: 42,
     tier: "expected" as const,
   },
   {
@@ -37,6 +38,7 @@ const predictionRows = [
     gapRatio: 2.4,
     gapZScore: 2.0,
     probability: null,
+    timesPlayed: 18,
     tier: "possible" as const,
   },
   {
@@ -50,6 +52,7 @@ const predictionRows = [
     gapRatio: 0.5,
     gapZScore: -0.2,
     probability: 0.84,
+    timesPlayed: 31,
     tier: "expected" as const,
   },
 ];

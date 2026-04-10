@@ -17,6 +17,7 @@ function buildRow(songName: string, tier: PredictionRow["tier"], rank: number): 
     gapZScore: null,
 
     probability: null,
+    timesPlayed: null,
     tier,
   };
 }
