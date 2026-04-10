@@ -3,7 +3,7 @@ export function formatDateLabel(value: string | null) {
     return "Date unavailable";
   }
 
-  const parsed = new Date(`${value}T12:00:00Z`);
+  const parsed = new Date(`${value.slice(0, 10)}T12:00:00Z`);
   if (Number.isNaN(parsed.getTime())) {
     return value;
   }
@@ -18,8 +18,8 @@ export function formatDateLabel(value: string | null) {
 
 export function formatMMDDYYYY(value: string | null) {
   if (!value) return "—";
-  
-  const parsed = new Date(`${value}T12:00:00Z`);
+
+  const parsed = new Date(`${value.slice(0, 10)}T12:00:00Z`);
   if (Number.isNaN(parsed.getTime())) {
     return value;
   }
@@ -37,7 +37,7 @@ export function formatCompactDateLabel(value: string | null) {
     return "Unknown";
   }
 
-  const parsed = new Date(`${value}T12:00:00Z`);
+  const parsed = new Date(`${value.slice(0, 10)}T12:00:00Z`);
   if (Number.isNaN(parsed.getTime())) {
     return value;
   }
