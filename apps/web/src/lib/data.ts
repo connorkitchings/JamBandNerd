@@ -252,16 +252,7 @@ async function fetchAllRecords(
   return rows;
 }
 
-function computeTier(rank: number, probability: number | null): LikelihoodTier {
-  // When a future model supplies real probabilities, use those
-  if (probability !== null) {
-    if (probability >= 0.15) return "expected";
-    if (probability >= 0.08) return "hot";
-    if (probability >= 0.03) return "likely";
-    return "possible";
-  }
-
-  // Rank-based tiers
+function computeTier(rank: number): LikelihoodTier {
   if (rank <= 5) return "expected";
   if (rank <= 15) return "hot";
   if (rank <= 30) return "likely";
@@ -289,7 +280,7 @@ function normalizePredictionRows(rows: JsonPrediction[]): PredictionRow[] {
       gapZScore: parseNumber(row.gap_z_score),
       probability,
       timesPlayed: parseNumber(row.times_played),
-      tier: computeTier(rank, probability),
+      tier: computeTier(rank),
     };
   });
 }
@@ -320,7 +311,7 @@ function normalizeProjectedPredictionRows(rows: ProjectionRow[]): PredictionRow[
       gapZScore: parseNumber(payload.gap_z_score),
       probability,
       timesPlayed: parseNumber(payload.times_played),
-      tier: computeTier(rank, probability),
+      tier: computeTier(rank),
     };
   });
 }
