@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -56,6 +56,11 @@ class DealModelArtifact:
     training_summary: dict[str, Any]
     probability_summary: dict[str, float]
     calibration_summary: list[dict[str, float]]
+    training_probability_quality_summary: dict[str, float] = field(
+        default_factory=dict
+    )
+    training_separation_summary: dict[str, float] = field(default_factory=dict)
+    calibration_error_summary: dict[str, float] = field(default_factory=dict)
 
 
 def _sigmoid(values: np.ndarray) -> np.ndarray:
@@ -102,6 +107,103 @@ def _build_calibration_summary(
             }
         )
     return summary
+
+
+def _build_training_separation_summary(
+    probabilities: np.ndarray, labels: np.ndarray
+) -> dict[str, float]:
+    if probabilities.size == 0 or labels.size == 0:
+        return {
+            "positive_mean_probability": 0.0,
+            "negative_mean_probability": 0.0,
+            "probability_gap": 0.0,
+            "positive_median_probability": 0.0,
+            "negative_median_probability": 0.0,
+        }
+
+    positive_mask = labels == 1.0
+    negative_mask = labels == 0.0
+    positive_probs = probabilities[positive_mask]
+    negative_probs = probabilities[negative_mask]
+
+    positive_mean = float(positive_probs.mean()) if positive_probs.size else 0.0
+    negative_mean = float(negative_probs.mean()) if negative_probs.size else 0.0
+    positive_median = float(np.median(positive_probs)) if positive_probs.size else 0.0
+    negative_median = float(np.median(negative_probs)) if negative_probs.size else 0.0
+
+    return {
+        "positive_mean_probability": positive_mean,
+        "negative_mean_probability": negative_mean,
+        "probability_gap": positive_mean - negative_mean,
+        "positive_median_probability": positive_median,
+        "negative_median_probability": negative_median,
+    }
+
+
+def _build_calibration_error_summary(
+    calibration_summary: list[dict[str, float]],
+    probabilities: np.ndarray,
+    labels: np.ndarray,
+) -> dict[str, float]:
+    if probabilities.size == 0 or labels.size == 0:
+        return {
+            "brier_score": 0.0,
+            "expected_calibration_error": 0.0,
+            "max_bucket_gap": 0.0,
+        }
+
+    total_count = float(len(probabilities))
+    expected_calibration_error = sum(
+        abs(bucket["avg_probability"] - bucket["observed_rate"])
+        * (bucket["count"] / total_count)
+        for bucket in calibration_summary
+    )
+    max_bucket_gap = max(
+        (
+            abs(bucket["avg_probability"] - bucket["observed_rate"])
+            for bucket in calibration_summary
+        ),
+        default=0.0,
+    )
+    brier_score = float(np.mean((probabilities - labels) ** 2))
+
+    return {
+        "brier_score": brier_score,
+        "expected_calibration_error": float(expected_calibration_error),
+        "max_bucket_gap": float(max_bucket_gap),
+    }
+
+
+def _build_probability_quality_summary(probabilities: np.ndarray) -> dict[str, float]:
+    if probabilities.size == 0:
+        return {
+            "count": 0.0,
+            "probability_range": 0.0,
+            "interquartile_range": 0.0,
+            "top_1_minus_top_10_mean": 0.0,
+            "top_10_mass_share": 0.0,
+            "top_25_mass_share": 0.0,
+        }
+
+    sorted_probs = np.sort(probabilities)[::-1]
+    probability_sum = float(sorted_probs.sum())
+    top_10 = sorted_probs[: min(10, len(sorted_probs))]
+    top_25 = sorted_probs[: min(25, len(sorted_probs))]
+    top_10_mean = float(top_10.mean()) if top_10.size else 0.0
+
+    return {
+        "count": float(len(sorted_probs)),
+        "probability_range": float(sorted_probs[0] - sorted_probs[-1]),
+        "interquartile_range": float(np.percentile(sorted_probs, 75))
+        - float(np.percentile(sorted_probs, 25)),
+        "top_1_minus_top_10_mean": float(sorted_probs[0] - top_10_mean),
+        "top_10_mass_share": (
+            float(top_10.sum() / probability_sum) if probability_sum > 0 else 0.0
+        ),
+        "top_25_mass_share": (
+            float(top_25.sum() / probability_sum) if probability_sum > 0 else 0.0
+        ),
+    }
 
 
 class DealPredictor(PredictionModel):
@@ -231,6 +333,7 @@ class DealPredictor(PredictionModel):
             intercept -= self.learning_rate * grad_b
 
         fitted_probabilities = _sigmoid(X_scaled @ coefficients + intercept)
+        calibration_summary = _build_calibration_summary(fitted_probabilities, y)
         artifact = DealModelArtifact(
             model_version=self.MODEL_VERSION,
             trained_at=datetime.now(UTC)
@@ -243,7 +346,19 @@ class DealPredictor(PredictionModel):
             intercept=float(intercept),
             training_summary=summarize_training_summary(training_summary),
             probability_summary=_summarize_probabilities(fitted_probabilities),
-            calibration_summary=_build_calibration_summary(fitted_probabilities, y),
+            calibration_summary=calibration_summary,
+            training_probability_quality_summary=_build_probability_quality_summary(
+                fitted_probabilities
+            ),
+            training_separation_summary=_build_training_separation_summary(
+                fitted_probabilities,
+                y,
+            ),
+            calibration_error_summary=_build_calibration_error_summary(
+                calibration_summary,
+                fitted_probabilities,
+                y,
+            ),
         )
         self.model = artifact
         self.model_path = model_path
@@ -333,10 +448,20 @@ class DealPredictor(PredictionModel):
             min_plays_threshold=self.min_plays_threshold,
             retired_gap_threshold=self.retired_gap_threshold,
         )
-        current_probability_summary = {"min": 0.0, "max": 0.0, "mean": 0.0, "std": 0.0}
+        current_probabilities = np.array([])
+        current_probability_summary = {
+            "min": 0.0,
+            "p25": 0.0,
+            "median": 0.0,
+            "p75": 0.0,
+            "max": 0.0,
+            "mean": 0.0,
+            "std": 0.0,
+        }
         if not candidate_features.empty:
+            current_probabilities = self._predict_probabilities(candidate_features)
             current_probability_summary = _summarize_probabilities(
-                self._predict_probabilities(candidate_features)
+                current_probabilities
             )
 
         coefficient_rows = [
@@ -357,8 +482,16 @@ class DealPredictor(PredictionModel):
             "trained_at": self.model.trained_at,
             "class_balance": self.model.training_summary,
             "probability_distribution": self.model.probability_summary,
+            "training_probability_quality": (
+                self.model.training_probability_quality_summary
+            ),
             "current_candidate_probability_distribution": current_probability_summary,
+            "current_candidate_probability_quality": _build_probability_quality_summary(
+                current_probabilities
+            ),
             "calibration_summary": self.model.calibration_summary,
+            "calibration_error_summary": self.model.calibration_error_summary,
+            "training_separation_summary": self.model.training_separation_summary,
             "coefficients": coefficient_rows,
         }
 

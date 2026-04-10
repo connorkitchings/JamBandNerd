@@ -9,13 +9,13 @@ export const MODEL_CONFIG = {
     displayName: "CK+",
     explanation:
       "Gap-based model that ranks songs by how overdue they are relative to their historical cadence.",
-    enabled: true,
+    enabled: false,
   },
   deal: {
     displayName: "Deal",
     explanation:
       "Explainable logistic ranking model trained on true per-show candidate rows and rotation-gap signals.",
-    enabled: false, // Hidden until approved
+    enabled: true,
   },
 } as const;
 

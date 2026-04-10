@@ -141,12 +141,10 @@ function TierSectionHeader({
 function TierDesktopTable({
   compact,
   highlightSongs,
-  isCkPlus,
   rows,
 }: {
   compact?: boolean;
   highlightSongs?: Set<string>;
-  isCkPlus: boolean;
   rows: PredictionRow[];
 }) {
   return (
@@ -157,29 +155,15 @@ function TierDesktopTable({
             <th className="w-16 px-4 py-2.5 font-label text-[10px] font-medium uppercase tracking-[0.18rem] text-on-surface-variant">
               Rank
             </th>
-            <th
-              className={`px-4 py-2.5 font-label text-[10px] font-medium uppercase tracking-[0.18rem] text-on-surface-variant ${isCkPlus ? "w-[34%]" : "w-[44%]"}`}
-            >
+            <th className="w-[44%] px-4 py-2.5 font-label text-[10px] font-medium uppercase tracking-[0.18rem] text-on-surface-variant">
               Song
             </th>
-            {!isCkPlus ? (
-              <th className="w-32 px-4 py-2.5 font-label text-[10px] font-medium uppercase tracking-[0.18rem] text-on-surface-variant text-right">
-                Plays Last Year
-              </th>
-            ) : null}
+            <th className="w-32 px-4 py-2.5 font-label text-[10px] font-medium uppercase tracking-[0.18rem] text-on-surface-variant text-right">
+              Plays Last Year
+            </th>
             <th className="w-28 px-4 py-2.5 font-label text-[10px] font-medium uppercase tracking-[0.18rem] text-on-surface-variant text-right">
               Current Gap
             </th>
-            {isCkPlus ? (
-              <>
-                <th className="w-28 px-4 py-2.5 font-label text-[10px] font-medium uppercase tracking-[0.18rem] text-on-surface-variant text-right">
-                  Avg Gap
-                </th>
-                <th className="w-28 px-4 py-2.5 font-label text-[10px] font-medium uppercase tracking-[0.18rem] text-on-surface-variant text-right">
-                  Gap Ratio
-                </th>
-              </>
-            ) : null}
             {!compact ? (
               <th className="w-32 px-4 py-2.5 font-label text-[10px] font-medium uppercase tracking-[0.18rem] text-on-surface-variant text-right">
                 Last Played
@@ -212,26 +196,14 @@ function TierDesktopTable({
                     {row.songName}
                   </span>
                 </td>
-                {!isCkPlus ? (
-                  <td className="whitespace-nowrap px-4 py-3.5 text-right text-sm tabular-nums text-on-surface-variant">
-                    {row.playsPastYear !== null ? row.playsPastYear : "—"}
-                  </td>
-                ) : null}
+                <td className="whitespace-nowrap px-4 py-3.5 text-right text-sm tabular-nums text-on-surface-variant">
+                  {row.playsPastYear !== null ? row.playsPastYear : "—"}
+                </td>
                 <td className="whitespace-nowrap px-4 py-3.5 text-right">
                   <span className="rounded-full bg-surface-container px-2.5 py-1 font-mono text-xs font-medium text-on-surface-variant">
                     {row.currentGap !== null ? row.currentGap : "—"}
                   </span>
                 </td>
-                {isCkPlus ? (
-                  <>
-                    <td className="whitespace-nowrap px-4 py-3.5 text-right text-sm tabular-nums text-on-surface-variant">
-                      {row.avgGap !== null ? row.avgGap.toFixed(1) : "—"}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3.5 text-right text-sm tabular-nums text-on-surface-variant">
-                      {row.gapRatio !== null ? `${row.gapRatio.toFixed(1)}x` : "—"}
-                    </td>
-                  </>
-                ) : null}
                 {!compact ? (
                   <td className="whitespace-nowrap px-4 py-3.5 text-right text-sm text-on-surface-variant">
                     {row.lastPlayed ? formatMMDDYYYY(row.lastPlayed) : "—"}
@@ -323,8 +295,6 @@ function TierSection({
 
   if (rows.length === 0) return null;
 
-  const isCkPlus = modelSlug === "ckplus";
-
   return (
     <div className="editorial-panel overflow-hidden rounded-[1.5rem]">
       <TierSectionHeader
@@ -342,7 +312,6 @@ function TierSection({
         <TierDesktopTable
           compact={compact}
           highlightSongs={highlightSongs}
-          isCkPlus={isCkPlus}
           rows={rows}
         />
         <TierMobileList
