@@ -23,7 +23,7 @@ on:
         type: choice
         options:
           - all
-          - ckplus
+          - deal
           - notebook
       dry_run:
         description: "Show what would run without executing"
@@ -59,7 +59,7 @@ jobs:
       - id: set_models
         run: |
           if [[ "${{ github.event.inputs.model }}" == "all" ]]; then
-            echo "models=[\"ckplus\", \"notebook\"]" >> $GITHUB_OUTPUT
+            echo "models=[\"deal\", \"notebook\"]" >> $GITHUB_OUTPUT
           else
             echo "models=[\"${{ github.event.inputs.model }}\"]" >> $GITHUB_OUTPUT
           fi

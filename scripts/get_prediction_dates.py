@@ -18,6 +18,7 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, project_root)
 
 from src.jambandnerd.db.connection import get_supabase_client
+from src.jambandnerd.models.registry import list_model_slugs
 
 
 def get_prediction_dates(band: str, model: str, limit: int = 100) -> list[str]:
@@ -62,7 +63,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--model",
         required=True,
-        choices=["ckplus", "notebook"],
+        choices=list_model_slugs(),
         help="The model name.",
     )
     parser.add_argument(

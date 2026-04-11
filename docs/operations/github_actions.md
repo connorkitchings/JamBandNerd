@@ -30,7 +30,7 @@ The primary production workflow. Collects raw data, generates predictions, runs 
   1. Compute collection preflight via `scripts/collection_preflight.py`
   2. Run data collection via `scripts/run_{band}_collection.py` (with retry logic)
   3. Verify data freshness via `scripts/verify_data_freshness.py`
-  4. Generate predictions for Notebook and CK+ models via `scripts/generate_predictions.py`
+  4. Generate predictions for Notebook and Deal models via `scripts/generate_predictions.py`
   5. Rebuild the bounded `prediction_songs` projection window via `scripts/rebuild_prediction_songs.py --reference-date-from ... --reference-date-to ...`
   6. Validate prediction tables via `scripts/validate_prediction_tables.py`
   7. Run backtests and save aggregate accuracy (skippable via `skip_accuracy`)
@@ -89,7 +89,7 @@ Automatically plays Fantasy Goose using JamBandNerd notebook predictions for Goo
 Regenerates historical predictions for one or more band/model combinations.
 
 - **Triggers**: `workflow_dispatch` only
-- **Inputs**: `band` (all or specific), `model` (all, notebook, ckplus), `dry_run` (boolean)
+- **Inputs**: `band` (all or specific), `model` (all, notebook, deal), `dry_run` (boolean)
 - **Flow**:
   1. Setup job builds a band/model matrix
   2. Per-combination backfill job fetches prediction dates via `scripts/get_prediction_dates.py`, regenerates each via `scripts/generate_predictions.py`, validates via `scripts/validate_prediction_tables.py`
