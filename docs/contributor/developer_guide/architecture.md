@@ -58,9 +58,10 @@ graph TD
 ### Models and Evaluation
 
 - `ModelData` is the canonical handoff from transforms into models.
-- Notebook and CK+ are the production models. Deal is registered and fully
-  wired as an experimental logistic ranking model, but it remains gated off
-  from pipeline and web surfaces.
+- Notebook is the currently promoted public model. Deal is backend-ready and
+  fully wired through pipeline, historical replay, and validation, but it
+  remains intentionally hidden from website surfaces until an explicit final
+  promotion step. CK+ is retained as a historical baseline.
 - All three models rely on the same ordered historical show sequence and
   the same `reference_date` anti-leakage rule.
 - `accuracy_per_show` is the granular evaluation source; aggregate accuracy
@@ -113,9 +114,9 @@ Three models are registered:
 
 | Model | Slug | Status | Prediction Table |
 |-------|------|--------|-----------------|
-| Notebook | `notebook` | Production | `predictions_notebook` |
-| CK+ | `ckplus` | Production | `predictions_ckplus` |
-| Deal | `deal` | Experimental (gated) | `predictions_deal` |
+| Notebook | `notebook` | Web promoted | `predictions_notebook` |
+| CK+ | `ckplus` | Retired baseline | `predictions_ckplus` |
+| Deal | `deal` | Readiness verified, web hidden | `predictions_deal` |
 
 New prediction models are added through the registry workflow (see
 `docs/contributor/model_development.md`):

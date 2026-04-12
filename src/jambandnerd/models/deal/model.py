@@ -40,7 +40,7 @@ class DealPrediction:
     probability: float
     current_gap: int
     plays_past_year: int
-    times_played: int
+    recent_plays_50: int
     LTP: str | None
 
 
@@ -312,7 +312,7 @@ class DealPredictor(PredictionModel):
                 probability=float(row["probability"]),
                 current_gap=int(row["current_gap"]),
                 plays_past_year=int(row["plays_past_year"]),
-                times_played=int(row["total_plays"]),
+                recent_plays_50=int(row["recent_plays_50"]),
                 LTP=(
                     row["last_played_date"].isoformat()
                     if pd.notna(row["last_played_date"])

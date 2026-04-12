@@ -181,7 +181,7 @@ function TierDesktopTable({
             </th>
             {isDeal ? (
               <th className="w-28 px-4 py-2.5 font-label text-[10px] font-medium uppercase tracking-[0.18rem] text-on-surface-variant text-right">
-                Times Played
+                Recent Plays
               </th>
             ) : (
               <th className="w-32 px-4 py-2.5 font-label text-[10px] font-medium uppercase tracking-[0.18rem] text-on-surface-variant text-right">
@@ -230,7 +230,7 @@ function TierDesktopTable({
                 </td>
                 {isDeal ? (
                   <td className="whitespace-nowrap px-4 py-3.5 text-right text-sm tabular-nums text-on-surface-variant">
-                    {row.timesPlayed !== null ? row.timesPlayed : "—"}
+                    {row.recentPlays50 !== null ? `${row.recentPlays50} / 50` : "—"}
                   </td>
                 ) : (
                   <td className="whitespace-nowrap px-4 py-3.5 text-right text-sm tabular-nums text-on-surface-variant">
@@ -334,9 +334,9 @@ function TierMobileList({
                 )}
               </div>
             </div>
-            {isDeal && row.timesPlayed !== null ? (
+            {isDeal && row.recentPlays50 !== null ? (
               <span className="ml-3 shrink-0 text-right font-mono text-xs tabular-nums text-on-surface-variant">
-                {row.timesPlayed}×
+                {row.recentPlays50} / 50
               </span>
             ) : null}
           </div>

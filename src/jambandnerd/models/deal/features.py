@@ -99,6 +99,7 @@ def generate_deal_features(
             columns=[
                 "song_name",
                 *DEAL_FEATURE_COLUMNS,
+                "recent_plays_50",
                 "last_played_date",
                 "total_plays",
             ]
@@ -141,6 +142,9 @@ def generate_deal_features(
             (song_plays["show_date"] >= reference_date - timedelta(days=730))
             & (song_plays["show_date"] < reference_date)
         ]["show_index"].nunique()
+        recent_plays_50 = int(
+            sum(play_index >= reference_index - 50 for play_index in plays_idx)
+        )
 
         ltp = _compute_ltp_features(plays_idx, reference_index)
         total_plays = len(plays_idx)
@@ -164,6 +168,7 @@ def generate_deal_features(
                 "gap_z_score": ltp["gap_z_score"],
                 "plays_past_year": int(n_shows_1yr),
                 "plays_past_2yr": int(n_shows_2yr),
+                "recent_plays_50": recent_plays_50,
                 "pct_shows_6mo": pct_shows_6mo,
                 "pct_shows_1yr": pct_shows_1yr,
                 "pct_shows_all_time": pct_shows_all_time,

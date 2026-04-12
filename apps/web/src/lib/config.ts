@@ -1,26 +1,30 @@
+export type ModelVisibility = "hidden" | "promoted";
+
 export const MODEL_CONFIG = {
   notebook: {
     displayName: "Notebook",
     explanation:
       "Frequency-based model focused on songs active in the recent rotation while excluding the last three shows.",
-    enabled: true,
+    visibility: "promoted" as ModelVisibility,
   },
   ckplus: {
     displayName: "CK+",
     explanation:
       "Gap-based model that ranks songs by how overdue they are relative to their historical cadence.",
-    enabled: true,
+    visibility: "hidden" as ModelVisibility,
   },
   deal: {
     displayName: "Deal",
     explanation:
       "Explainable logistic ranking model trained on true per-show candidate rows and rotation-gap signals.",
-    enabled: false, // Hidden until approved
+    visibility: "promoted" as ModelVisibility,
   },
 } as const;
 
+export const ALL_MODELS = Object.keys(MODEL_CONFIG) as ModelSlug[];
+
 export const ACTIVE_MODELS = Object.keys(MODEL_CONFIG).filter(
-  (key) => MODEL_CONFIG[key as ModelSlug].enabled
+  (key) => MODEL_CONFIG[key as ModelSlug].visibility === "promoted"
 ) as ModelSlug[];
 
 export const DEFAULT_BAND_SLUG = "goose";
