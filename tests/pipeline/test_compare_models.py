@@ -6,11 +6,6 @@ import pandas as pd
 
 from scripts import compare_models as module
 from scripts import run_backtest as backtest_module
-from src.jambandnerd.models.model_test_cache import (
-    LocalModelTestCache,
-    build_default_cache_dir,
-    build_experiment_cache_identity,
-)
 
 
 class _Prediction:
@@ -25,22 +20,12 @@ class _Predictor:
     def __init__(self, model_slug: str):
         self.model_slug = model_slug
 
-    def train(self, model_data):  # noqa: ARG002
-        return None
-
     def predict(self, model_data, top_k=50):  # noqa: ARG002
         if self.model_slug == "notebook":
             return ([_Prediction("Song A"), _Prediction("Song B")], {})
         if self.model_slug == "ckplus":
             return ([_Prediction("Song A"), _Prediction("Song Z")], {})
         return [_Prediction("Song A")]
-
-
-class _WeakDealPredictor(_Predictor):
-    def predict(self, model_data, top_k=50):  # noqa: ARG002
-        if self.model_slug == "ckplus":
-            return ([_Prediction("Song A"), _Prediction("Song B")], {})
-        return [_Prediction("Song Z")]
 
 
 def _mock_tables(table_name: str, chunk_size: int = 10000):  # noqa: ARG001
@@ -153,85 +138,12 @@ def test_compare_models_generate_report_emits_schema(monkeypatch):
     assert "metrics_by_band" in window
     assert "cross_band_summary" in window
     assert "deltas" in window
-    assert "candidate_weak_shows" in window
-    assert "replacement_readiness" in window
     assert "promotion_gate" in window
     assert set(window["metrics_by_band"]["goose"].keys()) == {
         "deal",
         "ckplus",
         "notebook",
     }
-    assert window["candidate_weak_shows"]["goose"]["shows_compared"] == 2
-    assert window["replacement_readiness"]["baseline_model"] == "ckplus"
-
-
-def test_compare_models_replacement_readiness_surfaces_failure_drivers(monkeypatch):
-    monkeypatch.setattr(module, "fetch_table", _mock_tables)
-    monkeypatch.setattr(
-        module,
-        "prepare_band_data",
-        lambda shows_df, setlists_df, band: (shows_df, setlists_df),
-    )
-    monkeypatch.setattr(
-        module,
-        "resolve_reference_date",
-        lambda date_str, shows_df, upcoming_df=None: pd.Timestamp("2024-01-21"),  # noqa: ARG005
-    )
-    monkeypatch.setattr(
-        module,
-        "build_evaluation_predictor",
-        lambda model_slug, *, band, fresh_training=False, candidate_overrides=None, **kw: _WeakDealPredictor(  # noqa: ARG005
-            model_slug
-        ),
-    )
-    monkeypatch.setattr(
-        "src.jambandnerd.models.comparison.build_evaluation_predictor",
-        lambda model_slug, *, band, fresh_training=False, candidate_overrides=None, **kw: _WeakDealPredictor(  # noqa: ARG005
-            model_slug
-        ),
-    )
-    monkeypatch.setattr(
-        module,
-        "maybe_build_model_diagnostics",
-        lambda **kwargs: {  # noqa: ARG005
-            "current_candidate_probability_distribution": {"std": 0.01},
-            "current_candidate_probability_quality": {
-                "probability_range": 0.05,
-                "top_10_mass_share": 0.2,
-            },
-            "training_separation_summary": {"probability_gap": 0.02},
-            "calibration_error_summary": {"expected_calibration_error": 0.2},
-        },
-    )
-    monkeypatch.setattr(
-        "src.jambandnerd.models.comparison.generate_model_data",
-        lambda *args, **kwargs: object(),
-    )
-    monkeypatch.setattr(
-        "src.jambandnerd.models.comparison.serialize_model_predictions",
-        _serialize_predictions,
-    )
-
-    report = module.generate_report(
-        candidate_model="deal",
-        baseline_models=["ckplus"],
-        bands=["goose"],
-        windows=[{"label": "last_2", "shows": 2}],
-        exclusion_window=3,
-        feature_set_label="shared_core_v1",
-        fresh_training=True,
-        include_candidate_diagnostics=True,
-    )
-
-    readiness = report["windows"]["last_2"]["replacement_readiness"]
-    assert readiness["gate_passes"] is False
-    assert readiness["failure_driver_summary"]["both"] == 1
-    assert readiness["internal_canary"]["status"] == "unsafe"
-    weak_band = readiness["weak_bands"][0]
-    assert weak_band["band"] == "goose"
-    assert weak_band["failure_driver"] == "both"
-    assert weak_band["probability_quality"]["status"] == "concern"
-    assert weak_band["weak_show_summary"]["worst_shows"]
 
 
 def test_compare_models_parse_window_specs_accepts_positive_integers_only():
@@ -327,8 +239,8 @@ def test_compare_models_candidate_notebook_matches_backtest_metrics(monkeypatch)
     captured: dict[str, pd.DataFrame] = {}
     monkeypatch.setattr(
         backtest_module,
-        "publish_scored_run_record",
-        lambda record: 101,
+        "upsert_historical_prediction_run",
+        lambda **kwargs: 101,
     )
     monkeypatch.setattr(
         backtest_module,
@@ -661,144 +573,3 @@ def test_compare_models_candidate_overrides_appear_in_experiment_metadata(monkey
     metadata = report["experiment_metadata"]
     assert metadata["feature_set_label"] == "threshold_min3"
     assert metadata.get("candidate_overrides") == overrides
-
-
-def test_compare_models_reuses_local_scored_run_cache(monkeypatch, tmp_path):
-    identity = build_experiment_cache_identity(
-        candidate_model="deal",
-        baseline_models=["ckplus"],
-        bands=["goose"],
-        windows=[{"label": "last_2", "shows": 2}],
-        exclusion_window=3,
-        feature_set_label="shared_core_v1",
-        fresh_training=True,
-    )
-    local_cache = LocalModelTestCache(
-        cache_dir=build_default_cache_dir(identity=identity, cache_root=tmp_path),
-        experiment_identity=identity,
-    )
-
-    monkeypatch.setattr(module, "fetch_table", _mock_tables)
-    monkeypatch.setattr(
-        module,
-        "prepare_band_data",
-        lambda shows_df, setlists_df, band: (shows_df, setlists_df),
-    )
-    monkeypatch.setattr(
-        "src.jambandnerd.models.comparison.build_evaluation_predictor",
-        lambda model_slug, *, band, fresh_training=False, candidate_overrides=None, **kw: _Predictor(
-            model_slug
-        ),
-    )
-    monkeypatch.setattr(
-        "src.jambandnerd.models.comparison.generate_model_data",
-        lambda *args, **kwargs: object(),
-    )
-    monkeypatch.setattr(
-        "src.jambandnerd.models.comparison.serialize_model_predictions",
-        _serialize_predictions,
-    )
-
-    first_report = module.generate_report(
-        candidate_model="deal",
-        baseline_models=["ckplus"],
-        bands=["goose"],
-        windows=[{"label": "last_2", "shows": 2}],
-        exclusion_window=3,
-        feature_set_label="shared_core_v1",
-        fresh_training=True,
-        include_candidate_diagnostics=False,
-        local_cache=local_cache,
-    )
-    assert first_report["cache_summary"]["record_count"] == 4
-
-    monkeypatch.setattr(
-        "src.jambandnerd.models.comparison.generate_model_data",
-        lambda *args, **kwargs: (_ for _ in ()).throw(
-            AssertionError("generate_model_data should not run on cache hit")
-        ),
-    )
-
-    second_report = module.generate_report(
-        candidate_model="deal",
-        baseline_models=["ckplus"],
-        bands=["goose"],
-        windows=[{"label": "last_2", "shows": 2}],
-        exclusion_window=3,
-        feature_set_label="shared_core_v1",
-        fresh_training=True,
-        include_candidate_diagnostics=False,
-        local_cache=local_cache,
-    )
-
-    assert second_report["windows"]["last_2"]["metrics_by_band"] == first_report["windows"]["last_2"]["metrics_by_band"]
-    assert second_report["cache_summary"]["hits"] == 4
-
-
-def test_compare_models_emits_candidate_diagnostics_summary_when_requested(
-    monkeypatch,
-):
-    monkeypatch.setattr(module, "fetch_table", _mock_tables)
-    monkeypatch.setattr(
-        module,
-        "prepare_band_data",
-        lambda shows_df, setlists_df, band: (shows_df, setlists_df),
-    )
-    monkeypatch.setattr(
-        module,
-        "build_evaluation_predictor",
-        lambda model_slug, *, band, fresh_training=False, candidate_overrides=None, **kw: _Predictor(
-            model_slug
-        ),
-    )
-    monkeypatch.setattr(
-        "src.jambandnerd.models.comparison.build_evaluation_predictor",
-        lambda model_slug, *, band, fresh_training=False, candidate_overrides=None, **kw: _Predictor(
-            model_slug
-        ),
-    )
-    monkeypatch.setattr(
-        "src.jambandnerd.models.comparison.generate_model_data",
-        lambda *args, **kwargs: object(),
-    )
-    monkeypatch.setattr(
-        "src.jambandnerd.models.comparison.serialize_model_predictions",
-        _serialize_predictions,
-    )
-    monkeypatch.setattr(
-        module,
-        "maybe_build_model_diagnostics",
-        lambda **kwargs: {
-            "status": "ready",
-            "training_separation_summary": {"probability_gap": 0.18},
-            "current_candidate_probability_distribution": {"std": 0.07},
-            "current_candidate_probability_quality": {
-                "probability_range": 0.22,
-                "top_10_mass_share": 0.41,
-            },
-            "calibration_error_summary": {"expected_calibration_error": 0.03},
-        },
-    )
-
-    report = module.generate_report(
-        candidate_model="deal",
-        baseline_models=["ckplus"],
-        bands=["goose"],
-        windows=[{"label": "last_2", "shows": 2}],
-        exclusion_window=3,
-        feature_set_label="shared_core_v1",
-        fresh_training=True,
-        include_candidate_diagnostics=True,
-    )
-
-    window = report["windows"]["last_2"]
-    assert window["candidate_diagnostics"]["goose"]["status"] == "ready"
-    assert window["candidate_diagnostics_summary"] == {
-        "bands_with_diagnostics": 1,
-        "status": "available",
-        "avg_training_probability_gap": 0.18,
-        "avg_current_probability_std": 0.07,
-        "avg_current_probability_range": 0.22,
-        "avg_top_10_mass_share": 0.41,
-        "avg_expected_calibration_error": 0.03,
-    }

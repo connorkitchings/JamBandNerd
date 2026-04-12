@@ -60,7 +60,7 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
   const bandName = bandSelection.bandEntry?.displayName ?? bandSelection.requestedSlug;
 
   const modelA = params.modelA ?? ACTIVE_MODELS[0] ?? "notebook";
-  const modelB = params.modelB ?? ACTIVE_MODELS[1] ?? ACTIVE_MODELS[0] ?? "notebook";
+  const modelB = params.modelB ?? ACTIVE_MODELS[1] ?? ACTIVE_MODELS[0] ?? "ckplus";
   const labelA = MODEL_CONFIG[modelA as ModelSlug]?.displayName ?? "Model A";
   const labelB = MODEL_CONFIG[modelB as ModelSlug]?.displayName ?? "Model B";
 
@@ -138,12 +138,12 @@ export default async function ComparePage({ searchParams }: Props) {
   const labelA = MODEL_CONFIG[modelASlug].displayName;
   const labelB = MODEL_CONFIG[modelBSlug].displayName;
 
-  const [notebookPerf, secondaryPerf] = await Promise.all([
+  const [notebookPerf, ckplusPerf] = await Promise.all([
     getRecentAccuracy(selectedBand, modelASlug, COMPARISON_WINDOW),
     getRecentAccuracy(selectedBand, modelBSlug, COMPARISON_WINDOW),
   ]);
 
-  if (notebookPerf.status === "missing_env" || secondaryPerf.status === "missing_env") {
+  if (notebookPerf.status === "missing_env" || ckplusPerf.status === "missing_env") {
     return (
       <DataState
         title="Supabase environment required"
@@ -152,7 +152,7 @@ export default async function ComparePage({ searchParams }: Props) {
     );
   }
 
-  if (notebookPerf.status !== "ready" || secondaryPerf.status !== "ready") {
+  if (notebookPerf.status !== "ready" || ckplusPerf.status !== "ready") {
     return (
       <DataState
         title="Comparison data unavailable"
@@ -165,7 +165,7 @@ export default async function ComparePage({ searchParams }: Props) {
   const bandName = bandEntry?.displayName ?? selectedBand ?? "Band";
 
   const nbRows = notebookPerf.status === "ready" ? notebookPerf.rows : [];
-  const ckRows = secondaryPerf.status === "ready" ? secondaryPerf.rows : [];
+  const ckRows = ckplusPerf.status === "ready" ? ckplusPerf.rows : [];
   
   const sharedDates = new Set([...nbRows.map(r => r.showDate), ...ckRows.map(r => r.showDate)]);
   const headToHeadRows = Array.from(sharedDates)
@@ -205,13 +205,13 @@ export default async function ComparePage({ searchParams }: Props) {
 
   headToHeadRows.forEach(r => {
     const notebookValue = getSelectedMetric(r, "nb", comparisonMetric);
-    const secondaryValue = getSelectedMetric(r, "ck", comparisonMetric);
-    if (notebookValue === null || secondaryValue === null) {
+    const ckplusValue = getSelectedMetric(r, "ck", comparisonMetric);
+    if (notebookValue === null || ckplusValue === null) {
       return;
     }
 
-    if (notebookValue > secondaryValue) nbWins++;
-    else if (secondaryValue > notebookValue) ckWins++;
+    if (notebookValue > ckplusValue) nbWins++;
+    else if (ckplusValue > notebookValue) ckWins++;
     else ties++;
   });
 
@@ -313,11 +313,11 @@ export default async function ComparePage({ searchParams }: Props) {
           <div className="space-y-4 md:hidden">
             {mobileHeadToHeadRows.map((row) => {
               const notebookValue = getSelectedMetric(row, "nb", comparisonMetric);
-              const secondaryValue = getSelectedMetric(row, "ck", comparisonMetric);
+              const ckplusValue = getSelectedMetric(row, "ck", comparisonMetric);
               const isNbWin =
-                notebookValue !== null && secondaryValue !== null && notebookValue > secondaryValue;
+                notebookValue !== null && ckplusValue !== null && notebookValue > ckplusValue;
               const isCkWin =
-                notebookValue !== null && secondaryValue !== null && secondaryValue > notebookValue;
+                notebookValue !== null && ckplusValue !== null && ckplusValue > notebookValue;
               const replayHref = buildReplayHref(selectedBand, row.date);
               const locationLabel = buildLocationLabel([row.city, row.state]);
 
@@ -356,7 +356,7 @@ export default async function ComparePage({ searchParams }: Props) {
                         {labelB}
                       </p>
                       <p className="mt-1 font-headline text-base font-bold text-tertiary">
-                        {formatPercent(secondaryValue)}
+                        {formatPercent(ckplusValue)}
                       </p>
                     </div>
                   </div>
@@ -389,11 +389,11 @@ export default async function ComparePage({ searchParams }: Props) {
               >
                   {remainingHeadToHeadRows.map((row) => {
                     const notebookValue = getSelectedMetric(row, "nb", comparisonMetric);
-                    const secondaryValue = getSelectedMetric(row, "ck", comparisonMetric);
+                    const ckplusValue = getSelectedMetric(row, "ck", comparisonMetric);
                     const isNbWin =
-                      notebookValue !== null && secondaryValue !== null && notebookValue > secondaryValue;
+                      notebookValue !== null && ckplusValue !== null && notebookValue > ckplusValue;
                     const isCkWin =
-                      notebookValue !== null && secondaryValue !== null && secondaryValue > notebookValue;
+                      notebookValue !== null && ckplusValue !== null && ckplusValue > notebookValue;
                     const replayHref = buildReplayHref(selectedBand, row.date);
                     const locationLabel = buildLocationLabel([row.city, row.state]);
 
@@ -432,7 +432,7 @@ export default async function ComparePage({ searchParams }: Props) {
                               {labelB}
                             </p>
                             <p className="mt-1 font-headline text-base font-bold text-tertiary">
-                              {formatPercent(secondaryValue)}
+                              {formatPercent(ckplusValue)}
                             </p>
                           </div>
                         </div>
@@ -480,11 +480,11 @@ export default async function ComparePage({ searchParams }: Props) {
                 {headToHeadLedgerRows.map((row) => {
                   const isAverageRow = row.date === "average";
                   const notebookValue = getSelectedMetric(row, "nb", comparisonMetric);
-                  const secondaryValue = getSelectedMetric(row, "ck", comparisonMetric);
+                  const ckplusValue = getSelectedMetric(row, "ck", comparisonMetric);
                   const isNbWin =
-                    notebookValue !== null && secondaryValue !== null && notebookValue > secondaryValue;
+                    notebookValue !== null && ckplusValue !== null && notebookValue > ckplusValue;
                   const isCkWin =
-                    notebookValue !== null && secondaryValue !== null && secondaryValue > notebookValue;
+                    notebookValue !== null && ckplusValue !== null && ckplusValue > notebookValue;
                   return (
                     <tr
                       key={row.date}
@@ -503,7 +503,7 @@ export default async function ComparePage({ searchParams }: Props) {
                         <span className={`font-bold tabular-nums ${isNbWin ? "text-primary" : "text-on-surface"}`}>{formatPercent(notebookValue)}</span>
                       </td>
                       <td className={`py-3 px-4 text-center ${isCkWin ? "bg-tertiary/5" : ""}`}>
-                        <span className={`font-bold tabular-nums ${isCkWin ? "text-tertiary" : "text-on-surface"}`}>{formatPercent(secondaryValue)}</span>
+                        <span className={`font-bold tabular-nums ${isCkWin ? "text-tertiary" : "text-on-surface"}`}>{formatPercent(ckplusValue)}</span>
                       </td>
                       <td className="py-3 px-4 text-right font-label text-[10px] uppercase tracking-wider font-bold">
                         {isNbWin ? <span className="text-primary tracking-[0.24em] uppercase">{modelASlug}</span> : isCkWin ? <span className="text-tertiary tracking-[0.24em] uppercase">{modelBSlug}</span> : <span className="text-on-surface-variant">Tie</span>}

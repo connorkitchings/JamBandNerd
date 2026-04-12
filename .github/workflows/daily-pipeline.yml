@@ -269,7 +269,7 @@ jobs:
           else
             echo "Could not determine last completed show date. Skipping predictions for it."
           fi
-          
+
           echo "::endgroup::"
 
       - name: Rebuild Prediction Projection Window

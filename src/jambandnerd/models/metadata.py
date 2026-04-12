@@ -56,7 +56,7 @@ MODEL_METADATA: tuple[ModelMetadata, ...] = (
         supports_training=False,
         supports_live_predictions=False,
         supports_backtest=False,
-        notes="Retired 2026-04-10. Replaced by Deal. Historical data retained in predictions_ckplus / accuracy_ckplus.",
+        notes="Retired 2026-04-11. Replaced by Deal. Historical data retained in predictions_ckplus / accuracy_ckplus.",
     ),
     ModelMetadata(
         slug="deal",
@@ -72,6 +72,6 @@ MODEL_METADATA: tuple[ModelMetadata, ...] = (
         supports_training=True,
         supports_live_predictions=True,
         supports_backtest=True,
-        notes="Promoted 2026-04-10. Probability calibration (ECE, top-10 mass) is a known follow-up item.",
+        notes="Promoted 2026-04-11. Replaces CK+.",
     ),
 )

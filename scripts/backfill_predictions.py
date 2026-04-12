@@ -280,9 +280,9 @@ def main() -> None:
     parser.add_argument(
         "--model",
         type=str,
-        default="deal",
+        default="ckplus",
         choices=[definition.slug for definition in list_backfill_models()],
-        help="Model to process (default: deal)",
+        help="Model to process (default: ckplus)",
     )
     parser.add_argument(
         "--dry-run",
