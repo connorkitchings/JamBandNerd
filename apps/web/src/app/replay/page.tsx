@@ -31,6 +31,8 @@ type Props = {
   searchParams: Promise<{
     band?: string;
     date?: string;
+    modelA?: string;
+    modelB?: string;
   }>;
 };
 
@@ -44,7 +46,7 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
 
   return {
     title: `${bandName} Replay${dateStr} | JamBandNerd`,
-    description: `Review both model boards against the actual setlist for a completed ${bandName} show.`,
+    description: `Review two retained model boards against the actual setlist for a completed ${bandName} show.`,
   };
 }
 
@@ -133,7 +135,13 @@ export default async function ReplayPage({ searchParams }: Props) {
 
   const selectedBand =
     bandsResult.status === "ready" ? bandSelection.bandEntry?.slug : params.band;
-  const state = await getReplaySnapshot(selectedBand, params.date, 50);
+  const state = await getReplaySnapshot(
+    selectedBand,
+    params.date,
+    params.modelA,
+    params.modelB,
+    50,
+  );
 
   if (state.status === "missing_env") {
     return (
@@ -160,35 +168,39 @@ export default async function ReplayPage({ searchParams }: Props) {
   const bandEntry = bandEntryBySlug(bands, state.band);
   const bandName = bandEntry?.displayName ?? state.band;
   const show = state.replay.show;
-  const notebookSnapshot = state.replay.snapshots.notebook;
-  const ckplusSnapshot = state.replay.snapshots.ckplus;
-  const notebookRows = notebookSnapshot?.predictions ?? [];
-  const ckplusRows = ckplusSnapshot?.predictions ?? [];
+  const primaryModel = state.replay.modelA;
+  const secondaryModel = state.replay.modelB;
+  const primarySnapshot = state.replay.snapshots[primaryModel] ?? null;
+  const secondarySnapshot = state.replay.snapshots[secondaryModel] ?? null;
+  const primaryRows = primarySnapshot?.predictions ?? [];
+  const secondaryRows = secondarySnapshot?.predictions ?? [];
+  const primaryLabel = MODEL_CONFIG[primaryModel].displayName;
+  const secondaryLabel = MODEL_CONFIG[secondaryModel].displayName;
   const actualSongs = new Set(
     (state.replay.setlist?.songs ?? []).map((song) => normalizeSongName(song.songName)),
   );
   const locationCity = show?.city ?? "Unavailable";
   const locationRegion = show?.state ?? show?.country ?? "Unavailable";
 
-  const notebookTop10Hits = computeTopKHits(notebookRows, actualSongs, 10);
-  const ckplusTop10Hits = computeTopKHits(ckplusRows, actualSongs, 10);
-  const notebookByRank = new Map(notebookRows.map((row) => [row.rank, row] as const));
-  const ckplusByRank = new Map(ckplusRows.map((row) => [row.rank, row] as const));
+  const primaryTop10Hits = computeTopKHits(primaryRows, actualSongs, 10);
+  const secondaryTop10Hits = computeTopKHits(secondaryRows, actualSongs, 10);
+  const primaryByRank = new Map(primaryRows.map((row) => [row.rank, row] as const));
+  const secondaryByRank = new Map(secondaryRows.map((row) => [row.rank, row] as const));
   const maxRank = Math.max(
-    notebookRows[notebookRows.length - 1]?.rank ?? 0,
-    ckplusRows[ckplusRows.length - 1]?.rank ?? 0,
+    primaryRows[primaryRows.length - 1]?.rank ?? 0,
+    secondaryRows[secondaryRows.length - 1]?.rank ?? 0,
   );
   const replayRows = Array.from({ length: maxRank }, (_, index) => {
     const rank = index + 1;
-    const notebookRow = notebookByRank.get(rank) ?? null;
-    const ckplusRow = ckplusByRank.get(rank) ?? null;
+    const primaryRow = primaryByRank.get(rank) ?? null;
+    const secondaryRow = secondaryByRank.get(rank) ?? null;
 
     return {
       rank,
-      notebookSong: notebookRow?.songName ?? null,
-      notebookPlayed: wasPlayed(notebookRow?.songName ?? null, actualSongs),
-      ckplusSong: ckplusRow?.songName ?? null,
-      ckplusPlayed: wasPlayed(ckplusRow?.songName ?? null, actualSongs),
+      primarySong: primaryRow?.songName ?? null,
+      primaryPlayed: wasPlayed(primaryRow?.songName ?? null, actualSongs),
+      secondarySong: secondaryRow?.songName ?? null,
+      secondaryPlayed: wasPlayed(secondaryRow?.songName ?? null, actualSongs),
     };
   });
   const mobileReplayRows = replayRows.slice(0, 10);
@@ -198,14 +210,14 @@ export default async function ReplayPage({ searchParams }: Props) {
     <div className="mx-auto max-w-6xl space-y-6">
       <DashboardSideNav
         band={state.band}
-        model="notebook"
+        model={primaryModel}
         bands={bands}
         pathname="/replay"
         hideSecondary
         bandLinks={bands.map((item) => ({
           href: state.replay.selectedDate
-            ? `/replay?band=${item.slug}&date=${state.replay.selectedDate}`
-            : `/replay?band=${item.slug}`,
+            ? `/replay?band=${item.slug}&date=${state.replay.selectedDate}&modelA=${primaryModel}&modelB=${secondaryModel}`
+            : `/replay?band=${item.slug}&modelA=${primaryModel}&modelB=${secondaryModel}`,
           label: item.displayName,
           active: item.slug === state.band,
         }))}
@@ -260,34 +272,34 @@ export default async function ReplayPage({ searchParams }: Props) {
               </div>
               <div className="rounded-[1.35rem] border border-outline-variant/20 bg-surface-container-low p-5 text-center">
                 <p className="font-label text-[10px] uppercase tracking-[0.18em] text-on-surface-variant">
-                  Notebook hits
+                  {primaryLabel} hits
                 </p>
                 <div className="mt-4 flex items-end justify-center gap-3">
                   <p className="font-headline text-4xl font-semibold tracking-[-0.04em] text-primary">
-                    {notebookRows.length > 0 ? notebookTop10Hits : "—"}
+                    {primaryRows.length > 0 ? primaryTop10Hits : "—"}
                   </p>
                   <p className="pb-1 text-[11px] uppercase tracking-[0.14rem] text-on-surface-variant">
                     top 10
                   </p>
                 </div>
                 <p className="mt-2 text-sm text-on-surface">
-                  {formatPercent(computeTopKRecall(notebookRows, actualSongs, 10))} accuracy
+                  {formatPercent(computeTopKRecall(primaryRows, actualSongs, 10))} accuracy
                 </p>
               </div>
               <div className="rounded-[1.35rem] border border-outline-variant/20 bg-surface-container-low p-5 text-center">
                 <p className="font-label text-[10px] uppercase tracking-[0.18em] text-on-surface-variant">
-                  CK+ hits
+                  {secondaryLabel} hits
                 </p>
                 <div className="mt-4 flex items-end justify-center gap-3">
                   <p className="font-headline text-4xl font-semibold tracking-[-0.04em] text-tertiary">
-                    {ckplusRows.length > 0 ? ckplusTop10Hits : "—"}
+                    {secondaryRows.length > 0 ? secondaryTop10Hits : "—"}
                   </p>
                   <p className="pb-1 text-[11px] uppercase tracking-[0.14rem] text-on-surface-variant">
                     top 10
                   </p>
                 </div>
                 <p className="mt-2 text-sm text-on-surface">
-                  {formatPercent(computeTopKRecall(ckplusRows, actualSongs, 10))} accuracy
+                  {formatPercent(computeTopKRecall(secondaryRows, actualSongs, 10))} accuracy
                 </p>
               </div>
             </div>
@@ -300,8 +312,8 @@ export default async function ReplayPage({ searchParams }: Props) {
         )}
       </SectionCard>
 
-      <SectionCard title="Notebook vs CK+">
-        {notebookSnapshot && ckplusSnapshot ? (
+      <SectionCard title={`${primaryLabel} vs ${secondaryLabel}`}>
+        {primarySnapshot && secondarySnapshot ? (
           <div className="space-y-5">
             <p className="text-sm leading-6 text-on-surface-variant">
               Read both boards by rank and check whether each pick made the actual setlist.
@@ -317,14 +329,14 @@ export default async function ReplayPage({ searchParams }: Props) {
                       Rank {row.rank}
                     </p>
                     <div className="flex gap-2">
-                      {row.notebookPlayed ? (
+                      {row.primaryPlayed ? (
                         <span className="rounded-full border border-primary/25 bg-primary/12 px-2.5 py-1 font-label text-[9px] uppercase tracking-[0.16rem] text-primary">
-                          NB Hit
+                          {primaryLabel} hit
                         </span>
                       ) : null}
-                      {row.ckplusPlayed ? (
+                      {row.secondaryPlayed ? (
                         <span className="rounded-full border border-tertiary/25 bg-tertiary/12 px-2.5 py-1 font-label text-[9px] uppercase tracking-[0.16rem] text-tertiary">
-                          CK+ Hit
+                          {secondaryLabel} hit
                         </span>
                       ) : null}
                     </div>
@@ -335,20 +347,20 @@ export default async function ReplayPage({ searchParams }: Props) {
                       <div className="flex items-center justify-between gap-3">
                         <div className="min-w-0">
                           <p className="font-label text-[9px] uppercase tracking-[0.16rem] text-primary">
-                            {MODEL_CONFIG.notebook.displayName}
+                            {primaryLabel}
                           </p>
                           <p
                             className={`mt-2 font-headline text-base font-medium ${
-                              row.notebookPlayed ? "text-primary" : "text-on-surface"
+                              row.primaryPlayed ? "text-primary" : "text-on-surface"
                             }`}
                           >
-                            {row.notebookSong ?? "—"}
+                            {row.primarySong ?? "—"}
                           </p>
                         </div>
                         {renderPlayedLabel(
-                          "Notebook",
-                          Boolean(row.notebookSong),
-                          row.notebookPlayed,
+                          primaryLabel,
+                          Boolean(row.primarySong),
+                          row.primaryPlayed,
                           "text-primary",
                         )}
                       </div>
@@ -358,20 +370,20 @@ export default async function ReplayPage({ searchParams }: Props) {
                       <div className="flex items-center justify-between gap-3">
                         <div className="min-w-0">
                           <p className="font-label text-[9px] uppercase tracking-[0.16rem] text-tertiary">
-                            {MODEL_CONFIG.ckplus.displayName}
+                            {secondaryLabel}
                           </p>
                           <p
                             className={`mt-2 font-headline text-base font-medium ${
-                              row.ckplusPlayed ? "text-tertiary" : "text-on-surface"
+                              row.secondaryPlayed ? "text-tertiary" : "text-on-surface"
                             }`}
                           >
-                            {row.ckplusSong ?? "—"}
+                            {row.secondarySong ?? "—"}
                           </p>
                         </div>
                         {renderPlayedLabel(
-                          "CK plus",
-                          Boolean(row.ckplusSong),
-                          row.ckplusPlayed,
+                          secondaryLabel,
+                          Boolean(row.secondarySong),
+                          row.secondaryPlayed,
                           "text-tertiary",
                         )}
                       </div>
@@ -396,14 +408,14 @@ export default async function ReplayPage({ searchParams }: Props) {
                           Rank {row.rank}
                         </p>
                         <div className="flex gap-2">
-                          {row.notebookPlayed ? (
+                          {row.primaryPlayed ? (
                             <span className="rounded-full border border-primary/25 bg-primary/12 px-2.5 py-1 font-label text-[9px] uppercase tracking-[0.16rem] text-primary">
-                              NB Hit
+                              {primaryLabel} hit
                             </span>
                           ) : null}
-                          {row.ckplusPlayed ? (
+                          {row.secondaryPlayed ? (
                             <span className="rounded-full border border-tertiary/25 bg-tertiary/12 px-2.5 py-1 font-label text-[9px] uppercase tracking-[0.16rem] text-tertiary">
-                              CK+ Hit
+                              {secondaryLabel} hit
                             </span>
                           ) : null}
                         </div>
@@ -414,20 +426,20 @@ export default async function ReplayPage({ searchParams }: Props) {
                           <div className="flex items-center justify-between gap-3">
                             <div className="min-w-0">
                               <p className="font-label text-[9px] uppercase tracking-[0.16rem] text-primary">
-                                {MODEL_CONFIG.notebook.displayName}
+                                {primaryLabel}
                               </p>
                               <p
                                 className={`mt-2 font-headline text-base font-medium ${
-                                  row.notebookPlayed ? "text-primary" : "text-on-surface"
+                                  row.primaryPlayed ? "text-primary" : "text-on-surface"
                                 }`}
                               >
-                                {row.notebookSong ?? "—"}
+                                {row.primarySong ?? "—"}
                               </p>
                             </div>
                             {renderPlayedLabel(
-                              "Notebook",
-                              Boolean(row.notebookSong),
-                              row.notebookPlayed,
+                              primaryLabel,
+                              Boolean(row.primarySong),
+                              row.primaryPlayed,
                               "text-primary",
                             )}
                           </div>
@@ -437,20 +449,20 @@ export default async function ReplayPage({ searchParams }: Props) {
                           <div className="flex items-center justify-between gap-3">
                             <div className="min-w-0">
                               <p className="font-label text-[9px] uppercase tracking-[0.16rem] text-tertiary">
-                                {MODEL_CONFIG.ckplus.displayName}
+                                {secondaryLabel}
                               </p>
                               <p
                                 className={`mt-2 font-headline text-base font-medium ${
-                                  row.ckplusPlayed ? "text-tertiary" : "text-on-surface"
+                                  row.secondaryPlayed ? "text-tertiary" : "text-on-surface"
                                 }`}
                               >
-                                {row.ckplusSong ?? "—"}
+                                {row.secondarySong ?? "—"}
                               </p>
                             </div>
                             {renderPlayedLabel(
-                              "CK plus",
-                              Boolean(row.ckplusSong),
-                              row.ckplusPlayed,
+                              secondaryLabel,
+                              Boolean(row.secondarySong),
+                              row.secondaryPlayed,
                               "text-tertiary",
                             )}
                           </div>
@@ -470,11 +482,11 @@ export default async function ReplayPage({ searchParams }: Props) {
                 <thead className="bg-surface-container-low text-on-surface-variant">
                   <tr>
                     <th className={`${TABLE_HEAD_CLASS} whitespace-nowrap`}>Rank</th>
-                    <th className={TABLE_HEAD_CLASS}>{MODEL_CONFIG.notebook.displayName}</th>
+                    <th className={TABLE_HEAD_CLASS}>{primaryLabel}</th>
                     <th className={`${TABLE_HEAD_CLASS} whitespace-nowrap text-center`}>
                       Played
                     </th>
-                    <th className={TABLE_HEAD_CLASS}>{MODEL_CONFIG.ckplus.displayName}</th>
+                    <th className={TABLE_HEAD_CLASS}>{secondaryLabel}</th>
                     <th className={`${TABLE_HEAD_CLASS} whitespace-nowrap text-center`}>
                       Played
                     </th>
@@ -491,59 +503,59 @@ export default async function ReplayPage({ searchParams }: Props) {
                       <td className={TABLE_CELL_CLASS}>
                         <span
                           className={`font-headline font-medium ${
-                            row.notebookPlayed ? "text-primary" : "text-on-surface"
+                            row.primaryPlayed ? "text-primary" : "text-on-surface"
                           }`}
                         >
-                          {row.notebookSong ?? "—"}
+                          {row.primarySong ?? "—"}
                         </span>
                       </td>
                       <td className={`${TABLE_CELL_CLASS} text-center`}>
                         <span
                           className={`font-label text-[10px] font-semibold uppercase tracking-[0.16rem] ${
-                            row.notebookSong
-                              ? row.notebookPlayed
+                            row.primarySong
+                              ? row.primaryPlayed
                                 ? "text-primary"
                                 : "text-on-surface-variant"
                               : "text-on-surface-variant"
                           }`}
                           aria-label={
-                            row.notebookSong
-                              ? row.notebookPlayed
-                                ? "Notebook prediction was played"
-                                : "Notebook prediction was not played"
-                              : "No notebook prediction"
+                            row.primarySong
+                              ? row.primaryPlayed
+                                ? `${primaryLabel} prediction was played`
+                                : `${primaryLabel} prediction was not played`
+                              : `No ${primaryLabel} prediction`
                           }
                         >
-                          {row.notebookSong ? (row.notebookPlayed ? "✓" : "") : "—"}
+                          {row.primarySong ? (row.primaryPlayed ? "✓" : "") : "—"}
                         </span>
                       </td>
                       <td className={TABLE_CELL_CLASS}>
                         <span
                           className={`font-headline font-medium ${
-                            row.ckplusPlayed ? "text-tertiary" : "text-on-surface"
+                            row.secondaryPlayed ? "text-tertiary" : "text-on-surface"
                           }`}
                         >
-                          {row.ckplusSong ?? "—"}
+                          {row.secondarySong ?? "—"}
                         </span>
                       </td>
                       <td className={`${TABLE_CELL_CLASS} text-center`}>
                         <span
                           className={`font-label text-[10px] font-semibold uppercase tracking-[0.16rem] ${
-                            row.ckplusSong
-                              ? row.ckplusPlayed
+                            row.secondarySong
+                              ? row.secondaryPlayed
                                 ? "text-primary"
                                 : "text-on-surface-variant"
                               : "text-on-surface-variant"
                           }`}
                           aria-label={
-                            row.ckplusSong
-                              ? row.ckplusPlayed
-                                ? "CK plus prediction was played"
-                                : "CK plus prediction was not played"
-                              : "No CK plus prediction"
+                            row.secondarySong
+                              ? row.secondaryPlayed
+                                ? `${secondaryLabel} prediction was played`
+                                : `${secondaryLabel} prediction was not played`
+                              : `No ${secondaryLabel} prediction`
                           }
                         >
-                          {row.ckplusSong ? (row.ckplusPlayed ? "✓" : "") : "—"}
+                          {row.secondarySong ? (row.secondaryPlayed ? "✓" : "") : "—"}
                         </span>
                       </td>
                     </tr>

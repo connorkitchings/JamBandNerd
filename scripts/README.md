@@ -9,7 +9,7 @@ These are the canonical scripts used by docs and GitHub Actions:
 
 - `run_optimized_pipeline.py` — end-to-end runner for one band or `all`
 - `generate_predictions.py` — generate predictions for `--band` and `--model`
-- `run_backtest.py` — compute per-show accuracy history and persist historical scored-run lineage
+- `run_backtest.py` — compute per-show accuracy history and persist historical scored-run lineage; supports local raw-table snapshots via `--snapshot-root`
 - `save_aggregate_accuracy.py` — compute aggregate accuracy from per-show results
 - `verify_data_freshness.py` — CI data-quality check for recent missing setlists
 - `generate_pipeline_summary.py` — GitHub Actions monitoring summary for recent completed-show freshness and prediction coverage
@@ -36,9 +36,11 @@ Prediction entry points (band-specific wrappers):
 
 ## Recovery and rebuild
 
+- `export_backtest_snapshots.py` — export raw show/setlist tables into local JSON snapshots for offline historical scoring
 - `rebuild_prediction_songs.py` — rebuild the `prediction_songs` projection from canonical prediction tables; supports bounded `--reference-date-from/--reference-date-to` window reconciliation
 - `rebuild_derived_data.py` — rebuild predictions, `prediction_songs`, and/or accuracy tables band by band with per-model phase logging and just-in-time clearing
 - `backfill_predictions.py` — regenerate historical predictions for one or more band/model combinations
+- `recover_deal_last50_local.py` — local-first recovery for missing Deal `last_50` historical rows using exported raw snapshots, local scored-run bundles, and per-band Supabase upload/verification
 - `wipe_band_data.py` — clear derived outputs per band/model
 
 ## Diagnostics (stable)
@@ -49,6 +51,7 @@ Prediction entry points (band-specific wrappers):
 - `check_recent_avg_gap.py` — check recent average gap for a band/model (requires `--band` and `--model`)
 - `compare_models.py` — compare any backtestable candidate model against Notebook/CK+ baselines over the current standard `last_50` window; supports `--deal-overrides` JSON for hyperparameter/feature-subset ablations
 - `evaluate_deal_model.py` — compatibility wrapper that runs the generic comparison workflow for Deal
+- `model_readiness.py` — canonical staged readiness workflow for future model promotion: comparison evidence, local snapshot export, historical publish, aggregate accuracy, and backend validation
 - `analyze_ablations.py` — rank ablation JSON reports against the canonical Deal baseline and Notebook anchor, then print Batch 2 eligibility and suggested combo experiments
 
 ## Admin scripts

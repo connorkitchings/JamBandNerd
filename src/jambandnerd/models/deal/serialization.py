@@ -14,7 +14,7 @@ def serialize_predictions(predictions: Sequence[Any]) -> list[dict[str, Any]]:
             "probability": prediction.probability,
             "current_gap": prediction.current_gap,
             "plays_past_year": prediction.plays_past_year,
-            "times_played": prediction.times_played,
+            "recent_plays_50": prediction.recent_plays_50,
             "LTP": prediction.LTP,
         }
         for i, prediction in enumerate(predictions)

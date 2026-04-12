@@ -10,7 +10,11 @@ from typing import Dict, Iterable, List
 from jambandnerd.config.bands import get_active_bands
 from jambandnerd.db.connection import get_supabase_client
 from jambandnerd.db.operations import fetch_prediction_songs_for_date
-from jambandnerd.models.registry import list_pipeline_models
+from jambandnerd.models.registry import (
+    get_model_definition,
+    list_model_slugs,
+    list_pipeline_models,
+)
 
 
 def _parse_timestamp(value: str | None) -> datetime | None:
@@ -154,19 +158,29 @@ def _check_stale_projection_rows(
 
 
 def validate_predictions(
-    bands: Iterable[str], max_age_hours: int, *, validate_projection: bool = True
+    bands: Iterable[str],
+    max_age_hours: int,
+    *,
+    validate_projection: bool = True,
+    models: Iterable[str] | None = None,
 ) -> int:
     client = get_supabase_client()
 
     band_list = list(bands)
     if not band_list:
         band_list = list(get_active_bands())
+    selected_models = list(models) if models is not None else []
+    definitions = (
+        [get_model_definition(model_slug) for model_slug in selected_models]
+        if selected_models
+        else list_pipeline_models()
+    )
     tables = {
         definition.prediction_table: {
             "model_slug": definition.slug,
             "model_version": definition.version,
         }
-        for definition in list_pipeline_models()
+        for definition in definitions
     }
 
     now = datetime.now(timezone.utc)
@@ -260,12 +274,20 @@ def main() -> None:
         action="store_true",
         help="Skip validation of the derived prediction_songs projection.",
     )
+    parser.add_argument(
+        "--model",
+        dest="models",
+        action="append",
+        choices=list_model_slugs(),
+        help="Model to validate (repeat for multiple). Defaults to pipeline models.",
+    )
     args = parser.parse_args()
 
     failures = validate_predictions(
         bands=args.bands or [],
         max_age_hours=args.max_age_hours,
         validate_projection=not args.skip_projection_check,
+        models=args.models or None,
     )
     if failures:
         raise SystemExit(f"Validation failed with {failures} issue(s)")

@@ -25,7 +25,7 @@ const predictionRows = [
     gapZScore: 1.2,
     ckplusScore: 2.1,
     probability: 0.96,
-    timesPlayed: 42,
+    recentPlays50: 16,
     tier: "expected" as const,
   },
   {
@@ -40,7 +40,7 @@ const predictionRows = [
     gapZScore: 2.0,
     ckplusScore: 2.7,
     probability: null,
-    timesPlayed: 18,
+    recentPlays50: 7,
     tier: "possible" as const,
   },
   {
@@ -55,7 +55,7 @@ const predictionRows = [
     gapZScore: -0.2,
     ckplusScore: 1.1,
     probability: 0.84,
-    timesPlayed: 31,
+    recentPlays50: 11,
     tier: "expected" as const,
   },
 ];

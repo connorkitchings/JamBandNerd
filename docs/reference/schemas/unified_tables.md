@@ -104,6 +104,7 @@ Notes:
 Current aggregate accuracy tables:
 
 - `notebook_accuracy`
+- `accuracy_deal`
 - `accuracy_ckplus`
 
 Both use the same metric layout.
@@ -139,8 +140,8 @@ CREATE TABLE public.notebook_accuracy (
 );
 ```
 
-`accuracy_ckplus` uses the same column layout with table and constraint names
-adjusted accordingly.
+`accuracy_deal` and `accuracy_ckplus` use the same column layout with table and
+constraint names adjusted accordingly.
 
 ## Per-Show Accuracy Table
 

@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import os
 import sys
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
+from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 import pandas as pd
@@ -52,7 +54,12 @@ def ensure_source_reachable(band: str, *, timeout: int = 15) -> None:
         )
         status = response.status_code
         # Treat any network-level errors or 5xx responses as fatal. 4xx responses imply the host is reachable.
-        if status >= 500:
+        if status == 403:
+            import logging as _logging
+            _logging.getLogger(__name__).warning(
+                f"Received 403 from {url} — upstream API may be blocking requests"
+            )
+        elif status >= 500:
             raise RuntimeError(f"Received status {status} from {url}")
     except requests.RequestException as exc:
         raise RuntimeError(f"Failed to contact {url}: {exc}") from exc
@@ -195,8 +202,22 @@ def resolve_reference_date(
         return target_date
 
 
-def fetch_table(table_name: str, chunk_size: int = 10000) -> List[Dict]:
+def fetch_table(
+    table_name: str,
+    chunk_size: int = 10000,
+    *,
+    snapshot_root: str | None = None,
+) -> List[Dict]:
     """Fetch all rows from a Supabase table with robust, verbose pagination."""
+    if snapshot_root:
+        from src.jambandnerd.db.table_snapshots import load_table_snapshot
+
+        rows = load_table_snapshot(table_name, snapshot_root)
+        print(
+            f"Loaded {len(rows)} records from local snapshot for {table_name} ({snapshot_root})."
+        )
+        return rows
+
     from src.jambandnerd.db.connection import get_supabase_client
 
     client = get_supabase_client()
@@ -248,6 +269,45 @@ def fetch_table(table_name: str, chunk_size: int = 10000) -> List[Dict]:
 
     print(f"Fetched a total of {len(all_data)} records from {table_name}.")
     return all_data
+
+
+def export_tables_to_snapshot(
+    table_names: Iterable[str],
+    *,
+    snapshot_root: str,
+    chunk_size: int = 10000,
+) -> dict[str, Any]:
+    """Export one or more Supabase tables into a local snapshot directory."""
+
+    from src.jambandnerd.db.table_snapshots import (
+        load_snapshot_manifest,
+        write_snapshot_manifest,
+        write_table_snapshot,
+    )
+
+    root = Path(snapshot_root)
+    root.mkdir(parents=True, exist_ok=True)
+
+    existing_manifest = load_snapshot_manifest(root) or {}
+    manifest = {
+        "snapshot_root": str(root),
+        "exported_at": datetime.now(timezone.utc).isoformat(),
+        "source": {
+            "supabase_url": os.environ.get("SUPABASE_URL"),
+        },
+        "tables": dict(existing_manifest.get("tables", {})),
+    }
+
+    for table_name in table_names:
+        rows = fetch_table(table_name, chunk_size=chunk_size)
+        path = write_table_snapshot(table_name, rows, root)
+        manifest["tables"][table_name] = {
+            "path": path.name,
+            "row_count": len(rows),
+        }
+
+    write_snapshot_manifest(root, manifest)
+    return manifest
 
 
 def fetch_table_rows(

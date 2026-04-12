@@ -63,7 +63,7 @@ def _accuracy_rows(*, stale_hours: int = 0):
             },
             {
                 "band": "goose",
-                "model_version": "ckplus_v1",
+                "model_version": "deal_v2",
                 "evaluated_at": iso,
                 "show_date": "2026-03-20",
                 "prediction_run_id": 201,
@@ -79,10 +79,10 @@ def _accuracy_rows(*, stale_hours: int = 0):
                 "window_end": "2026-03-20",
             }
         ],
-        "accuracy_ckplus": [
+        "accuracy_deal": [
             {
                 "band": "goose",
-                "model_version": "ckplus_v1",
+                "model_version": "deal_v2",
                 "evaluated_at": iso,
                 "window_start": "2025-01-01",
                 "window_end": "2026-03-20",
@@ -115,7 +115,7 @@ def test_validate_accuracy_fails_for_stale_rows(monkeypatch):
 
 def test_validate_accuracy_fails_when_aggregate_missing(monkeypatch):
     rows = _accuracy_rows()
-    rows["accuracy_ckplus"] = []
+    rows["accuracy_deal"] = []
     monkeypatch.setattr(
         "scripts.validate_accuracy_tables.get_supabase_client",
         lambda: _ClientStub(rows),
@@ -128,7 +128,7 @@ def test_validate_accuracy_fails_when_aggregate_missing(monkeypatch):
 
 def test_validate_accuracy_skip_aggregate_check(monkeypatch):
     rows = _accuracy_rows()
-    rows["accuracy_ckplus"] = []
+    rows["accuracy_deal"] = []
     rows["notebook_accuracy"] = []
     monkeypatch.setattr(
         "scripts.validate_accuracy_tables.get_supabase_client",
@@ -170,7 +170,7 @@ def test_validate_accuracy_ignores_sparse_recent_rows_for_replay_lineage(monkeyp
         rows["accuracy_per_show"][0],
         {
             "band": "goose",
-            "model_version": "ckplus_v1",
+            "model_version": "deal_v2",
             "evaluated_at": rows["accuracy_per_show"][1]["evaluated_at"],
             "show_date": "2026-03-21",
             "prediction_run_id": None,

@@ -3,6 +3,15 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Literal
+
+ModelLifecycleStage = Literal[
+    "experimental",
+    "readiness_verified",
+    "web_promoted",
+    "retired",
+]
+ModelWebVisibility = Literal["hidden", "promoted"]
 
 
 @dataclass(frozen=True)
@@ -22,6 +31,10 @@ class ModelMetadata:
     supports_training: bool
     supports_live_predictions: bool
     supports_backtest: bool
+    lifecycle_stage: ModelLifecycleStage
+    web_visibility: ModelWebVisibility
+    readiness_windows: tuple[int, ...] = (50,)
+    readiness_baselines: tuple[str, ...] = ()
     default_top_k: int = 50
     notes: str | None = None
 
@@ -41,6 +54,10 @@ MODEL_METADATA: tuple[ModelMetadata, ...] = (
         supports_training=False,
         supports_live_predictions=True,
         supports_backtest=True,
+        lifecycle_stage="web_promoted",
+        web_visibility="promoted",
+        readiness_windows=(50,),
+        readiness_baselines=(),
     ),
     ModelMetadata(
         slug="ckplus",
@@ -56,6 +73,10 @@ MODEL_METADATA: tuple[ModelMetadata, ...] = (
         supports_training=False,
         supports_live_predictions=False,
         supports_backtest=False,
+        lifecycle_stage="retired",
+        web_visibility="hidden",
+        readiness_windows=(50,),
+        readiness_baselines=(),
         notes="Retired 2026-04-11. Replaced by Deal. Historical data retained in predictions_ckplus / accuracy_ckplus.",
     ),
     ModelMetadata(
@@ -72,6 +93,10 @@ MODEL_METADATA: tuple[ModelMetadata, ...] = (
         supports_training=True,
         supports_live_predictions=True,
         supports_backtest=True,
+        lifecycle_stage="readiness_verified",
+        web_visibility="hidden",
+        readiness_windows=(50,),
+        readiness_baselines=("notebook",),
         notes="Promoted 2026-04-11. Replaces CK+.",
     ),
 )

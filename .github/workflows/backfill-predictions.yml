@@ -112,7 +112,15 @@ jobs:
         id: get_dates
         run: |
           echo "::group::Fetching prediction dates for ${{ matrix.band }} / ${{ matrix.model }}"
-          DATES_JSON=$(uv run python scripts/get_prediction_dates.py --band ${{ matrix.band }} --model ${{ matrix.model }} --limit 100)
+
+          # When backfilling Deal, source dates from Notebook that are missing in Deal.
+          # For other models, re-generate dates already in their own table.
+          if [[ "${{ matrix.model }}" == "deal" ]]; then
+            DATES_JSON=$(uv run python scripts/get_prediction_dates.py --band ${{ matrix.band }} --model notebook --limit 500 --missing-from deal)
+          else
+            DATES_JSON=$(uv run python scripts/get_prediction_dates.py --band ${{ matrix.band }} --model ${{ matrix.model }} --limit 100)
+          fi
+
           echo "dates=$DATES_JSON" >> $GITHUB_OUTPUT
           DATE_COUNT=$(echo "$DATES_JSON" | python -c "import json,sys; print(len(json.load(sys.stdin)))")
           echo "date_count=$DATE_COUNT" >> $GITHUB_OUTPUT
@@ -144,7 +152,7 @@ jobs:
         if: github.event.inputs.dry_run != 'true'
         run: |
           echo "::group::Validating prediction tables for ${{ matrix.band }} / ${{ matrix.model }}"
-          uv run python scripts/validate_prediction_tables.py --band ${{ matrix.band }} --max-age-hours 168
+          uv run python scripts/validate_prediction_tables.py --band ${{ matrix.band }} --model ${{ matrix.model }} --max-age-hours 168
           echo "::endgroup::"
 
   summary:

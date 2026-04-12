@@ -6,12 +6,14 @@ from src.jambandnerd.models.registry import (
     build_predictor,
     get_aggregate_accuracy_table,
     get_model_definition,
+    is_model_promoted_to_web,
     list_accuracy_validation_models,
     list_aggregate_accuracy_models,
     list_backfill_models,
     list_model_slugs,
     list_models,
     list_pipeline_models,
+    list_promoted_web_models,
     list_web_models,
 )
 
@@ -29,6 +31,9 @@ def test_registry_capability_lists_are_flag_driven() -> None:
     assert [definition.slug for definition in list_web_models()] == [
         "notebook",
         "deal",
+    ]
+    assert [definition.slug for definition in list_promoted_web_models()] == [
+        "notebook",
     ]
     assert [definition.slug for definition in list_backfill_models()] == [
         "notebook",
@@ -58,7 +63,7 @@ def test_registry_invariants_for_serializer_and_capabilities() -> None:
     for definition in list_models():
         assert callable(definition.serializer)
 
-        if definition.enabled_for_web:
+        if is_model_promoted_to_web(definition.slug):
             assert definition.supports_live_predictions
 
         if definition.enabled_for_pipeline:
@@ -66,3 +71,17 @@ def test_registry_invariants_for_serializer_and_capabilities() -> None:
 
         if definition.enabled_for_accuracy_validation:
             assert get_aggregate_accuracy_table(definition.slug) is not None
+
+
+def test_registry_lifecycle_metadata_tracks_staged_rollout() -> None:
+    notebook = get_model_definition("notebook")
+    deal = get_model_definition("deal")
+    ckplus = get_model_definition("ckplus")
+
+    assert notebook.lifecycle_stage == "web_promoted"
+    assert notebook.web_visibility == "promoted"
+    assert deal.lifecycle_stage == "readiness_verified"
+    assert deal.web_visibility == "hidden"
+    assert deal.readiness_windows == (50,)
+    assert deal.readiness_baselines == ("notebook",)
+    assert ckplus.lifecycle_stage == "retired"

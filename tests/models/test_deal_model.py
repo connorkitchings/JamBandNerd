@@ -121,6 +121,7 @@ def test_deal_predictor_produces_non_uniform_probabilities(
     assert len(predictions) > 5
     assert np.std(probabilities) > 0.001
     assert probabilities.max() > probabilities.min()
+    assert all(0 <= prediction.recent_plays_50 <= 50 for prediction in predictions)
 
 
 def test_deal_model_roundtrip_preserves_ranking(tmp_path, monkeypatch) -> None:
@@ -316,6 +317,21 @@ def test_novelty_rank_respects_debut_and_play_count() -> None:
 
     assert "novelty_rank" in candidates.columns
     assert (candidates["novelty_rank"] >= 0).all()
+
+
+def test_recent_plays_50_is_present_in_candidates() -> None:
+    shows_df, setlists_df = build_deal_fixture()
+    model_data = generate_model_data(
+        shows_df, setlists_df, date(2024, 3, 20), band="goose"
+    )
+
+    candidates = get_candidate_features(
+        model_data, min_plays_threshold=2, retired_gap_threshold=200
+    )
+
+    assert "recent_plays_50" in candidates.columns
+    assert (candidates["recent_plays_50"] >= 0).all()
+    assert (candidates["recent_plays_50"] <= 50).all()
 
 
 def test_debut_features_in_training_frame() -> None:

@@ -16,7 +16,7 @@ const FAQ_ITEMS = [
   {
     question: "What drives the predictions?",
     answer:
-      "Each model uses different signals:\n\nNotebook — An independent implementation of the weighted-recency algorithm popularized by Phish.net, provided as a benchmark for comparison. It emphasizes songs active in the recent rotation and uses current gap to separate likely candidates, while excluding songs played in the last 3 shows.\n\nCK+ — A personally developed model. It ranks songs by how overdue they are relative to their historical cadence, using gap ratio, gap z-score, and reliability signals. Songs played in the last 3 shows are excluded.",
+      "Each model uses different signals:\n\nNotebook — An independent implementation of the weighted-recency algorithm popularized by Phish.net, provided as a benchmark for comparison. It emphasizes songs active in the recent rotation and uses current gap to separate likely candidates, while excluding songs played in the last 3 shows.\n\nDeal — A personally developed explainable logistic ranking model. It learns from true per-show candidate rows and shared rotation signals such as gap behavior, venue context, and recent activity patterns.",
   },
   {
     question: "Does accuracy vary by band?",
@@ -104,15 +104,15 @@ export default function AboutPage() {
           </div>
           <div className="editorial-chip rounded-[1.5rem] p-6">
             <p className="font-label text-[10px] uppercase tracking-[0.2em] text-primary">
-              {MODEL_CONFIG.ckplus.displayName}
+              {MODEL_CONFIG.deal.displayName}
             </p>
             <ul className="mt-3 space-y-3 pl-5 text-sm leading-6 text-on-surface-variant marker:text-primary/75 list-disc">
-              <li>Personally developed cadence model built specifically for this site.</li>
-              <li>Ranks songs by how overdue they are relative to their historical behavior.</li>
-              <li>Uses gap ratio, gap z-score, and reliability signals.</li>
+              <li>Personally developed explainable ranking model built specifically for this site.</li>
+              <li>Trains on true per-show candidate rows instead of relying on one fixed heuristic.</li>
+              <li>Uses shared rotation, venue, and recency signals to produce calibrated song rankings.</li>
             </ul>
             <p className="mt-4 border-t border-outline-variant/15 pt-4 font-label text-[10px] uppercase tracking-[0.16em] text-on-surface-variant">
-              Credit: CK+ is an original personally developed model.
+              Credit: Deal is an original personally developed model.
             </p>
           </div>
         </div>

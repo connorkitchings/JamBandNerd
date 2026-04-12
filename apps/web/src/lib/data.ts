@@ -31,6 +31,7 @@ export type PredictionRow = {
   songName: string;
   lastPlayed: string | null;
   currentGap: number | null;
+  recentPlays50: number | null;
   playsPastYear: number | null;
   avgGap: number | null;
   recentAvgGap: number | null;
@@ -38,7 +39,6 @@ export type PredictionRow = {
   gapZScore: number | null;
   ckplusScore: number | null;
   probability: number | null;
-  timesPlayed: number | null;
   tier: LikelihoodTier;
 };
 
@@ -91,7 +91,9 @@ export type ReplaySnapshot = {
   selectedDate: string | null;
   show: ShowDetails | null;
   setlist: SetlistSnapshot | null;
-  snapshots: Record<ModelSlug, PredictionSnapshot | null>;
+  modelA: ModelSlug;
+  modelB: ModelSlug;
+  snapshots: Partial<Record<ModelSlug, PredictionSnapshot | null>>;
 };
 
 export type BandEntry = {
@@ -253,16 +255,7 @@ async function fetchAllRecords(
   return rows;
 }
 
-function computeTier(rank: number, probability: number | null): LikelihoodTier {
-  // When a future model supplies real probabilities, use those
-  if (probability !== null) {
-    if (probability >= 0.15) return "expected";
-    if (probability >= 0.08) return "hot";
-    if (probability >= 0.03) return "likely";
-    return "possible";
-  }
-
-  // Rank-based tiers
+function computeTier(rank: number): LikelihoodTier {
   if (rank <= 5) return "expected";
   if (rank <= 15) return "hot";
   if (rank <= 30) return "likely";
@@ -283,6 +276,7 @@ function normalizePredictionRows(rows: JsonPrediction[]): PredictionRow[] {
             ? row.last_played_date
             : null,
       currentGap: parseNumber(row.current_gap),
+      recentPlays50: parseNumber(row.recent_plays_50),
       playsPastYear: parseNumber(row.plays_past_year),
       avgGap: parseNumber(row.avg_gap),
       recentAvgGap: parseNumber(row.recent_avg_gap),
@@ -290,8 +284,7 @@ function normalizePredictionRows(rows: JsonPrediction[]): PredictionRow[] {
       gapZScore: parseNumber(row.gap_z_score),
       ckplusScore: parseNumber(row.ckplus_score),
       probability,
-      timesPlayed: parseNumber(row.times_played),
-      tier: computeTier(rank, probability),
+      tier: computeTier(rank),
     };
   });
 }
@@ -315,6 +308,7 @@ function normalizeProjectedPredictionRows(rows: ProjectionRow[]): PredictionRow[
             ? payload.last_played_date
             : null,
       currentGap: parseNumber(payload.current_gap),
+      recentPlays50: parseNumber(payload.recent_plays_50),
       playsPastYear: parseNumber(payload.plays_past_year),
       avgGap: parseNumber(payload.avg_gap),
       recentAvgGap: parseNumber(payload.recent_avg_gap),
@@ -322,8 +316,7 @@ function normalizeProjectedPredictionRows(rows: ProjectionRow[]): PredictionRow[
       gapZScore: parseNumber(payload.gap_z_score),
       ckplusScore: parseNumber(payload.ckplus_score),
       probability,
-      timesPlayed: parseNumber(payload.times_played),
-      tier: computeTier(rank, probability),
+      tier: computeTier(rank),
     };
   });
 }
@@ -512,6 +505,25 @@ function getClientOrState<T>(): RouteState<T> | null {
   }
 
   return null;
+}
+
+function resolveReplayModels(
+  modelAInput: string | undefined,
+  modelBInput: string | undefined,
+): [ModelSlug, ModelSlug] {
+  const modelA = ACTIVE_MODELS.includes(modelAInput as ModelSlug)
+    ? (modelAInput as ModelSlug)
+    : (ACTIVE_MODELS[0] ?? "notebook");
+  const fallbackModelB =
+    ACTIVE_MODELS.find((item) => item !== modelA) ?? ACTIVE_MODELS[0] ?? modelA;
+  const requestedModelB = ACTIVE_MODELS.includes(modelBInput as ModelSlug)
+    ? (modelBInput as ModelSlug)
+    : fallbackModelB;
+  const modelB =
+    requestedModelB === modelA && ACTIVE_MODELS.length > 1
+      ? fallbackModelB
+      : requestedModelB;
+  return [modelA, modelB];
 }
 
 type BandSelection = {
@@ -1306,6 +1318,8 @@ export const getReplaySnapshot = cache(
   async (
     bandInput: string | undefined,
     selectedDateInput?: string,
+    modelAInput?: string,
+    modelBInput?: string,
     replayWindow = 50,
   ): Promise<RouteState<{ band: BandSlug; replay: ReplaySnapshot }>> => {
     const missingEnv = getClientOrState<{ band: BandSlug; replay: ReplaySnapshot }>();
@@ -1326,8 +1340,9 @@ export const getReplaySnapshot = cache(
     try {
       const band = bandState.band;
       const { showsTable } = bandState.bandEntry;
+      const [modelA, modelB] = resolveReplayModels(modelAInput, modelBInput);
       const modelVersions = await Promise.all(
-        ACTIVE_MODELS.map(async (model) => ({
+        [modelA, modelB].map(async (model) => ({
           model,
           version: await getCurrentModelVersion(client, band, model),
         })),
@@ -1445,16 +1460,12 @@ export const getReplaySnapshot = cache(
         }),
       );
 
-      const snapshots = historicalSnapshots.reduce<Record<ModelSlug, PredictionSnapshot | null>>(
+      const snapshots = historicalSnapshots.reduce<Partial<Record<ModelSlug, PredictionSnapshot | null>>>(
         (acc, entry) => {
           acc[entry.model] = entry.snapshot;
           return acc;
         },
-        {
-          notebook: null,
-          ckplus: null,
-          deal: null,
-        },
+        {},
       );
 
       const setlist =
@@ -1473,6 +1484,8 @@ export const getReplaySnapshot = cache(
           selectedDate,
           show: selectedShow ? buildShowDetails(selectedShow) : null,
           setlist,
+          modelA,
+          modelB,
           snapshots,
         },
       };

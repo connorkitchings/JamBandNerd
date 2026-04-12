@@ -20,7 +20,7 @@ import argparse
 import os
 import sys
 from datetime import date, timedelta, timezone
-from typing import Any, Dict, List
+from typing import Any
 
 import pandas as pd
 
@@ -41,6 +41,7 @@ from src.jambandnerd.models.evaluation import (
     list_completed_shows,
     select_target_shows,
 )
+from src.jambandnerd.models.model_test_cache import LocalModelTestCache
 from src.jambandnerd.models.registry import (
     build_predictor,
     get_model_definition,
@@ -48,6 +49,259 @@ from src.jambandnerd.models.registry import (
     serialize_model_predictions,
 )
 from src.jambandnerd.transformations.gaps import generate_model_data
+
+
+def load_backtest_frames(
+    band: str,
+    *,
+    snapshot_root: str | None = None,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Load and prepare the raw inputs required for a historical backtest."""
+
+    if snapshot_root:
+        shows_rows = fetch_table(f"{band}_shows_raw", snapshot_root=snapshot_root)
+        setlist_rows = fetch_table(f"{band}_setlists_raw", snapshot_root=snapshot_root)
+    else:
+        shows_rows = fetch_table(f"{band}_shows_raw")
+        setlist_rows = fetch_table(f"{band}_setlists_raw")
+
+    shows_df = pd.DataFrame(shows_rows)
+    sets_df = pd.DataFrame(setlist_rows)
+    if shows_df.empty or sets_df.empty:
+        return shows_df, sets_df
+    return prepare_band_data(shows_df, sets_df, band=band)
+
+
+def build_scored_run_records(
+    *,
+    band: str,
+    model: str,
+    shows_df: pd.DataFrame,
+    sets_df: pd.DataFrame,
+    target_shows: pd.DataFrame,
+    exclusion_window: int,
+    local_cache: LocalModelTestCache | None = None,
+) -> list[dict[str, Any]]:
+    """Build detailed per-show scored-run records without writing to Supabase."""
+
+    definition = get_model_definition(model)
+    kwargs: dict[str, Any] = {}
+    if definition.supports_training:
+        kwargs["persist_artifacts"] = False
+    predictor = build_predictor(model, band=band, **kwargs)
+    model_version = definition.version
+    scored_run_records: list[dict[str, Any]] = []
+
+    for _, show_row in target_shows.iterrows():
+        ref_date = show_row["show_date"]
+        show_id = str(show_row["show_id"])
+
+        if not isinstance(ref_date, date):
+            continue
+
+        actual_songs = (
+            sets_df.loc[sets_df["show_id"] == show_id, "song_name"]
+            .dropna()
+            .unique()
+            .tolist()
+        )
+        if not actual_songs or len(actual_songs) <= 2:
+            continue
+
+        prediction_date = get_evaluation_reference_date(ref_date)
+        if local_cache is not None:
+            cached = local_cache.load_scored_run(
+                band=band,
+                model_slug=model,
+                reference_date=prediction_date.isoformat(),
+                target_show_id=show_id,
+            )
+            if cached is not None:
+                scored_run_records.append(cached)
+                continue
+
+        try:
+            model_data = generate_model_data(
+                shows_df,
+                sets_df,
+                prediction_date,
+                exclusion_window=exclusion_window,
+                band=band,
+            )
+
+            if definition.supports_training:
+                predictor.train(model_data)
+            prediction_output = predictor.predict(
+                model_data=model_data,
+                top_k=definition.default_top_k,
+            )
+            preds = (
+                prediction_output[0]
+                if isinstance(prediction_output, tuple)
+                else prediction_output
+            )
+
+            if not preds:
+                continue
+
+            serialized_predictions = serialize_model_predictions(model, preds)
+            pred_songs = [
+                prediction["song_name"] for prediction in serialized_predictions
+            ]
+        except (ValueError, AttributeError, KeyError, TypeError):
+            continue
+        except Exception:
+            continue
+
+        metrics_by_k: dict[str, dict[str, float]] = {}
+        for k in [10, 25, 50]:
+            metrics_by_k[f"k{k}"] = compute_per_show_metrics(
+                pred_songs,
+                actual_songs,
+                k,
+            )
+
+        record = {
+            "band": band,
+            "model_slug": model,
+            "model_version": model_version,
+            "show_id": show_id,
+            "target_show_date": ref_date.isoformat(),
+            "reference_date": prediction_date.isoformat(),
+            "actual_songs": actual_songs,
+            "actual_song_count": len(actual_songs),
+            "predictions": serialized_predictions,
+            "prediction_count": len(serialized_predictions),
+            "generated_at": pd.Timestamp.now(tz=timezone.utc).isoformat(),
+            "metrics": metrics_by_k,
+        }
+        if local_cache is not None:
+            local_cache.write_scored_run(record)
+        scored_run_records.append(record)
+
+    return scored_run_records
+
+
+def build_accuracy_results_dataframe(
+    scored_run_records: list[dict[str, Any]],
+    *,
+    prediction_run_ids: dict[tuple[str, str], int],
+) -> pd.DataFrame:
+    """Build the accuracy_per_show payload from detailed scored-run records."""
+
+    rows: list[dict[str, Any]] = []
+    for record in scored_run_records:
+        key = (str(record["reference_date"]), str(record["show_id"]))
+        prediction_run_id = prediction_run_ids.get(key)
+        if prediction_run_id is None:
+            raise RuntimeError(f"Missing prediction run id for scored run {key}")
+
+        row = {
+            "band": record["band"],
+            "model_version": record["model_version"],
+            "show_id": record["show_id"],
+            "show_date": record["target_show_date"],
+            "actual_song_count": record["actual_song_count"],
+            "prediction_run_id": prediction_run_id,
+            "evaluated_at": record["generated_at"],
+        }
+        for k in [10, 25, 50]:
+            metrics = record["metrics"][f"k{k}"]
+            row[f"k{k}_hit"] = int(metrics["hit"])
+            row[f"k{k}_matches"] = int(metrics["matches"])
+            row[f"k{k}_precision"] = metrics["precision"]
+            row[f"k{k}_recall"] = metrics["recall"]
+            row[f"k{k}_f1"] = metrics["f1"]
+        rows.append(row)
+
+    return pd.DataFrame(rows)
+
+
+def persist_scored_run_records(
+    scored_run_records: list[dict[str, Any]],
+    *,
+    historical_runs_table: str = HISTORICAL_PREDICTION_RUNS_TABLE,
+    accuracy_table: str = "accuracy_per_show",
+) -> pd.DataFrame:
+    """Persist detailed scored-run records to replay lineage and per-show tables."""
+
+    if not scored_run_records:
+        return pd.DataFrame()
+
+    prediction_run_ids: dict[tuple[str, str], int] = {}
+    for record in scored_run_records:
+        run_id = upsert_historical_prediction_run(
+            band=str(record["band"]),
+            model_slug=str(record["model_slug"]),
+            model_version=str(record["model_version"]),
+            reference_date=str(record["reference_date"]),
+            target_show_id=str(record["show_id"]),
+            target_show_date=str(record["target_show_date"]),
+            generated_at=str(record["generated_at"]),
+            predictions=list(record["predictions"]),
+            actual_songs=list(record["actual_songs"]),
+            table_name=historical_runs_table,
+        )
+        prediction_run_ids[(str(record["reference_date"]), str(record["show_id"]))] = run_id
+
+    results_df = build_accuracy_results_dataframe(
+        scored_run_records,
+        prediction_run_ids=prediction_run_ids,
+    )
+    if results_df.empty:
+        return results_df
+
+    upsert_dataframe(
+        table_name=accuracy_table,
+        df=results_df,
+        conflict_columns=["band", "model_version", "show_id"],
+    )
+    return results_df
+
+
+def build_prediction_rows_dataframe(
+    scored_run_records: list[dict[str, Any]],
+) -> pd.DataFrame:
+    """Build canonical prediction rows deduped by reference_date."""
+
+    if not scored_run_records:
+        return pd.DataFrame()
+
+    rows_by_reference_date: dict[str, dict[str, Any]] = {}
+    for record in scored_run_records:
+        rows_by_reference_date[str(record["reference_date"])] = {
+            "band": record["band"],
+            "reference_date": record["reference_date"],
+            "model_version": record["model_version"],
+            "top_k": record["prediction_count"],
+            "predictions": record["predictions"],
+            "predicted_at": record["generated_at"],
+        }
+
+    return pd.DataFrame(
+        [rows_by_reference_date[key] for key in sorted(rows_by_reference_date)]
+    )
+
+
+def summarize_scored_run_records(
+    scored_run_records: list[dict[str, Any]],
+) -> dict[int, dict[str, float]]:
+    """Aggregate scored-run records into K-based summary metrics."""
+
+    summaries: dict[int, dict[str, float]] = {}
+    for k in [10, 25, 50]:
+        agg_metrics_k = aggregate_metrics(
+            [record["metrics"][f"k{k}"] for record in scored_run_records],
+            k,
+        )
+        summaries[k] = {
+            "hit_rate": agg_metrics_k.hit_rate,
+            "avg_matches": agg_metrics_k.avg_matches,
+            "precision": agg_metrics_k.precision,
+            "recall": agg_metrics_k.recall,
+            "f1": agg_metrics_k.f1,
+        }
+    return summaries
 
 
 def run_backtest(
@@ -58,20 +312,18 @@ def run_backtest(
     shows: int | None,
     exclusion_window: int,
     all_history: bool = False,
+    snapshot_root: str | None = None,
 ) -> None:
     """Run a backtest for a given band and model."""
     log_prefix = f"[{band.upper()}/{model.upper()}]"
 
     # 1. Fetch and prepare data
     print(f"{log_prefix} Fetching raw data...")
-    shows_df = pd.DataFrame(fetch_table(f"{band}_shows_raw"))
-    sets_df = pd.DataFrame(fetch_table(f"{band}_setlists_raw"))
+    shows_df, sets_df = load_backtest_frames(band, snapshot_root=snapshot_root)
 
     if shows_df.empty or sets_df.empty:
         print(f"{log_prefix} No data to backtest. Aborting.")
         return
-
-    shows_df, sets_df = prepare_band_data(shows_df, sets_df, band=band)
 
     # 2. Determine target shows for backtesting
     completed_shows = list_completed_shows(shows_df, sets_df)
@@ -106,141 +358,38 @@ def run_backtest(
         print(f"{log_prefix} No shows found in the specified window.")
         return
 
-    # 3. Initialize predictor
+    # 3. Score target shows and persist results
     definition = get_model_definition(model)
     if not definition.supports_backtest:
         raise ValueError(f"Model does not support backtests: {model}")
-    predictor = build_predictor(model, band=band)
-    model_version = definition.version
-
-    # 4. Run backtest loop
-    per_show_results: List[Dict[str, Any]] = []
-    for _, show_row in target_shows.iterrows():
-        ref_date = show_row["show_date"]
-        show_id = str(show_row["show_id"])
-
-        # Stricter validation to skip rows with invalid date types
-        if not isinstance(ref_date, date):
-            print(
-                f"{log_prefix} Skipping show_id {show_id} due to invalid date type: {type(ref_date)} (value: {ref_date})"
-            )
-            continue
-
-        actual_songs = (
-            sets_df.loc[sets_df["show_id"] == show_id, "song_name"]
-            .dropna()
-            .unique()
-            .tolist()
-        )
-        # Skip shows with insufficient songs (but be more permissive)
-        if not actual_songs or len(actual_songs) <= 2:
-            print(
-                f"{log_prefix} Skipping show {show_id} on {ref_date}: only {len(actual_songs)} songs"
-            )
-            continue
-
-        try:
-            prediction_date = get_evaluation_reference_date(ref_date)
-            model_data = generate_model_data(
-                shows_df,
-                sets_df,
-                prediction_date,
-                exclusion_window=exclusion_window,
-                band=band,
-            )
-
-            if definition.supports_training:
-                predictor.train(model_data)
-            prediction_output = predictor.predict(
-                model_data=model_data,
-                top_k=definition.default_top_k,
-            )
-            preds = (
-                prediction_output[0]
-                if isinstance(prediction_output, tuple)
-                else prediction_output
-            )
-
-            if not preds:
-                print(f"{log_prefix} No predictions generated for {ref_date}, skipping")
-                continue
-
-            serialized_predictions = serialize_model_predictions(model, preds)
-            pred_songs = [
-                prediction["song_name"] for prediction in serialized_predictions
-            ]
-        except (ValueError, AttributeError, KeyError, TypeError) as e:
-            print(f"{log_prefix} Error generating predictions for {ref_date}: {e}")
-            continue
-        except Exception as e:
-            print(f"{log_prefix} Unexpected error for {ref_date}: {e}")
-            continue
-
-        generated_at = pd.Timestamp.now(tz=timezone.utc).isoformat()
-        prediction_run_id = upsert_historical_prediction_run(
-            band=band,
-            model_slug=model,
-            model_version=model_version,
-            reference_date=prediction_date.isoformat(),
-            target_show_id=show_id,
-            target_show_date=ref_date.isoformat(),
-            generated_at=generated_at,
-            predictions=serialized_predictions,
-            actual_songs=actual_songs,
-            table_name=HISTORICAL_PREDICTION_RUNS_TABLE,
-        )
-
-        show_metrics = {
-            "band": band,
-            "model_version": model_version,
-            "show_id": show_id,
-            "show_date": ref_date.isoformat(),
-            "actual_song_count": len(actual_songs),
-            "prediction_run_id": prediction_run_id,
-            "evaluated_at": generated_at,
-        }
-
-        for k in [10, 25, 50]:
-            metrics = compute_per_show_metrics(pred_songs, actual_songs, k)
-            show_metrics[f"k{k}_hit"] = int(metrics["hit"])
-            show_metrics[f"k{k}_matches"] = int(metrics["matches"])
-            show_metrics[f"k{k}_precision"] = metrics["precision"]
-            show_metrics[f"k{k}_recall"] = metrics["recall"]
-            show_metrics[f"k{k}_f1"] = metrics["f1"]
-
-        per_show_results.append(show_metrics)
+    scored_run_records = build_scored_run_records(
+        band=band,
+        model=model,
+        shows_df=shows_df,
+        sets_df=sets_df,
+        target_shows=target_shows,
+        exclusion_window=exclusion_window,
+    )
 
     # 5. Save results and print summary
-    if per_show_results:
-        results_df = pd.DataFrame(per_show_results)
+    if scored_run_records:
+        results_df = persist_scored_run_records(
+            scored_run_records,
+            historical_runs_table=HISTORICAL_PREDICTION_RUNS_TABLE,
+            accuracy_table="accuracy_per_show",
+        )
         print(
             f"{log_prefix} Saving {len(results_df)} per-show accuracy records to the database..."
-        )
-        upsert_dataframe(
-            table_name="accuracy_per_show",
-            df=results_df,
-            conflict_columns=["band", "model_version", "show_id"],
         )
         print(f"{log_prefix} Save complete.")
 
         print(f"\n{log_prefix} --- Aggregate Metrics for Window ---")
+        summary = summarize_scored_run_records(scored_run_records)
         for k in [10, 25, 50]:
-            agg_metrics_k = aggregate_metrics(
-                [
-                    {
-                        "hit": r[f"k{k}_hit"],
-                        "matches": r[f"k{k}_matches"],
-                        "precision": r[f"k{k}_precision"],
-                        "recall": r[f"k{k}_recall"],
-                        "f1": r[f"k{k}_f1"],
-                    }
-                    for r in per_show_results
-                ],
-                k,
-            )
+            agg_metrics_k = summary[k]
             print(
-                f"{log_prefix} K={k}: hit_rate={agg_metrics_k.hit_rate:.3f} avg_matches={agg_metrics_k.avg_matches:.3f} "
-                f"precision={agg_metrics_k.precision:.3f} recall={agg_metrics_k.recall:.3f} f1={agg_metrics_k.f1:.3f}"
+                f"{log_prefix} K={k}: hit_rate={agg_metrics_k['hit_rate']:.3f} avg_matches={agg_metrics_k['avg_matches']:.3f} "
+                f"precision={agg_metrics_k['precision']:.3f} recall={agg_metrics_k['recall']:.3f} f1={agg_metrics_k['f1']:.3f}"
             )
     else:
         print(f"{log_prefix} No results generated from backtest.")
@@ -283,6 +432,10 @@ def main() -> None:
         action="store_true",
         help="Backtest across all completed shows, ignoring --shows and date window arguments.",
     )
+    parser.add_argument(
+        "--snapshot-root",
+        help="Optional local snapshot directory for raw table reads.",
+    )
     args = parser.parse_args()
 
     run_backtest(
@@ -293,6 +446,7 @@ def main() -> None:
         shows=args.shows,
         exclusion_window=args.exclusion_window,
         all_history=args.all_history,
+        snapshot_root=args.snapshot_root,
     )
 
 

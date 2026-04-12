@@ -107,8 +107,11 @@ def test_generate_predictions_trains_training_capable_models(monkeypatch):
     _setup_common_monkeypatches(monkeypatch)
 
     predictor = _TrainingPredictor()
+    seen: dict[str, object] = {}
     monkeypatch.setattr(
-        module, "build_predictor", lambda slug, *, band, **kwargs: predictor
+        module,
+        "build_predictor",
+        lambda slug, *, band, **kwargs: seen.update({"kwargs": kwargs}) or predictor,
     )
     monkeypatch.setattr(
         module, "get_model_definition", lambda slug: get_model_definition("deal")
@@ -131,6 +134,42 @@ def test_generate_predictions_trains_training_capable_models(monkeypatch):
     )
 
     assert predictor.trained == 1
+    assert seen["kwargs"] == {"persist_artifacts": False}
+
+
+def test_generate_predictions_retrain_allows_training_artifact_persistence(monkeypatch):
+    _setup_common_monkeypatches(monkeypatch)
+
+    predictor = _TrainingPredictor()
+    seen: dict[str, object] = {}
+    monkeypatch.setattr(
+        module,
+        "build_predictor",
+        lambda slug, *, band, **kwargs: seen.update({"kwargs": kwargs}) or predictor,
+    )
+    monkeypatch.setattr(
+        module, "get_model_definition", lambda slug: get_model_definition("deal")
+    )
+    monkeypatch.setattr(
+        module,
+        "serialize_model_predictions",
+        lambda slug, predictions: [
+            {"song_name": prediction.song_name} for prediction in predictions
+        ],
+    )
+    monkeypatch.setattr(module, "upsert_dataframe", lambda **kwargs: None)
+    monkeypatch.setattr(module, "replace_prediction_projection", lambda **kwargs: None)
+
+    module.generate_predictions(
+        band="goose",
+        model="deal",
+        date_str=None,
+        exclusion_window=3,
+        retrain=True,
+    )
+
+    assert predictor.trained == 1
+    assert seen["kwargs"] == {}
 
 
 def test_main_rejects_retrain_for_non_training_models(monkeypatch):

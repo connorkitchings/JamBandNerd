@@ -40,7 +40,9 @@ MODEL_VERSIONS: Final[dict[str, str]] = {
 }
 
 ENABLED_MODELS: Final[list[str]] = [
-    metadata.slug for metadata in MODEL_METADATA if metadata.enabled_for_web
+    metadata.slug
+    for metadata in MODEL_METADATA
+    if metadata.enabled_for_web and metadata.web_visibility == "promoted"
 ]
 
 # Deal model-specific configuration

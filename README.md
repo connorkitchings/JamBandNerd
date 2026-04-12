@@ -90,7 +90,7 @@ JamBandNerd now ships a website-first product surface in `apps/web`. The target 
 The target website experience includes:
 
 - **Multi-band selection**: Switch between all dynamically discovered bands.
-- **Model comparison**: Toggle between Notebook and CK+ models.
+- **Model comparison**: Toggle between Notebook and Deal models.
 - **Live predictions**: View latest predictions with detailed metrics.
 - **Replay**: Browse recent retained shows to review both model boards against the actual setlist.
 - **Accuracy visualization**: Historical performance charts with configurable K values (K=10/25/50; selected K highlighted).
@@ -188,7 +188,7 @@ that registry is fully unified.
 - Band-specific raw collectors with unified downstream contracts.
 - Show-centric normalization of shows, setlists, and songs before modeling.
 - In-memory transformation pipeline (no intermediate transformed tables).
-- Pluggable prediction models (Notebook, CK+).
+- Pluggable prediction models (Notebook, Deal).
 - Unified cross-band prediction and accuracy storage.
 - Supabase backend with automated validation.
 - Website-first product delivery through the live `apps/web` surface.

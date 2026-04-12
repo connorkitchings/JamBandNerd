@@ -14,7 +14,12 @@ from jambandnerd.models.deal.model import DealPredictor
 from jambandnerd.models.deal.serialization import (
     serialize_predictions as serialize_deal_predictions,
 )
-from jambandnerd.models.metadata import MODEL_METADATA, ModelMetadata
+from jambandnerd.models.metadata import (
+    MODEL_METADATA,
+    ModelLifecycleStage,
+    ModelMetadata,
+    ModelWebVisibility,
+)
 from jambandnerd.models.notebook.model import NotebookPredictor
 from jambandnerd.models.notebook.serialization import (
     serialize_predictions as serialize_notebook_predictions,
@@ -42,6 +47,10 @@ class ModelDefinition:
     supports_training: bool
     supports_live_predictions: bool
     supports_backtest: bool
+    lifecycle_stage: ModelLifecycleStage
+    web_visibility: ModelWebVisibility
+    readiness_windows: tuple[int, ...]
+    readiness_baselines: tuple[str, ...]
     default_top_k: int = 50
     notes: str | None = None
 
@@ -81,6 +90,10 @@ def _to_definition(metadata: ModelMetadata) -> ModelDefinition:
         supports_training=metadata.supports_training,
         supports_live_predictions=metadata.supports_live_predictions,
         supports_backtest=metadata.supports_backtest,
+        lifecycle_stage=metadata.lifecycle_stage,
+        web_visibility=metadata.web_visibility,
+        readiness_windows=metadata.readiness_windows,
+        readiness_baselines=metadata.readiness_baselines,
         default_top_k=metadata.default_top_k,
         notes=metadata.notes,
     )
@@ -116,9 +129,18 @@ def list_pipeline_models() -> list[ModelDefinition]:
 
 
 def list_web_models() -> list[ModelDefinition]:
-    """Return models enabled for website surfaces."""
+    """Return models supported by website data/query surfaces."""
     return [
         definition for definition in _MODEL_DEFINITIONS if definition.enabled_for_web
+    ]
+
+
+def list_promoted_web_models() -> list[ModelDefinition]:
+    """Return models currently promoted for public website visibility."""
+    return [
+        definition
+        for definition in list_web_models()
+        if definition.web_visibility == "promoted"
     ]
 
 
@@ -174,6 +196,12 @@ def get_model_version(slug: str) -> str:
 def get_aggregate_accuracy_table(slug: str) -> str | None:
     """Return aggregate accuracy table name for a model slug, if configured."""
     return get_model_definition(slug).aggregate_accuracy_table
+
+
+def is_model_promoted_to_web(slug: str) -> bool:
+    """Return whether a model is currently promoted on website surfaces."""
+    definition = get_model_definition(slug)
+    return definition.enabled_for_web and definition.web_visibility == "promoted"
 
 
 def build_predictor(slug: str, *, band: str, **kwargs: Any) -> PredictionModel:
