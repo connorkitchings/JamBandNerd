@@ -133,10 +133,14 @@ def build_band_bundle(
         "requested_window": "last_50",
         "shows_selected": len(target_shows),
         "shows_scored": len(scored_runs),
-        "reference_dates": prediction_rows_df["reference_date"].tolist()
-        if not prediction_rows_df.empty
-        else [],
-        "target_show_dates": [str(value) for value in target_shows["show_date"].tolist()],
+        "reference_dates": (
+            prediction_rows_df["reference_date"].tolist()
+            if not prediction_rows_df.empty
+            else []
+        ),
+        "target_show_dates": [
+            str(value) for value in target_shows["show_date"].tolist()
+        ],
         "cache_summary": cache.build_summary(),
         "generated_at": pd.Timestamp.now(tz=timezone.utc).isoformat(),
         "scored_runs": scored_runs,
@@ -296,7 +300,9 @@ def verify_uploaded_band(bundle: dict[str, Any]) -> None:
     )
     rows = response.data or []
     if not rows:
-        raise RuntimeError(f"{band}: no aggregate accuracy row found in {accuracy_table}")
+        raise RuntimeError(
+            f"{band}: no aggregate accuracy row found in {accuracy_table}"
+        )
     if int(rows[0].get("num_shows") or 0) <= 0:
         raise RuntimeError(f"{band}: aggregate accuracy row is empty")
 

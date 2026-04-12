@@ -2,18 +2,27 @@
 
 from __future__ import annotations
 
+import json
 import logging
 from datetime import date
 from typing import Any, Dict, List, Optional
 
+import requests
+
 from ..base import BandCollector
+from ..browser import CloudflareBypass
 from ..config import get_collector_config
 
 logger = logging.getLogger(__name__)
 
 
 class EggyCollector(BandCollector):
-    """Collect Eggy data from thecarton.net API."""
+    """Collect Eggy data from thecarton.net API.
+
+    thecarton.net is behind Cloudflare bot protection.  Standard requests
+    return 403 with a JS challenge.  This collector overrides
+    ``_fetch_from_endpoint`` to fall back to Playwright when that happens.
+    """
 
     ARTIST_NAME = "Eggy"
 
@@ -25,6 +34,46 @@ class EggyCollector(BandCollector):
             config.rate_limit_calls,
             config.rate_limit_window,
         )
+
+    def _fetch_from_endpoint(
+        self,
+        endpoint: str,
+        use_cache: bool = True,
+        cache_ttl: Optional[int] = None,
+        **kwargs,
+    ) -> List[Dict[str, Any]]:
+        url = f"{self.config.base_url.rstrip('/')}/{endpoint.lstrip('/')}"
+
+        try:
+            return super()._fetch_from_endpoint(
+                endpoint, use_cache=use_cache, cache_ttl=cache_ttl, **kwargs
+            )
+        except requests.exceptions.HTTPError as exc:
+            if exc.response is not None and exc.response.status_code == 403:
+                logger.warning("403 from %s — falling back to Playwright", url)
+                return self._fetch_via_playwright(url)
+            raise
+
+    def _fetch_via_playwright(self, url: str) -> List[Dict[str, Any]]:
+        try:
+            response = CloudflareBypass.make_request(url)
+            response.raise_for_status()
+        except Exception:
+            logger.error("Playwright fallback also failed for %s", url)
+            return []
+
+        try:
+            data = response.json()
+        except (ValueError, json.JSONDecodeError):
+            logger.error("Playwright returned non-JSON for %s", url)
+            return []
+
+        if isinstance(data, dict) and "data" in data:
+            return data["data"] or []
+        if isinstance(data, list):
+            return data
+        logger.warning("Unexpected response shape from %s", url)
+        return []
 
     def _filter_artist(self, records: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Limit API payloads to the target artist when an artist field exists."""

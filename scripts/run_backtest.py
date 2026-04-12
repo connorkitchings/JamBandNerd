@@ -242,7 +242,9 @@ def persist_scored_run_records(
             actual_songs=list(record["actual_songs"]),
             table_name=historical_runs_table,
         )
-        prediction_run_ids[(str(record["reference_date"]), str(record["show_id"]))] = run_id
+        prediction_run_ids[(str(record["reference_date"]), str(record["show_id"]))] = (
+            run_id
+        )
 
     results_df = build_accuracy_results_dataframe(
         scored_run_records,

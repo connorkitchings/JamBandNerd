@@ -51,7 +51,9 @@ class _ClientStub:
         return _QueryStub(self._tables.get(name, []))
 
 
-def _history_rows(model_slug: str, model_version: str, *, count: int) -> list[dict[str, str]]:
+def _history_rows(
+    model_slug: str, model_version: str, *, count: int
+) -> list[dict[str, str]]:
     return [
         {
             "band": "goose",
@@ -68,7 +70,11 @@ def test_build_model_readiness_report_marks_band_ready():
     client = _ClientStub(
         {
             "predictions_deal": [
-                {"band": "goose", "model_version": "deal_v2", "reference_date": "2026-04-10"}
+                {
+                    "band": "goose",
+                    "model_version": "deal_v2",
+                    "reference_date": "2026-04-10",
+                }
             ],
             "prediction_songs": [
                 {

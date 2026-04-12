@@ -107,7 +107,7 @@ jobs:
         run: uv sync --locked --no-dev
 
       - name: Install Playwright Browsers
-        if: matrix.band == 'wsp'
+        if: matrix.band == 'wsp' || matrix.band == 'eggy'
         run: uv run playwright install --with-deps firefox
 
       - name: Compute Collection Preflight

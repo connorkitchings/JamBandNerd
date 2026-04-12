@@ -56,6 +56,7 @@ def ensure_source_reachable(band: str, *, timeout: int = 15) -> None:
         # Treat any network-level errors or 5xx responses as fatal. 4xx responses imply the host is reachable.
         if status == 403:
             import logging as _logging
+
             _logging.getLogger(__name__).warning(
                 f"Received 403 from {url} — upstream API may be blocking requests"
             )

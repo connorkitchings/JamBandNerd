@@ -47,6 +47,13 @@ The primary production workflow. Collects raw data, generates predictions, runs 
 - Degraded runs skip prediction/backtest regeneration and report whether the website is reusing prior data.
 - WSP upstream blocking that leaves recent completed-show data unusable is a hard failure.
 
+### Eggy Cloudflare Bypass
+
+- Eggy (`thecarton.net`) is behind Cloudflare bot protection with JS challenges.
+- The Eggy collector tries standard HTTP requests first; on 403 it falls back to Playwright (Firefox) via the shared `data_collection/browser.py` module.
+- Playwright is installed in CI for both WSP and Eggy bands.
+- If Cloudflare is lifted, Eggy automatically skips Playwright and uses direct HTTP.
+
 ### Failure Policy
 
 - Non-WSP collection failures are hard failures.
