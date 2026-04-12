@@ -52,7 +52,12 @@ def ensure_source_reachable(band: str, *, timeout: int = 15) -> None:
         )
         status = response.status_code
         # Treat any network-level errors or 5xx responses as fatal. 4xx responses imply the host is reachable.
-        if status >= 500:
+        if status == 403:
+            import logging as _logging
+            _logging.getLogger(__name__).warning(
+                f"Received 403 from {url} — upstream API may be blocking requests"
+            )
+        elif status >= 500:
             raise RuntimeError(f"Received status {status} from {url}")
     except requests.RequestException as exc:
         raise RuntimeError(f"Failed to contact {url}: {exc}") from exc

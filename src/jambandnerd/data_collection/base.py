@@ -321,6 +321,12 @@ class BandCollector(ABC):
         except requests.exceptions.HTTPError as e:
             logger.error(f"HTTP error {e.response.status_code} for {url}: {e}")
             self.record_failure()
+            if e.response is not None and e.response.status_code == 403:
+                logger.warning(
+                    f"Access denied (403) for {url} — upstream API may be blocking requests"
+                )
+                self._check_circuit_breaker()
+                return []
             raise
         except requests.exceptions.RequestException as e:
             logger.error(f"Request failed for {url}: {e}")

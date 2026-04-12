@@ -169,7 +169,11 @@ def run_goose_collection(skip_validation: bool = False) -> None:
         required_columns: List[str] | None = None,
     ):
         print(f"Collecting {table_name}...")
-        raw_data = collector_func()
+        try:
+            raw_data = collector_func()
+        except Exception as e:
+            print(f"Error collecting {table_name}: {e}")
+            return
         df = normalizer_func(raw_data)
         print(f"Prepared {len(df)} records for {table_name}.")
         if df.empty:
