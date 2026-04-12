@@ -144,7 +144,7 @@ jobs:
         if: github.event.inputs.dry_run != 'true'
         run: |
           echo "::group::Validating prediction tables for ${{ matrix.band }} / ${{ matrix.model }}"
-          uv run python scripts/validate_prediction_tables.py --band ${{ matrix.band }} --max-age-hours 168
+          uv run python scripts/validate_prediction_tables.py --band ${{ matrix.band }} --model ${{ matrix.model }} --max-age-hours 168
           echo "::endgroup::"
 
   summary:

@@ -112,7 +112,10 @@ def run_backtest(
     definition = get_model_definition(model)
     if not definition.supports_backtest:
         raise ValueError(f"Model does not support backtests: {model}")
-    predictor = build_predictor(model, band=band)
+    kwargs: dict[str, Any] = {}
+    if definition.supports_training:
+        kwargs["persist_artifacts"] = False
+    predictor = build_predictor(model, band=band, **kwargs)
     model_version = definition.version
 
     # 4. Run backtest loop

@@ -18,7 +18,7 @@ Accuracy tables:
 - `accuracy_per_show`
 - `notebook_accuracy`
 - `accuracy_ckplus`
-- `accuracy_deal` (experimental)
+- `accuracy_deal`
 
 Model metadata for table/version/serializer mapping is registered in
 `src/jambandnerd/models/registry.py`. Scripts should derive model behavior from
@@ -154,6 +154,7 @@ predictions.
 Current aggregate tables:
 
 - `notebook_accuracy`
+- `accuracy_deal`
 - `accuracy_ckplus`
 
 Canonical fields include:

@@ -167,7 +167,10 @@ def regenerate_prediction(
         return False
 
     model_definition = get_model_definition(model)
-    predictor = build_predictor(model, band=band)
+    predictor_kwargs = {}
+    if model_definition.supports_training:
+        predictor_kwargs["persist_artifacts"] = False
+    predictor = build_predictor(model, band=band, **predictor_kwargs)
     prediction_output = predictor.predict(
         model_data=model_data,
         top_k=model_definition.default_top_k,

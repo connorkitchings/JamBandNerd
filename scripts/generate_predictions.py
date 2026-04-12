@@ -104,7 +104,10 @@ def generate_predictions(
 
     # 2. Select and run model
     model_definition = get_model_definition(model)
-    predictor = build_predictor(model, band=band)
+    predictor_kwargs: dict[str, Any] = {}
+    if model_definition.supports_training and not retrain:
+        predictor_kwargs["persist_artifacts"] = False
+    predictor = build_predictor(model, band=band, **predictor_kwargs)
     predictions: List[Any] = []
 
     if model_definition.supports_training:

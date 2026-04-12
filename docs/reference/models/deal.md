@@ -1,14 +1,14 @@
-# Deal Model (Experimental Logistic Ranker)
+# Deal Model (Promoted Logistic Ranker)
 
 ## Overview
 
-Deal is the experimental third model in JamBandNerd. The current implementation
-is `deal_v2`: an explainable logistic ranking model trained on shared,
+Deal is the active second model in JamBandNerd. The current implementation is
+`deal_v2`: an explainable logistic ranking model trained on shared,
 band-agnostic historical-rotation features.
 
-It is fully registered in the backend and supports predictions/backtests, but it
-remains hidden from pipeline and website surfaces until it clears the model
-comparison gate against CK+.
+Deal was promoted on 2026-04-10 after clearing the internal CK+ replacement
+gate. It is now enabled for pipeline runs, backfills, aggregate accuracy, and
+website surfaces.
 
 ## Current Implementation
 
@@ -132,18 +132,11 @@ The next Deal iteration should therefore focus on new shared-safe features,
 not additional Batch 2 hyperparameter combinations from the current search
 space.
 
-## Promotion Gate
+## Promotion History
 
-Deal remains experimental until the comparison report shows it clearing the
-explicit CK+ gate:
-
-- beat CK+ on cross-band average `recall@10`
-- beat CK+ on cross-band average `recall@25`
-- win enough bands on `recall@10` to satisfy the configured gate
-- avoid any severe `recall@25` regression by band
-
-Notebook remains the aspirational benchmark, not the release gate for this
-cycle.
+Deal cleared the explicit CK+ replacement gate on 2026-04-10 and replaced CK+
+as the promoted second model. Notebook remains the aspirational benchmark for
+future improvement work.
 
 ## Shared-Input Audit
 
@@ -167,8 +160,8 @@ for every active band.
 
 ## Operational Notes
 
-- Deal is registered but disabled for regular pipeline, backfill, aggregate
-  accuracy, and website exposure via model metadata flags.
+- Deal is enabled for regular pipeline, backfill, aggregate accuracy, and
+  website exposure via model metadata flags.
 - The compatibility wrapper `scripts/evaluate_deal_model.py` still exists, but
   it now delegates to the generic comparison workflow.
 - When running historical comparisons, prefer `--fresh-training` so Deal uses

@@ -98,3 +98,51 @@ def test_regenerate_prediction_serializes_tuple_predictions(monkeypatch):
     assert success is True
     assert captured["table"] == get_model_definition("notebook").prediction_table
     assert captured["payload"] == [{"song_name": "Song A"}]
+
+
+def test_regenerate_prediction_disables_artifact_persistence_for_training_models(
+    monkeypatch,
+):
+    captured: dict[str, object] = {}
+
+    monkeypatch.setattr(
+        module,
+        "fetch_table",
+        lambda table: [
+            {"show_date": "2026-03-20", "show_id": "goose-1", "song_name": "Song A"}
+        ],
+    )
+    monkeypatch.setattr(
+        module,
+        "prepare_band_data",
+        lambda shows_df, setlists_df, band: (
+            pd.DataFrame([{"show_date": "2026-03-20", "show_id": "goose-1"}]),
+            pd.DataFrame([{"show_id": "goose-1", "song_name": "Song A"}]),
+        ),
+    )
+    monkeypatch.setattr(module, "generate_model_data", lambda *args, **kwargs: object())
+    monkeypatch.setattr(
+        module,
+        "build_predictor",
+        lambda slug, *, band, **kwargs: captured.update({"kwargs": kwargs})
+        or _TuplePredictor(),
+    )
+    monkeypatch.setattr(
+        module, "get_model_definition", lambda slug: get_model_definition("deal")
+    )
+    monkeypatch.setattr(
+        module,
+        "serialize_model_predictions",
+        lambda slug, predictions: [
+            {"song_name": prediction.song_name} for prediction in predictions
+        ],
+    )
+    monkeypatch.setattr(module, "upsert_dataframe", lambda *args, **kwargs: None)
+    monkeypatch.setattr(module, "replace_prediction_projection", lambda **kwargs: None)
+
+    success = module.regenerate_prediction(
+        "goose", "deal", "2026-03-21", exclusion_window=3
+    )
+
+    assert success is True
+    assert captured["kwargs"] == {"persist_artifacts": False}
