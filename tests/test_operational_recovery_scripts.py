@@ -68,9 +68,9 @@ def test_rebuild_band_outputs_runs_predictions_accuracy_and_validation(monkeypat
         ("predict", "notebook"),
         ("backtest", "notebook"),
         ("aggregate", "notebook"),
-        ("predict", "ckplus"),
-        ("backtest", "ckplus"),
-        ("aggregate", "ckplus"),
+        ("predict", "deal"),
+        ("backtest", "deal"),
+        ("aggregate", "deal"),
         ("validate", "goose"),
         ("validate_accuracy", "goose"),
     ]
@@ -116,8 +116,8 @@ def test_rebuild_band_outputs_skips_validation_when_predictions_skipped(monkeypa
     assert events == [
         ("backtest", "notebook"),
         ("aggregate", "notebook"),
-        ("backtest", "ckplus"),
-        ("aggregate", "ckplus"),
+        ("backtest", "deal"),
+        ("aggregate", "deal"),
         ("validate_accuracy", "goose"),
     ]
 
@@ -169,10 +169,10 @@ def test_rebuild_band_outputs_clears_one_model_at_a_time(monkeypatch):
         ("predict", "notebook"),
         ("backtest", "notebook"),
         ("aggregate", "notebook"),
-        ("clear", "ckplus"),
-        ("predict", "ckplus"),
-        ("backtest", "ckplus"),
-        ("aggregate", "ckplus"),
+        ("clear", "deal"),
+        ("predict", "deal"),
+        ("backtest", "deal"),
+        ("aggregate", "deal"),
     ]
 
 
@@ -208,12 +208,12 @@ def test_clear_existing_outputs_deletes_selected_rows(monkeypatch):
     )
 
     assert ("predictions_notebook", "band", "goose") in events
-    assert ("predictions_ckplus", "band", "goose") in events
+    assert ("predictions_deal", "band", "goose") in events
     assert ("prediction_songs", "band", "goose") in events
     assert ("historical_prediction_runs", "band", "goose") in events
     assert ("accuracy_per_show", "band", "goose") in events
     assert ("notebook_accuracy", "band", "goose") in events
-    assert ("accuracy_ckplus", "band", "goose") in events
+    assert ("accuracy_deal", "band", "goose") in events
 
 
 def test_rebuild_prediction_songs_bounded_window_rebuilds_multiple_dates(monkeypatch):

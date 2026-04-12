@@ -15,8 +15,6 @@ import json
 import os
 import sys
 
-import pandas as pd
-
 # Add project root to path
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, project_root)
@@ -38,11 +36,7 @@ def _fetch_dates(client, table_name: str, band: str, limit: int) -> set[str]:
         )
         if not resp.data:
             return set()
-        return {
-            row["reference_date"]
-            for row in resp.data
-            if row.get("reference_date")
-        }
+        return {row["reference_date"] for row in resp.data if row.get("reference_date")}
     except Exception as e:
         print(f"Error fetching dates from {table_name}: {e}", file=sys.stderr)
         return set()
