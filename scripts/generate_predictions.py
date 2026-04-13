@@ -107,6 +107,9 @@ def generate_predictions(
     predictor_kwargs: dict[str, Any] = {}
     if model_definition.supports_training and not retrain:
         predictor_kwargs["persist_artifacts"] = False
+        print(
+            f"{log_prefix} Training-capable model will run with in-memory fresh training; cached artifacts are disabled for this prediction run."
+        )
     predictor = build_predictor(model, band=band, **predictor_kwargs)
     predictions: List[Any] = []
 
@@ -118,6 +121,10 @@ def generate_predictions(
                 model_path = get_model_path(band)
                 if model_path.exists():
                     model_path.unlink()
+        else:
+            print(
+                f"{log_prefix} Training {model_definition.display_name} from the current reference-date snapshot."
+            )
         predictor.train(model_data)
 
     prediction_output = predictor.predict(

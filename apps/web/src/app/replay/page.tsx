@@ -22,7 +22,9 @@ import {
 } from "@/lib/data";
 import {
   formatCompactDateLabel,
+  formatDateLabel,
   formatPercent,
+  formatTimestampLabel,
 } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
@@ -176,6 +178,12 @@ export default async function ReplayPage({ searchParams }: Props) {
   const secondaryRows = secondarySnapshot?.predictions ?? [];
   const primaryLabel = MODEL_CONFIG[primaryModel].displayName;
   const secondaryLabel = MODEL_CONFIG[secondaryModel].displayName;
+  const replayTargetDate =
+    primarySnapshot?.targetShowDate ??
+    secondarySnapshot?.targetShowDate ??
+    state.replay.selectedDate;
+  const replayReferenceDate =
+    primarySnapshot?.referenceDate ?? secondarySnapshot?.referenceDate ?? null;
   const actualSongs = new Set(
     (state.replay.setlist?.songs ?? []).map((song) => normalizeSongName(song.songName)),
   );
@@ -227,7 +235,7 @@ export default async function ReplayPage({ searchParams }: Props) {
         kicker="Replay"
         eyebrow=""
         title={`${bandName} prediction replay`}
-        description="Review one completed show with both retained model boards aligned to the same night, then mark what each board captured from the actual setlist."
+        description="Review one completed show with both retained model boards aligned to the same night. Replay uses the historically retained scored snapshot for that show, so its prediction cutoff can be earlier than the live predictions page for the same calendar date."
         descriptionClassName="max-w-4xl"
       />
 
@@ -241,6 +249,22 @@ export default async function ReplayPage({ searchParams }: Props) {
               label="Select show"
             />
             <div className="grid gap-3 md:grid-cols-2 md:gap-4">
+              <div className="min-w-0 rounded-xl border border-outline-variant/20 bg-surface-container-low p-3 md:p-4">
+                <p className="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">
+                  Completed show date
+                </p>
+                <p className="mt-2 text-xs leading-5 text-on-surface md:text-sm">
+                  {formatDateLabel(replayTargetDate)}
+                </p>
+              </div>
+              <div className="min-w-0 rounded-xl border border-outline-variant/20 bg-surface-container-low p-3 md:p-4">
+                <p className="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">
+                  Prediction cutoff date
+                </p>
+                <p className="mt-2 text-xs leading-5 text-on-surface md:text-sm">
+                  {formatDateLabel(replayReferenceDate)}
+                </p>
+              </div>
               <div className="min-w-0 rounded-xl border border-outline-variant/20 bg-surface-container-low p-3 md:p-4">
                 <p className="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">
                   Venue
@@ -316,8 +340,37 @@ export default async function ReplayPage({ searchParams }: Props) {
         {primarySnapshot && secondarySnapshot ? (
           <div className="space-y-5">
             <p className="text-sm leading-6 text-on-surface-variant">
-              Read both boards by rank and check whether each pick made the actual setlist.
+              Read both retained boards by rank and check whether each pick made the actual setlist.
             </p>
+            <div className="grid gap-3 md:grid-cols-2">
+              {[
+                { label: primaryLabel, snapshot: primarySnapshot, accent: "text-primary" },
+                { label: secondaryLabel, snapshot: secondarySnapshot, accent: "text-tertiary" },
+              ].map(({ label, snapshot, accent }) => (
+                <div
+                  key={label}
+                  className="rounded-[1.35rem] border border-outline-variant/20 bg-surface-container-low p-4"
+                >
+                  <p className={`font-label text-[10px] uppercase tracking-[0.16rem] ${accent}`}>
+                    {label} snapshot
+                  </p>
+                  <dl className="mt-3 space-y-2 text-sm text-on-surface">
+                    <div className="flex items-center justify-between gap-4">
+                      <dt className="text-on-surface-variant">Completed show</dt>
+                      <dd>{formatDateLabel(snapshot?.targetShowDate ?? replayTargetDate)}</dd>
+                    </div>
+                    <div className="flex items-center justify-between gap-4">
+                      <dt className="text-on-surface-variant">Prediction cutoff</dt>
+                      <dd>{formatDateLabel(snapshot?.referenceDate ?? null)}</dd>
+                    </div>
+                    <div className="flex items-center justify-between gap-4">
+                      <dt className="text-on-surface-variant">Snapshot captured</dt>
+                      <dd>{formatTimestampLabel(snapshot?.predictedAt ?? null)}</dd>
+                    </div>
+                  </dl>
+                </div>
+              ))}
+            </div>
             <div className="space-y-3 md:hidden" data-testid="replay-comparison-cards">
               {mobileReplayRows.map((row) => (
                 <article

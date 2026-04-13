@@ -24,6 +24,14 @@ class _NotebookPredictorStub:
         )
 
 
+class _TrainingPredictorStub:
+    def train(self, model_data):  # noqa: ARG002
+        return None
+
+    def predict(self, model_data, top_k=50):  # noqa: ARG002
+        return [_Prediction("Song A"), _Prediction("Song B")]
+
+
 def test_run_backtest_persists_string_show_ids(monkeypatch):
     shows_rows = [
         {"show_id": "goose-show-1", "show_date": "2024-01-01"},
@@ -144,3 +152,63 @@ def test_run_backtest_persists_string_show_ids(monkeypatch):
             "last_played_date": "2023-12-31",
         },
     ]
+
+
+def test_run_backtest_disables_cached_artifacts_for_training_models(monkeypatch):
+    shows_rows = [
+        {"show_id": "goose-show-1", "show_date": "2024-01-01"},
+        {"show_id": "goose-show-2", "show_date": "2024-01-20"},
+    ]
+    setlist_rows = [
+        {"show_id": "goose-show-1", "song_name": "Song A"},
+        {"show_id": "goose-show-1", "song_name": "Song B"},
+        {"show_id": "goose-show-1", "song_name": "Song C"},
+        {"show_id": "goose-show-2", "song_name": "Song D"},
+        {"show_id": "goose-show-2", "song_name": "Song E"},
+        {"show_id": "goose-show-2", "song_name": "Song F"},
+    ]
+
+    def fetch_table(table_name: str, chunk_size: int = 10000):  # noqa: ARG001
+        if table_name == "goose_shows_raw":
+            return shows_rows
+        if table_name == "goose_setlists_raw":
+            return setlist_rows
+        raise AssertionError(f"Unexpected table: {table_name}")
+
+    seen: dict[str, object] = {}
+
+    monkeypatch.setattr(run_backtest_module, "fetch_table", fetch_table)
+    monkeypatch.setattr(
+        run_backtest_module, "generate_model_data", lambda *args, **kwargs: object()
+    )
+    monkeypatch.setattr(
+        run_backtest_module,
+        "build_predictor",
+        lambda slug, *, band, **kwargs: seen.update({"kwargs": kwargs})
+        or _TrainingPredictorStub(),
+    )
+    monkeypatch.setattr(
+        run_backtest_module,
+        "serialize_model_predictions",
+        lambda slug, preds: [
+            {"rank": index + 1, "song_name": prediction.song_name}
+            for index, prediction in enumerate(preds)
+        ],
+    )
+    monkeypatch.setattr(run_backtest_module, "upsert_dataframe", lambda **kwargs: None)
+    monkeypatch.setattr(
+        run_backtest_module,
+        "upsert_historical_prediction_run",
+        lambda **kwargs: 123,
+    )
+
+    run_backtest_module.run_backtest(
+        band="goose",
+        model="deal",
+        start=None,
+        end=None,
+        shows=1,
+        exclusion_window=3,
+    )
+
+    assert seen["kwargs"] == {"persist_artifacts": False}

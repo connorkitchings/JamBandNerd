@@ -364,6 +364,10 @@ def run_backtest(
     definition = get_model_definition(model)
     if not definition.supports_backtest:
         raise ValueError(f"Model does not support backtests: {model}")
+    if definition.supports_training:
+        print(
+            f"{log_prefix} Historical scoring uses in-memory fresh training; cached model artifacts are disabled."
+        )
     scored_run_records = build_scored_run_records(
         band=band,
         model=model,

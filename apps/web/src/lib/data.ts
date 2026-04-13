@@ -43,6 +43,7 @@ export type PredictionRow = {
 };
 
 export type PredictionSnapshot = {
+  targetShowDate: string | null;
   referenceDate: string | null;
   predictedAt: string | null;
   modelVersion: string | null;
@@ -325,6 +326,8 @@ function buildPredictionSnapshotFromCanonicalRow(
   row: Record<string, unknown>,
 ): PredictionSnapshot {
   return {
+    targetShowDate:
+      typeof row.target_show_date === "string" ? row.target_show_date : null,
     referenceDate:
       typeof row.reference_date === "string" ? row.reference_date : null,
     predictedAt:
@@ -345,6 +348,7 @@ function buildPredictionSnapshotFromProjectionRows(rows: ProjectionRow[]): Predi
   const firstRow = rows[0] ?? null;
 
   return {
+    targetShowDate: null,
     referenceDate:
       firstRow && typeof firstRow.reference_date === "string"
         ? firstRow.reference_date
