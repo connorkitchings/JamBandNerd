@@ -88,11 +88,10 @@ work is deployment hardening, hosted verification, and product refinement on the
 
 ```bash
 npm install
+npx playwright install --with-deps chromium
 cp apps/web/.env.local.example apps/web/.env.local
 npm run dev:web
-npm run lint:web
-npm run build:web
-npm run test:web:smoke
+npm run verify:web
 ```
 
 ## Release Versioning
@@ -150,10 +149,9 @@ Recommended project settings:
 
 The repo should verify the website in GitHub Actions before relying on Vercel previews:
 
-1. `npm run lint:web`
-2. `npm run build:web`
-3. `npm run test:web:smoke`
-4. `Hosted Website Smoke` for deployed preview or production URLs when you need hosted verification
+1. `npm run verify:web`
+2. `npm run verify:clean`
+3. `Hosted Website Smoke` for deployed preview or production URLs when you need hosted verification
 
 This keeps deployment triggering in Vercel while GitHub Actions acts as the verification gate.
 

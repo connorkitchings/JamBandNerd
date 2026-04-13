@@ -47,9 +47,7 @@ class SupportedModelFreshnessResult:
             "max_prediction_age_hours": _format_hours_output(
                 self.max_prediction_age_hours
             ),
-            "max_accuracy_age_hours": _format_hours_output(
-                self.max_accuracy_age_hours
-            ),
+            "max_accuracy_age_hours": _format_hours_output(self.max_accuracy_age_hours),
             "freshness_reason": self.freshness_reason,
         }
 

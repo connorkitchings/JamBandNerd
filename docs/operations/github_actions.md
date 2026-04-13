@@ -136,11 +136,11 @@ CI quality gate for the Python pipeline codebase.
 
 - **Triggers**: `pull_request` and `push` to `main`
 - **Steps**:
-  1. Set up Python 3.12 + uv
-  2. `ruff check src tests scripts`
+  1. Set up Python 3.12 + uv and Node 22
+  2. `npm run verify:python`
   3. `python scripts/check_version_sync.py`
-  4. `mkdocs build --strict`
-  5. Targeted pytest on `tests/models`, `tests/pipeline/test_run_backtest.py`, `tests/pipeline/test_run_optimized_pipeline.py`
+  4. `npm run verify:docs`
+  5. `npm run verify:clean`
 
 ---
 
@@ -152,9 +152,8 @@ CI quality gate for the `apps/web` Next.js website.
 - **Steps**:
   1. Set up Node 22 + `npm ci`
   2. Install Playwright Chromium
-  3. `npm run lint:web`
-  4. `npm run build:web`
-  5. `npm run test:web:smoke`
+  3. `npm run verify:web`
+  4. `npm run verify:clean`
 
 ---
 

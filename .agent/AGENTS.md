@@ -102,9 +102,15 @@ Check src/jambandnerd/transformations/gaps.py and tests/test_models.py. Is the r
 Run these before shipping non-trivial changes:
 
 ```bash
-uv run black src tests scripts
-uv run ruff check src tests scripts
-uv run pytest
+npm run verify:python
+npm run verify:docs
+npm run verify:web
 ```
 
-Use narrower commands during iteration when appropriate, but keep this as the canonical full check.
+On a clean baseline, finish with:
+
+```bash
+npm run verify:clean
+```
+
+Use narrower commands during iteration when appropriate, but keep the verify entrypoints as the canonical full check.

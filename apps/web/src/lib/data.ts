@@ -221,41 +221,6 @@ function getVenueRegionFromRow(row: Record<string, unknown> | null): string | nu
   return null;
 }
 
-const SUPABASE_PAGE_SIZE = 1000;
-const SHOW_ID_CHUNK_SIZE = 100;
-type SupabaseSelectQuery = ReturnType<ReturnType<SupabaseClient["from"]>["select"]>;
-
-async function fetchAllRecords(
-  client: SupabaseClient,
-  tableName: string,
-  selectClause: string,
-  configureQuery: (query: SupabaseSelectQuery) => SupabaseSelectQuery,
-): Promise<Record<string, unknown>[]> {
-  const rows: Record<string, unknown>[] = [];
-
-  for (let offset = 0; ; offset += SUPABASE_PAGE_SIZE) {
-    const { data, error } = await configureQuery(
-      client.from(tableName).select(selectClause),
-    ).range(offset, offset + SUPABASE_PAGE_SIZE - 1);
-
-    if (error) {
-      throw error;
-    }
-
-    const pageRows =
-      (data ?? [])
-        .map((row: unknown) => asRecord(row))
-        .filter((row): row is Record<string, unknown> => row !== null);
-    rows.push(...pageRows);
-
-    if (pageRows.length < SUPABASE_PAGE_SIZE) {
-      break;
-    }
-  }
-
-  return rows;
-}
-
 function computeTier(rank: number): LikelihoodTier {
   if (rank <= 5) return "expected";
   if (rank <= 15) return "hot";

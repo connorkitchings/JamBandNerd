@@ -34,8 +34,9 @@ Primary local website commands:
 
 ```bash
 npm install
+npx playwright install --with-deps chromium
 npm run dev:web
-npm run build:web
+npm run verify:web
 ```
 
 ## Advanced Usage: Individual Scripts

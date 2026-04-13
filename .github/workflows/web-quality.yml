@@ -31,11 +31,8 @@ jobs:
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
 
-      - name: Lint website
-        run: npm run lint:web
+      - name: Verify website surface
+        run: npm run verify:web
 
-      - name: Build website
-        run: npm run build:web
-
-      - name: Run website smoke tests
-        run: npm run test:web:smoke
+      - name: Ensure verification leaves tracked files clean
+        run: npm run verify:clean

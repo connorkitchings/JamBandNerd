@@ -45,15 +45,18 @@ uv run python scripts/verify_data_freshness.py --band goose
 ## Website
 
 ```bash
-npm install && npm run dev:web
+npm install
+npx playwright install --with-deps chromium
+npm run dev:web
 ```
 
 ## Quality Gates
 
 ```bash
-uv run black src tests scripts
-uv run ruff check src tests scripts
-uv run pytest
+npm run verify:python
+npm run verify:docs
+npm run verify:web
+npm run verify:all
 ```
 
 ## Git Workflow

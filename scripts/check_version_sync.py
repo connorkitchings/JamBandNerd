@@ -7,7 +7,6 @@ import re
 import tomllib
 from pathlib import Path
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PYPROJECT_PATH = REPO_ROOT / "pyproject.toml"
 WEB_PACKAGE_PATH = REPO_ROOT / "apps" / "web" / "package.json"

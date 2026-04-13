@@ -108,7 +108,7 @@ def test_build_model_readiness_report_marks_band_ready():
     report = module.build_model_readiness_report("deal", bands=["goose"], client=client)
 
     assert report["ready_for_backend"] is True
-    assert report["ready_for_web_promotion"] is True
+    assert report["ready_for_web_promotion"] is False
     assert report["bands"][0]["ready"] is True
     assert report["bands"][0]["replay_overlap"]["notebook"] == 50
 

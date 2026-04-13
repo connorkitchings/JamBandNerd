@@ -39,8 +39,8 @@ JamBandNerd has a production-ready website-first product surface and a productio
   - **Fantasy Goose**: Auto-play Fantasy Goose after daily pipeline success
   - **Backfill Predictions**: Manual historical prediction regeneration
   - **Live Show Tracker**: Manual live setlist polling for goose, phish, wsp
-  - **Repo Quality**: CI lint + targeted pytest on PRs and pushes to main
-  - **Website Quality**: CI lint + build + smoke tests on PRs and pushes to main
+  - **Repo Quality**: CI Python verification + docs build + clean-worktree guard on PRs and pushes to main
+  - **Website Quality**: CI smoke inventory + lint + build + smoke + clean-worktree guard on PRs and pushes to main
   - **Hosted Website Smoke**: Daily smoke test against live deployed website
   - **Dependency Audit**: Weekly pip-audit of locked dependencies
   - **Test Secrets**: Manual secret availability verification

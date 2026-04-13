@@ -71,7 +71,11 @@ def notebook_song_names_for_reference_date(
         model_data=model_data,
         top_k=get_model_definition("notebook").default_top_k,
     )
-    predictions = prediction_output[0] if isinstance(prediction_output, tuple) else prediction_output
+    predictions = (
+        prediction_output[0]
+        if isinstance(prediction_output, tuple)
+        else prediction_output
+    )
     serialized = serialize_model_predictions("notebook", predictions)
     return [row["song_name"] for row in serialized]
 
@@ -103,6 +107,7 @@ def test_backtest_rows_use_previous_day_reference_date_for_completed_show() -> N
     assert len(scored_runs) == 1
     assert scored_runs[0]["target_show_date"] == "2024-01-11"
     assert scored_runs[0]["reference_date"] == "2024-01-10"
-    assert [row["song_name"] for row in scored_runs[0]["predictions"]] == direct_for_previous_day
+    assert [
+        row["song_name"] for row in scored_runs[0]["predictions"]
+    ] == direct_for_previous_day
     assert direct_for_same_day != direct_for_previous_day
-

@@ -1,5 +1,6 @@
 """Tests for database operations."""
 
+import warnings
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -52,9 +53,17 @@ class TestSupabaseConnection:
         client = get_supabase_client()
 
         assert client == mock_client
-        mock_create_client.assert_called_once_with(
-            "https://test.supabase.co", "test_service_role_key_123"
-        )
+        mock_create_client.assert_called_once()
+        call_args = mock_create_client.call_args
+        assert call_args.args[0] == "https://test.supabase.co"
+        assert call_args.args[1] == "test_service_role_key_123"
+        options = call_args.args[2]
+        assert options.httpx_client is not None
+        assert options.httpx_client.timeout.connect == options.postgrest_client_timeout
+        assert options.httpx_client.timeout.read == options.postgrest_client_timeout
+        assert options.httpx_client.timeout.write == options.postgrest_client_timeout
+        assert options.httpx_client.timeout.pool == options.postgrest_client_timeout
+        assert options.httpx_client.follow_redirects is True
 
     @patch("jambandnerd.db.connection.create_client")
     def test_get_supabase_client_singleton(self, mock_create_client, setup_test_env):
@@ -90,3 +99,27 @@ class TestSupabaseConnection:
         ):
             get_supabase_client()
             get_supabase_client()
+
+    def test_get_supabase_client_avoids_postgrest_deprecation_warnings(
+        self, setup_test_env
+    ):
+        """The wrapper should pass an httpx client instead of deprecated timeout args."""
+        import jambandnerd.db.connection
+
+        jambandnerd.db.connection._supabase_client = None
+
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always", DeprecationWarning)
+            client = get_supabase_client()
+            client.table("shows")
+
+        deprecation_messages = [
+            str(warning.message)
+            for warning in caught
+            if issubclass(warning.category, DeprecationWarning)
+        ]
+        assert not any(
+            "timeout' parameter is deprecated" in message
+            or "verify' parameter is deprecated" in message
+            for message in deprecation_messages
+        )

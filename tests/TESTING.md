@@ -16,25 +16,25 @@ JamBandNerd has two main verification surfaces:
 ## Canonical Commands
 
 ```bash
-# Inventory the Python suite
+# Canonical verification entrypoints
+npm run verify:python
+npm run verify:docs
+npm run verify:web
+npm run verify:all
+
+# Final tracked-file drift check on a clean baseline
+npm run verify:clean
+
+# Component commands used by the verify scripts
 uv run pytest --collect-only -q
-
-# Run the full Python suite
-uv run pytest
-
-# Run common targeted suites
-uv run pytest tests/models tests/pipeline/test_run_backtest.py tests/pipeline/test_run_optimized_pipeline.py
-
-# Inventory the website smoke suite
 npm run test:web:smoke:list
-
-# Run website smoke coverage
-npm run test:web:smoke
 ```
 
 ## Notes
 
 - Use `uv run ...` for Python commands.
+- Run `npx playwright install --with-deps chromium` once after `npm install`
+  before using the website smoke commands locally.
 - Live-band or environment-dependent tests are explicitly marked; most of the
   suite is designed to run without touching production services.
 - Website smoke coverage is the canonical frontend verification path and is also

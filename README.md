@@ -100,10 +100,10 @@ The primary local UI workflow is:
 
 ```bash
 npm install
+npx playwright install --with-deps chromium
 cp apps/web/.env.local.example apps/web/.env.local
 npm run dev:web
-npm run lint:web
-npm run build:web
+npm run verify:web
 ```
 
 The website delivery path now uses Vercel’s native GitHub integration model. Treat `main` as the production branch and use preview deployments for feature branches and pull requests.
@@ -114,10 +114,14 @@ The website delivery path now uses Vercel’s native GitHub integration model. T
 # Install development dependencies
 uv pip install -e ".[dev]"
 
-# Code quality
-uv run black src tests scripts
-uv run ruff check src tests scripts
-uv run pytest
+# Canonical verification commands
+npm run verify:python
+npm run verify:docs
+npm run verify:web
+npm run verify:all
+
+# Final tracked-file drift check on a clean baseline
+npm run verify:clean
 ```
 
 ### Security Maintenance
@@ -166,7 +170,7 @@ Generate and serve documentation locally:
 
 ```bash
 uv pip install -e ".[docs]"
-mkdocs serve
+NO_MKDOCS_2_WARNING=true uv run --with mkdocs --with mkdocs-material --with pymdown-extensions mkdocs serve
 ```
 
 ## Architecture

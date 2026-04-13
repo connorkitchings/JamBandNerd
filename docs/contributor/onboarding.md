@@ -55,7 +55,7 @@ The project follows a modular development approach. Each major component (data c
 Before you make any changes, it's a good idea to run the existing tests to make sure everything is working correctly.
 
 ```bash
-uv run pytest
+npm run verify:python
 ```
 
 ### Making Changes
@@ -67,16 +67,21 @@ uv run pytest
 5. **Run the linter and formatter**: Before you commit your changes, run the canonical health checks to ensure your code follows the project's style guide.
 
     ```bash
-    uv run black src tests scripts
-    uv run ruff check src tests scripts
-    uv run pytest
+    npm run verify:python
+    npm run verify:docs
     ```
 
 For website work, also run:
 
 ```bash
-npm run lint:web
-npm run build:web
+npx playwright install --with-deps chromium
+npm run verify:web
+```
+
+For a final stability pass on a clean baseline, also run:
+
+```bash
+npm run verify:clean
 ```
 
 6. **Commit your changes**: Commit your changes from a feature branch with a clear conventional commit message.
