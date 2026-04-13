@@ -35,7 +35,8 @@ The primary production workflow. Collects raw data, generates predictions, runs 
   6. Validate prediction tables via `scripts/validate_prediction_tables.py`
   7. Run backtests and save aggregate accuracy (skippable via `skip_accuracy`)
   8. Validate accuracy tables via `scripts/validate_accuracy_tables.py`
-  9. Write per-band status summary
+  9. Audit supported-model freshness via `scripts/check_supported_model_freshness.py`
+  10. Write per-band status summary and enforce stale-freshness escalation after artifacts are uploaded
 
 - **Band matrix**: Dynamically built from `scripts/get_all_bands.py`. Current bands: goose, phish, eggy, billy, um, wsp.
 - **Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`; `PHISH_API_KEY` for Phish only.
@@ -46,6 +47,13 @@ The primary production workflow. Collects raw data, generates predictions, runs 
 - Upstream blocking without recent completed-show gaps is treated as **degraded**.
 - Degraded runs skip prediction/backtest regeneration and report whether the website is reusing prior data.
 - WSP upstream blocking that leaves recent completed-show data unusable is a hard failure.
+- WSP Notebook remains an actively supported model surface. It is not deprecated for WSP.
+- The daily workflow now runs Notebook and Deal with strict output requirements. A supported model that exits without writing fresh predictions, backtest rows, or aggregate accuracy is treated as a workflow failure instead of a silent success.
+- Supported-model reuse during degraded mode is now bounded:
+  - if reused prediction freshness stays within `48h`, the band can remain degraded but non-failing
+  - if supported-model prediction freshness exceeds `48h`, the band job fails after the status artifact and summary are written
+  - accuracy uses the same `48h` window, except manual `skip_accuracy=true` runs report stale accuracy informationally and do not fail solely for skipped accuracy regeneration
+- The sampled 2026-04-13 WSP Notebook freshness gap should therefore be treated as a real operational defect that requires regeneration or workflow investigation, not as acceptable drift.
 
 ### Eggy Cloudflare Bypass
 
@@ -60,7 +68,11 @@ The primary production workflow. Collects raw data, generates predictions, runs 
 - WSP collector regressions are hard failures.
 - WSP upstream blocking is degraded only when recent completed-show data is still usable.
 - Recent completed-show setlist gaps from upstream blocking remain hard failures.
-- The workflow summary shows per-band health, execution mode, missing-setlist counts, and prediction handling.
+- Supported-model freshness is a separate enforcement path from collection success:
+  - degraded reuse older than `48h` is a hard failure for supported predictions
+  - stale supported accuracy is also a hard failure unless the run was manually dispatched with `skip_accuracy=true`
+  - missing supported-model rows count as stale, not as pass
+- The workflow summary shows per-band health, execution mode, missing-setlist counts, prediction handling, and supported-model freshness.
 
 ### Optional Notifications
 
@@ -126,7 +138,9 @@ CI quality gate for the Python pipeline codebase.
 - **Steps**:
   1. Set up Python 3.12 + uv
   2. `ruff check src tests scripts`
-  3. Targeted pytest on `tests/models`, `tests/pipeline/test_run_backtest.py`, `tests/pipeline/test_run_optimized_pipeline.py`
+  3. `python scripts/check_version_sync.py`
+  4. `mkdocs build --strict`
+  5. Targeted pytest on `tests/models`, `tests/pipeline/test_run_backtest.py`, `tests/pipeline/test_run_optimized_pipeline.py`
 
 ---
 
@@ -195,6 +209,7 @@ For more details, see:
 For manual recovery or migration workflows:
 
 - `scripts/audit_raw_data.py` — inspect raw data before targeted re-ingestion
+- `scripts/check_supported_model_freshness.py` — audit supported prediction and accuracy freshness without failing before status artifacts are written
 - `scripts/rebuild_derived_data.py` — rebuild predictions and accuracy after schema changes
 - `scripts/rebuild_prediction_songs.py` — rebuild the `prediction_songs` projection from canonical tables
 - `scripts/wipe_band_data.py` — clear derived outputs per band/model

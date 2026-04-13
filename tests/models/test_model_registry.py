@@ -34,6 +34,7 @@ def test_registry_capability_lists_are_flag_driven() -> None:
     ]
     assert [definition.slug for definition in list_promoted_web_models()] == [
         "notebook",
+        "deal",
     ]
     assert [definition.slug for definition in list_backfill_models()] == [
         "notebook",
@@ -80,8 +81,8 @@ def test_registry_lifecycle_metadata_tracks_staged_rollout() -> None:
 
     assert notebook.lifecycle_stage == "web_promoted"
     assert notebook.web_visibility == "promoted"
-    assert deal.lifecycle_stage == "readiness_verified"
-    assert deal.web_visibility == "hidden"
+    assert deal.lifecycle_stage == "web_promoted"
+    assert deal.web_visibility == "promoted"
     assert deal.readiness_windows == (50,)
     assert deal.readiness_baselines == ("notebook",)
     assert ckplus.lifecycle_stage == "retired"

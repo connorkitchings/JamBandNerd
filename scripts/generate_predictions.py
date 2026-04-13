@@ -64,7 +64,8 @@ def generate_predictions(
     date_str: str | None,
     exclusion_window: int,
     retrain: bool = False,
-):
+    require_output: bool = False,
+) -> bool:
     """Generate and save predictions for a given band and model."""
     band = band.lower()
     model = model.lower()
@@ -85,8 +86,11 @@ def generate_predictions(
             upcoming_df = None
 
     if shows_df.empty or setlists_df.empty:
-        print(f"{log_prefix} Error: Could not fetch raw data. Aborting.")
-        return
+        message = f"{log_prefix} Error: Could not fetch raw data. Aborting."
+        print(message)
+        if require_output:
+            raise RuntimeError(message)
+        return False
 
     shows_df, setlists_df = prepare_band_data(shows_df, setlists_df, band=band)
     reference_date = resolve_reference_date(date_str, shows_df, upcoming_df=upcoming_df)
@@ -143,8 +147,11 @@ def generate_predictions(
         predictions = prediction_output
 
     if not predictions:
-        print(f"{log_prefix} No predictions were generated.")
-        return
+        message = f"{log_prefix} No predictions were generated."
+        print(message)
+        if require_output:
+            raise RuntimeError(message)
+        return False
 
     # 3. Format and save results
     predictions_list = serialize_model_predictions(model, predictions)
@@ -188,6 +195,7 @@ def generate_predictions(
         predictions=output_row["predictions"],
     )
     print(f"{log_prefix} Successfully saved predictions.")
+    return True
 
 
 def main() -> None:
@@ -224,6 +232,11 @@ def main() -> None:
         default=3,
         help="Number of recent shows to exclude songs from (default: 3).",
     )
+    parser.add_argument(
+        "--require-output",
+        action="store_true",
+        help="Exit non-zero if the run would otherwise finish without writing predictions.",
+    )
     args = parser.parse_args()
 
     model_definition = get_model_definition(args.model)
@@ -238,6 +251,7 @@ def main() -> None:
         date_str=args.date,
         exclusion_window=args.exclusion_window,
         retrain=args.retrain,
+        require_output=args.require_output,
     )
 
 

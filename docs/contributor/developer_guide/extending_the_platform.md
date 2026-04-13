@@ -5,7 +5,7 @@ This guide explains how to add new bands and models to the JamBandNerd project.
 ## How to Add a New Band
 
 Adding a new band requires changes in collection, normalization compatibility,
-orchestration, and the website surface.
+orchestration, and the live band registry the website reads from.
 
 Before implementing, read the canonical
 [Data Strategy](../../reference/specifications/data_strategy.md). A new band is
@@ -24,27 +24,15 @@ To add a new band, you need to create a new data collector and integrate it into
 3. **Create a collection entrypoint**: add `scripts/run_<band>_collection.py`.
 4. **Preserve the normalized contract**: shared code must be able to derive
    `show_id`, `show_date`, `song_name`, and deterministic show ordering.
-5. **Wire orchestration**: update current local runners and any automation path
-   that still uses an explicit supported-band list.
-6. **Validate predictions**: confirm `generate_predictions.py`,
+5. **Register the band in Supabase**: add a row to the live `bands` table with
+   the slug, display name, raw shows table, and ID column. The website reads
+   bands dynamically from this registry.
+6. **Wire orchestration**: update current local runners and any automation path
+   that still uses an explicit supported-band list or helper fallback.
+7. **Validate predictions**: confirm `generate_predictions.py`,
    `run_backtest.py`, and `save_aggregate_accuracy.py` work for the new band.
-
-### 2. Presentation Layer
-
-The public surface is the website app in `apps/web`. Add new bands to `apps/web/src/lib/config.ts`.
-
-```ts
-BAND_CONFIG = {
-  goose: {
-    displayName: "Goose",
-    showsTable: "goose_shows_raw",
-  },
-  new_band: {
-    displayName: "New Band",
-    showsTable: "new_band_shows_raw",
-  },
-} as const;
-```
+8. **Verify the website path**: ensure the new band appears through the
+   dynamic website data layer without adding a hardcoded frontend band list.
 
 ## How to Add a New Model
 
@@ -67,7 +55,9 @@ Adding a new model follows a similar pattern.
 
 ### 2. Presentation Layer
 
-The public surface is the website app in `apps/web`. Add new models to `apps/web/src/lib/config.ts`.
+The public surface is the website app in `apps/web`. Model presentation metadata
+still lives in `apps/web/src/lib/config.ts`, but backend lifecycle and
+capability flags come from `src/jambandnerd/models/metadata.py`.
 
 ```ts
 MODEL_CONFIG = {

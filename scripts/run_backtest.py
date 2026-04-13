@@ -315,7 +315,8 @@ def run_backtest(
     exclusion_window: int,
     all_history: bool = False,
     snapshot_root: str | None = None,
-) -> None:
+    require_results: bool = False,
+) -> int:
     """Run a backtest for a given band and model."""
     log_prefix = f"[{band.upper()}/{model.upper()}]"
 
@@ -324,8 +325,11 @@ def run_backtest(
     shows_df, sets_df = load_backtest_frames(band, snapshot_root=snapshot_root)
 
     if shows_df.empty or sets_df.empty:
-        print(f"{log_prefix} No data to backtest. Aborting.")
-        return
+        message = f"{log_prefix} No data to backtest. Aborting."
+        print(message)
+        if require_results:
+            raise RuntimeError(message)
+        return 0
 
     # 2. Determine target shows for backtesting
     completed_shows = list_completed_shows(shows_df, sets_df)
@@ -357,8 +361,11 @@ def run_backtest(
         )
 
     if target_shows.empty:
-        print(f"{log_prefix} No shows found in the specified window.")
-        return
+        message = f"{log_prefix} No shows found in the specified window."
+        print(message)
+        if require_results:
+            raise RuntimeError(message)
+        return 0
 
     # 3. Score target shows and persist results
     definition = get_model_definition(model)
@@ -397,8 +404,13 @@ def run_backtest(
                 f"{log_prefix} K={k}: hit_rate={agg_metrics_k['hit_rate']:.3f} avg_matches={agg_metrics_k['avg_matches']:.3f} "
                 f"precision={agg_metrics_k['precision']:.3f} recall={agg_metrics_k['recall']:.3f} f1={agg_metrics_k['f1']:.3f}"
             )
+        return len(scored_run_records)
     else:
-        print(f"{log_prefix} No results generated from backtest.")
+        message = f"{log_prefix} No results generated from backtest."
+        print(message)
+        if require_results:
+            raise RuntimeError(message)
+        return 0
 
 
 def main() -> None:
@@ -442,6 +454,11 @@ def main() -> None:
         "--snapshot-root",
         help="Optional local snapshot directory for raw table reads.",
     )
+    parser.add_argument(
+        "--require-results",
+        action="store_true",
+        help="Exit non-zero if the run would otherwise finish without writing scored results.",
+    )
     args = parser.parse_args()
 
     run_backtest(
@@ -453,6 +470,7 @@ def main() -> None:
         exclusion_window=args.exclusion_window,
         all_history=args.all_history,
         snapshot_root=args.snapshot_root,
+        require_results=args.require_results,
     )
 
 

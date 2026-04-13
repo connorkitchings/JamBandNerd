@@ -6,7 +6,7 @@ import sys
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, project_root)
 
-from src.jambandnerd.db.operations import get_table_schema
+from jambandnerd.db.operations import get_table_schema
 
 
 def main():

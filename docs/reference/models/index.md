@@ -10,9 +10,11 @@ The project employs a modular, pluggable architecture for its prediction models,
 
 - **[Notebook Model](./notebook.md)**: A frequency-based statistical model that prioritizes songs that have been played frequently in the last year.
 
-- **[CK+ Model](./ckplus.md)**: A gap-based statistical model that ranks songs by how "overdue" they are for an appearance.
+- **[Deal Model](./deal.md)**: An explainable logistic ranking model trained on shared cross-band rotation features. It is promoted on the public website alongside Notebook.
 
-- **[Deal Model](./deal.md)**: An experimental explainable logistic ranking model that learns from shared cross-band rotation features. Hidden from public website until approved.
+### Historical Models
+
+- **[CK+ Model](./ckplus.md)**: A retired gap-based model kept as historical reference because older prediction and accuracy artifacts still exist in Supabase.
 
 ### How to Add a New Model
 

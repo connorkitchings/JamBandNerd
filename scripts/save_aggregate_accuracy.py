@@ -35,7 +35,12 @@ from src.jambandnerd.models.registry import (
 )
 
 
-def save_aggregate_accuracy(band: str, model: str, shows: int) -> None:
+def save_aggregate_accuracy(
+    band: str,
+    model: str,
+    shows: int,
+    require_source_rows: bool = False,
+) -> bool:
     """Fetch per-show metrics and save an aggregate accuracy summary."""
     log_prefix = f"[{band.upper()}/{model.upper()}]"
 
@@ -56,8 +61,11 @@ def save_aggregate_accuracy(band: str, model: str, shows: int) -> None:
     )
 
     if not response.data:
-        print(f"{log_prefix} No per-show accuracy data found. Aborting.")
-        return
+        message = f"{log_prefix} No per-show accuracy data found. Aborting."
+        print(message)
+        if require_source_rows:
+            raise RuntimeError(message)
+        return False
 
     per_show_df = pd.DataFrame(response.data)
     print(f"{log_prefix} Found {len(per_show_df)} records to aggregate.")
@@ -126,6 +134,7 @@ def save_aggregate_accuracy(band: str, model: str, shows: int) -> None:
             print(
                 f"{log_prefix} K={k}: hit_rate={record[f'k{k}_hit_rate']:.3f} precision={record[f'k{k}_precision']:.3f} recall={record[f'k{k}_recall']:.3f}"
             )
+        return True
 
     except Exception as e:
         print(f"{log_prefix} Error saving to {table_name}: {e}")
@@ -158,9 +167,19 @@ def main() -> None:
         default=100,
         help="Number of recent shows to average over.",
     )
+    parser.add_argument(
+        "--require-source-rows",
+        action="store_true",
+        help="Exit non-zero if no per-show accuracy rows are available to aggregate.",
+    )
     args = parser.parse_args()
 
-    save_aggregate_accuracy(band=args.band, model=args.model, shows=args.shows)
+    save_aggregate_accuracy(
+        band=args.band,
+        model=args.model,
+        shows=args.shows,
+        require_source_rows=args.require_source_rows,
+    )
 
 
 if __name__ == "__main__":

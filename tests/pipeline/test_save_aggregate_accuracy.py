@@ -131,3 +131,16 @@ def test_main_rejects_model_not_in_aggregate_choices(monkeypatch):
 
     with pytest.raises(SystemExit):
         module.main()
+
+
+def test_save_aggregate_accuracy_raises_when_source_rows_required(monkeypatch):
+    client = _ClientStub({"accuracy_per_show": []})
+    monkeypatch.setattr(module, "get_supabase_client", lambda: client)
+
+    with pytest.raises(RuntimeError, match="No per-show accuracy data found"):
+        module.save_aggregate_accuracy(
+            "goose",
+            "notebook",
+            10,
+            require_source_rows=True,
+        )

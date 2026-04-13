@@ -1,10 +1,12 @@
 # CK+ Model (Gap-Based) — Logic and Historical Accuracy
 
+> Historical note: CK+ was retired on 2026-04-11 and replaced by Deal as the promoted second model. This page is retained only to document legacy logic and historical stored outputs.
+
 ### Overview
 
 The CK+ model is a gap-based statistical predictor that ranks songs by how "overdue" they are to be
-played, using historical show-to-show gaps between performances. It is intentionally simple, fast,
-and explainable, and complements the frequency‑based `notebook` model.
+played, using historical show-to-show gaps between performances. It was intentionally simple, fast,
+and explainable, and it complemented the frequency-based `notebook` model while it was active.
 
 ### How it Runs
 

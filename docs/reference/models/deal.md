@@ -6,9 +6,9 @@ Deal is the active second model in JamBandNerd. The current implementation is
 `deal_v2`: an explainable logistic ranking model trained on shared,
 band-agnostic historical-rotation features.
 
-Deal was promoted on 2026-04-10 after clearing the internal CK+ replacement
+Deal was promoted on 2026-04-11 after clearing the internal CK+ replacement
 gate. It is now enabled for pipeline runs, backfills, aggregate accuracy, and
-website surfaces.
+public website surfaces.
 
 ## Current Implementation
 
@@ -104,7 +104,7 @@ space.
 
 ## Promotion History
 
-Deal cleared the explicit CK+ replacement gate on 2026-04-10 and replaced CK+
+Deal cleared the explicit CK+ replacement gate on 2026-04-11 and replaced CK+
 as the promoted second model. Notebook remains the aspirational benchmark for
 future improvement work.
 

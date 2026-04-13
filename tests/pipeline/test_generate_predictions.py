@@ -30,6 +30,11 @@ class _TrainingPredictor:
         return [_Prediction("Song A")]
 
 
+class _EmptyPredictor:
+    def predict(self, model_data, top_k=50):  # noqa: ARG002
+        return ([], {"ok": False})
+
+
 class _ModelData:
     recently_played_songs = ["Old Song"]
 
@@ -196,3 +201,42 @@ def test_main_rejects_retrain_for_non_training_models(monkeypatch):
 
     with pytest.raises(SystemExit):
         module.main()
+
+
+def test_generate_predictions_raises_when_output_required_and_none_written(monkeypatch):
+    _setup_common_monkeypatches(monkeypatch)
+
+    monkeypatch.setattr(
+        module, "build_predictor", lambda slug, *, band, **kwargs: _EmptyPredictor()
+    )
+    monkeypatch.setattr(
+        module,
+        "get_model_definition",
+        lambda slug: replace(get_model_definition(slug), default_top_k=2),
+    )
+    monkeypatch.setattr(
+        module,
+        "serialize_model_predictions",
+        lambda slug, predictions: [
+            {"song_name": prediction.song_name} for prediction in predictions
+        ],
+    )
+    monkeypatch.setattr(
+        module,
+        "upsert_dataframe",
+        lambda **kwargs: pytest.fail("upsert_dataframe should not run"),
+    )
+    monkeypatch.setattr(
+        module,
+        "replace_prediction_projection",
+        lambda **kwargs: pytest.fail("replace_prediction_projection should not run"),
+    )
+
+    with pytest.raises(RuntimeError, match="No predictions were generated"):
+        module.generate_predictions(
+            band="goose",
+            model="notebook",
+            date_str=None,
+            exclusion_window=3,
+            require_output=True,
+        )

@@ -258,6 +258,69 @@ def build_band_health_lines(statuses: Iterable[dict[str, object]]) -> list[str]:
     return lines
 
 
+def _coerce_string_list(value: object) -> list[str]:
+    if isinstance(value, list):
+        return [str(item) for item in value if str(item).strip()]
+    if isinstance(value, str):
+        return [item.strip() for item in value.split(",") if item.strip()]
+    return []
+
+
+def _format_optional_hours(value: object) -> str:
+    if value in (None, ""):
+        return "n/a"
+    try:
+        return f"{float(value):.1f}h"
+    except (TypeError, ValueError):
+        return str(value)
+
+
+def build_supported_model_freshness_lines(
+    statuses: Iterable[dict[str, object]],
+) -> list[str]:
+    statuses = list(statuses)
+    if not statuses:
+        return []
+
+    lines = [
+        "### Supported Model Freshness",
+        "",
+        "| Band | Freshness State | Stale Supported Models | Max Prediction Age | Max Accuracy Age | Reused Degraded Data | Notes |",
+        "| --- | --- | --- | --- | --- | --- | --- |",
+    ]
+
+    for status in statuses:
+        band = str(status.get("band") or "").upper() or "UNKNOWN"
+        freshness_state = str(status.get("freshness_state") or "unknown")
+        stale_prediction_models = _coerce_string_list(
+            status.get("stale_prediction_models")
+        )
+        stale_accuracy_models = _coerce_string_list(status.get("stale_accuracy_models"))
+        stale_parts = []
+        if stale_prediction_models:
+            stale_parts.append(f"prediction: {', '.join(stale_prediction_models)}")
+        if stale_accuracy_models:
+            stale_parts.append(f"accuracy: {', '.join(stale_accuracy_models)}")
+
+        stale_text = "; ".join(stale_parts) if stale_parts else "none"
+        reused_degraded_data = (
+            status.get("workflow_state") == "degraded"
+            and status.get("prediction_action") == "reused_existing"
+        )
+        notes = str(status.get("freshness_reason") or "").strip() or "n/a"
+        notes = notes.replace("|", "/")
+
+        lines.append(
+            f"| {band} | {freshness_state} | {stale_text} | "
+            f"{_format_optional_hours(status.get('max_prediction_age_hours'))} | "
+            f"{_format_optional_hours(status.get('max_accuracy_age_hours'))} | "
+            f"{'yes' if reused_degraded_data else 'no'} | {notes} |"
+        )
+
+    lines.append("")
+    return lines
+
+
 def render_summary(
     client,
     *,
@@ -270,6 +333,7 @@ def render_summary(
     bands = list(bands)
     sections = [
         build_band_health_lines(band_statuses or []),
+        build_supported_model_freshness_lines(band_statuses or []),
         build_data_quality_lines(client, bands=bands, days=days, today=today),
         build_prediction_coverage_lines(client, bands=bands, today=today),
     ]

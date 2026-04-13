@@ -13,6 +13,7 @@ These are the canonical scripts used by docs and GitHub Actions:
 - `save_aggregate_accuracy.py` — compute aggregate accuracy from per-show results
 - `verify_data_freshness.py` — CI data-quality check for recent missing setlists
 - `generate_pipeline_summary.py` — GitHub Actions monitoring summary for recent completed-show freshness and prediction coverage
+- `check_supported_model_freshness.py` — audit supported prediction/accuracy freshness for one band and emit GitHub Actions outputs without failing early
 - `validate_prediction_tables.py` — prediction freshness/JSON integrity check using the latest row by `predicted_at`, plus `prediction_songs` consistency checks
 - `validate_accuracy_tables.py` — per-show and aggregate accuracy freshness/presence check, plus replay-lineage validation for recent scored shows
 - `collection_preflight.py` — classify collection mode and execution mode before the collector starts

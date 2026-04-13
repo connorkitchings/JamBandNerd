@@ -4,6 +4,7 @@ from datetime import date
 from scripts.generate_pipeline_summary import (
     build_data_quality_lines,
     build_prediction_coverage_lines,
+    build_supported_model_freshness_lines,
     render_summary,
 )
 
@@ -307,3 +308,88 @@ def test_render_summary_includes_band_health_states():
         "| WSP | degraded | degraded_upstream_blocked | bounded_refresh | 0 | reused_existing | "
         "fallback shows filled=2 |" in summary
     )
+
+
+def test_build_supported_model_freshness_lines_surfaces_stale_and_reused_states():
+    lines = build_supported_model_freshness_lines(
+        [
+            {
+                "band": "goose",
+                "workflow_state": "success",
+                "prediction_action": "generated",
+                "freshness_state": "fresh",
+                "stale_prediction_models": [],
+                "stale_accuracy_models": [],
+                "max_prediction_age_hours": 4.2,
+                "max_accuracy_age_hours": 7.4,
+                "freshness_reason": "all supported model predictions and accuracy are within 48h",
+            },
+            {
+                "band": "wsp",
+                "workflow_state": "degraded",
+                "prediction_action": "reused_existing",
+                "freshness_state": "stale",
+                "stale_prediction_models": ["notebook"],
+                "stale_accuracy_models": ["notebook"],
+                "max_prediction_age_hours": 61.3,
+                "max_accuracy_age_hours": 88.0,
+                "freshness_reason": "notebook predictions stale age=61.3h; notebook per-show accuracy stale age=88.0h",
+            },
+        ]
+    )
+
+    assert "### Supported Model Freshness" in lines
+    assert (
+        "| GOOSE | fresh | none | 4.2h | 7.4h | no | "
+        "all supported model predictions and accuracy are within 48h |" in lines
+    )
+    assert (
+        "| WSP | stale | prediction: notebook; accuracy: notebook | 61.3h | 88.0h | yes | "
+        "notebook predictions stale age=61.3h; notebook per-show accuracy stale age=88.0h |"
+        in lines
+    )
+
+
+def test_render_summary_includes_supported_model_freshness_section():
+    client = _ClientStub(
+        {
+            "wsp_shows_raw": [],
+            "wsp_setlists_raw": [],
+            "goose_shows_raw": [],
+            "goose_setlists_raw": [],
+        }
+    )
+
+    summary = render_summary(
+        client,
+        bands=["goose", "wsp"],
+        band_statuses=[
+            {
+                "band": "goose",
+                "workflow_state": "degraded",
+                "prediction_action": "reused_existing",
+                "freshness_state": "fresh",
+                "stale_prediction_models": [],
+                "stale_accuracy_models": [],
+                "max_prediction_age_hours": 6.0,
+                "max_accuracy_age_hours": 10.0,
+                "freshness_reason": "all supported model predictions and accuracy are within 48h",
+            },
+            {
+                "band": "wsp",
+                "workflow_state": "degraded",
+                "prediction_action": "reused_existing",
+                "freshness_state": "stale",
+                "stale_prediction_models": ["notebook"],
+                "stale_accuracy_models": [],
+                "max_prediction_age_hours": 54.0,
+                "max_accuracy_age_hours": 12.0,
+                "freshness_reason": "notebook predictions stale age=54.0h",
+            },
+        ],
+        today=date(2026, 3, 17),
+    )
+
+    assert "### Supported Model Freshness" in summary
+    assert "| GOOSE | fresh | none | 6.0h | 10.0h | yes |" in summary
+    assert "| WSP | stale | prediction: notebook | 54.0h | 12.0h | yes |" in summary

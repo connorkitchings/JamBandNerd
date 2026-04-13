@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import replace
 
 import pandas as pd
+import pytest
 
 from scripts import run_backtest as run_backtest_module
 from src.jambandnerd.models.registry import get_model_definition
@@ -212,3 +213,53 @@ def test_run_backtest_disables_cached_artifacts_for_training_models(monkeypatch)
     )
 
     assert seen["kwargs"] == {"persist_artifacts": False}
+
+
+def test_run_backtest_raises_when_results_required_and_none_generated(monkeypatch):
+    monkeypatch.setattr(
+        run_backtest_module,
+        "load_backtest_frames",
+        lambda band, snapshot_root=None: (
+            pd.DataFrame([{"show_id": "goose-show-1", "show_date": "2024-01-20"}]),
+            pd.DataFrame(
+                [
+                    {"show_id": "goose-show-1", "song_name": "Song A"},
+                    {"show_id": "goose-show-1", "song_name": "Song B"},
+                    {"show_id": "goose-show-1", "song_name": "Song C"},
+                ]
+            ),
+        ),
+    )
+    monkeypatch.setattr(
+        run_backtest_module,
+        "list_completed_shows",
+        lambda shows_df, sets_df: pd.DataFrame(
+            [{"show_id": "goose-show-1", "show_date": pd.Timestamp("2024-01-20")}]
+        ),
+    )
+    monkeypatch.setattr(
+        run_backtest_module,
+        "select_target_shows",
+        lambda completed_shows, **kwargs: completed_shows,
+    )
+    monkeypatch.setattr(
+        run_backtest_module,
+        "get_model_definition",
+        lambda slug: get_model_definition("notebook"),
+    )
+    monkeypatch.setattr(
+        run_backtest_module,
+        "build_scored_run_records",
+        lambda **kwargs: [],
+    )
+
+    with pytest.raises(RuntimeError, match="No results generated from backtest"):
+        run_backtest_module.run_backtest(
+            band="goose",
+            model="notebook",
+            start=None,
+            end=None,
+            shows=1,
+            exclusion_window=3,
+            require_results=True,
+        )
