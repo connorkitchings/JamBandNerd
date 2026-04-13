@@ -79,7 +79,7 @@ def _prediction_rows(
                 "predictions": json.dumps(latest_predictions),
             },
         ],
-        "predictions_ckplus": [
+        "predictions_deal": [
             {
                 "band": "goose",
                 "model_version": "deal_v2",
@@ -97,9 +97,7 @@ def _prediction_rows(
                 "predictions": json.dumps(latest_predictions),
             },
         ],
-        "predictions_deal": [],
     }
-    rows["predictions_deal"] = rows.pop("predictions_ckplus")
     return rows
 
 

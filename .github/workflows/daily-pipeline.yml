@@ -300,7 +300,7 @@ jobs:
           
           # Run backtest for last 100 shows to populate per-show accuracy
           uv run python scripts/run_backtest.py --band ${{ matrix.band }} --model notebook --shows 100
-          uv run python scripts/run_backtest.py --band ${{ matrix.band }} --model deal --shows 100
+          uv run python scripts/run_backtest.py --band ${{ matrix.band }} --model deal --shows 50
 
           echo "::endgroup::"
 

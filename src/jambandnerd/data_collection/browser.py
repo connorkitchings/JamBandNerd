@@ -21,24 +21,31 @@ import time
 from typing import Dict, Optional
 
 import requests
-from playwright.sync_api import Browser, BrowserContext, Page, sync_playwright
+from playwright.sync_api import (
+    Browser,
+    BrowserContext,
+    Page,
+    Playwright,
+    sync_playwright,
+)
 
 logger = logging.getLogger(__name__)
 
 _rate_limit_delay = 4.0
 _last_request_time: float = 0.0
 
+_pw: Optional[Playwright] = None
 _browser: Optional[Browser] = None
 _context: Optional[BrowserContext] = None
 
 
 def _get_browser() -> Browser:
-    global _browser, _context
+    global _pw, _browser, _context
 
     if _browser is None:
         logger.info("Launching Playwright (Firefox) for Cloudflare bypass")
-        pw = sync_playwright().start()
-        _browser = pw.firefox.launch(headless=True, args=[])
+        _pw = sync_playwright().start()
+        _browser = _pw.firefox.launch(headless=True, args=[])
         _context = _browser.new_context(
             user_agent=(
                 "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:138.0) "
@@ -146,7 +153,7 @@ class CloudflareBypass:
     @staticmethod
     def cleanup() -> None:
         """Close the shared browser and context. Call at end of collection."""
-        global _browser, _context
+        global _pw, _browser, _context
 
         if _context is not None:
             _context.close()
@@ -155,4 +162,8 @@ class CloudflareBypass:
         if _browser is not None:
             _browser.close()
             _browser = None
+
+        if _pw is not None:
+            _pw.stop()
+            _pw = None
             logger.info("Playwright browser cleaned up")

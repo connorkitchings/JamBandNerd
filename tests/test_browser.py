@@ -94,17 +94,21 @@ class TestCloudflareBypassMakeRequest:
 
 class TestCloudflareBypassCleanup:
     def test_closes_context_and_browser(self):
+        mock_pw = MagicMock()
         mock_browser = MagicMock()
         mock_context = MagicMock()
 
-        with patch("jambandnerd.data_collection.browser._browser", mock_browser):
-            with patch("jambandnerd.data_collection.browser._context", mock_context):
-                CloudflareBypass.cleanup()
+        with patch("jambandnerd.data_collection.browser._pw", mock_pw):
+            with patch("jambandnerd.data_collection.browser._browser", mock_browser):
+                with patch("jambandnerd.data_collection.browser._context", mock_context):
+                    CloudflareBypass.cleanup()
 
         mock_context.close.assert_called_once()
         mock_browser.close.assert_called_once()
+        mock_pw.stop.assert_called_once()
 
     def test_noop_when_none(self):
-        with patch("jambandnerd.data_collection.browser._browser", None):
-            with patch("jambandnerd.data_collection.browser._context", None):
-                CloudflareBypass.cleanup()
+        with patch("jambandnerd.data_collection.browser._pw", None):
+            with patch("jambandnerd.data_collection.browser._browser", None):
+                with patch("jambandnerd.data_collection.browser._context", None):
+                    CloudflareBypass.cleanup()

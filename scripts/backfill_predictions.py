@@ -10,7 +10,7 @@ Usage:
     uv run python scripts/backfill_predictions.py --band all
 
     # Backfill specific band and model
-    uv run python scripts/backfill_predictions.py --band wsp --model ckplus
+    uv run python scripts/backfill_predictions.py --band wsp --model deal
 """
 
 from __future__ import annotations
@@ -280,9 +280,9 @@ def main() -> None:
     parser.add_argument(
         "--model",
         type=str,
-        default="ckplus",
+        default="deal",
         choices=[definition.slug for definition in list_backfill_models()],
-        help="Model to process (default: ckplus)",
+        help="Model to process (default: deal)",
     )
     parser.add_argument(
         "--dry-run",

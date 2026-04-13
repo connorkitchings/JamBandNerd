@@ -8,8 +8,8 @@ Usage:
   # Generate Notebook predictions for Goose
   uv run python scripts/generate_predictions.py --band goose --model notebook
 
-  # Generate CK+ predictions for Phish for a specific date
-  uv run python scripts/generate_predictions.py --band phish --model ckplus --date 2024-08-01
+  # Generate Deal predictions for Phish for a specific date
+  uv run python scripts/generate_predictions.py --band phish --model deal --date 2024-08-01
 """
 
 from __future__ import annotations

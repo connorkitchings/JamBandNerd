@@ -7,8 +7,8 @@ against the actual setlist, and saves the per-show accuracy metrics to the
 `accuracy_per_show` table.
 
 Usage:
-  # Backtest the last 50 WSP shows with the CK+ model
-  uv run python scripts/run_backtest.py --band wsp --model ckplus --shows 50
+  # Backtest the last 50 WSP shows with the Deal model
+  uv run python scripts/run_backtest.py --band wsp --model deal --shows 50
 
   # Backtest the Goose Notebook model over a specific date range
   uv run python scripts/run_backtest.py --band goose --model notebook --start 2023-01-01 --end 2023-12-31

@@ -68,7 +68,7 @@ While the optimized pipeline is recommended, you can also run individual compone
 
 ```bash
 # Generate predictions for a single band and model
-uv run python scripts/generate_predictions.py --band phish --model ckplus
+uv run python scripts/generate_predictions.py --band phish --model deal
 
 # Run a backtest to calculate per-show accuracy
 uv run python scripts/run_backtest.py --band goose --model notebook --shows 50
@@ -78,7 +78,7 @@ uv run python scripts/run_eggy_collection.py --skip-validation
 
 # Convenience wrappers for Billy Strings predictions
 uv run predict-billy -- --date 2025-10-24
-uv run predict-billy-ckplus -- --date 2025-10-24
+uv run predict-billy -- --date 2025-10-24 --model deal
 ```
 
 For detailed usage, please refer to the full documentation.
