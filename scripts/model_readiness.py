@@ -119,9 +119,11 @@ def _build_band_bundle(
         "required_window": required_window,
         "shows_selected": len(target_shows),
         "shows_scored": len(scored_runs),
-        "reference_dates": prediction_rows_df["reference_date"].tolist()
-        if not prediction_rows_df.empty
-        else [],
+        "reference_dates": (
+            prediction_rows_df["reference_date"].tolist()
+            if not prediction_rows_df.empty
+            else []
+        ),
         "generated_at": pd.Timestamp.now(tz=timezone.utc).isoformat(),
         "cache_summary": cache.build_summary(),
         "summary": summarize_scored_run_records(scored_runs) if scored_runs else {},

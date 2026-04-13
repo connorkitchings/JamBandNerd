@@ -41,7 +41,7 @@ def test_live_band_pipeline_smoke(band):
 
     assert "Successfully completed pipeline" in result.stdout
 
-    for model in ("notebook", "ckplus"):
+    for model in ("notebook", "deal"):
         assert_prediction_publish_fresh(
             band=band,
             model=model,

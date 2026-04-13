@@ -30,7 +30,9 @@ def test_export_tables_to_snapshot_writes_manifest(monkeypatch, tmp_path: Path) 
         "goose_setlists_raw": [{"show_id": "goose-1", "song_name": "Song A"}],
     }
 
-    def fake_fetch_table(table_name: str, chunk_size: int = 10000, *, snapshot_root=None):  # noqa: ARG001
+    def fake_fetch_table(
+        table_name: str, chunk_size: int = 10000, *, snapshot_root=None
+    ):  # noqa: ARG001
         return table_rows[table_name]
 
     monkeypatch.setattr(common_module, "fetch_table", fake_fetch_table)

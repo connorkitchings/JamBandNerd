@@ -6,7 +6,9 @@ from scripts import recover_deal_last50_local as module
 from src.jambandnerd.models.registry import get_model_definition
 
 
-def _scored_run(show_id: str, target_show_date: str, reference_date: str) -> dict[str, object]:
+def _scored_run(
+    show_id: str, target_show_date: str, reference_date: str
+) -> dict[str, object]:
     return {
         "band": "wsp",
         "model_slug": "deal",
@@ -20,9 +22,27 @@ def _scored_run(show_id: str, target_show_date: str, reference_date: str) -> dic
         "prediction_count": 1,
         "generated_at": "2026-04-12T12:00:00+00:00",
         "metrics": {
-            "k10": {"hit": 1, "matches": 1, "precision": 0.1, "recall": 0.33, "f1": 0.15},
-            "k25": {"hit": 1, "matches": 1, "precision": 0.04, "recall": 0.33, "f1": 0.08},
-            "k50": {"hit": 1, "matches": 1, "precision": 0.02, "recall": 0.33, "f1": 0.04},
+            "k10": {
+                "hit": 1,
+                "matches": 1,
+                "precision": 0.1,
+                "recall": 0.33,
+                "f1": 0.15,
+            },
+            "k25": {
+                "hit": 1,
+                "matches": 1,
+                "precision": 0.04,
+                "recall": 0.33,
+                "f1": 0.08,
+            },
+            "k50": {
+                "hit": 1,
+                "matches": 1,
+                "precision": 0.02,
+                "recall": 0.33,
+                "f1": 0.04,
+            },
         },
     }
 

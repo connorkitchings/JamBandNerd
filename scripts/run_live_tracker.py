@@ -202,9 +202,9 @@ def run_live_tracker(
                     band=band, model="notebook", date_str=None, exclusion_window=3
                 )
 
-                logger.info("Regenerating CK+ predictions...")
+                logger.info("Regenerating Deal predictions...")
                 generate_predictions(
-                    band=band, model="ckplus", date_str=None, exclusion_window=3
+                    band=band, model="deal", date_str=None, exclusion_window=3
                 )
 
                 last_song_count = current_song_count

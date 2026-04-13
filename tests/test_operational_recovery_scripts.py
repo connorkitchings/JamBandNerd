@@ -341,8 +341,8 @@ def test_rebuild_prediction_songs_bounded_window_rebuilds_multiple_dates(monkeyp
             },
             {
                 "band": "goose",
-                "model_slug": "ckplus",
-                "model_version": "ckplus_v1",
+                "model_slug": "deal",
+                "model_version": "deal_v2",
                 "reference_date": "2026-04-01",
                 "predicted_at": "2026-04-01T00:00:00+00:00",
             },
@@ -399,8 +399,8 @@ def test_rebuild_prediction_songs_bounded_window_rebuilds_multiple_dates(monkeyp
         },
         {
             "band": "goose",
-            "model_slug": "ckplus",
-            "model_version": "ckplus_v1",
+            "model_slug": "deal",
+            "model_version": "deal_v2",
             "reference_date": "2026-04-01",
             "predicted_at": "2026-04-01T00:00:00+00:00",
         },

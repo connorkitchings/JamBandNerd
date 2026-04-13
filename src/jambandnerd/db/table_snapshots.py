@@ -47,9 +47,7 @@ def load_snapshot_manifest(snapshot_root: str | Path) -> dict[str, Any] | None:
     return payload
 
 
-def write_snapshot_manifest(
-    snapshot_root: str | Path, payload: dict[str, Any]
-) -> Path:
+def write_snapshot_manifest(snapshot_root: str | Path, payload: dict[str, Any]) -> Path:
     """Write a snapshot manifest atomically."""
 
     path = manifest_path(snapshot_root)

@@ -651,12 +651,16 @@ def check_prediction_staleness(
 
     prediction_tables = [
         "predictions_notebook",
+        "predictions_deal",
         "predictions_ckplus",
     ]
 
     table = None
     for t in prediction_tables:
         if model_version.startswith("notebook") and t == "predictions_notebook":
+            table = t
+            break
+        if model_version.startswith("deal") and t == "predictions_deal":
             table = t
             break
         if model_version.startswith("ckplus") and t == "predictions_ckplus":

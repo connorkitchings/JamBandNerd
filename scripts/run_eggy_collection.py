@@ -22,6 +22,7 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, project_root)
 
 from scripts.common import ensure_source_reachable  # noqa: E402
+from src.jambandnerd.data_collection.browser import CloudflareBypass  # noqa: E402
 from src.jambandnerd.data_collection.eggy.collector import EggyCollector  # noqa: E402
 from src.jambandnerd.db.connection import get_supabase_client  # noqa: E402
 from src.jambandnerd.db.operations import validate_and_upsert_dataframe  # noqa: E402
@@ -217,6 +218,8 @@ def run_eggy_collection(skip_validation: bool = False) -> None:
         ["show_id", "set_number", "song_position"],
         required_columns=["set_number", "song_position"],
     )
+
+    CloudflareBypass.cleanup()
 
 
 def main() -> None:

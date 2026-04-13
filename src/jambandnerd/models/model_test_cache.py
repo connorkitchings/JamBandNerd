@@ -43,7 +43,9 @@ def build_experiment_cache_identity(
         "candidate_model": candidate_model,
         "baseline_models": list(baseline_models),
         "requested_bands": list(bands),
-        "windows": [{"label": window["label"], "shows": window["shows"]} for window in windows],
+        "windows": [
+            {"label": window["label"], "shows": window["shows"]} for window in windows
+        ],
         "exclusion_window": exclusion_window,
         "feature_set_label": feature_set_label,
         "fresh_training": fresh_training,

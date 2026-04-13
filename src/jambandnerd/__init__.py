@@ -7,7 +7,7 @@ Main modules:
 - data_collection: Band-specific data collectors with unified interfaces
 - db: Database connection, operations, and validation
 - integrations: External-service automation and workflow adapters
-- models: Prediction models (Notebook, CK+) with accuracy tracking
+- models: Prediction models (Notebook, Deal) with accuracy tracking
 - transformations: Feature engineering and data processing
 - web: Streamlit web interface for predictions and analytics
 """
