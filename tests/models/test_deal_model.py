@@ -8,6 +8,7 @@ import pandas as pd
 from src.jambandnerd.models.deal.features import (
     DEAL_FEATURE_COLUMNS,
     build_training_frame,
+    generate_deal_features,
     get_candidate_features,
 )
 from src.jambandnerd.models.deal.model import DealPredictor
@@ -80,6 +81,20 @@ def test_deal_feature_generation_respects_reference_boundary() -> None:
     )
 
     assert "Late Debut" not in set(candidates["song_name"])
+
+
+def test_deal_current_gap_counts_completed_shows_since_last_play() -> None:
+    shows_df, setlists_df = build_deal_fixture()
+    model_data = generate_model_data(
+        shows_df, setlists_df, date(2024, 3, 20), band="goose"
+    )
+
+    features = generate_deal_features(model_data, min_plays_threshold=2)
+    song_a_row = features.loc[features["song_name"] == "Song A"].iloc[0]
+
+    # Song A appears in the final historical show before the target. There are
+    # zero completed shows between that play and the prediction target.
+    assert int(song_a_row["current_gap"]) == 0
 
 
 def test_deal_training_frame_builds_true_per_show_rows() -> None:

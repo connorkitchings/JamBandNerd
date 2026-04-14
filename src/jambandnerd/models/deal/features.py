@@ -76,7 +76,8 @@ def _compute_ltp_features(
     recent_gaps = gaps[-10:] if len(gaps) >= 10 else gaps
     avg_ltp = float(np.mean(gaps)) if gaps else 0.0
     recent_avg_ltp = float(np.mean(recent_gaps)) if recent_gaps else avg_ltp
-    current_gap = reference_index - plays_idx[-1]
+    # current_gap counts completed shows since the last play, not the target show itself.
+    current_gap = max(reference_index - plays_idx[-1] - 1, 0)
     std_gap = float(np.std(gaps, ddof=0)) if gaps else 0.0
     gap_z_score = (current_gap - avg_ltp) / std_gap if std_gap > 0 else 0.0
 
@@ -227,7 +228,7 @@ def get_candidate_features(
     recently_played = set(model_data.recently_played_songs)
     features = features[~features["song_name"].isin(recently_played)]
     features = features[features["current_gap"] <= retired_gap_threshold]
-    features = features[features["current_gap"] > 1]
+    features = features[features["current_gap"] > 0]
     return features.reset_index(drop=True)
 
 
