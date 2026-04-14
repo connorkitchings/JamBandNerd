@@ -299,8 +299,7 @@ async def fetch_entry_context(
     if "/login" in page.url:
         raise RuntimeError("Fantasy Goose session lost before reading entry page.")
 
-    raw_context = await page.evaluate(
-        """
+    raw_context = await page.evaluate("""
         () => {
           const select = document.getElementById('show_id');
           const root = document.querySelector('[x-data^="entryForm("]');
@@ -323,8 +322,7 @@ async def fetch_entry_context(
               : [],
           };
         }
-        """
-    )
+        """)
 
     shows = [parse_fantasy_goose_show(item) for item in raw_context.get("shows", [])]
     songs = [
