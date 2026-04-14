@@ -16,6 +16,7 @@ Core components:
 - cache: Disk-based HTTP response caching with TTL support
 - config: Band-specific configuration management
 - utils: Shared collection helpers such as source hashing and run timers
+- browser: Playwright-based Cloudflare bypass for protected sources
 """
 
 from typing import TYPE_CHECKING
@@ -45,6 +46,7 @@ __all__ = [
     "billy",
     "um",
     "base",
+    "browser",
     "cache",
     "config",
     "utils",
