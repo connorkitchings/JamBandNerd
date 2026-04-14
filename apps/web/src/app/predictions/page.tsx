@@ -23,6 +23,7 @@ import {
   formatTimestampLabel,
 } from "@/lib/format";
 import { formatTop10Text } from "@/lib/format-predictions-text";
+import { getPredictionStatusLabel, isShowTonight } from "@/lib/show-status";
 
 export const dynamic = "force-dynamic";
 
@@ -138,14 +139,8 @@ export default async function PredictionsPage({ searchParams }: Props) {
     nextShow?.city ?? null,
     nextShow?.state ?? nextShow?.country ?? null,
   ]);
-  const today = new Date().toISOString().slice(0, 10);
-  const isLiveShow = heroDate === today;
-  const statusLabel =
-    isLiveShow
-      ? "LIVE"
-      : nextShow?.showDate
-        ? "Next Show"
-        : "Prediction Outlook";
+  const isLiveShow = isShowTonight(heroDate);
+  const statusLabel = getPredictionStatusLabel(nextShow?.showDate ?? null);
   const snapshotLabel = formatTimestampLabel(predictionState.snapshot.predictedAt);
   const accuracyRows = accuracyState.status === "ready" ? accuracyState.rows : [];
   const accuracyWindow = accuracyRows.length || 50;
@@ -193,7 +188,7 @@ export default async function PredictionsPage({ searchParams }: Props) {
         bands={bands}
       />
 
-      {isLiveShow && process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY && (
+      {heroDate && isLiveShow && process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY && (
         <LiveTracker
           band={predictionState.band}
           model={predictionState.model}
