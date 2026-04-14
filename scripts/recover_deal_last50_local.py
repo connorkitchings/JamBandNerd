@@ -353,7 +353,6 @@ def recover_deal_last50_local(
         band_state.update(
             {
                 "uploaded": True,
-                "aggregate_accuracy_saved": True,
                 "complete": True,
             }
         )
