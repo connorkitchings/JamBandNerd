@@ -362,7 +362,10 @@ async function fetchProjectedPredictionSnapshot(
     .from("prediction_songs")
     .select("reference_date, predicted_at, model_version")
     .eq("band", band)
-    .eq("model_slug", model);
+    .eq("model_slug", model)
+    // Seed snapshot selection from rank 1 only so the limit applies to
+    // snapshots, not to arbitrary rows within a few recently-written boards.
+    .eq("rank", 1);
 
   const todayIso = new Date().toISOString().slice(0, 10);
 
@@ -373,7 +376,6 @@ async function fetchProjectedPredictionSnapshot(
   const { data: seedRows, error: seedError } = await seedQuery
     .order("predicted_at", { ascending: false })
     .order("reference_date", { ascending: false })
-    .order("rank", { ascending: true })
     .limit(referenceDate ? 1 : 100);
 
   if (seedError) {
