@@ -97,8 +97,12 @@ class TestNotebookPredictor:
         assert predictions[1].song_name == "Song B"
         assert predictions[1].plays_past_year == 2
 
-        song_a = next(prediction for prediction in predictions if prediction.song_name == "Song A")
-        song_b = next(prediction for prediction in predictions if prediction.song_name == "Song B")
+        song_a = next(
+            prediction for prediction in predictions if prediction.song_name == "Song A"
+        )
+        song_b = next(
+            prediction for prediction in predictions if prediction.song_name == "Song B"
+        )
         assert song_a.current_gap == 4
         assert song_b.current_gap == 10
 
