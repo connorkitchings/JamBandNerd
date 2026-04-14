@@ -12,7 +12,6 @@ from jambandnerd.config import (
 from jambandnerd.config.bands import get_active_bands
 from jambandnerd.db.connection import get_supabase_client
 from jambandnerd.models.registry import (
-    get_aggregate_accuracy_table,
     list_accuracy_validation_models,
 )
 
@@ -128,7 +127,6 @@ def validate_accuracy(
     bands: Iterable[str],
     max_age_hours: int,
     *,
-    validate_aggregate: bool = True,
     validate_replay: bool = True,
     replay_window: int = 50,
 ) -> int:
@@ -141,11 +139,6 @@ def validate_accuracy(
         model_slug = definition.slug
         model_version = definition.version
         per_show_table = "accuracy_per_show"
-        aggregate_table = get_aggregate_accuracy_table(model_slug)
-        if not aggregate_table:
-            raise RuntimeError(
-                f"No aggregate accuracy table configured for model: {model_slug}"
-            )
         print(f"\n== Validating {model_slug} accuracy ({model_version}) ==")
 
         for band in band_list:
@@ -194,23 +187,6 @@ def validate_accuracy(
                             f"[OK] {band}: replay lineage ready for {model_slug} across {len(replay_rows)} recent shows via {HISTORICAL_PREDICTION_RUNS_TABLE}"
                         )
 
-            if not validate_aggregate:
-                continue
-
-            aggregate_row = _latest_row(
-                client,
-                table=aggregate_table,
-                band=band,
-                model_version=model_version,
-            )
-            failures += _validate_row(
-                band=band,
-                label="aggregate accuracy",
-                row=aggregate_row,
-                max_age_hours=max_age_hours,
-                required_fields=("window_start", "window_end"),
-            )
-
     return failures
 
 
@@ -231,11 +207,6 @@ def main() -> None:
         help="Maximum allowed staleness (hours) for evaluated_at timestamps.",
     )
     parser.add_argument(
-        "--skip-aggregate-check",
-        action="store_true",
-        help="Skip validation of aggregate accuracy tables.",
-    )
-    parser.add_argument(
         "--skip-replay-check",
         action="store_true",
         help="Skip validation that recent per-show rows carry replay lineage.",
@@ -251,7 +222,6 @@ def main() -> None:
     failures = validate_accuracy(
         bands=args.bands or [],
         max_age_hours=args.max_age_hours,
-        validate_aggregate=not args.skip_aggregate_check,
         validate_replay=not args.skip_replay_check,
         replay_window=args.replay_window,
     )

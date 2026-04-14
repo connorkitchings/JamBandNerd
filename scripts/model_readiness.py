@@ -24,7 +24,6 @@ from scripts.run_backtest import (
     persist_scored_run_records,
     summarize_scored_run_records,
 )
-from scripts.save_aggregate_accuracy import save_aggregate_accuracy
 from src.jambandnerd.db.operations import upsert_dataframe
 from src.jambandnerd.models.evaluation import list_completed_shows, select_target_shows
 from src.jambandnerd.models.model_test_cache import (
@@ -230,17 +229,6 @@ def _run_backfill_history_phase(
     return {"path": str(history_path), "report": results}
 
 
-def _run_aggregate_phase(*, model_slug: str, bands: list[str]) -> dict[str, Any]:
-    definition = get_model_definition(model_slug)
-    for band in bands:
-        for window in definition.readiness_windows:
-            save_aggregate_accuracy(band=band, model=model_slug, shows=window)
-    return {
-        "bands": bands,
-        "windows": list(definition.readiness_windows),
-    }
-
-
 def _run_validate_phase(
     *,
     model_slug: str,
@@ -303,12 +291,6 @@ def run_model_readiness(
             rebuild_bundles=rebuild_bundles,
         )
 
-    if phase in {"aggregate", "full-readiness"}:
-        result["aggregate"] = _run_aggregate_phase(
-            model_slug=model_slug,
-            bands=bands,
-        )
-
     if phase in {"report-only", "validate", "full-readiness"}:
         result["validation"] = _run_validate_phase(
             model_slug=model_slug,
@@ -341,7 +323,6 @@ def main() -> None:
             "compare",
             "snapshot",
             "backfill-history",
-            "aggregate",
             "validate",
             "full-readiness",
         ],

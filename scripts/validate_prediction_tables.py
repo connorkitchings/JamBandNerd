@@ -27,12 +27,15 @@ def _parse_timestamp(value: str | None) -> datetime | None:
         return None
 
 
-def _latest_prediction_row(client, *, table: str, band: str, model_version: str):
+def _latest_prediction_row(
+    client, *, table: str, band: str, model_slug: str, model_version: str
+):
     """Fetch the most recently written prediction row for a band/model."""
     resp = (
         client.table(table)
         .select("band, reference_date, predicted_at, predictions, top_k")
         .eq("band", band)
+        .eq("model_slug", model_slug)
         .eq("model_version", model_version)
         .order("predicted_at", desc=True)
         .order("reference_date", desc=True)
@@ -175,24 +178,22 @@ def validate_predictions(
         if selected_models
         else list_pipeline_models()
     )
-    tables = {
-        definition.prediction_table: {
-            "model_slug": definition.slug,
-            "model_version": definition.version,
-        }
-        for definition in definitions
-    }
 
     now = datetime.now(timezone.utc)
     failures = 0
 
-    for table, config in tables.items():
-        model_slug = config["model_slug"]
-        model_version = config["model_version"]
+    for definition in definitions:
+        table = definition.prediction_table
+        model_slug = definition.slug
+        model_version = definition.version
         print(f"\n== Validating {table} ({model_version}) ==")
         for band in band_list:
             row = _latest_prediction_row(
-                client, table=table, band=band, model_version=model_version
+                client,
+                table=table,
+                band=band,
+                model_slug=model_slug,
+                model_version=model_version,
             )
             if not row:
                 print(f"[FAIL] {band}: no rows found")

@@ -37,12 +37,10 @@ class ModelDefinition:
     predictor_cls: type[PredictionModel]
     version: str
     prediction_table: str
-    aggregate_accuracy_table: str | None
     serializer: PredictionSerializer
     enabled_for_pipeline: bool
     enabled_for_backfill: bool
     enabled_for_accuracy_validation: bool
-    enabled_for_aggregate_accuracy: bool
     enabled_for_web: bool
     supports_training: bool
     supports_live_predictions: bool
@@ -80,12 +78,10 @@ def _to_definition(metadata: ModelMetadata) -> ModelDefinition:
         predictor_cls=predictor_cls,
         version=metadata.version,
         prediction_table=metadata.prediction_table,
-        aggregate_accuracy_table=metadata.aggregate_accuracy_table,
         serializer=serializer,
         enabled_for_pipeline=metadata.enabled_for_pipeline,
         enabled_for_backfill=metadata.enabled_for_backfill,
         enabled_for_accuracy_validation=metadata.enabled_for_accuracy_validation,
-        enabled_for_aggregate_accuracy=metadata.enabled_for_aggregate_accuracy,
         enabled_for_web=metadata.enabled_for_web,
         supports_training=metadata.supports_training,
         supports_live_predictions=metadata.supports_live_predictions,
@@ -169,15 +165,6 @@ def list_backtest_models() -> list[ModelDefinition]:
     ]
 
 
-def list_aggregate_accuracy_models() -> list[ModelDefinition]:
-    """Return models that participate in aggregate accuracy table writes."""
-    return [
-        definition
-        for definition in _MODEL_DEFINITIONS
-        if definition.enabled_for_aggregate_accuracy
-    ]
-
-
 def list_model_slugs() -> list[str]:
     """Return all registered model slugs."""
     return [definition.slug for definition in _MODEL_DEFINITIONS]
@@ -191,11 +178,6 @@ def get_prediction_table(slug: str) -> str:
 def get_model_version(slug: str) -> str:
     """Return the active model version for a model slug."""
     return get_model_definition(slug).version
-
-
-def get_aggregate_accuracy_table(slug: str) -> str | None:
-    """Return aggregate accuracy table name for a model slug, if configured."""
-    return get_model_definition(slug).aggregate_accuracy_table
 
 
 def is_model_promoted_to_web(slug: str) -> bool:

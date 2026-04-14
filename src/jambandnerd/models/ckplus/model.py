@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 
 from jambandnerd.config.bands import get_excluded_songs
+from jambandnerd.config.models import RETIREMENT_GAPS
 from jambandnerd.transformations.gaps import ModelData
 
 from ..base import PredictionModel
@@ -29,16 +30,6 @@ class CKPlusPrediction:
 class CKPlusPredictor(PredictionModel):
     """Gap-based CK+ predictor per docs/models/ckplus.md."""
 
-    # Centralized, band-specific configuration for the model
-    RETIREMENT_GAPS = {
-        "goose": 100,  # A smaller gap for a band with a more regular rotation
-        "phish": 150,  # A larger gap for a band with a deeper catalog
-        "wsp": 150,  # Similar to Phish
-        "billy": 150,
-        "um": 150,
-        "default": 250,  # A safe fallback for other bands
-    }
-
     def __init__(self, band: str, alpha: float = 0.7, min_plays_threshold: int = 5):
         # Validate parameters
         if not 0 <= alpha <= 1:
@@ -51,8 +42,8 @@ class CKPlusPredictor(PredictionModel):
         self.band = band
         self.alpha = float(alpha)
         self.min_plays_threshold = int(min_plays_threshold)
-        self.retired_gap_threshold = self.RETIREMENT_GAPS.get(
-            band, self.RETIREMENT_GAPS["default"]
+        self.retired_gap_threshold = RETIREMENT_GAPS.get(
+            band, RETIREMENT_GAPS["default"]
         )
 
     def _score_row(self, row: pd.Series) -> float:

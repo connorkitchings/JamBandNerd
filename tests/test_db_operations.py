@@ -72,7 +72,7 @@ def test_upsert_dataframe_preserves_structured_json_payload(monkeypatch):
     )
 
     operations.upsert_dataframe(
-        "predictions_notebook",
+        "predictions",
         df,
         conflict_columns=["band", "reference_date"],
     )

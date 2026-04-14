@@ -453,9 +453,10 @@ async function getCurrentModelVersion(
   }
 
   const { data } = await client
-    .from(`predictions_${model}`)
+    .from("predictions")
     .select("model_version")
     .eq("band", band)
+    .eq("model_slug", model)
     .order("predicted_at", { ascending: false })
     .order("reference_date", { ascending: false })
     .limit(1);
@@ -596,9 +597,10 @@ export const getLatestPredictions = cache(
       }
 
       const { data, error } = await client
-        .from(`predictions_${model}`)
+        .from("predictions")
         .select("*")
         .eq("band", band)
+        .eq("model_slug", model)
         .order("reference_date", { ascending: false })
         .limit(1);
 
@@ -673,9 +675,10 @@ export const getPredictionsForDate = cache(
       }
 
       const { data, error } = await client
-        .from(`predictions_${model}`)
+        .from("predictions")
         .select("*")
         .eq("band", band)
+        .eq("model_slug", model)
         .eq("reference_date", referenceDate)
         .limit(1);
 
@@ -758,9 +761,10 @@ export const getPredictionDates = cache(
 
       if (dates.length === 0) {
         const { data, error } = await client
-          .from(`predictions_${model}`)
+          .from("predictions")
           .select("reference_date")
           .eq("band", band)
+          .eq("model_slug", model)
           .order("reference_date", { ascending: false })
           .limit(100);
 

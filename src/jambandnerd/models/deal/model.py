@@ -17,9 +17,9 @@ from jambandnerd.config import (
     DEAL_LEARNING_RATE,
     DEAL_MIN_PLAYS_THRESHOLD,
     DEAL_MIN_TRAINING_SHOWS,
-    DEAL_RETIREMENT_GAP,
     DEAL_RETRAIN_INTERVAL_DAYS,
     DEAL_TRAINING_WINDOW_SHOWS,
+    RETIREMENT_GAPS,
 )
 from jambandnerd.config.bands import get_excluded_songs
 from jambandnerd.models.base import PredictionModel
@@ -133,7 +133,7 @@ class DealPredictor(PredictionModel):
         self.retired_gap_threshold = (
             retired_gap_threshold
             if retired_gap_threshold is not None
-            else DEAL_RETIREMENT_GAP.get(band, DEAL_RETIREMENT_GAP["default"])
+            else RETIREMENT_GAPS.get(band, RETIREMENT_GAPS["default"])
         )
         self.training_window_shows = training_window_shows
         self.min_training_shows = min_training_shows

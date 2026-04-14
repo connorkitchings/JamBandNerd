@@ -23,9 +23,10 @@ uv run python -c "
 import json
 from src.jambandnerd.db.connection import get_supabase_client
 client = get_supabase_client()
-result = client.table('predictions_notebook').select('*').eq('band', 'BAND_NAME').order('predicted_at', desc=True).limit(1).execute()
+result = client.table('predictions').select('*').eq('band', 'BAND_NAME').eq('model_slug', 'notebook').order('predicted_at', desc=True).limit(1).execute()
 if result.data:
-    predictions = json.loads(result.data[0]['predictions'])
+    payload = result.data[0]['predictions']
+    predictions = json.loads(payload) if isinstance(payload, str) else payload
     print('Top 5 predictions:')
     for i, p in enumerate(predictions[:5], 1):
         print(f'{i}. {p[\"song_name\"]} (last: {p.get(\"last_played_date\", \"unknown\")})')
@@ -37,20 +38,22 @@ if result.data:
 # Check for recent shows and their setlists
 uv run python -c "
 from datetime import date, timedelta
+from src.jambandnerd.config.bands import get_band_id_column
 from src.jambandnerd.db.connection import get_supabase_client
 client = get_supabase_client()
+id_column = get_band_id_column('BAND')
 
 # Check recent shows
 recent_date = str(date.today() - timedelta(days=1))
 shows = client.table('BAND_shows_raw').select('*').eq('show_date', recent_date).execute()
 if shows.data:
     for show in shows.data:
-        show_id = show['api_show_id']
+        show_id = show[id_column]
         venue = show.get('venue_name', 'Unknown')
         print(f'Show: {recent_date} - {venue} (ID: {show_id})')
         
         # Check setlist
-        setlist = client.table('BAND_setlists_raw').select('song_name').eq('api_show_id', show_id).execute()
+        setlist = client.table('BAND_setlists_raw').select('song_name').eq(id_column, show_id).execute()
         if setlist.data:
             songs = [s['song_name'] for s in setlist.data]
             print(f'  Setlist: {len(songs)} songs')
@@ -128,9 +131,9 @@ Validation failed for BAND_setlists_raw: TypeMismatch
    uv run python scripts/generate_predictions.py --band BAND --model notebook
    ```
 
-2. **Update CK+ Model**:
+2. **Update Deal Model**:
    ```bash
-   uv run python scripts/generate_predictions.py --band BAND --model ckplus
+   uv run python scripts/generate_predictions.py --band BAND --model deal
    ```
 
 3. **Verify Predictions Updated**:

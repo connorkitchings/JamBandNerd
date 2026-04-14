@@ -72,18 +72,17 @@ def _latest_timestamp_row(
     band: str,
     model_version: str,
     timestamp_field: str,
+    model_slug: str | None = None,
 ):
-    rows = (
+    query = (
         client.table(table)
         .select(f"band, model_version, {timestamp_field}")
         .eq("band", band)
         .eq("model_version", model_version)
-        .order(timestamp_field, desc=True)
-        .limit(1)
-        .execute()
-        .data
-        or []
     )
+    if model_slug:
+        query = query.eq("model_slug", model_slug)
+    rows = query.order(timestamp_field, desc=True).limit(1).execute().data or []
     return rows[0] if rows else None
 
 
@@ -154,6 +153,7 @@ def audit_supported_model_freshness(
             band=band,
             model_version=definition.version,
             timestamp_field="predicted_at",
+            model_slug=definition.slug,
         )
         is_stale, age_hours, reason = _evaluate_timestamp_row(
             row=row,
@@ -182,25 +182,10 @@ def audit_supported_model_freshness(
 
     for slug in sorted(accuracy_models):
         definition = accuracy_models[slug]
-        aggregate_table = definition.aggregate_accuracy_table
-        if not aggregate_table:
-            stale_accuracy_models.append(slug)
-            accuracy_reasons.append(f"{slug} accuracy aggregate table not configured")
-            surface_lines.append(
-                f"- {slug} accuracy: stale (aggregate table not configured)"
-            )
-            continue
 
         per_show_row = _latest_timestamp_row(
             client,
             table="accuracy_per_show",
-            band=band,
-            model_version=definition.version,
-            timestamp_field="evaluated_at",
-        )
-        aggregate_row = _latest_timestamp_row(
-            client,
-            table=aggregate_table,
             band=band,
             model_version=definition.version,
             timestamp_field="evaluated_at",
@@ -215,30 +200,17 @@ def audit_supported_model_freshness(
             invalid_reason=f"{slug} per-show accuracy missing valid evaluated_at",
             stale_reason_prefix=f"{slug} per-show accuracy stale",
         )
-        aggregate_stale, aggregate_age, aggregate_reason = _evaluate_timestamp_row(
-            row=aggregate_row,
-            timestamp_field="evaluated_at",
-            max_age_hours=max_age_hours,
-            now=now,
-            missing_reason=f"{slug} aggregate accuracy missing",
-            invalid_reason=f"{slug} aggregate accuracy missing valid evaluated_at",
-            stale_reason_prefix=f"{slug} aggregate accuracy stale",
-        )
 
-        model_age_candidates = [
-            age for age in (per_show_age, aggregate_age) if age is not None
-        ]
-        model_max_age = max(model_age_candidates) if model_age_candidates else None
-        if model_max_age is not None:
-            accuracy_ages.append(model_max_age)
+        if per_show_age is not None:
+            accuracy_ages.append(per_show_age)
 
-        reasons = [reason for reason in (per_show_reason, aggregate_reason) if reason]
-        is_stale = per_show_stale or aggregate_stale
+        is_stale = per_show_stale
+        reasons = [per_show_reason] if per_show_reason else []
         surface_lines.append(
             _render_surface_line(
                 slug=slug,
                 surface="accuracy",
-                age_hours=model_max_age,
+                age_hours=per_show_age,
                 is_stale=is_stale,
                 fallback_reason="; ".join(reasons) if reasons else "",
             )

@@ -4,6 +4,7 @@ from datetime import date
 
 import pytest
 
+import jambandnerd.data_collection as data_collection
 from jambandnerd.data_collection.base import BandCollector
 
 
@@ -28,6 +29,11 @@ class TestBandCollectorBase:
         assert BandCollector.collect_setlists.__isabstractmethod__
         assert BandCollector.collect_songs.__isabstractmethod__
         assert BandCollector.collect_venues.__isabstractmethod__
+
+    def test_package_exports_skip_deleted_collection_manager(self):
+        """The package surface should not advertise removed modules."""
+        assert "collect_data" not in data_collection.__all__
+        assert "utils" in data_collection.__all__
 
 
 class MockBandCollector(BandCollector):

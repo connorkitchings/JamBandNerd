@@ -25,16 +25,15 @@ CKPLUS_ALPHA_DEFAULT: Final[float] = 0.7
 
 # Retirement gap thresholds by band (shows without a play before considered "retired")
 RETIREMENT_GAPS: Final[dict[str, int]] = {
-    "goose": 100,  # Smaller gap for a band with more regular rotation
-    "eggy": 120,  # Smaller catalog but still rotating regularly
-    "phish": 150,  # Larger gap for a band with deeper catalog
-    "wsp": 150,  # Similar to Phish
+    "goose": 100,
+    "eggy": 120,
+    "phish": 150,
+    "wsp": 150,
     "billy": 150,
     "um": 150,
-    "default": 250,  # Safe fallback for other bands
+    "default": 150,
 }
 
-# Compatibility maps derived from the canonical model registry metadata.
 MODEL_VERSIONS: Final[dict[str, str]] = {
     metadata.slug: metadata.version for metadata in MODEL_METADATA
 }
@@ -45,17 +44,7 @@ ENABLED_MODELS: Final[list[str]] = [
     if metadata.enabled_for_web and metadata.web_visibility == "promoted"
 ]
 
-# Deal model-specific configuration
 DEAL_MIN_PLAYS_THRESHOLD: Final[int] = 5
-DEAL_RETIREMENT_GAP: Final[dict[str, int]] = {
-    "goose": 100,
-    "phish": 150,
-    "wsp": 150,
-    "billy": 150,
-    "um": 150,
-    "eggy": 120,
-    "default": 150,
-}
 
 # Deal model hyperparameters
 DEAL_MIN_TRAINING_SHOWS: Final[int] = 25

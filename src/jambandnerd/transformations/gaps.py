@@ -8,8 +8,8 @@ by strictly adhering to a `reference_date` cutoff.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date, datetime
-from typing import Dict, List, Optional, Tuple
+from datetime import date
+from typing import Dict, List, Tuple
 
 import pandas as pd
 
@@ -57,18 +57,6 @@ class ModelData:
 
     # Diagnostic metadata.
     diagnostics: Dict[str, any]
-
-
-def _parse_iso_date(value: Optional[str | date]) -> Optional[date]:
-    """Safely parse a date-like value to a date object."""
-    if isinstance(value, date):
-        return value
-    if not value or pd.isna(value):
-        return None
-    try:
-        return datetime.strptime(str(value), "%Y-%m-%d").date()
-    except (ValueError, TypeError):
-        return None
 
 
 def _compute_base_features(

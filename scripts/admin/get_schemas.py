@@ -15,8 +15,7 @@ def main():
         "wsp_shows_raw",
         "wsp_venues_raw",
         "wsp_setlists_raw",
-        "predictions_notebook",
-        "predictions_ckplus",
+        "predictions",
         "prediction_songs",
     ]
     schemas = {}

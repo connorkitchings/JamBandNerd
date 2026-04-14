@@ -208,7 +208,9 @@ def test_run_billy_collection_uses_paginated_existing_setlist_reads(monkeypatch)
         lambda *_args, **_kwargs: None,
     )
     monkeypatch.setattr(
-        run_billy_collection, "_log_collection_run", lambda *_args, **_kwargs: None
+        run_billy_collection,
+        "CollectionTimer",
+        lambda *_args, **_kwargs: type("T", (), {"log": lambda *a, **k: None})(),
     )
 
     run_billy_collection.run_billy_collection(skip_validation=True)

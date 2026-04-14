@@ -40,19 +40,23 @@ This document records key architectural decisions made during the development of
 ### ADR-003: Use Unified Database Tables for Predictions and Accuracy
 
 - **Date**: 2025-07-31
-- **Status**: Adopted
+- **Status**: Adopted, amended 2026-04-14
 - **Context**: As more bands and models were added, the initial approach of creating separate
   prediction and accuracy tables per band and model (e.g., `goose_predictions_notebook`,
   `phish_accuracy_ckplus`) became cumbersome for cross-band analysis and UI development.
 - **Decision**: Consolidate predictions and accuracy metrics into unified tables, identified by a
-  model slug (e.g., `notebook`, `ckplus`). A `band` column will be used to distinguish the data for
-  each band.
-  - Prediction tables: `predictions_{model_slug}` (e.g., `predictions_notebook`)
-  - Accuracy tables: `{model_slug}_accuracy` (e.g., `notebook_accuracy`)
+  model slug (e.g., `notebook`, `deal`). A `band` column distinguishes the data
+  for each band.
+  - Canonical run-level predictions: `predictions`
+  - Derived song-level projection: `prediction_songs`
+  - Canonical per-show evaluation: `accuracy_per_show`
+  - Historical scored lineage: `historical_prediction_runs`
 - **Consequences**:
-  - Simplifies queries for the web interface, as it only needs to query a set of unified tables.
-  - All prediction and accuracy pipeline scripts were updated to target these unified tables.
-  - Requires careful filtering by the `band` and `model_slug` columns for any specific analysis.
+  - Simplifies queries for the web interface and replay tooling.
+  - All prediction and accuracy pipeline scripts must filter explicitly by `band`,
+    `model_slug`, and `model_version` where appropriate.
+  - Legacy per-model prediction and aggregate-accuracy tables become migration
+    history rather than active storage surfaces.
 
 ---
 

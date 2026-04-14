@@ -257,13 +257,10 @@ The frontend reads from these Supabase tables:
 
 | Table | Purpose |
 |-------|---------|
-| `predictions_ckplus` | CK+ model predictions per band/date |
-| `predictions_notebook` | Notebook model predictions per band/date |
+| `predictions` | Canonical run-level prediction rows keyed by `band`, `model_slug`, `reference_date`, and `model_version` |
 | `prediction_songs` | Projection view of latest predictions per band/model |
-| `accuracy_ckplus` | Per-show accuracy metrics for CK+ |
-| `accuracy_notebook` | Per-show accuracy metrics for Notebook |
-| `aggregate_accuracy_ckplus` | Rolling accuracy aggregates for CK+ |
-| `aggregate_accuracy_notebook` | Rolling accuracy aggregates for Notebook |
+| `accuracy_per_show` | Per-show accuracy metrics keyed by band/model_version |
+| `historical_prediction_runs` | Replay lineage linking scored boards to completed shows |
 
 ### Prediction Row Schema
 

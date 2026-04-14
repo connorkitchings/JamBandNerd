@@ -111,16 +111,11 @@ For debugging or granular control, you can use the consolidated individual scrip
   uv run python scripts/run_backtest.py --band goose --model notebook --shows 50
   ```
 
-- **Save accuracy summary**:
-  ```bash
-  uv run python scripts/save_aggregate_accuracy.py --band goose --model notebook --shows 50
-  ```
-
 ### Storage
 
-- Predictions: `predictions_notebook` (upserted by `(band, reference_date, model_version)`).
+- Predictions: unified `predictions` table (upserted by `(band, model_slug, reference_date, model_version)`).
 - Per-song projection: `prediction_songs` (derived from canonical prediction rows).
-- Accuracy summaries: `notebook_accuracy` (band, model_version, window_start/window_end, metrics at K=10/25/50).
+- Accuracy: `accuracy_per_show` (per-show evaluation linked to `historical_prediction_runs`).
 
 ### Next Steps
 

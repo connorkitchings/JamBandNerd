@@ -10,7 +10,6 @@ These are the canonical scripts used by docs and GitHub Actions:
 - `run_optimized_pipeline.py` — end-to-end runner for one band or `all`
 - `generate_predictions.py` — generate predictions for `--band` and `--model`
 - `run_backtest.py` — compute per-show accuracy history and persist historical scored-run lineage; supports local raw-table snapshots via `--snapshot-root`
-- `save_aggregate_accuracy.py` — compute aggregate accuracy from per-show results
 - `verify_data_freshness.py` — CI data-quality check for recent missing setlists
 - `generate_pipeline_summary.py` — GitHub Actions monitoring summary for recent completed-show freshness and prediction coverage
 - `check_supported_model_freshness.py` — audit supported prediction/accuracy freshness for one band and emit GitHub Actions outputs without failing early
@@ -52,7 +51,7 @@ Prediction entry points (band-specific wrappers):
 - `check_recent_avg_gap.py` — check recent average gap for a band/model (requires `--band` and `--model`)
 - `compare_models.py` — compare any backtestable candidate model against Notebook/CK+ baselines over the current standard `last_50` window; supports `--deal-overrides` JSON for hyperparameter/feature-subset ablations
 - `evaluate_deal_model.py` — compatibility wrapper that runs the generic comparison workflow for Deal
-- `model_readiness.py` — canonical staged readiness workflow for future model promotion: comparison evidence, local snapshot export, historical publish, aggregate accuracy, and backend validation
+- `model_readiness.py` — canonical staged readiness workflow for future model promotion: comparison evidence, local snapshot export, historical publish, and backend validation
 - `analyze_ablations.py` — rank ablation JSON reports against the canonical Deal baseline and Notebook anchor, then print Batch 2 eligibility and suggested combo experiments
 
 ## Admin scripts

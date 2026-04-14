@@ -30,11 +30,6 @@ def test_run_model_readiness_full_flow_executes_staged_phases(monkeypatch, tmp_p
     )
     monkeypatch.setattr(
         module,
-        "_run_aggregate_phase",
-        lambda **kwargs: calls.append("aggregate") or {"bands": ["goose"]},
-    )
-    monkeypatch.setattr(
-        module,
         "_run_validate_phase",
         lambda **kwargs: calls.append("validate") or {"path": "validate.json"},
     )
@@ -51,7 +46,6 @@ def test_run_model_readiness_full_flow_executes_staged_phases(monkeypatch, tmp_p
         "compare",
         "snapshot",
         "backfill-history",
-        "aggregate",
         "validate",
     ]
 

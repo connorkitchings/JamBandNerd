@@ -53,17 +53,15 @@ Granular commands:
 ```bash
 uv run python scripts/run_goose_collection.py
 uv run python scripts/generate_predictions.py --band goose --model notebook
-uv run python scripts/generate_predictions.py --band goose --model ckplus
+uv run python scripts/generate_predictions.py --band goose --model deal
 uv run python scripts/run_backtest.py --band goose --model notebook --shows 50
-uv run python scripts/save_aggregate_accuracy.py --band goose --model notebook --shows 50
 ```
 
 ## Prediction and Storage
 
-- live predictions are stored in `predictions_notebook` and
-  `predictions_ckplus`
+- live predictions are stored in the unified `predictions` table
+  (keyed by `band` and `model_slug`)
 - per-show evaluation is stored in `accuracy_per_show`
-- aggregate summaries are stored in `notebook_accuracy` and `accuracy_ckplus`
 
 The current design stores one prediction row per
 `(band, reference_date, model_version)`, with a ranked JSON predictions array.

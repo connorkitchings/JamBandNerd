@@ -45,14 +45,6 @@ Runs a historical backtest, storing the scored ranked board in
 - `--start {YYYY-MM-DD}` / `--end {YYYY-MM-DD}`: (Optional) Define a specific date range for the backtest.
 - `--exclusion-window {N}`: (Optional) For the Notebook model, the number of recent shows to exclude songs from. Defaults to 3.
 
-### `save_aggregate_accuracy.py`
-
-Calculates and saves a single aggregate accuracy record based on the results from the backtest.
-
-- `--band <active-band-slug>`: (Required) The band to process. The script accepts any active band returned by the registry/config layer.
-- `--model <registered-aggregate-model-slug>`: (Required) The model to aggregate.
-- `--shows {N}`: (Optional) The number of recent shows from `accuracy_per_show` to include in the aggregation. Defaults to 100.
-
 ### `compare_models.py`
 
 Compares a candidate model against fixed baseline models using the same

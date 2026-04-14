@@ -29,8 +29,8 @@ To add a new band, you need to create a new data collector and integrate it into
    bands dynamically from this registry.
 6. **Wire orchestration**: update current local runners and any automation path
    that still uses an explicit supported-band list or helper fallback.
-7. **Validate predictions**: confirm `generate_predictions.py`,
-   `run_backtest.py`, and `save_aggregate_accuracy.py` work for the new band.
+7. **Validate predictions**: confirm `generate_predictions.py` and
+   `run_backtest.py` work for the new band.
 8. **Verify the website path**: ensure the new band appears through the
    dynamic website data layer without adding a hardcoded frontend band list.
 
@@ -46,10 +46,10 @@ Adding a new model follows a similar pattern.
 3. **Update consolidated scripts**: wire the model into:
    - `scripts/generate_predictions.py`
    - `scripts/run_backtest.py`
-   - `scripts/save_aggregate_accuracy.py`
    - `scripts/run_optimized_pipeline.py`
-4. **Create storage**: add `predictions_<model_name>` and an aggregate accuracy
-   table if the model is promoted to a supported option.
+4. **Create storage**: add rows to the unified `predictions` table with the
+   model's slug. Add an aggregate accuracy table if the model is promoted
+   to a supported option.
 5. **Document versioning**: define the `model_version` contract for the new
    model.
 

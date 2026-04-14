@@ -7,7 +7,7 @@ Deal is the active second model in JamBandNerd. The current implementation is
 band-agnostic historical-rotation features.
 
 Deal was promoted on 2026-04-11 after clearing the internal CK+ replacement
-gate. It is now enabled for pipeline runs, backfills, aggregate accuracy, and
+gate. It is now enabled for pipeline runs, backfills, accuracy validation, and
 public website surfaces.
 
 ## Current Implementation
@@ -16,8 +16,8 @@ public website surfaces.
 - Feature builder: `src/jambandnerd/models/deal/features.py`
 - Serializer: `src/jambandnerd/models/deal/serialization.py`
 - Model version: `deal_v2`
-- Prediction table: `predictions_deal`
-- Aggregate accuracy table: `accuracy_deal`
+- Canonical prediction table: `predictions` with `model_slug='deal'`
+- Evaluation table: `accuracy_per_show` with `model_version='deal_v2'`
 - Artifact path: `models/deal/{band}_deal_v2.json`
 
 The current Deal implementation does **not** use XGBoost. Older XGBoost notes
@@ -130,7 +130,7 @@ for every active band.
 
 ## Operational Notes
 
-- Deal is enabled for regular pipeline, backfill, aggregate accuracy, and
+- Deal is enabled for regular pipeline, backfill, accuracy validation, and
   website exposure via model metadata flags.
 - The compatibility wrapper `scripts/evaluate_deal_model.py` still exists, but
   it now delegates to the generic comparison workflow.

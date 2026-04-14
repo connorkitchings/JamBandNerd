@@ -7,18 +7,13 @@ evaluation data.
 
 Prediction tables:
 
-- `predictions_notebook`
-- `predictions_ckplus`
-- `predictions_deal` (backend-registered; may be hidden from website surfaces)
+- `predictions` (canonical run-level storage across models)
 - `prediction_songs` (derived per-song projection)
 - `historical_prediction_runs` (canonical scored backtest snapshots)
 
 Accuracy tables:
 
 - `accuracy_per_show`
-- `notebook_accuracy`
-- `accuracy_ckplus`
-- `accuracy_deal`
 
 Model metadata for table/version/serializer mapping is registered in
 `src/jambandnerd/models/registry.py`. Scripts should derive model behavior from
@@ -26,13 +21,13 @@ that registry rather than hardcoded slug lists.
 
 ## Current Prediction Storage
 
-JamBandNerd currently stores one canonical row per prediction run context in
-each `predictions_{model}` table and derives a shared per-song projection from
-those rows.
+JamBandNerd stores one canonical row per prediction run context in the shared
+`predictions` table and derives a shared per-song projection from those rows.
 
 Canonical columns:
 
 - `band`
+- `model_slug`
 - `reference_date`
 - `model_version`
 - `top_k`
@@ -41,7 +36,7 @@ Canonical columns:
 
 Uniqueness:
 
-- `(band, reference_date, model_version)`
+- `(band, model_slug, reference_date, model_version)`
 
 The `predictions` column is a JSON array ordered by rank. The payload shape is
 model-specific.
@@ -65,7 +60,7 @@ Canonical columns:
 
 Uniqueness:
 
-- `(band, model_version, reference_date, rank)`
+- `(band, model_slug, model_version, reference_date, rank)`
 
 `prediction_payload` preserves the exact model-specific JSON object emitted for
 that ranked song.
@@ -144,28 +139,7 @@ Uniqueness:
 
 This table is the canonical lineage store for historical backtests. It preserves
 the exact ranked board that was scored without overloading the live
-`predictions_{model}` tables or `prediction_songs`.
-
-## Aggregate Accuracy Storage
-
-Aggregate tables are derived from `accuracy_per_show`, not by rerunning
-predictions.
-
-Current aggregate tables:
-
-- `notebook_accuracy`
-- `accuracy_deal`
-- `accuracy_ckplus`
-
-Canonical fields include:
-
-- `band`
-- `model_version`
-- `window_start`
-- `window_end`
-- `num_shows`
-- `evaluated_at`
-- summary metrics for K=10, 25, and 50
+`predictions` table or `prediction_songs`.
 
 ## Versioning
 
@@ -184,7 +158,7 @@ new `model_version`.
 
 The active architecture is hybrid:
 
-- canonical per-run JSON row in `predictions_{model}`
+- canonical per-run JSON row in `predictions`
 - derived per-song rows in `prediction_songs`
 
 Reasons:

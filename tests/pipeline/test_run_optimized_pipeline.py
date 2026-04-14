@@ -65,11 +65,6 @@ def pipeline_recorder(monkeypatch, preflight_stub):
     monkeypatch.setattr(run_optimized_pipeline, "run_backtest", record("run_backtest"))
     monkeypatch.setattr(
         run_optimized_pipeline,
-        "save_aggregate_accuracy",
-        record("save_aggregate_accuracy"),
-    )
-    monkeypatch.setattr(
-        run_optimized_pipeline,
         "rebuild_prediction_songs",
         record("rebuild_prediction_songs"),
     )
@@ -96,33 +91,29 @@ def test_run_band_pipeline_executes_full_orchestrator_path(band, pipeline_record
         f"{band}:collect",
         "generate_predictions",
         "run_backtest",
-        "save_aggregate_accuracy",
         "generate_predictions",
         "run_backtest",
-        "save_aggregate_accuracy",
         "rebuild_prediction_songs",
         "validate_predictions",
         "validate_accuracy",
     ]
 
     notebook_prediction = pipeline_recorder[1][1]["kwargs"]
-    deal_prediction = pipeline_recorder[4][1]["kwargs"]
+    deal_prediction = pipeline_recorder[3][1]["kwargs"]
     notebook_backtest = pipeline_recorder[2][1]["kwargs"]
-    deal_backtest = pipeline_recorder[5][1]["kwargs"]
-    notebook_accuracy = pipeline_recorder[3][1]["kwargs"]
-    deal_accuracy = pipeline_recorder[6][1]["kwargs"]
+    deal_backtest = pipeline_recorder[4][1]["kwargs"]
 
     assert notebook_prediction == {
         "band": band,
         "model": "notebook",
         "date_str": None,
-        "exclusion_window": 3,
+        "exclusion_window": None,
     }
     assert deal_prediction == {
         "band": band,
         "model": "deal",
         "date_str": None,
-        "exclusion_window": 3,
+        "exclusion_window": None,
     }
     assert notebook_backtest == {
         "band": band,
@@ -130,7 +121,7 @@ def test_run_band_pipeline_executes_full_orchestrator_path(band, pipeline_record
         "start": None,
         "end": None,
         "shows": 100,
-        "exclusion_window": 3,
+        "exclusion_window": None,
     }
     assert deal_backtest == {
         "band": band,
@@ -138,18 +129,16 @@ def test_run_band_pipeline_executes_full_orchestrator_path(band, pipeline_record
         "start": None,
         "end": None,
         "shows": 100,
-        "exclusion_window": 3,
+        "exclusion_window": None,
     }
-    assert notebook_accuracy == {"band": band, "model": "notebook", "shows": 100}
-    assert deal_accuracy == {"band": band, "model": "deal", "shows": 100}
-    assert pipeline_recorder[7][1]["kwargs"] == {
+    assert pipeline_recorder[5][1]["kwargs"] == {
         "band": band,
         "model": None,
         "reference_date_from": "2026-03-10",
         "reference_date_to": "2026-03-31",
     }
-    assert pipeline_recorder[8][1]["kwargs"] == {"band": band, "max_age_hours": 72}
-    assert pipeline_recorder[9][1]["kwargs"] == {"band": band, "max_age_hours": 72}
+    assert pipeline_recorder[6][1]["kwargs"] == {"band": band, "max_age_hours": 72}
+    assert pipeline_recorder[7][1]["kwargs"] == {"band": band, "max_age_hours": 72}
 
 
 @pytest.mark.parametrize("band", BANDS)
@@ -160,9 +149,6 @@ def test_run_band_pipeline_skip_accuracy_preserves_predictions_and_validation(
         raise AssertionError("accuracy step should be skipped")
 
     monkeypatch.setattr(run_optimized_pipeline, "run_backtest", fail_if_called)
-    monkeypatch.setattr(
-        run_optimized_pipeline, "save_aggregate_accuracy", fail_if_called
-    )
 
     success = run_optimized_pipeline.run_band_pipeline(band, skip_accuracy=True)
 
@@ -224,11 +210,6 @@ def test_run_band_pipeline_stops_after_prediction_failure(
         run_optimized_pipeline,
         "run_backtest",
         lambda *args, **kwargs: events.append(("backtest", kwargs["model"])),
-    )
-    monkeypatch.setattr(
-        run_optimized_pipeline,
-        "save_aggregate_accuracy",
-        lambda *args, **kwargs: events.append(("aggregate", kwargs["model"])),
     )
     monkeypatch.setattr(
         run_optimized_pipeline,

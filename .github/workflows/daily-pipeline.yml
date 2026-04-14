@@ -304,14 +304,6 @@ jobs:
 
           echo "::endgroup::"
 
-          echo "::group::Calculating aggregate accuracy for ${{ matrix.band }}"
-
-          # Calculate aggregate accuracy from the per-show data
-          uv run python scripts/save_aggregate_accuracy.py --band ${{ matrix.band }} --model notebook --shows 100 --require-source-rows
-          uv run python scripts/save_aggregate_accuracy.py --band ${{ matrix.band }} --model deal --shows 100 --require-source-rows
-          
-          echo "::endgroup::"
-
       - name: Validate Accuracy Tables
         id: accuracy_validation
         if: github.event.inputs.skip_accuracy != 'true' && steps.preflight.outputs.should_run_collection == 'true' && steps.collection.outputs.workflow_state != 'degraded'

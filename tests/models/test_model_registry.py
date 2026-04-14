@@ -4,11 +4,9 @@ import pytest
 
 from src.jambandnerd.models.registry import (
     build_predictor,
-    get_aggregate_accuracy_table,
     get_model_definition,
     is_model_promoted_to_web,
     list_accuracy_validation_models,
-    list_aggregate_accuracy_models,
     list_backfill_models,
     list_model_slugs,
     list_models,
@@ -44,10 +42,6 @@ def test_registry_capability_lists_are_flag_driven() -> None:
         "notebook",
         "deal",
     ]
-    assert [definition.slug for definition in list_aggregate_accuracy_models()] == [
-        "notebook",
-        "deal",
-    ]
 
 
 def test_registry_unknown_slug_raises_clear_error() -> None:
@@ -71,7 +65,7 @@ def test_registry_invariants_for_serializer_and_capabilities() -> None:
             assert definition.supports_backtest
 
         if definition.enabled_for_accuracy_validation:
-            assert get_aggregate_accuracy_table(definition.slug) is not None
+            assert definition.supports_backtest
 
 
 def test_registry_lifecycle_metadata_tracks_staged_rollout() -> None:

@@ -38,7 +38,6 @@ from scripts.run_goose_collection import run_goose_collection
 from scripts.run_phish_collection import run_phish_collection
 from scripts.run_um_collection import run_um_collection
 from scripts.run_wsp_collection import run_wsp_collection
-from scripts.save_aggregate_accuracy import save_aggregate_accuracy
 from scripts.validate_accuracy_tables import validate_accuracy
 from scripts.validate_prediction_tables import validate_predictions
 from src.jambandnerd.config.bands import get_active_bands
@@ -180,7 +179,7 @@ def run_band_pipeline(band: str, skip_accuracy: bool = False) -> bool:
             f"{model.title()} Predictions",
             model=model,
             date_str=None,
-            exclusion_window=3,
+            exclusion_window=None,
         ):
             return False
 
@@ -193,15 +192,7 @@ def run_band_pipeline(band: str, skip_accuracy: bool = False) -> bool:
                 start=None,
                 end=None,
                 shows=100,
-                exclusion_window=3,
-            ):
-                return False
-            if not run_step(
-                save_aggregate_accuracy,
-                band,
-                f"{model.title()} Aggregate Accuracy",
-                model=model,
-                shows=100,
+                exclusion_window=None,
             ):
                 return False
 
