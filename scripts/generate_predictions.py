@@ -62,7 +62,7 @@ def generate_predictions(
     band: str,
     model: str,
     date_str: str | None,
-    exclusion_window: int,
+    exclusion_window: int | None,
     retrain: bool = False,
     require_output: bool = False,
 ) -> bool:
@@ -161,6 +161,7 @@ def generate_predictions(
     predicted_at = datetime.now(timezone.utc).isoformat()
     output_row = {
         "band": band,
+        "model_slug": model,
         "reference_date": reference_date.isoformat(),
         "model_version": model_version,
         "top_k": len(predictions_list),
@@ -184,7 +185,7 @@ def generate_predictions(
     upsert_dataframe(
         table_name=table_name,
         df=output_df,
-        conflict_columns=["band", "reference_date", "model_version"],
+        conflict_columns=["band", "model_slug", "reference_date", "model_version"],
     )
     replace_prediction_projection(
         band=band,
@@ -229,8 +230,8 @@ def main() -> None:
     parser.add_argument(
         "--exclusion-window",
         type=int,
-        default=3,
-        help="Number of recent shows to exclude songs from (default: 3).",
+        default=None,
+        help="Number of recent shows to exclude songs from. Defaults to band-specific config.",
     )
     parser.add_argument(
         "--require-output",

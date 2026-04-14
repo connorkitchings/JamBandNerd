@@ -12,7 +12,7 @@ import logging
 import os
 import sys
 from datetime import datetime, timezone
-from typing import List, Optional
+from typing import List
 
 import pandas as pd
 
@@ -28,8 +28,10 @@ from src.jambandnerd.data_collection.phish.normalizer import (
     normalize_songs,
     normalize_venues,
 )
+from src.jambandnerd.data_collection.utils import CollectionTimer
 from src.jambandnerd.db.connection import get_supabase_client
 from src.jambandnerd.db.operations import (
+    fetch_existing_values,
     upsert_dataframe,
     validate_and_upsert_dataframe,
 )
@@ -49,13 +51,14 @@ def _clear_table(table_name: str) -> None:
 
 def run_phish_collection(
     skip_validation: bool = False,
-    clear_setlists: bool = False,
-    only_setlists: bool = False,
-    year_start: Optional[int] = None,
-    year_end: Optional[int] = None,
+    year_start: int | None = None,
+    year_end: int | None = None,
     full_backfill: bool = False,
+    only_setlists: bool = False,
+    clear_setlists: bool = False,
 ) -> None:
-    """Collect all Phish data and store it in Supabase raw tables."""
+    """Run the Phish data collection workflow."""
+    timer = CollectionTimer()
     logging.info("Starting Phish data collection...")
     ensure_source_reachable("phish")
     collector = PhishCollector()
@@ -159,18 +162,39 @@ def run_phish_collection(
 
     # Collect setlists for the (optionally filtered) shows
     show_ids = filtered_shows_df["show_id"].dropna().astype(str).tolist()
-    upsert_table(
-        "phish_setlists_raw",
-        lambda: collector.collect_setlists(show_ids=show_ids),
-        normalize_setlists,
-        ["api_unique_id"],
-        required_columns=["set_number", "position"],
-    )
+
+    # Incremental: skip shows that already have setlists in the DB
+    if show_ids and not clear_setlists:
+        try:
+            existing_ids = fetch_existing_values(
+                "phish_setlists_raw",
+                value_column="show_id",
+                candidate_values=show_ids,
+            )
+            before = len(show_ids)
+            show_ids = [sid for sid in show_ids if sid not in existing_ids]
+            if existing_ids:
+                logging.info(
+                    f"Skipping {len(existing_ids)} shows with existing setlists "
+                    f"({len(show_ids)}/{before} remaining for collection)."
+                )
+        except Exception as exc:
+            logging.warning(f"Could not check existing setlists; fetching all ({exc}).")
+
+    if show_ids:
+        upsert_table(
+            "phish_setlists_raw",
+            lambda: collector.collect_setlists(show_ids=show_ids),
+            normalize_setlists,
+            ["api_unique_id"],
+            required_columns=["set_number", "position"],
+        )
+    else:
+        logging.info("No new setlists to collect.")
 
     # Log collection run
     try:
-        client = get_supabase_client()
-        client.table("collection_runs").insert({"band": "phish"}).execute()
+        timer.log("phish")
         logging.info("Logged collection run.")
     except Exception as exc:
         logging.warning(f"Could not log collection run ({exc}).")

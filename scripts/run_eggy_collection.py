@@ -25,11 +25,14 @@ from src.jambandnerd.data_collection.eggy.normalizer import (  # noqa: E402
     normalize_songs,
     normalize_venues,
 )
+from src.jambandnerd.data_collection.utils import CollectionTimer  # noqa: E402
 from src.jambandnerd.db.connection import get_supabase_client  # noqa: E402
 from src.jambandnerd.db.operations import validate_and_upsert_dataframe  # noqa: E402
 
 
 def run_eggy_collection(skip_validation: bool = False) -> None:
+    """Collect all Eggy data and store it in Supabase raw tables."""
+    timer = CollectionTimer()
     """Collect Eggy data and store it in Supabase raw tables."""
     print("Starting Eggy data collection...")
     ensure_source_reachable("eggy")
@@ -85,6 +88,8 @@ def run_eggy_collection(skip_validation: bool = False) -> None:
     )
 
     CloudflareBypass.cleanup()
+    timer.log("eggy")
+    print("Eggy collection complete.")
 
 
 def main() -> None:

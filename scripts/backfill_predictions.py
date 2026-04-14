@@ -192,6 +192,7 @@ def regenerate_prediction(
     predicted_at = datetime.now(timezone.utc).isoformat()
     output_row = {
         "band": band,
+        "model_slug": model,
         "reference_date": reference_date_str,
         "model_version": model_version,
         "top_k": len(predictions_list),
@@ -205,7 +206,7 @@ def regenerate_prediction(
         upsert_dataframe(
             table_name=table_name,
             df=output_df,
-            conflict_columns=["band", "reference_date", "model_version"],
+            conflict_columns=["band", "model_slug", "reference_date", "model_version"],
         )
         replace_prediction_projection(
             band=band,

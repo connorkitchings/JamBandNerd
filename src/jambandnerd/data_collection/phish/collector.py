@@ -92,12 +92,26 @@ class PhishCollector(BandCollector):
         if not show_ids:
             return []
 
-        # Lazy import to avoid hard dependency during other operations
         try:
             from tqdm import tqdm  # type: ignore
         except Exception:
-            tqdm = None  # Fallback if tqdm is not available
+            tqdm = None
 
+        try:
+            all_setlists = self._collect_setlists_parallel(
+                show_ids, tqdm, max_workers=4
+            )
+        except Exception:
+            all_setlists = self._collect_setlists_sequential(show_ids, tqdm)
+
+        logger.info(
+            f"{self.ARTIST_NAME}: Collected {len(all_setlists)} total setlist records."
+        )
+        return all_setlists
+
+    def _collect_setlists_sequential(
+        self, show_ids: List[str], tqdm
+    ) -> List[Dict[str, Any]]:
         all_setlists = []
         iterable = (
             tqdm(show_ids, desc=f"Collecting {self.ARTIST_NAME} setlists", unit="show")
@@ -105,18 +119,44 @@ class PhishCollector(BandCollector):
             else show_ids
         )
         for show_id in iterable:
-            # The phish.net API uses a different endpoint to get a setlist by showid
             endpoint = f"setlists/showid/{show_id}"
             try:
-                # This endpoint returns a list with one element which is a dict containing the setlist
                 setlist_data = self._fetch_phish_endpoint(endpoint)
                 if setlist_data:
                     all_setlists.extend(setlist_data)
-                # Rate limiting is now handled by the base class
             except Exception as e:
                 logger.error(f"Failed to fetch setlist for show_id {show_id}: {e}")
+        return all_setlists
 
-        logger.info(
-            f"✅ {self.ARTIST_NAME}: Collected {len(all_setlists)} total setlist records."
-        )
+    def _collect_setlists_parallel(
+        self, show_ids: List[str], tqdm, max_workers: int = 4
+    ) -> List[Dict[str, Any]]:
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+
+        all_setlists = []
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = {
+                executor.submit(
+                    self._fetch_phish_endpoint, f"setlists/showid/{sid}"
+                ): sid
+                for sid in show_ids
+            }
+            iterable = (
+                tqdm(
+                    as_completed(futures),
+                    total=len(futures),
+                    desc=f"Collecting {self.ARTIST_NAME} setlists",
+                    unit="show",
+                )
+                if tqdm
+                else as_completed(futures)
+            )
+            for future in iterable:
+                show_id = futures[future]
+                try:
+                    setlist_data = future.result()
+                    if setlist_data:
+                        all_setlists.extend(setlist_data)
+                except Exception as e:
+                    logger.error(f"Failed to fetch setlist for show_id {show_id}: {e}")
         return all_setlists

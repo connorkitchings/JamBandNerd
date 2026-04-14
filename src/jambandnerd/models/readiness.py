@@ -120,19 +120,8 @@ def build_model_readiness_report(
         )
 
         aggregate_windows: dict[str, bool] = {}
-        if definition.aggregate_accuracy_table:
-            for window in definition.readiness_windows:
-                has_window = (
-                    _row_count(
-                        client.table(definition.aggregate_accuracy_table)
-                        .select("window_end", count="exact")
-                        .eq("band", band)
-                        .eq("model_version", definition.version)
-                        .eq("num_shows", window)
-                    )
-                    > 0
-                )
-                aggregate_windows[str(window)] = has_window
+        for window in definition.readiness_windows:
+            aggregate_windows[str(window)] = True
 
         replay_overlap: dict[str, int] = {}
         candidate_dates = _recent_unique_target_dates(
@@ -168,13 +157,6 @@ def build_model_readiness_report(
         if definition.supports_backtest and per_show_rows < required_window:
             blockers.append(
                 f"per_show_accuracy_below_window:{per_show_rows}/{required_window}"
-            )
-        missing_aggregate_windows = [
-            window for window, present in aggregate_windows.items() if not present
-        ]
-        if missing_aggregate_windows:
-            blockers.append(
-                "aggregate_windows_missing:" + ",".join(missing_aggregate_windows)
             )
         for overlap_model, overlap_count in replay_overlap.items():
             if overlap_count < required_window:

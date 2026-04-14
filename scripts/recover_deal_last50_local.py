@@ -24,7 +24,6 @@ from scripts.run_backtest import (
     load_backtest_frames,
     persist_scored_run_records,
 )
-from scripts.save_aggregate_accuracy import save_aggregate_accuracy
 from src.jambandnerd.db.connection import get_supabase_client
 from src.jambandnerd.db.operations import upsert_dataframe
 from src.jambandnerd.models.evaluation import list_completed_shows, select_target_shows
@@ -34,7 +33,6 @@ from src.jambandnerd.models.model_test_cache import (
     build_experiment_cache_identity,
 )
 from src.jambandnerd.models.registry import (
-    get_aggregate_accuracy_table,
     get_model_definition,
 )
 
@@ -211,7 +209,6 @@ def upload_band_bundle(bundle: dict[str, Any]) -> None:
         conflict_columns=["band", "reference_date", "model_version"],
     )
     persist_scored_run_records(scored_runs)
-    save_aggregate_accuracy(band, "deal", 50)
 
 
 def _count_distinct_matches(
@@ -286,25 +283,6 @@ def verify_uploaded_band(bundle: dict[str, Any]) -> None:
         raise RuntimeError(
             f"{band}: expected {len(show_ids)} accuracy rows, found {accuracy_count}"
         )
-
-    accuracy_table = get_aggregate_accuracy_table("deal")
-    client = get_supabase_client()
-    response = (
-        client.table(accuracy_table)
-        .select("num_shows,window_start,window_end")
-        .eq("band", band)
-        .eq("model_version", model_version)
-        .order("evaluated_at", desc=True)
-        .limit(1)
-        .execute()
-    )
-    rows = response.data or []
-    if not rows:
-        raise RuntimeError(
-            f"{band}: no aggregate accuracy row found in {accuracy_table}"
-        )
-    if int(rows[0].get("num_shows") or 0) <= 0:
-        raise RuntimeError(f"{band}: aggregate accuracy row is empty")
 
 
 def recover_deal_last50_local(

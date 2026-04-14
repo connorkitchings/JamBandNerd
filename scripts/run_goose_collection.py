@@ -23,12 +23,14 @@ from src.jambandnerd.data_collection.goose.normalizer import (  # noqa: E402
     normalize_songs,
     normalize_venues,
 )
+from src.jambandnerd.data_collection.utils import CollectionTimer  # noqa: E402
 from src.jambandnerd.db.connection import get_supabase_client  # noqa: E402
 from src.jambandnerd.db.operations import validate_and_upsert_dataframe  # noqa: E402
 
 
 def run_goose_collection(skip_validation: bool = False) -> None:
     """Collect all Goose data and store it in Supabase raw tables."""
+    timer = CollectionTimer()
     print("Starting Goose data collection...")
     ensure_source_reachable("goose")
     collector = GooseCollector()
@@ -84,12 +86,7 @@ def run_goose_collection(skip_validation: bool = False) -> None:
     )
 
     # Log collection run
-    try:
-        client = get_supabase_client()
-        client.table("collection_runs").insert({"band": "goose"}).execute()
-        print("Logged collection run.")
-    except Exception as exc:
-        print(f"Warning: could not log collection run ({exc}).")
+    timer.log("goose")
 
     print("Goose data collection finished.")
 

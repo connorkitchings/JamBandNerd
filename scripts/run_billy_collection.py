@@ -26,7 +26,7 @@ from src.jambandnerd.data_collection.billy.normalizer import (
     normalize_shows,
     normalize_songs,
 )
-from src.jambandnerd.db.connection import get_supabase_client
+from src.jambandnerd.data_collection.utils import CollectionTimer
 from src.jambandnerd.db.operations import (
     fetch_existing_values,
     fetch_rows_by_column_values,
@@ -52,6 +52,7 @@ def run_billy_collection(
     skip_setlists: bool = False,
 ) -> None:
     print("Starting Billy Strings data collection...")
+    timer = CollectionTimer()
     ensure_source_reachable("billy")
 
     start_dt = _parse_date(start_date)
@@ -131,14 +132,14 @@ def run_billy_collection(
 
     if skip_setlists:
         print("Skipping Billy Strings setlist collection step.")
-        _log_collection_run("billy")
+        timer.log("billy")
         return
 
     if not shows_requiring_setlists:
         print(
             "No Billy Strings shows with database IDs available for setlist scraping."
         )
-        _log_collection_run("billy")
+        timer.log("billy")
         return
 
     existing_setlist_show_ids: set[str] = set()
@@ -170,14 +171,14 @@ def run_billy_collection(
 
     if not shows_to_process:
         print("All Billy Strings shows already have setlists; nothing to scrape.")
-        _log_collection_run("billy")
+        timer.log("billy")
         return
 
     setlists_data = collector.collect_setlists(shows_to_process)
     setlists_df = normalize_setlists(setlists_data)
     if setlists_df.empty:
         print("No valid Billy Strings setlist rows after normalization.")
-        _log_collection_run("billy")
+        timer.log("billy")
         return
 
     validate_and_upsert_dataframe(
@@ -189,16 +190,7 @@ def run_billy_collection(
     )
     print(f"Upserted {len(setlists_df)} rows into billy_setlists_raw.")
 
-    _log_collection_run("billy")
-
-
-def _log_collection_run(band: str) -> None:
-    try:
-        client = get_supabase_client()
-        client.table("collection_runs").insert({"band": band}).execute()
-        print("Logged collection run.")
-    except Exception as exc:  # pragma: no cover - supabase connectivity
-        print(f"Warning: could not log collection run ({exc}).")
+    timer.log("billy")
 
 
 def _build_cli() -> argparse.ArgumentParser:

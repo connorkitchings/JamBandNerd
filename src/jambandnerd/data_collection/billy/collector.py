@@ -613,6 +613,3 @@ class BillyCollector(BandCollector):
         if match:
             return int(match.group(1))
         return 1
-        if match:
-            return int(match.group(1))
-        return 1

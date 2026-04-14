@@ -79,7 +79,7 @@ def build_scored_run_records(
     shows_df: pd.DataFrame,
     sets_df: pd.DataFrame,
     target_shows: pd.DataFrame,
-    exclusion_window: int,
+    exclusion_window: int | None,
     local_cache: LocalModelTestCache | None = None,
 ) -> list[dict[str, Any]]:
     """Build detailed per-show scored-run records without writing to Supabase."""
@@ -312,7 +312,7 @@ def run_backtest(
     start: str | None,
     end: str | None,
     shows: int | None,
-    exclusion_window: int,
+    exclusion_window: int | None,
     all_history: bool = False,
     snapshot_root: str | None = None,
     require_results: bool = False,
@@ -442,8 +442,8 @@ def main() -> None:
     parser.add_argument(
         "--exclusion-window",
         type=int,
-        default=3,
-        help="Number of recent shows to exclude songs from (default: 3).",
+        default=None,
+        help="Number of recent shows to exclude songs from. Defaults to band-specific config.",
     )
     parser.add_argument(
         "--all-history",

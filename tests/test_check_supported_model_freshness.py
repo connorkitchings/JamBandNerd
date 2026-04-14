@@ -60,7 +60,6 @@ def _model_definition(
     slug: str,
     version: str,
     prediction_table: str,
-    aggregate_accuracy_table: str,
     enabled_for_pipeline: bool = True,
     enabled_for_web: bool = True,
 ):
@@ -68,7 +67,6 @@ def _model_definition(
         slug=slug,
         version=version,
         prediction_table=prediction_table,
-        aggregate_accuracy_table=aggregate_accuracy_table,
         enabled_for_pipeline=enabled_for_pipeline,
         enabled_for_web=enabled_for_web,
     )
@@ -79,14 +77,12 @@ def _install_registry(monkeypatch):
         _model_definition(
             slug="notebook",
             version="notebook_v1",
-            prediction_table="predictions_notebook",
-            aggregate_accuracy_table="notebook_accuracy",
+            prediction_table="predictions",
         ),
         _model_definition(
             slug="deal",
             version="deal_v2",
-            prediction_table="predictions_deal",
-            aggregate_accuracy_table="accuracy_deal",
+            prediction_table="predictions",
         ),
     ]
     monkeypatch.setattr(
@@ -107,30 +103,27 @@ def _freshness_rows(
     notebook_prediction_hours: int | None = 2,
     deal_prediction_hours: int | None = 3,
     notebook_per_show_hours: int | None = 4,
-    notebook_aggregate_hours: int | None = 5,
     deal_per_show_hours: int | None = 6,
-    deal_aggregate_hours: int | None = 7,
 ):
     rows: dict[str, list[dict[str, object]]] = {
-        "predictions_notebook": [],
-        "predictions_deal": [],
+        "predictions": [],
         "accuracy_per_show": [],
-        "notebook_accuracy": [],
-        "accuracy_deal": [],
     }
 
     if notebook_prediction_hours is not None:
-        rows["predictions_notebook"].append(
+        rows["predictions"].append(
             {
                 "band": "wsp",
+                "model_slug": "notebook",
                 "model_version": "notebook_v1",
                 "predicted_at": _iso(notebook_prediction_hours),
             }
         )
     if deal_prediction_hours is not None:
-        rows["predictions_deal"].append(
+        rows["predictions"].append(
             {
                 "band": "wsp",
+                "model_slug": "deal",
                 "model_version": "deal_v2",
                 "predicted_at": _iso(deal_prediction_hours),
             }
@@ -149,22 +142,6 @@ def _freshness_rows(
                 "band": "wsp",
                 "model_version": "deal_v2",
                 "evaluated_at": _iso(deal_per_show_hours),
-            }
-        )
-    if notebook_aggregate_hours is not None:
-        rows["notebook_accuracy"].append(
-            {
-                "band": "wsp",
-                "model_version": "notebook_v1",
-                "evaluated_at": _iso(notebook_aggregate_hours),
-            }
-        )
-    if deal_aggregate_hours is not None:
-        rows["accuracy_deal"].append(
-            {
-                "band": "wsp",
-                "model_version": "deal_v2",
-                "evaluated_at": _iso(deal_aggregate_hours),
             }
         )
 
@@ -214,7 +191,6 @@ def test_audit_supported_model_freshness_flags_stale_accuracy_only(monkeypatch):
         lambda: _ClientStub(
             _freshness_rows(
                 notebook_per_show_hours=60,
-                notebook_aggregate_hours=62,
             )
         ),
     )
@@ -238,7 +214,6 @@ def test_audit_supported_model_freshness_counts_missing_supported_rows_as_stale(
             _freshness_rows(
                 notebook_prediction_hours=None,
                 notebook_per_show_hours=None,
-                notebook_aggregate_hours=None,
             )
         ),
     )
@@ -261,9 +236,7 @@ def test_audit_supported_model_freshness_handles_mixed_model_states(monkeypatch)
                 notebook_prediction_hours=3,
                 deal_prediction_hours=72,
                 notebook_per_show_hours=4,
-                notebook_aggregate_hours=5,
                 deal_per_show_hours=6,
-                deal_aggregate_hours=7,
             )
         ),
     )
@@ -284,7 +257,6 @@ def test_audit_supported_model_freshness_treats_skip_accuracy_as_warning(
         lambda: _ClientStub(
             _freshness_rows(
                 notebook_per_show_hours=55,
-                notebook_aggregate_hours=57,
             )
         ),
     )

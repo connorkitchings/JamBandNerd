@@ -30,9 +30,11 @@ from src.jambandnerd.data_collection.um.upcoming import (  # noqa: E402
     UpcomingShowsError,
     collect_upcoming_shows,
 )
+from src.jambandnerd.data_collection.utils import CollectionTimer  # noqa: E402
 from src.jambandnerd.db.connection import get_supabase_client  # noqa: E402
 from src.jambandnerd.db.operations import (  # noqa: E402
     dedupe_dataframe_on_conflict,
+    fetch_existing_values,
     validate_and_upsert_dataframe,
 )
 
@@ -104,31 +106,6 @@ def _fetch_show_id_map(source_urls: Sequence[str]) -> Dict[str, Any]:
     return mapping
 
 
-def _load_existing_setlist_ids(show_ids: Sequence[Any]) -> set[str]:
-    if not show_ids:
-        return set()
-
-    client = get_supabase_client()
-    existing: set[str] = set()
-    unique_ids = list(dict.fromkeys(show_ids))
-    for chunk in _batched(unique_ids, 50):
-        try:
-            resp = (
-                client.table("um_setlists_raw")
-                .select("show_id")
-                .in_("show_id", list(chunk))
-                .execute()
-            )
-        except Exception as exc:  # pragma: no cover - Supabase connectivity
-            print(f"Warning: could not lookup existing UM setlist IDs ({exc}).")
-            continue
-        for item in resp.data or []:
-            show_id = item.get("show_id")
-            if show_id is not None:
-                existing.add(str(show_id))
-    return existing
-
-
 def _shows_to_process(
     shows_df: pd.DataFrame, *, full_backfill: bool
 ) -> List[Dict[str, Any]]:
@@ -153,7 +130,11 @@ def _shows_to_process(
     if full_backfill:
         pending_show_ids = {str(show_id) for show_id in show_id_map.values()}
     else:
-        existing_ids = _load_existing_setlist_ids(show_id_map.values())
+        existing_ids = fetch_existing_values(
+            "um_setlists_raw",
+            value_column="show_id",
+            candidate_values=[str(sid) for sid in show_id_map.values()],
+        )
         pending_show_ids = {
             str(show_id)
             for show_id in show_id_map.values()
@@ -183,6 +164,7 @@ def run_um_collection(
     full_backfill: bool = False,
 ) -> None:
     """Run the Umphrey's McGee data collection workflow."""
+    timer = CollectionTimer()
 
     print("Starting Umphrey's McGee data collection...")
     ensure_source_reachable("um")
@@ -289,6 +271,9 @@ def run_um_collection(
             print(f"Upserted {len(upcoming_df)} upcoming shows into um_upcoming_shows.")
         else:
             print("No upcoming UM shows found from Seated API.")
+
+    timer.log("um")
+    print("UM collection complete.")
 
 
 def _build_argument_parser() -> argparse.ArgumentParser:

@@ -14,6 +14,7 @@ import pandas as pd
 import requests
 from bs4 import BeautifulSoup
 
+from jambandnerd.data_collection.utils import CollectionTimer
 from jambandnerd.db.connection import get_supabase_client
 from jambandnerd.db.operations import (
     fetch_existing_values,
@@ -344,6 +345,7 @@ def process_wsp_data(
     full_backfill: bool = False,
 ) -> CollectionStatus:
     """Collect all WSP data and store it in Supabase raw tables."""
+    timer = CollectionTimer()
     logging.info("Starting Widespread Panic data collection...")
     ensure_source_reachable("wsp")
 
@@ -613,7 +615,8 @@ def process_wsp_data(
 
     # 8. Log collection run
     try:
-        client.table("collection_runs").insert({"band": "wsp"}).execute()
+        status_str = "degraded" if status.has_errors() else "success"
+        timer.log("wsp", status=status_str)
         logging.info("Logged collection run.")
     except Exception as exc:
         logging.warning(f"Could not log collection run ({exc}).")

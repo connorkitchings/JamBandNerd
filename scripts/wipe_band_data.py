@@ -59,12 +59,17 @@ def wipe_band(band: str, dry_run: bool = False) -> None:
 
     models = [d.slug for d in list_pipeline_models()]
     for model in models:
-        table = f"predictions_{model}"
         action = "Would delete" if dry_run else "Deleting"
-        print(f"{prefix} {action} band={band} from {table}...")
+        print(f"{prefix} {action} band={band} model={model} from predictions...")
         if not dry_run:
-            resp = client.table(table).delete().eq("band", band).execute()
-            print(f"{prefix}   Deleted {len(resp.data)} rows from {table}")
+            resp = (
+                client.table("predictions")
+                .delete()
+                .eq("band", band)
+                .eq("model_slug", model)
+                .execute()
+            )
+            print(f"{prefix}   Deleted {len(resp.data)} rows from predictions")
 
     print(f"{prefix} {'Would complete' if dry_run else 'Complete'}.")
 

@@ -649,31 +649,9 @@ def check_prediction_staleness(
 
     client = get_supabase_client()
 
-    prediction_tables = [
-        "predictions_notebook",
-        "predictions_deal",
-        "predictions_ckplus",
-    ]
-
-    table = None
-    for t in prediction_tables:
-        if model_version.startswith("notebook") and t == "predictions_notebook":
-            table = t
-            break
-        if model_version.startswith("deal") and t == "predictions_deal":
-            table = t
-            break
-        if model_version.startswith("ckplus") and t == "predictions_ckplus":
-            table = t
-            break
-
-    if not table:
-        logger.warning(f"Unknown model version: {model_version}")
-        return False, None
-
     try:
         response = (
-            client.table(table)
+            client.table("predictions")
             .select("predicted_at")
             .eq("band", band)
             .eq("model_version", model_version)
