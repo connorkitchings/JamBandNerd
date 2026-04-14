@@ -5,7 +5,6 @@ from datetime import datetime, timedelta, timezone
 
 from src.jambandnerd.db.connection import get_supabase_client
 from src.jambandnerd.models.registry import (
-    get_aggregate_accuracy_table,
     get_model_version,
     get_prediction_table,
 )
@@ -37,6 +36,7 @@ def assert_prediction_publish_fresh(
         client.table(table_name)
         .select("band, model_version, predicted_at, reference_date, predictions")
         .eq("band", band)
+        .eq("model_slug", model)
         .eq("model_version", model_version)
         .order("predicted_at", desc=True)
         .limit(1)
@@ -71,23 +71,3 @@ def assert_accuracy_publish_fresh(
     assert parse_timestamp(
         per_show_response.data[0]["evaluated_at"]
     ) >= started_at - timedelta(minutes=5)
-
-    aggregate_table = get_aggregate_accuracy_table(model)
-    if not aggregate_table:
-        raise RuntimeError(f"No aggregate accuracy table configured for model: {model}")
-    aggregate_response = (
-        client.table(aggregate_table)
-        .select("band, model_version, evaluated_at, window_start, window_end")
-        .eq("band", band)
-        .eq("model_version", model_version)
-        .order("evaluated_at", desc=True)
-        .limit(1)
-        .execute()
-    )
-    assert (
-        aggregate_response.data
-    ), f"No aggregate accuracy row found for {band}/{model_version}"
-    row = aggregate_response.data[0]
-    assert row["window_start"]
-    assert row["window_end"]
-    assert parse_timestamp(row["evaluated_at"]) >= started_at - timedelta(minutes=5)

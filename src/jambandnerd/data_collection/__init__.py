@@ -15,7 +15,7 @@ Core components:
 - base: Abstract BandCollector base class with rate limiting and error handling
 - cache: Disk-based HTTP response caching with TTL support
 - config: Band-specific configuration management
-- collect_data: Enhanced collection manager with comprehensive error handling
+- utils: Shared collection helpers such as source hashing and run timers
 """
 
 from typing import TYPE_CHECKING
@@ -47,5 +47,5 @@ __all__ = [
     "base",
     "cache",
     "config",
-    "collect_data",
+    "utils",
 ]

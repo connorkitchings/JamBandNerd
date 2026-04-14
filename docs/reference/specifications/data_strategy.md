@@ -197,9 +197,10 @@ Any new model must consume the same leakage-safe ordering and cutoff rules.
 ### Prediction storage
 
 The current canonical prediction write boundary is one row per prediction run
-context in `predictions_{model}`:
+context in a unified `predictions` table with a `model_slug` discriminator:
 
 - `band`
+- `model_slug`
 - `reference_date`
 - `model_version`
 - `top_k`
@@ -222,8 +223,6 @@ per band/model remain queryable.
 - `accuracy_per_show` is the canonical granular evaluation store.
 - new `accuracy_per_show` rows link to `historical_prediction_runs` through
   `prediction_run_id`
-- `notebook_accuracy` and `accuracy_ckplus` are aggregate summary tables derived
-  from `accuracy_per_show`.
 - pipeline validation now checks that recent `accuracy_per_show` rows retain
   replay lineage, so replay readiness is part of normal data health.
 
@@ -320,7 +319,7 @@ remain queryable.
 
 `prediction_songs` is a derived table storing one row per predicted song for SQL-friendly
 reads and analytics. It is rebuildable from the canonical run-level rows in
-`predictions_notebook` or `predictions_ckplus`.
+the unified `predictions` table.
 
 Schema:
 - `band`, `model_slug`, `model_version`, `reference_date`: prediction context

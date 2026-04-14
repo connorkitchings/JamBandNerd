@@ -39,13 +39,13 @@ by writing derived tables back to Supabase.
 
 ### Prediction tables
 
-- `predictions_notebook`
-- `predictions_ckplus`
+- `predictions`
 - `prediction_songs` (derived per-song projection)
 - `historical_prediction_runs` (historical scored-run lineage for Replay)
 
-`predictions_notebook` and `predictions_ckplus` store one canonical row per
-`(band, reference_date, model_version)` with a JSON predictions payload.
+`predictions` stores one canonical row per
+`(band, model_slug, reference_date, model_version)` with a JSON predictions
+payload.
 `prediction_songs` stores one derived row per predicted song for SQL-friendly reads.
 `historical_prediction_runs` preserves exact prediction boards for completed shows,
 enabling the Replay feature with full lineage back to the original prediction.
@@ -53,12 +53,9 @@ enabling the Replay feature with full lineage back to the original prediction.
 ### Accuracy tables
 
 - `accuracy_per_show`
-- `notebook_accuracy`
-- `accuracy_ckplus`
 
 `accuracy_per_show` is the canonical granular evaluation store. New rows link to
-`historical_prediction_runs` via `prediction_run_id` for Replay lineage. Aggregate
-accuracy tables are derived summaries.
+`historical_prediction_runs` via `prediction_run_id` for Replay lineage.
 
 ## Utility Modules
 

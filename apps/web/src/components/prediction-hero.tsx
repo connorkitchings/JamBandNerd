@@ -1,5 +1,6 @@
 import { ShowOutlookPopover } from "@/components/show-outlook-popover";
 import type { PredictionRow } from "@/lib/data";
+import { TONIGHT_STATUS_LABEL } from "@/lib/show-status";
 
 type PrecisionCard = {
   title: string;
@@ -96,13 +97,13 @@ export function PredictionHero({
 
         <div className="relative z-10 mx-auto max-w-5xl">
           <div className="mx-auto max-w-4xl text-center">
-            {statusLabel === "LIVE" ? (
+            {statusLabel === TONIGHT_STATUS_LABEL ? (
               <span className="inline-flex items-center gap-2 rounded-full border border-red-500/20 bg-red-500/10 px-3 py-1 font-label text-[10px] font-bold uppercase tracking-[0.18rem] text-red-500">
                 <span className="relative flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
                 </span>
-                LIVE
+                {TONIGHT_STATUS_LABEL}
               </span>
             ) : (
               <span className="inline-flex items-center rounded-full border border-secondary-container/45 bg-secondary-container/35 px-3 py-1 font-label text-[10px] uppercase tracking-[0.18rem] text-on-secondary-container">

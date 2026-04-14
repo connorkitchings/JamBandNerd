@@ -351,9 +351,9 @@ def replace_prediction_projection(
 ) -> None:
     """Replace the per-song projection for a canonical prediction row.
 
-    ``prediction_songs`` is a derived projection of the canonical prediction
-    tables (``predictions_notebook``, ``predictions_ckplus``).  It is fully
-    rebuildable via ``scripts/rebuild_prediction_songs.py``.
+    ``prediction_songs`` is a derived projection of the canonical unified
+    ``predictions`` table. It is fully rebuildable via
+    ``scripts/rebuild_prediction_songs.py``.
 
     The delete-then-insert pattern prevents duplicate rows for the *current*
     ``reference_date`` but does not remove rows from older dates.  Stale rows
@@ -649,31 +649,9 @@ def check_prediction_staleness(
 
     client = get_supabase_client()
 
-    prediction_tables = [
-        "predictions_notebook",
-        "predictions_deal",
-        "predictions_ckplus",
-    ]
-
-    table = None
-    for t in prediction_tables:
-        if model_version.startswith("notebook") and t == "predictions_notebook":
-            table = t
-            break
-        if model_version.startswith("deal") and t == "predictions_deal":
-            table = t
-            break
-        if model_version.startswith("ckplus") and t == "predictions_ckplus":
-            table = t
-            break
-
-    if not table:
-        logger.warning(f"Unknown model version: {model_version}")
-        return False, None
-
     try:
         response = (
-            client.table(table)
+            client.table("predictions")
             .select("predicted_at")
             .eq("band", band)
             .eq("model_version", model_version)

@@ -8,8 +8,8 @@ by strictly adhering to a `reference_date` cutoff.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date, datetime
-from typing import Dict, List, Optional, Tuple
+from datetime import date
+from typing import Dict, List, Tuple
 
 import pandas as pd
 
@@ -52,23 +52,11 @@ class ModelData:
     # The chronological index of the reference show.
     reference_index: int
 
-    # A list of songs played in the 3 shows immediately preceding the reference date.
+    # A list of songs played in the configured recent-show exclusion window.
     recently_played_songs: List[str]
 
     # Diagnostic metadata.
     diagnostics: Dict[str, any]
-
-
-def _parse_iso_date(value: Optional[str | date]) -> Optional[date]:
-    """Safely parse a date-like value to a date object."""
-    if isinstance(value, date):
-        return value
-    if not value or pd.isna(value):
-        return None
-    try:
-        return datetime.strptime(str(value), "%Y-%m-%d").date()
-    except (ValueError, TypeError):
-        return None
 
 
 def _compute_base_features(
@@ -162,7 +150,7 @@ def generate_model_data(
     setlists_df: pd.DataFrame,
     reference_date: date,
     debug: bool = False,
-    exclusion_window: int = 3,
+    exclusion_window: int | None = None,
     band: str | None = None,
 ) -> ModelData:
     """
@@ -184,14 +172,19 @@ def generate_model_data(
             "generate_model_data requires normalized inputs: " + "; ".join(problems)
         )
 
-    # Get band-specific exclusion window if band is provided
-    if band:
+    # Honor an explicit caller override first. Fall back to the band/default
+    # configuration only when the caller does not pass a value.
+    if exclusion_window is None:
         from jambandnerd.config import (
             BAND_EXCLUSION_WINDOWS,
             EXCLUSION_WINDOW_DEFAULT,
         )
 
-        exclusion_window = BAND_EXCLUSION_WINDOWS.get(band, EXCLUSION_WINDOW_DEFAULT)
+        exclusion_window = (
+            BAND_EXCLUSION_WINDOWS.get(band, EXCLUSION_WINDOW_DEFAULT)
+            if band
+            else EXCLUSION_WINDOW_DEFAULT
+        )
 
     historical_plays, master_features, ref_index, recent_songs = _compute_base_features(
         shows_df, setlists_df, reference_date, debug, exclusion_window

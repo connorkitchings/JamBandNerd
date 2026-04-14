@@ -1,17 +1,11 @@
 from __future__ import annotations
 
-import hashlib
-import json
 from datetime import datetime
 from typing import Any, Dict, Iterable, List, Optional
 
 import pandas as pd
 
-
-def _compute_source_hash(record: Dict[str, Any]) -> str:
-    """Compute a deterministic hash of a JSON-serializable record."""
-    payload = json.dumps(record, sort_keys=True, ensure_ascii=False).encode("utf-8")
-    return hashlib.sha256(payload).hexdigest()
+from jambandnerd.data_collection.utils import compute_source_hash
 
 
 def _parse_date(value: Optional[str]) -> Optional[str]:
@@ -40,7 +34,7 @@ def normalize_songs(raw: Iterable[Dict[str, Any]]) -> pd.DataFrame:
             "last_played": None,  # Not in API
             "times_played": 0,  # Not in API
             "average_length_seconds": None,  # Not in API
-            "source_hash": _compute_source_hash(item),
+            "source_hash": compute_source_hash(item),
             "created_at": item.get("created_at"),
             "updated_at": item.get("updated_at"),
         }
@@ -79,7 +73,7 @@ def normalize_shows(raw: Iterable[Dict[str, Any]]) -> pd.DataFrame:
             "state": state,
             "show_notes": item.get("show_notes"),
             "source_url": item.get("source_url"),
-            "source_hash": _compute_source_hash(item),
+            "source_hash": compute_source_hash(item),
         }
         normalized.append(record)
     return pd.DataFrame(normalized)
@@ -101,7 +95,7 @@ def normalize_venues(raw: Iterable[Dict[str, Any]]) -> pd.DataFrame:
             "zip": item.get("zip"),
             "capacity": int(item.get("capacity") or 0),
             "slug": item.get("slug"),
-            "source_hash": _compute_source_hash(item),
+            "source_hash": compute_source_hash(item),
             "created_at": item.get("created_at"),  # Not in API, will be None
         }
         normalized.append(record)
@@ -154,7 +148,7 @@ def normalize_setlists(raw: Iterable[Dict[str, Any]]) -> pd.DataFrame:
             # Database doesn't have 'encore' column (derived from set_number)
             "is_segue": item.get("is_segue", False),
             "song_notes": item.get("footnote") or item.get("song_notes"),
-            "source_hash": _compute_source_hash(item),
+            "source_hash": compute_source_hash(item),
             "created_at": item.get("created_at"),  # Not in API, will be None
             "updated_at": item.get("updated_at"),  # Not in API, will be None
         }

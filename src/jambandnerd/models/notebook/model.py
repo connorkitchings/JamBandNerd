@@ -59,10 +59,10 @@ class NotebookPredictor(PredictionModel):
         if song_candidates.empty:
             return [], model_data.diagnostics
 
-        # 4. Calculate current_gap
+        # 4. Calculate current_gap as completed shows since the song was last played.
         song_candidates["current_gap"] = (
-            model_data.reference_index - song_candidates["last_played_index"]
-        )
+            model_data.reference_index - song_candidates["last_played_index"] - 1
+        ).clip(lower=0)
 
         # 5. Exclude recently played songs (from last N shows based on exclusion window)
         recently_played_set = set(model_data.recently_played_songs)

@@ -13,7 +13,6 @@ sys.path.insert(0, project_root)
 
 from scripts.generate_predictions import generate_predictions
 from scripts.run_backtest import run_backtest
-from scripts.save_aggregate_accuracy import save_aggregate_accuracy
 from scripts.validate_accuracy_tables import validate_accuracy
 from scripts.validate_prediction_tables import validate_predictions
 from src.jambandnerd.config import (
@@ -23,7 +22,6 @@ from src.jambandnerd.config import (
 from src.jambandnerd.config.bands import get_active_bands
 from src.jambandnerd.db.connection import get_supabase_client
 from src.jambandnerd.models.registry import (
-    get_aggregate_accuracy_table,
     get_model_definition,
     list_pipeline_models,
 )
@@ -58,6 +56,7 @@ def clear_model_outputs(
             client.table(prediction_table)
             .delete()
             .eq("band", band)
+            .eq("model_slug", model)
             .eq("model_version", model_version)
             .execute()
         )
@@ -70,11 +69,6 @@ def clear_model_outputs(
         )
 
     if clear_accuracy:
-        aggregate_table = get_aggregate_accuracy_table(model)
-        if not aggregate_table:
-            raise RuntimeError(
-                f"No aggregate accuracy table configured for model: {model}"
-            )
         print(f"[{band.upper()}/{model.upper()}] Clearing existing accuracy rows...")
         (
             client.table(HISTORICAL_PREDICTION_RUNS_TABLE)
@@ -86,13 +80,6 @@ def clear_model_outputs(
         )
         (
             client.table("accuracy_per_show")
-            .delete()
-            .eq("band", band)
-            .eq("model_version", model_version)
-            .execute()
-        )
-        (
-            client.table(aggregate_table)
             .delete()
             .eq("band", band)
             .eq("model_version", model_version)
@@ -127,7 +114,6 @@ def _rebuild_model_outputs(
     start: str | None,
     end: str | None,
     recent_shows: int | None,
-    aggregate_shows: int,
 ) -> None:
     """Rebuild derived outputs for one band/model pair with explicit phase logging."""
     log_prefix = f"[{band.upper()}/{model.upper()}]"
@@ -144,7 +130,7 @@ def _rebuild_model_outputs(
         )
 
     if rebuild_predictions:
-        print(f"{log_prefix} Phase 1/3: regenerate predictions")
+        print(f"{log_prefix} Phase 1/2: regenerate predictions")
         try:
             generate_predictions(
                 band=band,
@@ -163,7 +149,7 @@ def _rebuild_model_outputs(
             ) from exc
 
     if rebuild_accuracy:
-        print(f"{log_prefix} Phase 2/3: rebuild per-show accuracy")
+        print(f"{log_prefix} Phase 2/2: rebuild per-show accuracy")
         try:
             run_backtest(
                 band=band,
@@ -184,19 +170,6 @@ def _rebuild_model_outputs(
                 f"{log_prefix} Per-show accuracy rebuild failed {state}: {exc}"
             ) from exc
 
-        print(f"{log_prefix} Phase 3/3: rebuild aggregate accuracy")
-        try:
-            save_aggregate_accuracy(
-                band=band,
-                model=model,
-                shows=aggregate_shows,
-            )
-        except Exception as exc:
-            raise RuntimeError(
-                f"{log_prefix} Aggregate accuracy rebuild failed after per-show "
-                f"accuracy completed: {exc}"
-            ) from exc
-
 
 def rebuild_band_outputs(
     *,
@@ -207,7 +180,6 @@ def rebuild_band_outputs(
     start: str | None,
     end: str | None,
     recent_shows: int | None,
-    aggregate_shows: int,
     max_age_hours: int,
 ) -> None:
     """Rebuild derived outputs for a single band."""
@@ -221,7 +193,6 @@ def rebuild_band_outputs(
             start=start,
             end=end,
             recent_shows=recent_shows,
-            aggregate_shows=aggregate_shows,
         )
 
     if rebuild_predictions:
@@ -278,12 +249,6 @@ def main() -> None:
         help="Limit accuracy rebuild to the last N completed shows.",
     )
     parser.add_argument(
-        "--aggregate-shows",
-        type=int,
-        default=100,
-        help="Number of recent per-show rows to use for aggregate accuracy.",
-    )
-    parser.add_argument(
         "--max-age-hours",
         type=int,
         default=72,
@@ -310,7 +275,6 @@ def main() -> None:
             start=args.start,
             end=args.end,
             recent_shows=args.recent_shows,
-            aggregate_shows=args.aggregate_shows,
             max_age_hours=args.max_age_hours,
         )
 

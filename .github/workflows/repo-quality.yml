@@ -13,7 +13,7 @@ jobs:
   verify-repo:
     name: Verify Repository
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 40
 
     steps:
       - name: Checkout repository
@@ -29,12 +29,22 @@ jobs:
         with:
           enable-cache: true
 
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+
       - name: Install project
         run: uv sync --locked --extra dev
 
-      - name: Lint Python source
-        run: uv run ruff check src tests scripts
+      - name: Verify Python surface
+        run: npm run verify:python
 
-      - name: Run targeted model and pipeline tests
-        run: |
-          uv run pytest tests/models tests/pipeline/test_run_backtest.py tests/pipeline/test_run_optimized_pipeline.py
+      - name: Verify version surfaces
+        run: uv run python scripts/check_version_sync.py
+
+      - name: Verify documentation surface
+        run: npm run verify:docs
+
+      - name: Ensure verification leaves tracked files clean
+        run: npm run verify:clean

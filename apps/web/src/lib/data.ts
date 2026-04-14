@@ -43,6 +43,7 @@ export type PredictionRow = {
 };
 
 export type PredictionSnapshot = {
+  targetShowDate: string | null;
   referenceDate: string | null;
   predictedAt: string | null;
   modelVersion: string | null;
@@ -220,41 +221,6 @@ function getVenueRegionFromRow(row: Record<string, unknown> | null): string | nu
   return null;
 }
 
-const SUPABASE_PAGE_SIZE = 1000;
-const SHOW_ID_CHUNK_SIZE = 100;
-type SupabaseSelectQuery = ReturnType<ReturnType<SupabaseClient["from"]>["select"]>;
-
-async function fetchAllRecords(
-  client: SupabaseClient,
-  tableName: string,
-  selectClause: string,
-  configureQuery: (query: SupabaseSelectQuery) => SupabaseSelectQuery,
-): Promise<Record<string, unknown>[]> {
-  const rows: Record<string, unknown>[] = [];
-
-  for (let offset = 0; ; offset += SUPABASE_PAGE_SIZE) {
-    const { data, error } = await configureQuery(
-      client.from(tableName).select(selectClause),
-    ).range(offset, offset + SUPABASE_PAGE_SIZE - 1);
-
-    if (error) {
-      throw error;
-    }
-
-    const pageRows =
-      (data ?? [])
-        .map((row: unknown) => asRecord(row))
-        .filter((row): row is Record<string, unknown> => row !== null);
-    rows.push(...pageRows);
-
-    if (pageRows.length < SUPABASE_PAGE_SIZE) {
-      break;
-    }
-  }
-
-  return rows;
-}
-
 function computeTier(rank: number): LikelihoodTier {
   if (rank <= 5) return "expected";
   if (rank <= 15) return "hot";
@@ -325,6 +291,8 @@ function buildPredictionSnapshotFromCanonicalRow(
   row: Record<string, unknown>,
 ): PredictionSnapshot {
   return {
+    targetShowDate:
+      typeof row.target_show_date === "string" ? row.target_show_date : null,
     referenceDate:
       typeof row.reference_date === "string" ? row.reference_date : null,
     predictedAt:
@@ -345,6 +313,7 @@ function buildPredictionSnapshotFromProjectionRows(rows: ProjectionRow[]): Predi
   const firstRow = rows[0] ?? null;
 
   return {
+    targetShowDate: null,
     referenceDate:
       firstRow && typeof firstRow.reference_date === "string"
         ? firstRow.reference_date
@@ -393,7 +362,10 @@ async function fetchProjectedPredictionSnapshot(
     .from("prediction_songs")
     .select("reference_date, predicted_at, model_version")
     .eq("band", band)
-    .eq("model_slug", model);
+    .eq("model_slug", model)
+    // Seed snapshot selection from rank 1 only so the limit applies to
+    // snapshots, not to arbitrary rows within a few recently-written boards.
+    .eq("rank", 1);
 
   const todayIso = new Date().toISOString().slice(0, 10);
 
@@ -404,7 +376,6 @@ async function fetchProjectedPredictionSnapshot(
   const { data: seedRows, error: seedError } = await seedQuery
     .order("predicted_at", { ascending: false })
     .order("reference_date", { ascending: false })
-    .order("rank", { ascending: true })
     .limit(referenceDate ? 1 : 100);
 
   if (seedError) {
@@ -484,9 +455,10 @@ async function getCurrentModelVersion(
   }
 
   const { data } = await client
-    .from(`predictions_${model}`)
+    .from("predictions")
     .select("model_version")
     .eq("band", band)
+    .eq("model_slug", model)
     .order("predicted_at", { ascending: false })
     .order("reference_date", { ascending: false })
     .limit(1);
@@ -627,9 +599,10 @@ export const getLatestPredictions = cache(
       }
 
       const { data, error } = await client
-        .from(`predictions_${model}`)
+        .from("predictions")
         .select("*")
         .eq("band", band)
+        .eq("model_slug", model)
         .order("reference_date", { ascending: false })
         .limit(1);
 
@@ -704,9 +677,10 @@ export const getPredictionsForDate = cache(
       }
 
       const { data, error } = await client
-        .from(`predictions_${model}`)
+        .from("predictions")
         .select("*")
         .eq("band", band)
+        .eq("model_slug", model)
         .eq("reference_date", referenceDate)
         .limit(1);
 
@@ -789,9 +763,10 @@ export const getPredictionDates = cache(
 
       if (dates.length === 0) {
         const { data, error } = await client
-          .from(`predictions_${model}`)
+          .from("predictions")
           .select("reference_date")
           .eq("band", band)
+          .eq("model_slug", model)
           .order("reference_date", { ascending: false })
           .limit(100);
 

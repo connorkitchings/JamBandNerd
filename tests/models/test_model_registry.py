@@ -4,11 +4,9 @@ import pytest
 
 from src.jambandnerd.models.registry import (
     build_predictor,
-    get_aggregate_accuracy_table,
     get_model_definition,
     is_model_promoted_to_web,
     list_accuracy_validation_models,
-    list_aggregate_accuracy_models,
     list_backfill_models,
     list_model_slugs,
     list_models,
@@ -34,16 +32,13 @@ def test_registry_capability_lists_are_flag_driven() -> None:
     ]
     assert [definition.slug for definition in list_promoted_web_models()] == [
         "notebook",
+        "deal",
     ]
     assert [definition.slug for definition in list_backfill_models()] == [
         "notebook",
         "deal",
     ]
     assert [definition.slug for definition in list_accuracy_validation_models()] == [
-        "notebook",
-        "deal",
-    ]
-    assert [definition.slug for definition in list_aggregate_accuracy_models()] == [
         "notebook",
         "deal",
     ]
@@ -70,7 +65,7 @@ def test_registry_invariants_for_serializer_and_capabilities() -> None:
             assert definition.supports_backtest
 
         if definition.enabled_for_accuracy_validation:
-            assert get_aggregate_accuracy_table(definition.slug) is not None
+            assert definition.supports_backtest
 
 
 def test_registry_lifecycle_metadata_tracks_staged_rollout() -> None:
@@ -80,8 +75,8 @@ def test_registry_lifecycle_metadata_tracks_staged_rollout() -> None:
 
     assert notebook.lifecycle_stage == "web_promoted"
     assert notebook.web_visibility == "promoted"
-    assert deal.lifecycle_stage == "readiness_verified"
-    assert deal.web_visibility == "hidden"
+    assert deal.lifecycle_stage == "web_promoted"
+    assert deal.web_visibility == "promoted"
     assert deal.readiness_windows == (50,)
     assert deal.readiness_baselines == ("notebook",)
     assert ckplus.lifecycle_stage == "retired"

@@ -88,28 +88,27 @@ work is deployment hardening, hosted verification, and product refinement on the
 
 ```bash
 npm install
+npx playwright install --with-deps chromium
 cp apps/web/.env.local.example apps/web/.env.local
 npm run dev:web
-npm run lint:web
-npm run build:web
-npm run test:web:smoke
+npm run verify:web
 ```
 
 ## Release Versioning
 
 JamBandNerd should use a single public product version across the repo and website.
 
-- Current public version: `0.1.0`
+- Current public version: `0.2.1`
 - Versioning style: Semantic Versioning (`MAJOR.MINOR.PATCH`)
 - Scope rule: keep `pyproject.toml`, `src/jambandnerd/__init__.py`, `apps/web/package.json`, and the website footer version in sync
 
 Use these bump rules:
 
-- Patch (`0.1.x`): UI polish, bug fixes, copy edits, test-only work, and non-breaking internal cleanup
+- Patch (`0.2.x`): UI polish, bug fixes, copy edits, test-only work, and non-breaking internal cleanup
 - Minor (`0.x.0`): new user-facing pages/features, notable analytics additions, or meaningful model/product improvements that do not break expected workflows
 - Major (`x.0.0`): breaking product changes, major route/navigation resets, incompatible data contracts, or the first stable public `1.0.0`
 
-Until the product is stable, stay on the `0.x` line. Treat `0.1.0` as the first visible website version rather than a finished general-availability release.
+Until the product is stable, stay on the `0.x` line. Treat `0.2.1` as the current visible website version rather than a finished general-availability release.
 
 ## Environment Variables
 
@@ -150,10 +149,9 @@ Recommended project settings:
 
 The repo should verify the website in GitHub Actions before relying on Vercel previews:
 
-1. `npm run lint:web`
-2. `npm run build:web`
-3. `npm run test:web:smoke`
-4. `Hosted Website Smoke` for deployed preview or production URLs when you need hosted verification
+1. `npm run verify:web`
+2. `npm run verify:clean`
+3. `Hosted Website Smoke` for deployed preview or production URLs when you need hosted verification
 
 This keeps deployment triggering in Vercel while GitHub Actions acts as the verification gate.
 

@@ -100,7 +100,9 @@ class TestCloudflareBypassCleanup:
 
         with patch("jambandnerd.data_collection.browser._pw", mock_pw):
             with patch("jambandnerd.data_collection.browser._browser", mock_browser):
-                with patch("jambandnerd.data_collection.browser._context", mock_context):
+                with patch(
+                    "jambandnerd.data_collection.browser._context", mock_context
+                ):
                     CloudflareBypass.cleanup()
 
         mock_context.close.assert_called_once()

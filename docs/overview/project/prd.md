@@ -20,7 +20,7 @@ enhance their concert experience through data-driven insights.
 1. **Automate Data Pipeline**: Eliminate manual data collection and processing
 2. **Provide Real-Time Predictions**: Deliver next-song predictions through a production website
 3. **Demonstrate Model Accuracy**: Track and display prediction performance over time
-4. **Scale to Multiple Bands**: Support Phish, Goose, and Widespread Panic initially
+4. **Scale to Multiple Bands**: Support the current six-band catalog and keep the platform extensible for additional bands
 
 ### Secondary Goals
 
@@ -74,8 +74,8 @@ enhance their concert experience through data-driven insights.
 
 - **Notebook Model Implementation**: Deploy rotation-based prediction model as MVP
 - **Next Song Predictions**: Generate probability rankings for next likely songs
-- **Multi-Band Support**: Run predictions for Phish, Goose, and WSP independently. The system is
-  designed to be extensible, allowing for the addition of new bands by creating new data collector modules.
+- **Multi-Band Support**: Run predictions across the current supported catalog and keep the system
+  extensible for future bands through new collector modules and band-registry rows.
 - **Accuracy Tracking**: Store and calculate prediction accuracy at show level
 
 #### Website Experience
@@ -84,7 +84,7 @@ enhance their concert experience through data-driven insights.
 - **Prediction Display**: Show next song probabilities with confidence scores
 - **Historical Accuracy**: Display model performance trends over time
 - **Responsive Design**: Support desktop and mobile viewing
-- **Status**: The website at `apps/web` is the product surface. Streamlit remains in the repo for internal legacy/debugging use only.
+- **Status**: The website at `apps/web` is the product surface. Historical Streamlit-era context is retained only in archive material and older logs.
 
 #### Infrastructure
 
@@ -240,7 +240,7 @@ Phase 2 focuses on high-engagement features for the community, interactive games
 ### Business Metrics
 
 - **Feature Adoption**: All MVP features used by 70% of active users
-- **Band Coverage**: Predictions available for all 3 supported bands
+- **Band Coverage**: Predictions available for all supported active bands
 - **Model Expansion**: Ready for Phase 2 model addition within 6 months
 
 ---

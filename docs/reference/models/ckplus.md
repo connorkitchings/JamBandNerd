@@ -1,10 +1,12 @@
 # CK+ Model (Gap-Based) — Logic and Historical Accuracy
 
+> Historical note: CK+ was retired on 2026-04-11 and replaced by Deal as the promoted second model. This page is retained only to document legacy logic and historical stored outputs.
+
 ### Overview
 
 The CK+ model is a gap-based statistical predictor that ranks songs by how "overdue" they are to be
-played, using historical show-to-show gaps between performances. It is intentionally simple, fast,
-and explainable, and complements the frequency‑based `notebook` model.
+played, using historical show-to-show gaps between performances. It was intentionally simple, fast,
+and explainable, and it complemented the frequency-based `notebook` model while it was active.
 
 ### How it Runs
 
@@ -143,16 +145,17 @@ For debugging or granular control, you can use the consolidated individual scrip
   uv run python scripts/run_backtest.py --band goose --model ckplus --shows 50
   ```
 
-- **Save accuracy summary**:
+- **Generate predictions for any band/model combination**:
   ```bash
-  uv run python scripts/save_aggregate_accuracy.py --band goose --model ckplus --shows 50
+  uv run python scripts/generate_predictions.py --band goose --model ckplus
+  uv run python scripts/generate_predictions.py --band phish --model ckplus
   ```
 
 ### Storage
 
-- Predictions: `predictions_ckplus` (upserted by `(band, reference_date, model_version)`).
+- Predictions: unified `predictions` table (upserted by `(band, model_slug, reference_date, model_version)`).
 - Per-song projection: `prediction_songs` (derived from canonical prediction rows).
-- Accuracy summaries: `accuracy_ckplus` (band, model_version, window_start/window_end, metrics at K=10/25/50).
+- Accuracy: `accuracy_per_show` (per-show evaluation linked to `historical_prediction_runs`).
 
 #### Validation RPC
 
@@ -186,7 +189,7 @@ grant execute on function public.get_table_schema(text) to service_role;
 ### Next Steps
 
 - Finalize v1 `ckplus_score` weighting and thresholds; document as `model_version = ckplus_v1`.
-- Implement scripts and backtesting to populate `predictions_ckplus` and `accuracy_ckplus`.
+- Implement scripts and backtesting to populate unified `predictions` table and `accuracy_per_show`.
 - Add per‑era breakdowns and confidence intervals similar to the notebook model.
 - Compare `notebook` vs `ckplus` performance in the UI and consider blended scoring.
 

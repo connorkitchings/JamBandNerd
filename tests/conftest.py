@@ -38,3 +38,13 @@ def setup_test_env(mock_env_vars, monkeypatch):
     for key, value in mock_env_vars.items():
         monkeypatch.setenv(key, value)
     return mock_env_vars
+
+
+@pytest.fixture(autouse=True)
+def reset_supabase_singleton():
+    """Ensure tests do not leak a shared Supabase/httpx client across the suite."""
+    from jambandnerd.db.connection import close_supabase_client
+
+    close_supabase_client()
+    yield
+    close_supabase_client()

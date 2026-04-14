@@ -1,47 +1,41 @@
 # Testing Guide
 
-This directory contains the test suite for JamBandNerd.
+JamBandNerd has two main verification surfaces:
+
+- Python tests under `tests/`
+- Website smoke tests for `apps/web`
 
 ## Structure
 
-- `conftest.py` - Pytest configuration and shared fixtures
-- `test_data_collection.py` - Tests for data collection modules
-- `test_models.py` - Tests for prediction models
-- `test_db.py` - Tests for database operations
-- `data/` - Sample data files for testing
+- `tests/data_collection/` - collector- and source-specific tests
+- `tests/models/` - model registry, readiness, and predictor behavior
+- `tests/pipeline/` - consolidated script and orchestration coverage
+- top-level `tests/test_*.py` - shared utilities, db, diagnostics, and support scripts
+- `conftest.py` - shared fixtures and test environment setup
 
-## Running Tests
+## Canonical Commands
 
 ```bash
-# Run all tests
-pytest
+# Canonical verification entrypoints
+npm run verify:python
+npm run verify:docs
+npm run verify:web
+npm run verify:all
 
-# Run tests with verbose output
-pytest -v
+# Final tracked-file drift check on a clean baseline
+npm run verify:clean
 
-# Run tests for a specific module
-pytest tests/test_models.py
-
-# Run tests with coverage (when pytest-cov is installed)
-pytest --cov=src/jambandnerd
-
-# Run tests matching a pattern
-pytest -k "test_prediction"
+# Component commands used by the verify scripts
+uv run pytest --collect-only -q
+npm run test:web:smoke:list
 ```
 
-## Test Organization
+## Notes
 
-Tests are organized by module, with each test file corresponding to a source module. Mock implementations are used to test abstract base classes and avoid external dependencies during testing.
-
-## Fixtures
-
-Common test fixtures are defined in `conftest.py`:
-
-- `project_root` - Path to the project root directory
-- `sample_data_dir` - Path to test data directory  
-- `mock_env_vars` - Mock environment variables for testing
-- `setup_test_env` - Sets up test environment variables
-
-## Sample Data
-
-The `data/` directory contains sample JSON files that can be used in tests to simulate API responses and database records.
+- Use `uv run ...` for Python commands.
+- Run `npx playwright install --with-deps chromium` once after `npm install`
+  before using the website smoke commands locally.
+- Live-band or environment-dependent tests are explicitly marked; most of the
+  suite is designed to run without touching production services.
+- Website smoke coverage is the canonical frontend verification path and is also
+  exercised in GitHub Actions.

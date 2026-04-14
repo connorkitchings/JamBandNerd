@@ -97,6 +97,15 @@ class TestNotebookPredictor:
         assert predictions[1].song_name == "Song B"
         assert predictions[1].plays_past_year == 2
 
+        song_a = next(
+            prediction for prediction in predictions if prediction.song_name == "Song A"
+        )
+        song_b = next(
+            prediction for prediction in predictions if prediction.song_name == "Song B"
+        )
+        assert song_a.current_gap == 4
+        assert song_b.current_gap == 10
+
     def test_predict_excludes_recent_songs(self, model_data):
         predictor = NotebookPredictor()
         predictions, _ = predictor.predict(model_data)
@@ -134,8 +143,8 @@ class TestNotebookPredictor:
             [model_data.historical_plays, pd.DataFrame(new_plays)]
         )
 
-        # Song A last played index 96 (gap = 101 - 96 = 5)
-        # Song E last played index 90 (gap = 101 - 90 = 11)
+        # Song A last played index 96 (gap = 101 - 96 - 1 = 4)
+        # Song E last played index 90 (gap = 101 - 90 - 1 = 10)
         new_feature = pd.DataFrame(
             [
                 {
@@ -152,7 +161,7 @@ class TestNotebookPredictor:
         predictor = NotebookPredictor()
         predictions, _ = predictor.predict(model_data)
 
-        # Song E (gap 11) should be before Song A (gap 5)
+        # Song E (gap 10) should be before Song A (gap 4)
         assert predictions[0].song_name == "Song E"
         assert predictions[1].song_name == "Song A"
 

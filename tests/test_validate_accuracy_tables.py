@@ -70,24 +70,6 @@ def _accuracy_rows(*, stale_hours: int = 0):
                 "actual_song_count": 12,
             },
         ],
-        "notebook_accuracy": [
-            {
-                "band": "goose",
-                "model_version": "notebook_v1",
-                "evaluated_at": iso,
-                "window_start": "2025-01-01",
-                "window_end": "2026-03-20",
-            }
-        ],
-        "accuracy_deal": [
-            {
-                "band": "goose",
-                "model_version": "deal_v2",
-                "evaluated_at": iso,
-                "window_start": "2025-01-01",
-                "window_end": "2026-03-20",
-            }
-        ],
     }
 
 
@@ -110,36 +92,7 @@ def test_validate_accuracy_fails_for_stale_rows(monkeypatch):
 
     failures = validate_accuracy(bands=["goose"], max_age_hours=72)
 
-    assert failures == 4
-
-
-def test_validate_accuracy_fails_when_aggregate_missing(monkeypatch):
-    rows = _accuracy_rows()
-    rows["accuracy_deal"] = []
-    monkeypatch.setattr(
-        "scripts.validate_accuracy_tables.get_supabase_client",
-        lambda: _ClientStub(rows),
-    )
-
-    failures = validate_accuracy(bands=["goose"], max_age_hours=72)
-
-    assert failures == 1
-
-
-def test_validate_accuracy_skip_aggregate_check(monkeypatch):
-    rows = _accuracy_rows()
-    rows["accuracy_deal"] = []
-    rows["notebook_accuracy"] = []
-    monkeypatch.setattr(
-        "scripts.validate_accuracy_tables.get_supabase_client",
-        lambda: _ClientStub(rows),
-    )
-
-    failures = validate_accuracy(
-        bands=["goose"], max_age_hours=72, validate_aggregate=False
-    )
-
-    assert failures == 0
+    assert failures == 2
 
 
 def test_validate_accuracy_fails_when_replay_lineage_missing(monkeypatch):

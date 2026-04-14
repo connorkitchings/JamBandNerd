@@ -62,9 +62,10 @@ def generate_predictions(
     band: str,
     model: str,
     date_str: str | None,
-    exclusion_window: int,
+    exclusion_window: int | None,
     retrain: bool = False,
-):
+    require_output: bool = False,
+) -> bool:
     """Generate and save predictions for a given band and model."""
     band = band.lower()
     model = model.lower()
@@ -85,8 +86,11 @@ def generate_predictions(
             upcoming_df = None
 
     if shows_df.empty or setlists_df.empty:
-        print(f"{log_prefix} Error: Could not fetch raw data. Aborting.")
-        return
+        message = f"{log_prefix} Error: Could not fetch raw data. Aborting."
+        print(message)
+        if require_output:
+            raise RuntimeError(message)
+        return False
 
     shows_df, setlists_df = prepare_band_data(shows_df, setlists_df, band=band)
     reference_date = resolve_reference_date(date_str, shows_df, upcoming_df=upcoming_df)
@@ -107,6 +111,9 @@ def generate_predictions(
     predictor_kwargs: dict[str, Any] = {}
     if model_definition.supports_training and not retrain:
         predictor_kwargs["persist_artifacts"] = False
+        print(
+            f"{log_prefix} Training-capable model will run with in-memory fresh training; cached artifacts are disabled for this prediction run."
+        )
     predictor = build_predictor(model, band=band, **predictor_kwargs)
     predictions: List[Any] = []
 
@@ -118,6 +125,10 @@ def generate_predictions(
                 model_path = get_model_path(band)
                 if model_path.exists():
                     model_path.unlink()
+        else:
+            print(
+                f"{log_prefix} Training {model_definition.display_name} from the current reference-date snapshot."
+            )
         predictor.train(model_data)
 
     prediction_output = predictor.predict(
@@ -136,8 +147,11 @@ def generate_predictions(
         predictions = prediction_output
 
     if not predictions:
-        print(f"{log_prefix} No predictions were generated.")
-        return
+        message = f"{log_prefix} No predictions were generated."
+        print(message)
+        if require_output:
+            raise RuntimeError(message)
+        return False
 
     # 3. Format and save results
     predictions_list = serialize_model_predictions(model, predictions)
@@ -147,6 +161,7 @@ def generate_predictions(
     predicted_at = datetime.now(timezone.utc).isoformat()
     output_row = {
         "band": band,
+        "model_slug": model,
         "reference_date": reference_date.isoformat(),
         "model_version": model_version,
         "top_k": len(predictions_list),
@@ -160,9 +175,9 @@ def generate_predictions(
         f"{log_prefix} Generated {len(predictions_list)} predictions. Saving to {table_name}..."
     )
     # Two-step write sequence:
-    # 1. Upsert the canonical JSON row (predictions_notebook / predictions_ckplus).
+    # 1. Upsert the canonical JSON row in the unified predictions table.
     #    This is the source-of-truth prediction record keyed on
-    #    (band, reference_date, model_version).
+    #    (band, model_slug, reference_date, model_version).
     # 2. Replace the derived prediction_songs projection for the same key.
     #    prediction_songs is a flat per-song table consumed by the website.
     #    The replace call also triggers stale-row cleanup for older
@@ -170,7 +185,7 @@ def generate_predictions(
     upsert_dataframe(
         table_name=table_name,
         df=output_df,
-        conflict_columns=["band", "reference_date", "model_version"],
+        conflict_columns=["band", "model_slug", "reference_date", "model_version"],
     )
     replace_prediction_projection(
         band=band,
@@ -181,6 +196,7 @@ def generate_predictions(
         predictions=output_row["predictions"],
     )
     print(f"{log_prefix} Successfully saved predictions.")
+    return True
 
 
 def main() -> None:
@@ -214,8 +230,13 @@ def main() -> None:
     parser.add_argument(
         "--exclusion-window",
         type=int,
-        default=3,
-        help="Number of recent shows to exclude songs from (default: 3).",
+        default=None,
+        help="Number of recent shows to exclude songs from. Defaults to band-specific config.",
+    )
+    parser.add_argument(
+        "--require-output",
+        action="store_true",
+        help="Exit non-zero if the run would otherwise finish without writing predictions.",
     )
     args = parser.parse_args()
 
@@ -231,6 +252,7 @@ def main() -> None:
         date_str=args.date,
         exclusion_window=args.exclusion_window,
         retrain=args.retrain,
+        require_output=args.require_output,
     )
 
 

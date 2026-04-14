@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import replace
 
 import pandas as pd
+import pytest
 
 from scripts import run_backtest as run_backtest_module
 from src.jambandnerd.models.registry import get_model_definition
@@ -22,6 +23,14 @@ class _NotebookPredictorStub:
             [_Prediction("Song A"), _Prediction("Song B"), _Prediction("Song C")],
             {},
         )
+
+
+class _TrainingPredictorStub:
+    def train(self, model_data):  # noqa: ARG002
+        return None
+
+    def predict(self, model_data, top_k=50):  # noqa: ARG002
+        return [_Prediction("Song A"), _Prediction("Song B")]
 
 
 def test_run_backtest_persists_string_show_ids(monkeypatch):
@@ -144,3 +153,113 @@ def test_run_backtest_persists_string_show_ids(monkeypatch):
             "last_played_date": "2023-12-31",
         },
     ]
+
+
+def test_run_backtest_disables_cached_artifacts_for_training_models(monkeypatch):
+    shows_rows = [
+        {"show_id": "goose-show-1", "show_date": "2024-01-01"},
+        {"show_id": "goose-show-2", "show_date": "2024-01-20"},
+    ]
+    setlist_rows = [
+        {"show_id": "goose-show-1", "song_name": "Song A"},
+        {"show_id": "goose-show-1", "song_name": "Song B"},
+        {"show_id": "goose-show-1", "song_name": "Song C"},
+        {"show_id": "goose-show-2", "song_name": "Song D"},
+        {"show_id": "goose-show-2", "song_name": "Song E"},
+        {"show_id": "goose-show-2", "song_name": "Song F"},
+    ]
+
+    def fetch_table(table_name: str, chunk_size: int = 10000):  # noqa: ARG001
+        if table_name == "goose_shows_raw":
+            return shows_rows
+        if table_name == "goose_setlists_raw":
+            return setlist_rows
+        raise AssertionError(f"Unexpected table: {table_name}")
+
+    seen: dict[str, object] = {}
+
+    monkeypatch.setattr(run_backtest_module, "fetch_table", fetch_table)
+    monkeypatch.setattr(
+        run_backtest_module, "generate_model_data", lambda *args, **kwargs: object()
+    )
+    monkeypatch.setattr(
+        run_backtest_module,
+        "build_predictor",
+        lambda slug, *, band, **kwargs: seen.update({"kwargs": kwargs})
+        or _TrainingPredictorStub(),
+    )
+    monkeypatch.setattr(
+        run_backtest_module,
+        "serialize_model_predictions",
+        lambda slug, preds: [
+            {"rank": index + 1, "song_name": prediction.song_name}
+            for index, prediction in enumerate(preds)
+        ],
+    )
+    monkeypatch.setattr(run_backtest_module, "upsert_dataframe", lambda **kwargs: None)
+    monkeypatch.setattr(
+        run_backtest_module,
+        "upsert_historical_prediction_run",
+        lambda **kwargs: 123,
+    )
+
+    run_backtest_module.run_backtest(
+        band="goose",
+        model="deal",
+        start=None,
+        end=None,
+        shows=1,
+        exclusion_window=3,
+    )
+
+    assert seen["kwargs"] == {"persist_artifacts": False}
+
+
+def test_run_backtest_raises_when_results_required_and_none_generated(monkeypatch):
+    monkeypatch.setattr(
+        run_backtest_module,
+        "load_backtest_frames",
+        lambda band, snapshot_root=None: (
+            pd.DataFrame([{"show_id": "goose-show-1", "show_date": "2024-01-20"}]),
+            pd.DataFrame(
+                [
+                    {"show_id": "goose-show-1", "song_name": "Song A"},
+                    {"show_id": "goose-show-1", "song_name": "Song B"},
+                    {"show_id": "goose-show-1", "song_name": "Song C"},
+                ]
+            ),
+        ),
+    )
+    monkeypatch.setattr(
+        run_backtest_module,
+        "list_completed_shows",
+        lambda shows_df, sets_df: pd.DataFrame(
+            [{"show_id": "goose-show-1", "show_date": pd.Timestamp("2024-01-20")}]
+        ),
+    )
+    monkeypatch.setattr(
+        run_backtest_module,
+        "select_target_shows",
+        lambda completed_shows, **kwargs: completed_shows,
+    )
+    monkeypatch.setattr(
+        run_backtest_module,
+        "get_model_definition",
+        lambda slug: get_model_definition("notebook"),
+    )
+    monkeypatch.setattr(
+        run_backtest_module,
+        "build_scored_run_records",
+        lambda **kwargs: [],
+    )
+
+    with pytest.raises(RuntimeError, match="No results generated from backtest"):
+        run_backtest_module.run_backtest(
+            band="goose",
+            model="notebook",
+            start=None,
+            end=None,
+            shows=1,
+            exclusion_window=3,
+            require_results=True,
+        )

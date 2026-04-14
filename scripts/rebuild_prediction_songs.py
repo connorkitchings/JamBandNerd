@@ -52,6 +52,7 @@ def _load_prediction_rows(
         client.table(table_name)
         .select("reference_date, predicted_at, predictions, top_k")
         .eq("band", band)
+        .eq("model_slug", model_slug)
         .eq("model_version", model_version)
     )
 

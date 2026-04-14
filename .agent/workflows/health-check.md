@@ -5,9 +5,9 @@ Run these checks before shipping non-trivial changes.
 ## Full Validation
 
 ```bash
-uv run black src tests scripts
-uv run ruff check src tests scripts
-uv run pytest
+npm run verify:python
+npm run verify:docs
+npm run verify:web
 ```
 
 ## Narrow Validation During Iteration
@@ -15,8 +15,8 @@ uv run pytest
 Use narrower commands when appropriate:
 
 ```bash
-uv run pytest tests/test_models.py
-uv run pytest tests/web/test_predictions.py
+uv run pytest tests/models
+uv run pytest tests/test_generate_pipeline_summary.py
 uv run python scripts/verify_data_freshness.py --band goose
 uv run python scripts/validate_prediction_tables.py --band goose
 ```

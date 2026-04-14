@@ -14,7 +14,11 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from supabase import Client
 
-    from .connection import get_supabase_client, validate_environment
+    from .connection import (
+        close_supabase_client,
+        get_supabase_client,
+        validate_environment,
+    )
     from .operations import (
         bulk_insert_dataframe,
         fetch_existing_ids,
@@ -39,6 +43,7 @@ if TYPE_CHECKING:
 
 __all__ = [
     "Client",
+    "close_supabase_client",
     "get_supabase_client",
     "validate_environment",
     "fetch_existing_ids",

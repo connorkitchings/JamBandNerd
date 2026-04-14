@@ -20,7 +20,7 @@ graph TD
     C[Supabase Raw Tables]
     D[Shared Normalization]
     E[ModelData]
-    F[Notebook and CK+ Models]
+    F[Notebook and Deal Models]
     G[Predictions and Accuracy Tables]
     H[Website]
 
@@ -58,11 +58,10 @@ graph TD
 ### Models and Evaluation
 
 - `ModelData` is the canonical handoff from transforms into models.
-- Notebook is the currently promoted public model. Deal is backend-ready and
-  fully wired through pipeline, historical replay, and validation, but it
-  remains intentionally hidden from website surfaces until an explicit final
-  promotion step. CK+ is retained as a historical baseline.
-- All three models rely on the same ordered historical show sequence and
+- Notebook and Deal are the promoted website-facing models. CK+ is retired and
+  retained only as a historical baseline because legacy prediction and accuracy
+  rows still exist in storage.
+- All three registered models rely on the same ordered historical show sequence and
   the same `reference_date` anti-leakage rule.
 - `accuracy_per_show` is the granular evaluation source; aggregate accuracy
   tables are derived summaries.
@@ -72,8 +71,6 @@ graph TD
 - The website in `apps/web` is the current public surface.
 - Supabase remains the shared storage and read layer for predictions and
   accuracy data.
-- Streamlit is no longer part of the active public delivery path, but it
-  remains in the repo for internal legacy/debugging use.
 - `apps/web/src/lib/data.ts` remains the compatibility import surface while domain ownership is split across `apps/web/src/lib/data/{bands,predictions,accuracy,replay,shows,venues}.ts`.
 - Route files should compose server-side results rather than reimplement query logic.
 - Client components are reserved for interactive islands, navigation hooks, and live subscriptions.
@@ -112,11 +109,11 @@ table/version mapping, serializer, and orchestration capability flags.
 
 Three models are registered:
 
-| Model | Slug | Status | Prediction Table |
-|-------|------|--------|-----------------|
-| Notebook | `notebook` | Web promoted | `predictions_notebook` |
-| CK+ | `ckplus` | Retired baseline | `predictions_ckplus` |
-| Deal | `deal` | Readiness verified, web hidden | `predictions_deal` |
+| Model | Slug | Status | Canonical Storage |
+|-------|------|--------|-------------------|
+| Notebook | `notebook` | Web promoted | `predictions` + `model_slug=notebook` |
+| CK+ | `ckplus` | Retired baseline | Historical rows retained in `predictions` + `prediction_songs` |
+| Deal | `deal` | Web promoted | `predictions` + `model_slug=deal` |
 
 New prediction models are added through the registry workflow (see
 `docs/contributor/model_development.md`):
@@ -125,8 +122,9 @@ New prediction models are added through the registry workflow (see
 3. Add one `ModelDefinition` entry in the registry
 4. Optionally add frontend presentation metadata in website config
 
-All models write to `prediction_songs` via `replace_prediction_projection()`, making
-them automatically available to the website's analytics and explorer routes.
+All models write canonical run-level rows to the shared `predictions` table and
+project song-level rows through `replace_prediction_projection()`, making them
+automatically available to the website's analytics and explorer routes.
 
 ## Non-Negotiable Rules
 

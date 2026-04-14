@@ -1,18 +1,16 @@
-"""JamBandNerd: A modular data science platform for jam band setlist prediction.
-
-This package provides comprehensive data collection, transformation, modeling, and
-web interface capabilities for analyzing and predicting jam band setlists.
+"""JamBandNerd: A modular data platform for jam band setlist prediction.
 
 Main modules:
-- data_collection: Band-specific data collectors with unified interfaces
-- db: Database connection, operations, and validation
-- integrations: External-service automation and workflow adapters
-- models: Prediction models (Notebook, Deal) with accuracy tracking
-- transformations: Feature engineering and data processing
-- web: Streamlit web interface for predictions and analytics
+- data_collection: band-specific collectors with unified interfaces
+- db: database connection, operations, and validation
+- integrations: external-service automation and workflow adapters
+- models: prediction models and evaluation utilities
+- predictions: prediction-facing helpers and contracts
+- transformations: feature engineering and data processing
+- utils: shared support utilities
 """
 
-__version__ = "0.1.0"
+__version__ = "0.2.1"
 
 __all__ = [
     "data_collection",
@@ -22,5 +20,4 @@ __all__ = [
     "predictions",
     "transformations",
     "utils",
-    "web",
 ]

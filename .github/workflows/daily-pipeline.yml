@@ -255,8 +255,8 @@ jobs:
           echo "::group::Generating predictions for ${{ matrix.band }}"
 
           # Generate for the next upcoming show (default behavior)
-          uv run python scripts/generate_predictions.py --band ${{ matrix.band }} --model notebook
-          uv run python scripts/generate_predictions.py --band ${{ matrix.band }} --model deal
+          uv run python scripts/generate_predictions.py --band ${{ matrix.band }} --model notebook --require-output
+          uv run python scripts/generate_predictions.py --band ${{ matrix.band }} --model deal --require-output
 
           # Also generate for the most recent completed show to power setlist highlighting
           echo "Finding last completed show date..."
@@ -264,8 +264,8 @@ jobs:
 
           if [[ -n "$LAST_COMPLETED_DATE" ]]; then
             echo "Last completed show date is $LAST_COMPLETED_DATE. Generating predictions for this date."
-            uv run python scripts/generate_predictions.py --band ${{ matrix.band }} --model notebook --date $LAST_COMPLETED_DATE
-            uv run python scripts/generate_predictions.py --band ${{ matrix.band }} --model deal --date $LAST_COMPLETED_DATE
+            uv run python scripts/generate_predictions.py --band ${{ matrix.band }} --model notebook --date $LAST_COMPLETED_DATE --require-output
+            uv run python scripts/generate_predictions.py --band ${{ matrix.band }} --model deal --date $LAST_COMPLETED_DATE --require-output
           else
             echo "Could not determine last completed show date. Skipping predictions for it."
           fi
@@ -299,17 +299,9 @@ jobs:
           echo "::group::Running backtest for ${{ matrix.band }}"
           
           # Run backtest for last 100 shows to populate per-show accuracy
-          uv run python scripts/run_backtest.py --band ${{ matrix.band }} --model notebook --shows 100
-          uv run python scripts/run_backtest.py --band ${{ matrix.band }} --model deal --shows 50
+          uv run python scripts/run_backtest.py --band ${{ matrix.band }} --model notebook --shows 100 --require-results
+          uv run python scripts/run_backtest.py --band ${{ matrix.band }} --model deal --shows 50 --require-results
 
-          echo "::endgroup::"
-
-          echo "::group::Calculating aggregate accuracy for ${{ matrix.band }}"
-
-          # Calculate aggregate accuracy from the per-show data
-          uv run python scripts/save_aggregate_accuracy.py --band ${{ matrix.band }} --model notebook --shows 100
-          uv run python scripts/save_aggregate_accuracy.py --band ${{ matrix.band }} --model deal --shows 100
-          
           echo "::endgroup::"
 
       - name: Validate Accuracy Tables
@@ -318,6 +310,21 @@ jobs:
         run: |
           echo "::group::Validating accuracy tables for ${{ matrix.band }}"
           uv run python scripts/validate_accuracy_tables.py --band ${{ matrix.band }} --max-age-hours 72
+          echo "::endgroup::"
+
+      - name: Audit Supported Model Freshness
+        id: freshness_audit
+        if: always() && steps.preflight.outputs.should_run_collection == 'true'
+        run: |
+          echo "::group::Auditing supported-model freshness for ${{ matrix.band }}"
+
+          ARGS=(--band ${{ matrix.band }} --max-age-hours 48)
+          if [[ "${{ github.event.inputs.skip_accuracy }}" == "true" ]]; then
+            ARGS+=(--skip-accuracy)
+          fi
+
+          uv run python scripts/check_supported_model_freshness.py "${ARGS[@]}"
+
           echo "::endgroup::"
 
       - name: Write Band Status
@@ -345,6 +352,12 @@ jobs:
           MISSING_RECENT_SETLIST_COUNT: ${{ steps.preflight.outputs.missing_recent_setlist_count || '0' }}
           UPCOMING_SHOW_COUNT: ${{ steps.preflight.outputs.upcoming_show_count || '0' }}
           LAST_SUCCESSFUL_COLLECTION_AT: ${{ steps.preflight.outputs.last_successful_collection_at || '' }}
+          FRESHNESS_STATE: ${{ steps.freshness_audit.outputs.freshness_state || 'unknown' }}
+          STALE_PREDICTION_MODELS: ${{ steps.freshness_audit.outputs.stale_prediction_models || '' }}
+          STALE_ACCURACY_MODELS: ${{ steps.freshness_audit.outputs.stale_accuracy_models || '' }}
+          MAX_PREDICTION_AGE_HOURS: ${{ steps.freshness_audit.outputs.max_prediction_age_hours || '' }}
+          MAX_ACCURACY_AGE_HOURS: ${{ steps.freshness_audit.outputs.max_accuracy_age_hours || '' }}
+          FRESHNESS_REASON: ${{ steps.freshness_audit.outputs.freshness_reason || '' }}
         run: |
           mkdir -p .github/workflow-status
           python - <<'PY'
@@ -363,6 +376,19 @@ jobs:
               prediction_action = "skipped"
           else:
               prediction_action = os.environ.get("prediction_action", "pending")
+
+          def parse_model_list(value: str | None) -> list[str]:
+              if not value:
+                  return []
+              return [item.strip() for item in value.split(",") if item.strip()]
+
+          def parse_optional_float(value: str | None):
+              if value in (None, ""):
+                  return None
+              try:
+                  return float(value)
+              except ValueError:
+                  return None
 
           payload = {
               "band": os.environ["BAND"],
@@ -387,6 +413,12 @@ jobs:
               "fallback_available_missing_setlists": int(os.environ.get("FALLBACK_AVAILABLE_MISSING_SETLISTS", "0") or 0),
               "failure_reason": os.environ.get("FAILURE_REASON", ""),
               "accuracy_skipped": os.environ.get("ACCURACY_SKIPPED", "false") == "true",
+              "freshness_state": os.environ.get("FRESHNESS_STATE", "unknown"),
+              "stale_prediction_models": parse_model_list(os.environ.get("STALE_PREDICTION_MODELS")),
+              "stale_accuracy_models": parse_model_list(os.environ.get("STALE_ACCURACY_MODELS")),
+              "max_prediction_age_hours": parse_optional_float(os.environ.get("MAX_PREDICTION_AGE_HOURS")),
+              "max_accuracy_age_hours": parse_optional_float(os.environ.get("MAX_ACCURACY_AGE_HOURS")),
+              "freshness_reason": os.environ.get("FRESHNESS_REASON", ""),
           }
 
           path = f".github/workflow-status/{payload['band']}.json"
@@ -411,13 +443,67 @@ jobs:
           OUTCOME_CODE: ${{ steps.collection.outputs.outcome_code || steps.collection_idle.outputs.outcome_code || (job.status == 'success' && 'success' || 'failed_internal') }}
           MISSING_COUNT: ${{ steps.data_check.outputs.missing_count || '0' }}
           EXECUTION_MODE: ${{ steps.preflight.outputs.execution_mode || 'unknown' }}
+          FRESHNESS_STATE: ${{ steps.freshness_audit.outputs.freshness_state || 'unknown' }}
+          STALE_PREDICTION_MODELS: ${{ steps.freshness_audit.outputs.stale_prediction_models || '' }}
+          STALE_ACCURACY_MODELS: ${{ steps.freshness_audit.outputs.stale_accuracy_models || '' }}
+          MAX_PREDICTION_AGE_HOURS: ${{ steps.freshness_audit.outputs.max_prediction_age_hours || '' }}
+          MAX_ACCURACY_AGE_HOURS: ${{ steps.freshness_audit.outputs.max_accuracy_age_hours || '' }}
         run: |
           echo "### ${BAND^^}" >> $GITHUB_STEP_SUMMARY
           echo "- Execution mode: ${EXECUTION_MODE}" >> $GITHUB_STEP_SUMMARY
           echo "- State: ${WORKFLOW_STATE}" >> $GITHUB_STEP_SUMMARY
           echo "- Outcome: ${OUTCOME_CODE}" >> $GITHUB_STEP_SUMMARY
           echo "- Missing recent setlists: ${MISSING_COUNT}" >> $GITHUB_STEP_SUMMARY
+          echo "- Supported model freshness: ${FRESHNESS_STATE}" >> $GITHUB_STEP_SUMMARY
+          if [[ -n "${STALE_PREDICTION_MODELS}" ]]; then
+            echo "- Stale supported-model predictions: ${STALE_PREDICTION_MODELS}" >> $GITHUB_STEP_SUMMARY
+          fi
+          if [[ -n "${STALE_ACCURACY_MODELS}" ]]; then
+            echo "- Stale supported-model accuracy: ${STALE_ACCURACY_MODELS}" >> $GITHUB_STEP_SUMMARY
+          fi
+          if [[ -n "${MAX_PREDICTION_AGE_HOURS}" ]]; then
+            echo "- Max prediction age: ${MAX_PREDICTION_AGE_HOURS}h" >> $GITHUB_STEP_SUMMARY
+          fi
+          if [[ -n "${MAX_ACCURACY_AGE_HOURS}" ]]; then
+            echo "- Max accuracy age: ${MAX_ACCURACY_AGE_HOURS}h" >> $GITHUB_STEP_SUMMARY
+          fi
           echo "" >> $GITHUB_STEP_SUMMARY
+
+      - name: Enforce Supported Model Freshness
+        if: always() && steps.preflight.outputs.should_run_collection == 'true'
+        env:
+          BAND: ${{ matrix.band }}
+          WORKFLOW_STATE: ${{ steps.collection.outputs.workflow_state || steps.collection_idle.outputs.workflow_state || (job.status == 'success' && 'success' || 'failed') }}
+          FRESHNESS_STATE: ${{ steps.freshness_audit.outputs.freshness_state || 'unknown' }}
+          STALE_PREDICTION_MODELS: ${{ steps.freshness_audit.outputs.stale_prediction_models || '' }}
+          STALE_ACCURACY_MODELS: ${{ steps.freshness_audit.outputs.stale_accuracy_models || '' }}
+          FRESHNESS_REASON: ${{ steps.freshness_audit.outputs.freshness_reason || '' }}
+          ACCURACY_SKIPPED: ${{ github.event.inputs.skip_accuracy == 'true' }}
+        run: |
+          if [[ "${FRESHNESS_STATE}" != "stale" ]]; then
+            echo "Supported-model freshness state for ${BAND}: ${FRESHNESS_STATE}"
+            exit 0
+          fi
+
+          if [[ -n "${STALE_PREDICTION_MODELS}" ]]; then
+            if [[ "${WORKFLOW_STATE}" == "degraded" ]]; then
+              echo "::error::${BAND} degraded reuse exceeded the 48h prediction freshness window for supported models: ${STALE_PREDICTION_MODELS}. ${FRESHNESS_REASON}"
+            else
+              echo "::error::${BAND} regeneration completed but supported-model predictions remained stale: ${STALE_PREDICTION_MODELS}. ${FRESHNESS_REASON}"
+            fi
+            exit 1
+          fi
+
+          if [[ "${ACCURACY_SKIPPED}" != "true" && -n "${STALE_ACCURACY_MODELS}" ]]; then
+            if [[ "${WORKFLOW_STATE}" == "degraded" ]]; then
+              echo "::error::${BAND} degraded reuse exceeded the 48h accuracy freshness window for supported models: ${STALE_ACCURACY_MODELS}. ${FRESHNESS_REASON}"
+            else
+              echo "::error::${BAND} regeneration completed but supported-model accuracy remained stale: ${STALE_ACCURACY_MODELS}. ${FRESHNESS_REASON}"
+            fi
+            exit 1
+          fi
+
+          echo "Supported-model freshness reported stale, but no enforced stale surface remained."
 
   pipeline-summary:
     name: Pipeline Summary
@@ -472,15 +558,29 @@ jobs:
 
           has_failed = any(item.get("workflow_state") == "failed" for item in statuses)
           has_degraded = any(item.get("workflow_state") == "degraded" for item in statuses)
+          has_stale_freshness = any(item.get("freshness_state") == "stale" for item in statuses)
+          has_warning_freshness = any(item.get("freshness_state") == "warning" for item in statuses)
 
-          if has_failed:
+          if has_failed and has_stale_freshness:
+              print("⚠️ **One or more band pipelines failed, including supported-model freshness escalation.**")
+              print("")
+              print("Please check the failed band jobs plus the Supported Model Freshness and Band Run Health sections below.")
+          elif has_failed:
               print("⚠️ **One or more band pipelines failed.**")
               print("")
               print("Please check the failed band jobs and the run health table below.")
+          elif has_stale_freshness:
+              print("⚠️ **Supported-model freshness is stale for one or more bands.**")
+              print("")
+              print("Review the Supported Model Freshness section below even if collection degraded gracefully.")
           elif has_degraded:
               print("⚠️ **All band pipelines completed, but at least one band ran in degraded mode.**")
               print("")
               print("Review the band run health table below for partial upstream issues.")
+          elif has_warning_freshness:
+              print("⚠️ **One or more bands reused fresh predictions but skipped accuracy enforcement for this run.**")
+              print("")
+              print("Review the Supported Model Freshness section below for informational stale accuracy notes.")
           else:
               print("✅ **All band pipelines completed successfully.**")
           PY

@@ -61,9 +61,10 @@ def _prediction_rows(
     stale_predictions = stale_predictions or latest_predictions
 
     rows = {
-        "predictions_notebook": [
+        "predictions": [
             {
                 "band": "goose",
+                "model_slug": "notebook",
                 "model_version": "notebook_v1",
                 "reference_date": "2026-03-25",
                 "predicted_at": stale_predicted_at.isoformat(),
@@ -72,16 +73,16 @@ def _prediction_rows(
             },
             {
                 "band": "goose",
+                "model_slug": "notebook",
                 "model_version": "notebook_v1",
                 "reference_date": "2026-03-20",
                 "predicted_at": latest_predicted_at.isoformat(),
                 "top_k": len(latest_predictions),
                 "predictions": json.dumps(latest_predictions),
             },
-        ],
-        "predictions_deal": [
             {
                 "band": "goose",
+                "model_slug": "deal",
                 "model_version": "deal_v2",
                 "reference_date": "2026-03-25",
                 "predicted_at": stale_predicted_at.isoformat(),
@@ -90,6 +91,7 @@ def _prediction_rows(
             },
             {
                 "band": "goose",
+                "model_slug": "deal",
                 "model_version": "deal_v2",
                 "reference_date": "2026-03-20",
                 "predicted_at": latest_predicted_at.isoformat(),
@@ -134,8 +136,8 @@ def test_validate_predictions_fails_on_invalid_latest_json(monkeypatch, capsys):
     rows = _prediction_rows(
         latest_predictions=[{"song_name": "Fresh Song"}], latest_predicted_at=now
     )
-    rows["predictions_notebook"][1]["predictions"] = "{bad json"
-    rows["predictions_deal"][1]["predictions"] = "{bad json"
+    rows["predictions"][1]["predictions"] = "{bad json"
+    rows["predictions"][3]["predictions"] = "{bad json"
     monkeypatch.setattr(
         "scripts.validate_prediction_tables.get_supabase_client",
         lambda: _ClientStub(rows),
@@ -154,8 +156,8 @@ def test_validate_predictions_fails_on_invalid_latest_json(monkeypatch, capsys):
 
 def test_validate_predictions_warns_on_missing_latest_predicted_at(monkeypatch, capsys):
     rows = _prediction_rows(latest_predictions=[{"song_name": "Fresh Song"}])
-    rows["predictions_notebook"][1]["predicted_at"] = None
-    rows["predictions_deal"][1]["predicted_at"] = None
+    rows["predictions"][1]["predicted_at"] = None
+    rows["predictions"][3]["predicted_at"] = None
     monkeypatch.setattr(
         "scripts.validate_prediction_tables.get_supabase_client",
         lambda: _ClientStub(rows),
@@ -332,25 +334,25 @@ def test_validate_predictions_ignores_stale_old_projection_outside_window(
 def test_validate_predictions_can_scope_to_selected_model(monkeypatch, capsys):
     now = datetime.now(timezone.utc)
     rows = {
-        "predictions_notebook": [
+        "predictions": [
             {
                 "band": "goose",
+                "model_slug": "notebook",
                 "model_version": "notebook_v1",
                 "reference_date": "2026-03-25",
                 "predicted_at": (now - timedelta(days=10)).isoformat(),
                 "top_k": 1,
                 "predictions": json.dumps([{"song_name": "Old Song"}]),
-            }
-        ],
-        "predictions_deal": [
+            },
             {
                 "band": "goose",
+                "model_slug": "deal",
                 "model_version": "deal_v2",
                 "reference_date": "2026-03-27",
                 "predicted_at": now.isoformat(),
                 "top_k": 1,
                 "predictions": json.dumps([{"song_name": "Fresh Deal Song"}]),
-            }
+            },
         ],
     }
     monkeypatch.setattr(
@@ -376,5 +378,5 @@ def test_validate_predictions_can_scope_to_selected_model(monkeypatch, capsys):
 
     assert failures == 0
     captured = capsys.readouterr().out
-    assert "predictions_deal" in captured
-    assert "predictions_notebook" not in captured
+    assert "deal_v2" in captured
+    assert "notebook_v1" not in captured

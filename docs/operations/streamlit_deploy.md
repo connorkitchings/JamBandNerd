@@ -1,33 +1,21 @@
-# Streamlit Deployment
+# Streamlit Notes (Historical)
 
-The Streamlit app is a legacy internal surface retained for debugging and
-historical comparison only. It is no longer part of the active product path.
+JamBandNerd no longer ships a maintained Streamlit application in the current
+repo tree. This page is kept only so older logs and historical docs that refer
+to Streamlit still have a landing page.
 
 ## Current Status
 
-- preferred public surface: `apps/web`
-- Streamlit remains available for internal legacy/debugging use only
-- new feature work should target the website unless there is a specific legacy
-  need
-
-## Local Run
-
-Run the website first when possible:
-
-```bash
-npm install
-npm run dev:web
-```
-
-Use the Streamlit app only when you specifically need the legacy surface for
-debugging or historical comparison.
+- maintained public surface: `apps/web`
+- no maintained Streamlit code surface exists under `src/jambandnerd/web`
+- new product or debugging work should target the website and shared pipeline
+  paths
 
 ## Guidance
 
-- do not treat Streamlit as the canonical product architecture
-- do not add Streamlit-only data contracts
-- keep Streamlit compatible with the existing Supabase prediction and accuracy
-  tables only as long as the legacy surface remains in the repo
+- do not treat Streamlit as a supported runtime target
+- do not add Streamlit-only data contracts or docs
+- treat older Streamlit references in historical logs as archival context only
 
-For the active product direction, see
+For current product and operations guidance, use
 [Website Delivery Strategy](website_delivery.md).

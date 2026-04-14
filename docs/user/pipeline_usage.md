@@ -34,11 +34,10 @@ Primary local website commands:
 
 ```bash
 npm install
+npx playwright install --with-deps chromium
 npm run dev:web
-npm run build:web
+npm run verify:web
 ```
-
-The legacy Streamlit app remains available only for internal legacy/debugging use. Its run instructions live in `docs/operations/streamlit_deploy.md`, not in the main pipeline workflow.
 
 ## Advanced Usage: Individual Scripts
 
@@ -46,6 +45,6 @@ For debugging or more granular control, you can run individual pipeline componen
 
 - **Data Collection**: `run_goose_collection.py`, `run_phish_collection.py`, `run_wsp_collection.py`, `run_eggy_collection.py`, `run_billy_collection.py`, `run_um_collection.py`
 - **Prediction Generation**: `scripts/generate_predictions.py --band <band> --model <model>`
-- **Backtesting & Accuracy**: `scripts/run_backtest.py --band <band> --model <model>`, `scripts/save_aggregate_accuracy.py --band <band> --model <model>`
+- **Backtesting & Accuracy**: `scripts/run_backtest.py --band <band> --model <model>`
 
 Refer to the source code of these scripts for their specific command-line arguments.
