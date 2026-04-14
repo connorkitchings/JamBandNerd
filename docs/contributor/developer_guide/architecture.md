@@ -109,11 +109,11 @@ table/version mapping, serializer, and orchestration capability flags.
 
 Three models are registered:
 
-| Model | Slug | Status | Prediction Table |
-|-------|------|--------|-----------------|
-| Notebook | `notebook` | Web promoted | `predictions_notebook` |
-| CK+ | `ckplus` | Retired baseline | `predictions_ckplus` |
-| Deal | `deal` | Web promoted | `predictions_deal` |
+| Model | Slug | Status | Canonical Storage |
+|-------|------|--------|-------------------|
+| Notebook | `notebook` | Web promoted | `predictions` + `model_slug=notebook` |
+| CK+ | `ckplus` | Retired baseline | Historical rows retained in `predictions` + `prediction_songs` |
+| Deal | `deal` | Web promoted | `predictions` + `model_slug=deal` |
 
 New prediction models are added through the registry workflow (see
 `docs/contributor/model_development.md`):
@@ -122,8 +122,9 @@ New prediction models are added through the registry workflow (see
 3. Add one `ModelDefinition` entry in the registry
 4. Optionally add frontend presentation metadata in website config
 
-All models write to `prediction_songs` via `replace_prediction_projection()`, making
-them automatically available to the website's analytics and explorer routes.
+All models write canonical run-level rows to the shared `predictions` table and
+project song-level rows through `replace_prediction_projection()`, making them
+automatically available to the website's analytics and explorer routes.
 
 ## Non-Negotiable Rules
 

@@ -15,7 +15,8 @@ The primary optimization is the consolidation of 14+ scripts into a few core orc
 - `scripts/run_optimized_pipeline.py`: The main entry point for running the end-to-end pipeline locally. It orchestrates calls to the other consolidated scripts.
 - `scripts/generate_predictions.py`: A single script to generate predictions for any band/model combination.
 - `scripts/run_backtest.py`: A single script to run historical backtests and populate per-show accuracy data.
-- `scripts/save_aggregate_accuracy.py`: A single script to calculate and save aggregate accuracy metrics from the backtest results.
+- `scripts/rebuild_prediction_songs.py`: A projection rebuild tool for regenerating
+  `prediction_songs` from canonical prediction rows.
 
 ## GitHub Actions Optimization
 
@@ -38,12 +39,12 @@ jobs:
       - name: Run Data Collection
         run: python scripts/run_${{ matrix.band }}_collection.py
 
-      - name: Generate Predictions (Notebook & CK+)
+      - name: Generate Predictions (Notebook & Deal)
         run: |
           python scripts/generate_predictions.py --band ${{ matrix.band }} --model notebook
-          python scripts/generate_predictions.py --band ${{ matrix.band }} --model ckplus
+          python scripts/generate_predictions.py --band ${{ matrix.band }} --model deal
 
-      - name: Run Backtest and Calculate Aggregate Accuracy
+      - name: Run Backtest
         run: |
           python scripts/run_backtest.py --band ${{ matrix.band }} --model notebook --shows 100
           # ... and so on
@@ -51,6 +52,9 @@ jobs:
 
 ## Performance and Efficiency
 
-- **Efficient Accuracy Calculation**: The `save_aggregate_accuracy.py` script now reads from the `accuracy_per_show` table instead of re-running predictions. This avoids redundant, computationally expensive work and makes the final accuracy step much faster.
+- **Simplified Accuracy Contract**: The active pipeline writes canonical
+  per-show metrics to `accuracy_per_show` and validates replay lineage from
+  `historical_prediction_runs`. Aggregate summary tables are no longer part of
+  the active write path.
 - **Data Reuse**: The local `run_optimized_pipeline.py` script was the inspiration for the new design, and it still provides an efficient way to run the entire process locally by loading data once and reusing it for multiple models.
 - **Robust Error Handling**: The GitHub Actions workflow is configured with `fail-fast: false`, so a failure in one band's pipeline will not cancel the others.

@@ -351,9 +351,9 @@ def replace_prediction_projection(
 ) -> None:
     """Replace the per-song projection for a canonical prediction row.
 
-    ``prediction_songs`` is a derived projection of the canonical prediction
-    tables (``predictions_notebook``, ``predictions_ckplus``).  It is fully
-    rebuildable via ``scripts/rebuild_prediction_songs.py``.
+    ``prediction_songs`` is a derived projection of the canonical unified
+    ``predictions`` table. It is fully rebuildable via
+    ``scripts/rebuild_prediction_songs.py``.
 
     The delete-then-insert pattern prevents duplicate rows for the *current*
     ``reference_date`` but does not remove rows from older dates.  Stale rows

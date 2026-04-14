@@ -13,7 +13,7 @@ The registry controls:
 
 - model slug and display name
 - predictor class instantiation
-- model version and legacy prediction table mapping
+- model version and canonical prediction storage metadata
 - pipeline/backfill/validation/web inclusion flags
 - lifecycle stage, readiness windows, and web visibility state
 - prediction serialization function
@@ -76,7 +76,6 @@ evidence is documented:
 - `enabled_for_pipeline=False`
 - `enabled_for_backfill=False`
 - `enabled_for_accuracy_validation=False`
-- `enabled_for_aggregate_accuracy=False`
 - `enabled_for_web=True` only when the website data/query surfaces should be
   capable of reading the model. This does **not** mean the model is visible in
   the product yet.
@@ -95,7 +94,7 @@ This workflow is responsible for:
 - comparison evidence generation
 - local snapshot export for offline historical scoring
 - historical canonical prediction + replay lineage publishing
-- aggregate accuracy generation
+- per-show accuracy publication through `accuracy_per_show`
 - backend readiness validation
 
 Use `--phase report-only` to inspect the current state without publishing.

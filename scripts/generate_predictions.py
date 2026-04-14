@@ -175,9 +175,9 @@ def generate_predictions(
         f"{log_prefix} Generated {len(predictions_list)} predictions. Saving to {table_name}..."
     )
     # Two-step write sequence:
-    # 1. Upsert the canonical JSON row (predictions_notebook / predictions_ckplus).
+    # 1. Upsert the canonical JSON row in the unified predictions table.
     #    This is the source-of-truth prediction record keyed on
-    #    (band, reference_date, model_version).
+    #    (band, model_slug, reference_date, model_version).
     # 2. Replace the derived prediction_songs projection for the same key.
     #    prediction_songs is a flat per-song table consumed by the website.
     #    The replace call also triggers stale-row cleanup for older

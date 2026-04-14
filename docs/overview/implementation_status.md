@@ -1,6 +1,6 @@
 # JamBandNerd Implementation Status
 
-**Last Updated**: 2026-04-13
+**Last Updated**: 2026-04-14
 **Project Version**: 0.2.1
 
 ## Overall Status
@@ -21,12 +21,12 @@ JamBandNerd has a production-ready website-first product surface and a productio
 - In-memory transforms with `reference_date` protection
 - Notebook and Deal promoted prediction models
 - CK+ retained as a retired historical baseline with stored historical outputs
-- Backtesting and rolling accuracy aggregation
+- Backtesting with replay lineage through `historical_prediction_runs`
 - Unified `show_id` convention across all bands (Phish migration complete)
 
 ### Prediction Storage
 
-- Canonical JSON prediction tables (`predictions_notebook`, `predictions_ckplus`, `predictions_deal`)
+- Canonical JSON prediction rows in unified `predictions`
 - Derived per-song projection (`prediction_songs`) for website reads
 - Automatic stale-row cleanup in `replace_prediction_projection()`
 - Rebuildable projection via `scripts/rebuild_prediction_songs.py`
