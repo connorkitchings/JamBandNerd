@@ -8,13 +8,11 @@ normalizes responses to the raw table schemas, and performs upserts into
 from __future__ import annotations
 
 import argparse
-import hashlib
-import json
 import logging
 import os
 import sys
 from datetime import datetime, timezone
-from typing import Any, Dict, Iterable, List, Optional
+from typing import List, Optional
 
 import pandas as pd
 
@@ -24,6 +22,12 @@ sys.path.insert(0, project_root)
 
 from scripts.common import ensure_source_reachable
 from src.jambandnerd.data_collection.phish.collector import PhishCollector
+from src.jambandnerd.data_collection.phish.normalizer import (
+    normalize_setlists,
+    normalize_shows,
+    normalize_songs,
+    normalize_venues,
+)
 from src.jambandnerd.db.connection import get_supabase_client
 from src.jambandnerd.db.operations import (
     upsert_dataframe,
@@ -33,166 +37,6 @@ from src.jambandnerd.db.operations import (
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
-
-
-def _compute_source_hash(record: Dict[str, Any]) -> str:
-    """Compute a deterministic hash of a JSON-serializable record."""
-    payload = json.dumps(record, sort_keys=True, ensure_ascii=False).encode("utf-8")
-    return hashlib.sha256(payload).hexdigest()
-
-
-def _normalize_songs(raw: Iterable[Dict[str, Any]]) -> pd.DataFrame:
-    """Normalize songs to `phish_songs_raw` schema."""
-    now = datetime.now(timezone.utc).isoformat()
-    normalized = [
-        {
-            "api_song_id": item.get("songid"),
-            "song_name": item.get("song"),
-            "slug": item.get("slug"),
-            "abbreviation": item.get("abbr"),
-            "artist": item.get("artist"),
-            "debut_date": item.get("debut"),
-            "last_played_date": item.get("last_played"),
-            "times_played": item.get("times_played"),
-            "gap": item.get("gap"),
-            "last_permalink": item.get("last_permalink"),
-            "debut_permalink": item.get("debut_permalink"),
-            "source_hash": _compute_source_hash(item),
-            "created_at": now,
-        }
-        for item in raw
-        if item.get("songid")
-    ]
-    df = pd.DataFrame(normalized)
-    df.drop_duplicates(subset=["api_song_id"], keep="first", inplace=True)
-    return df
-
-
-def _normalize_shows(raw: Iterable[Dict[str, Any]]) -> pd.DataFrame:
-    """Normalize shows to `phish_shows_raw` schema."""
-    now = datetime.now(timezone.utc).isoformat()
-    normalized = [
-        {
-            "show_id": item.get("showid"),
-            "show_year": item.get("showyear"),
-            "show_month": item.get("showmonth"),
-            "show_day": item.get("showday"),
-            "show_date": item.get("showdate"),
-            "permalink": item.get("permalink"),
-            "exclude_from_stats": item.get("exclude_from_stats"),
-            "api_venue_id": item.get("venueid"),
-            "setlist_notes": item.get("setlist_notes"),
-            "venue_name": item.get("venue"),
-            "venue_city": item.get("city"),
-            "venue_state": item.get("state"),
-            "venue_country": item.get("country"),
-            "api_artist_id": item.get("artistid"),
-            "artist_name": item.get("artist_name"),
-            "api_tour_id": item.get("tourid"),
-            "tour_name": item.get("tour_name"),
-            "api_created_at": item.get("created_at"),
-            "api_updated_at": item.get("updated_at"),
-            "source_hash": _compute_source_hash(item),
-            "created_at": now,
-        }
-        for item in raw
-        if item.get("showid")
-    ]
-    df = pd.DataFrame(normalized)
-    if not df.empty:
-        df["api_artist_id"] = pd.to_numeric(
-            df["api_artist_id"], errors="coerce"
-        ).astype("Int64")
-        df["api_tour_id"] = pd.to_numeric(df["api_tour_id"], errors="coerce").astype(
-            "Int64"
-        )
-    return df
-
-
-def _normalize_venues(raw: Iterable[Dict[str, Any]]) -> pd.DataFrame:
-    """Normalize venues to `phish_venues_raw` schema."""
-    now = datetime.now(timezone.utc).isoformat()
-    venues = {}
-    for item in raw:
-        venue_id = item.get("venueid")
-        if venue_id and venue_id not in venues:
-            venues[venue_id] = {
-                "api_venue_id": venue_id,
-                "venue_name": item.get("venue"),
-                "venue_city": item.get("city"),
-                "venue_state": item.get("state"),
-                "venue_country": item.get("country"),
-                "source_hash": _compute_source_hash(item),
-                "created_at": now,
-            }
-    df = pd.DataFrame(list(venues.values()))
-    df.drop_duplicates(subset=["api_venue_id"], keep="first", inplace=True)
-    return df
-
-
-def _normalize_setlists(raw: Iterable[Dict[str, Any]]) -> pd.DataFrame:
-    """Normalize setlists to `phish_setlists_raw` schema."""
-
-    def _to_bool(value: Any) -> bool:
-        if value is None:
-            return False
-        if isinstance(value, bool):
-            return value
-        if isinstance(value, (int, float)):
-            return value != 0
-        s = str(value).strip().lower()
-        if s in {"true", "t", "yes", "y"}:
-            return True
-        if s in {"false", "f", "no", "n", ""}:
-            return False
-        # Numeric strings like "0", "1", "2" → True if > 0
-        if s.isdigit():
-            try:
-                return int(s) > 0
-            except Exception:
-                return False
-        return bool(s)
-
-    # Use a naive timestamp string compatible with Postgres timestamp without time zone
-    now = datetime.now(timezone.utc).isoformat()
-    normalized_rows: List[Dict[str, Any]] = []
-    for item in raw:
-        if not item.get("uniqueid"):
-            continue
-        row = {
-            "api_unique_id": item.get("uniqueid"),
-            "show_id": item.get("showid"),
-            "show_date": item.get("showdate"),
-            "permalink": item.get("permalink"),
-            "api_song_id": item.get("songid"),
-            "song_name": item.get("song"),
-            "set_number": item.get("set"),
-            "position": item.get("position"),
-            "transition": item.get("trans_mark"),
-            "is_reprise": _to_bool(item.get("isreprise")),
-            "is_jam": _to_bool(item.get("isjam")),
-            "is_jam_chart": _to_bool(item.get("isjamchart")),
-            "track_time": item.get("tracktime"),
-            "gap": item.get("gap"),
-            "is_original": _to_bool(item.get("is_original")),
-            "footnote": item.get("footnote"),
-            "source_hash": _compute_source_hash(item),
-            "created_at": now,
-        }
-        normalized_rows.append(row)
-
-    df = pd.DataFrame(normalized_rows)
-    if not df.empty:
-        # Enforce numeric types where appropriate
-        for col in ["set_number", "song_position", "position", "gap", "track_time"]:
-            if col in df.columns:
-                df[col] = pd.to_numeric(df[col], errors="coerce").astype("Int64")
-        # Deduplicate based on unique setlist entry
-        initial_rows = len(df)
-        df.drop_duplicates(subset=["api_unique_id"], keep="first", inplace=True)
-        if len(df) < initial_rows:
-            logging.info(f"Dropped {initial_rows - len(df)} duplicate setlist entries.")
-    return df
 
 
 def _clear_table(table_name: str) -> None:
@@ -276,13 +120,13 @@ def run_phish_collection(
         upsert_table(
             "phish_songs_raw",
             collector.collect_songs,
-            _normalize_songs,
+            normalize_songs,
             ["api_song_id"],
         )
 
     # Shows provide data for venues and drive setlist selection
     shows_data = collector.collect_shows()
-    shows_df = _normalize_shows(shows_data)
+    shows_df = normalize_shows(shows_data)
 
     # Optional year-based filtering for setlists
     filtered_shows_df = shows_df.copy()
@@ -306,7 +150,7 @@ def run_phish_collection(
         upsert_dataframe("phish_shows_raw", shows_df, conflict_columns=["show_id"])
         logging.info(f"Upserted {len(shows_df)} shows into phish_shows_raw.")
         if not only_setlists:
-            venues_df = _normalize_venues(shows_data)
+            venues_df = normalize_venues(shows_data)
             if not venues_df.empty:
                 upsert_dataframe(
                     "phish_venues_raw", venues_df, conflict_columns=["api_venue_id"]
@@ -318,7 +162,7 @@ def run_phish_collection(
     upsert_table(
         "phish_setlists_raw",
         lambda: collector.collect_setlists(show_ids=show_ids),
-        _normalize_setlists,
+        normalize_setlists,
         ["api_unique_id"],
         required_columns=["set_number", "position"],
     )

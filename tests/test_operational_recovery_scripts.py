@@ -37,11 +37,6 @@ def test_rebuild_band_outputs_runs_predictions_accuracy_and_validation(monkeypat
     )
     monkeypatch.setattr(
         rebuild_derived_data,
-        "save_aggregate_accuracy",
-        lambda **kwargs: events.append(("aggregate", kwargs["model"])),
-    )
-    monkeypatch.setattr(
-        rebuild_derived_data,
         "validate_predictions",
         lambda bands, max_age_hours: events.append(("validate", bands[0])) or 0,
     )
@@ -60,17 +55,14 @@ def test_rebuild_band_outputs_runs_predictions_accuracy_and_validation(monkeypat
         start=None,
         end=None,
         recent_shows=None,
-        aggregate_shows=100,
         max_age_hours=72,
     )
 
     assert events == [
         ("predict", "notebook"),
         ("backtest", "notebook"),
-        ("aggregate", "notebook"),
         ("predict", "deal"),
         ("backtest", "deal"),
-        ("aggregate", "deal"),
         ("validate", "goose"),
         ("validate_accuracy", "goose"),
     ]
@@ -83,11 +75,6 @@ def test_rebuild_band_outputs_skips_validation_when_predictions_skipped(monkeypa
         rebuild_derived_data,
         "run_backtest",
         lambda **kwargs: events.append(("backtest", kwargs["model"])),
-    )
-    monkeypatch.setattr(
-        rebuild_derived_data,
-        "save_aggregate_accuracy",
-        lambda **kwargs: events.append(("aggregate", kwargs["model"])),
     )
     monkeypatch.setattr(
         rebuild_derived_data,
@@ -109,15 +96,12 @@ def test_rebuild_band_outputs_skips_validation_when_predictions_skipped(monkeypa
         start=None,
         end=None,
         recent_shows=50,
-        aggregate_shows=50,
         max_age_hours=72,
     )
 
     assert events == [
         ("backtest", "notebook"),
-        ("aggregate", "notebook"),
         ("backtest", "deal"),
-        ("aggregate", "deal"),
         ("validate_accuracy", "goose"),
     ]
 
@@ -141,11 +125,6 @@ def test_rebuild_band_outputs_clears_one_model_at_a_time(monkeypatch):
         lambda **kwargs: events.append(("backtest", kwargs["model"])),
     )
     monkeypatch.setattr(
-        rebuild_derived_data,
-        "save_aggregate_accuracy",
-        lambda **kwargs: events.append(("aggregate", kwargs["model"])),
-    )
-    monkeypatch.setattr(
         rebuild_derived_data, "validate_predictions", lambda *args, **kwargs: 0
     )
     monkeypatch.setattr(
@@ -160,19 +139,16 @@ def test_rebuild_band_outputs_clears_one_model_at_a_time(monkeypatch):
         start=None,
         end=None,
         recent_shows=25,
-        aggregate_shows=25,
         max_age_hours=72,
     )
 
-    assert events[:8] == [
+    assert events[:6] == [
         ("clear", "notebook"),
         ("predict", "notebook"),
         ("backtest", "notebook"),
-        ("aggregate", "notebook"),
         ("clear", "deal"),
         ("predict", "deal"),
         ("backtest", "deal"),
-        ("aggregate", "deal"),
     ]
 
 
@@ -207,13 +183,12 @@ def test_clear_existing_outputs_deletes_selected_rows(monkeypatch):
         clear_accuracy=True,
     )
 
-    assert ("predictions_notebook", "band", "goose") in events
-    assert ("predictions_deal", "band", "goose") in events
+    assert ("predictions", "band", "goose") in events
+    assert ("predictions", "model_slug", "notebook") in events
+    assert ("predictions", "model_slug", "deal") in events
     assert ("prediction_songs", "band", "goose") in events
     assert ("historical_prediction_runs", "band", "goose") in events
     assert ("accuracy_per_show", "band", "goose") in events
-    assert ("notebook_accuracy", "band", "goose") in events
-    assert ("accuracy_deal", "band", "goose") in events
 
 
 def test_rebuild_prediction_songs_bounded_window_rebuilds_multiple_dates(monkeypatch):
@@ -299,9 +274,10 @@ def test_rebuild_prediction_songs_bounded_window_rebuilds_multiple_dates(monkeyp
             return _QueryStub(name, self.rows_by_table)
 
     rows_by_table = {
-        "predictions_notebook": [
+        "predictions": [
             {
                 "band": "goose",
+                "model_slug": "notebook",
                 "model_version": "notebook_v1",
                 "reference_date": "2026-04-01",
                 "predicted_at": "2026-04-08T19:30:01+00:00",
@@ -310,6 +286,7 @@ def test_rebuild_prediction_songs_bounded_window_rebuilds_multiple_dates(monkeyp
             },
             {
                 "band": "goose",
+                "model_slug": "notebook",
                 "model_version": "notebook_v1",
                 "reference_date": "2026-04-02",
                 "predicted_at": "2026-04-08T19:30:02+00:00",
@@ -475,9 +452,10 @@ def test_rebuild_prediction_songs_bounded_window_deletes_orphans(monkeypatch):
             return _QueryStub(name, self.rows_by_table)
 
     rows_by_table = {
-        "predictions_notebook": [
+        "predictions": [
             {
                 "band": "goose",
+                "model_slug": "notebook",
                 "model_version": "notebook_v1",
                 "reference_date": "2026-04-01",
                 "predicted_at": "2026-04-08T19:30:01+00:00",
@@ -597,9 +575,10 @@ def test_rebuild_prediction_songs_legacy_mode_rebuilds_latest_only(monkeypatch):
             return _QueryStub(name, self.rows_by_table)
 
     rows_by_table = {
-        "predictions_notebook": [
+        "predictions": [
             {
                 "band": "goose",
+                "model_slug": "notebook",
                 "model_version": "notebook_v1",
                 "reference_date": "2026-04-01",
                 "predicted_at": "2026-04-08T19:30:01+00:00",
@@ -608,6 +587,7 @@ def test_rebuild_prediction_songs_legacy_mode_rebuilds_latest_only(monkeypatch):
             },
             {
                 "band": "goose",
+                "model_slug": "notebook",
                 "model_version": "notebook_v1",
                 "reference_date": "2026-04-02",
                 "predicted_at": "2026-04-08T19:30:02+00:00",

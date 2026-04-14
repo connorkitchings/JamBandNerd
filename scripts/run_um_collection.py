@@ -8,8 +8,6 @@ them into the Supabase raw tables (`um_*_raw`).
 from __future__ import annotations
 
 import argparse
-import hashlib
-import json
 import os
 import sys
 from datetime import date, datetime, timedelta
@@ -24,6 +22,10 @@ if project_root not in sys.path:
 
 from scripts.common import ensure_source_reachable  # type: ignore  # noqa: E402
 from src.jambandnerd.data_collection.um.collector import UmCollector  # noqa: E402
+from src.jambandnerd.data_collection.um.normalizer import (  # noqa: E402
+    attach_source_hash,
+    normalize_setlists,
+)
 from src.jambandnerd.data_collection.um.upcoming import (  # noqa: E402
     UpcomingShowsError,
     collect_upcoming_shows,
@@ -33,28 +35,6 @@ from src.jambandnerd.db.operations import (  # noqa: E402
     dedupe_dataframe_on_conflict,
     validate_and_upsert_dataframe,
 )
-
-
-def _hash_row(record: Dict[str, Any]) -> str:
-    """Compute a deterministic hash for a record, handling NaN values."""
-
-    cleaned = {}
-    for key, value in record.items():
-        if value is None:
-            cleaned[key] = None
-            continue
-        try:
-            if pd.isna(value):
-                cleaned[key] = None
-                continue
-        except TypeError:
-            pass
-        cleaned[key] = value
-
-    payload = json.dumps(
-        cleaned, sort_keys=True, ensure_ascii=False, default=str
-    ).encode("utf-8")
-    return hashlib.sha256(payload).hexdigest()
 
 
 def _parse_date(value: Optional[str]) -> Optional[date]:
@@ -195,17 +175,6 @@ def _shows_to_process(
     return shows
 
 
-def _compute_source_hash(df: pd.DataFrame) -> pd.DataFrame:
-    """Attach source hash column to a DataFrame."""
-
-    if df.empty:
-        return df
-    df = df.copy()
-    df = df.where(pd.notnull(df), None)
-    df["source_hash"] = df.apply(lambda row: _hash_row(row.to_dict()), axis=1)
-    return df
-
-
 def run_um_collection(
     *,
     skip_validation: bool = False,
@@ -224,7 +193,7 @@ def run_um_collection(
     if songs_data:
         songs_df = pd.DataFrame(songs_data)
         songs_df = songs_df.drop_duplicates(subset=["song_name"]).reset_index(drop=True)
-        songs_df = _compute_source_hash(songs_df)
+        songs_df = attach_source_hash(songs_df)
         _upsert(
             "um_songs_raw",
             songs_df,
@@ -239,7 +208,7 @@ def run_um_collection(
     venues_data = collector.collect_venues()
     if venues_data:
         venues_df = pd.DataFrame(venues_data)
-        venues_df = _compute_source_hash(venues_df)
+        venues_df = attach_source_hash(venues_df)
         _upsert(
             "um_venues_raw",
             venues_df,
@@ -273,7 +242,7 @@ def run_um_collection(
         return
 
     shows_df = pd.DataFrame(shows_data)
-    shows_df = _compute_source_hash(shows_df)
+    shows_df = attach_source_hash(shows_df)
     _upsert(
         "um_shows_raw",
         shows_df,
@@ -292,29 +261,7 @@ def run_um_collection(
         print("No UM setlists scraped.")
         return
 
-    setlists_df = pd.DataFrame(setlists_data)
-
-    # Normalize numeric/boolean columns
-    numeric_columns = {
-        "set_sequence": "Int64",
-        "song_position": "Int64",
-        "show_position": "Int64",
-    }
-    for column, dtype in numeric_columns.items():
-        if column in setlists_df.columns:
-            setlists_df[column] = pd.to_numeric(
-                setlists_df[column], errors="coerce"
-            ).astype(dtype)
-
-    bool_columns = ["is_segue", "encore"]
-    for column in bool_columns:
-        if column in setlists_df.columns:
-            setlists_df[column] = setlists_df[column].fillna(False).astype(bool)
-
-    if "set_label" in setlists_df.columns and "set_number" not in setlists_df.columns:
-        setlists_df["set_number"] = setlists_df["set_label"].fillna("").astype(str)
-
-    setlists_df = _compute_source_hash(setlists_df)
+    setlists_df = normalize_setlists(pd.DataFrame(setlists_data))
     _upsert(
         "um_setlists_raw",
         setlists_df,
@@ -332,7 +279,7 @@ def run_um_collection(
     else:
         if upcoming_records:
             upcoming_df = pd.DataFrame(upcoming_records)
-            upcoming_df = _compute_source_hash(upcoming_df)
+            upcoming_df = attach_source_hash(upcoming_df)
             _upsert(
                 "um_upcoming_shows",
                 upcoming_df,

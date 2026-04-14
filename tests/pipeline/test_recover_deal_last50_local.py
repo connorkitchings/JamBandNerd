@@ -75,13 +75,6 @@ def test_upload_band_bundle_writes_predictions_then_persists_runs(monkeypatch):
         "persist_scored_run_records",
         lambda scored_runs: captured.update({"persisted_runs": list(scored_runs)}),
     )
-    monkeypatch.setattr(
-        module,
-        "save_aggregate_accuracy",
-        lambda band, model, shows: captured.update(
-            {"aggregate": {"band": band, "model": model, "shows": shows}}
-        ),
-    )
 
     module.upload_band_bundle(bundle)
 
@@ -90,7 +83,6 @@ def test_upload_band_bundle_writes_predictions_then_persists_runs(monkeypatch):
     assert len(captured["rows"]) == 1
     assert captured["rows"][0]["reference_date"] == "2024-01-19"
     assert len(captured["persisted_runs"]) == 2
-    assert captured["aggregate"] == {"band": "wsp", "model": "deal", "shows": 50}
 
 
 def test_recovery_skips_complete_band(monkeypatch, tmp_path):
