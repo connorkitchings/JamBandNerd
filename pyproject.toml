@@ -23,22 +23,22 @@ dependencies = [
     "psycopg2-binary",
     "typer",
     "tqdm",
-    "pytest>=8.4.1",
-    "playwright>=1.40.0",
 ]
 
 [project.optional-dependencies]
 dev = [
   "ruff",
   "black",
-  "pytest",
+  "pytest>=8.4.1",
   "mypy",
-  "pytest-cov"
+  "pytest-cov",
+  "playwright>=1.40.0",
 ]
 docs = [
   "mkdocs",
   "mkdocs-material",
-  "pymdown-extensions"
+  "mkdocstrings[python]",
+  "pymdown-extensions",
 ]
 
 [project.scripts]

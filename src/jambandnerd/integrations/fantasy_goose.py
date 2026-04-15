@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import os
 import re
 from dataclasses import dataclass, field
@@ -16,6 +17,8 @@ from dotenv import load_dotenv
 from playwright.async_api import Browser, Page, async_playwright
 
 from jambandnerd.db.operations import fetch_prediction_songs_for_date
+
+logger = logging.getLogger(__name__)
 
 FANTASY_GOOSE_BASE_URL = "https://www.fantasygoose.com"
 ENTRY_CREATE_URL = f"{FANTASY_GOOSE_BASE_URL}/entry/create"
@@ -493,9 +496,9 @@ async def run_fantasy_goose(
                     break
 
             if not found:
-                print(f"Post-submit URL: {submit_url}")
-                print(f"Post-submit body (first 500 chars): {submit_body[:500]}")
-                print(f"My Picks body (first 500 chars): {mypicks_text[:500]}")
+                logger.warning("Post-submit URL: %s", submit_url)
+                logger.warning("Post-submit body (first 500 chars): %s", submit_body[:500])
+                logger.warning("My Picks body (first 500 chars): %s", mypicks_text[:500])
                 raise RuntimeError(
                     f"Fantasy Goose submission did not appear in My Picks "
                     f"after {FANTASY_GOOSE_VERIFICATION_RETRIES} attempts "

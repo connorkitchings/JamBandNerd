@@ -7,17 +7,29 @@ by strictly adhering to a `reference_date` cutoff.
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from datetime import date
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Tuple
 
 import pandas as pd
 
 from .normalization import sort_normalized_shows
 
+logger = logging.getLogger(__name__)
+
 
 def _stats_for_song(group: pd.DataFrame) -> pd.Series:
-    """Helper function to calculate historical stats for a single song."""
+    """Helper function to calculate historical stats for a single song.
+    
+    Args:
+        group: A pandas DataFrame containing all historical plays for a single song.
+               Must contain 'show_index' and 'show_date' columns.
+               
+    Returns:
+        A pandas Series containing aggregated statistical features (times_played,
+        avg_gap, std_gap, etc.) for the song.
+    """
     # Use unique show indices to avoid counting reprises/encores as separate plays
     plays_idx = sorted(group["show_index"].unique().tolist())
     gaps = [plays_idx[i] - plays_idx[i - 1] for i in range(1, len(plays_idx))]
@@ -56,7 +68,7 @@ class ModelData:
     recently_played_songs: List[str]
 
     # Diagnostic metadata.
-    diagnostics: Dict[str, any]
+    diagnostics: Dict[str, Any]
 
 
 def _compute_base_features(
@@ -70,17 +82,17 @@ def _compute_base_features(
     First-pass feature engineering.
     """
     if debug:
-        print("\n--- Debugging _compute_base_features ---")
-        print(f"Initial shows_df shape: {shows_df.shape}")
-        print(f"Initial setlists_df shape: {setlists_df.shape}")
-        print(f"Reference date: {reference_date}")
+        logger.debug("--- Debugging _compute_base_features ---")
+        logger.debug("Initial shows_df shape: %s", shows_df.shape)
+        logger.debug("Initial setlists_df shape: %s", setlists_df.shape)
+        logger.debug("Reference date: %s", reference_date)
 
     # 1. Set absolute cutoff date
     shows = shows_df.copy()
     shows["show_date"] = pd.to_datetime(shows["show_date"], errors="coerce").dt.date
     historical_shows = shows[shows["show_date"] < reference_date].copy()
     if debug:
-        print(f"Shape after filtering for historical shows: {historical_shows.shape}")
+        logger.debug("Shape after filtering for historical shows: %s", historical_shows.shape)
 
     if historical_shows.empty:
         return pd.DataFrame(), pd.DataFrame(), 0, []
@@ -93,7 +105,7 @@ def _compute_base_features(
     last_historical_index = historical_shows["show_index"].max()
     reference_index = last_historical_index + 1
     if debug:
-        print(f"Computed reference_index: {reference_index}")
+        logger.debug("Computed reference_index: %s", reference_index)
 
     # 3. Merge plays
     plays = setlists_df[["show_id", "song_name"]].copy()
@@ -101,12 +113,12 @@ def _compute_base_features(
     map_keys = set(historical_shows["show_id"].unique())
 
     if debug:
-        print(f"First 5 show_ids from historical_shows: {list(map_keys)[:5]}")
-        print(f"First 5 show_ids from setlists_df: {plays['show_id'].unique()[:5]}")
+        logger.debug("First 5 show_ids from historical_shows: %s", list(map_keys)[:5])
+        logger.debug("First 5 show_ids from setlists_df: %s", plays['show_id'].unique()[:5])
 
     plays = plays[plays["show_id"].isin(map_keys)]
     if debug:
-        print(f"Plays shape after filtering to historical shows: {plays.shape}")
+        logger.debug("Plays shape after filtering to historical shows: %s", plays.shape)
 
     plays["show_index"] = plays["show_id"].map(show_idx_map)
     show_context_columns = ["show_id", "show_date"]
@@ -118,10 +130,10 @@ def _compute_base_features(
         historical_shows[show_context_columns], on="show_id", how="left"
     )
     if debug:
-        print(f"Plays shape after merging with show_date: {plays.shape}")
+        logger.debug("Plays shape after merging with show_date: %s", plays.shape)
     plays.dropna(subset=["show_index", "song_name"], inplace=True)
     if debug:
-        print(f"Plays shape after dropping NA: {plays.shape}")
+        logger.debug("Plays shape after dropping NA: %s", plays.shape)
 
     # 4. Calculate historical gap stats
     song_features = (
@@ -130,7 +142,7 @@ def _compute_base_features(
         .reset_index()
     )
     if debug:
-        print(f"Shape of master_feature_set: {song_features.shape}")
+        logger.debug("Shape of master_feature_set: %s", song_features.shape)
 
     # 5. Identify recently played songs
     last_n_indices = range(
@@ -140,7 +152,7 @@ def _compute_base_features(
     recent_plays_mask = plays["show_index"].isin(last_n_indices)
     recently_played = sorted(set(plays.loc[recent_plays_mask, "song_name"].tolist()))
     if debug:
-        print("--- End Debugging ---\n")
+        logger.debug("--- End Debugging ---")
 
     return plays, song_features, reference_index, recently_played
 

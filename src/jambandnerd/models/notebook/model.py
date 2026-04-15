@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from datetime import timedelta
 from typing import Any, Dict, List
@@ -7,6 +8,8 @@ from typing import Any, Dict, List
 from jambandnerd.config.bands import get_excluded_songs
 from jambandnerd.models.base import PredictionModel
 from jambandnerd.transformations.gaps import ModelData
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -101,13 +104,12 @@ class NotebookPredictor(PredictionModel):
         return result, model_data.diagnostics
 
     def train(self, data, *args, **kwargs) -> None:
-        """Placeholder for train method."""
-        print("NotebookModel does not require explicit training.")
-        pass
+        """No-op: statistical model does not require explicit training."""
+        logger.debug("NotebookModel does not require explicit training.")
 
     def calculate_accuracy(
         self, predictions, actual_songs, *args, **kwargs
     ) -> Dict[str, Any]:
-        """Placeholder for calculate_accuracy method."""
-        print("Accuracy calculation not implemented for this model.")
+        """No-op: accuracy is calculated externally by the accuracy module."""
+        logger.debug("Accuracy calculation handled externally for NotebookModel.")
         return {}

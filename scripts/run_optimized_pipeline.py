@@ -20,6 +20,7 @@ import os
 import sys
 import time
 import traceback
+import logging
 from datetime import datetime
 
 # Add project root to path
@@ -27,8 +28,6 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, project_root)
 
 # Import the functions from the refactored scripts
-import logging
-
 from scripts.generate_predictions import generate_predictions
 from scripts.rebuild_prediction_songs import rebuild_prediction_songs
 from scripts.run_backtest import run_backtest
@@ -42,6 +41,13 @@ from scripts.validate_accuracy_tables import validate_accuracy
 from scripts.validate_prediction_tables import validate_predictions
 from src.jambandnerd.config.bands import get_active_bands
 from src.jambandnerd.models.registry import list_backfill_models, list_pipeline_models
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S"
+)
+logger = logging.getLogger(__name__)
 
 try:
     from scripts.backfill_predictions import backfill_band
@@ -57,9 +63,8 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 
 
 def log_with_timestamp(message: str) -> None:
-    """Log a message with a timestamp."""
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    print(f"[{timestamp}] {message}")
+    """Log a message with a timestamp. (Deprecated: use logger directly)"""
+    logger.info(message)
 
 
 def run_step(func, band: str, step_name: str, *args, **kwargs) -> bool:

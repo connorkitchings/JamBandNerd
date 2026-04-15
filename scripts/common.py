@@ -2,21 +2,29 @@
 
 from __future__ import annotations
 
+import logging
 import os
-import sys
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 import pandas as pd
 
-# Local imports
+logger = logging.getLogger(__name__)
 
 
 def completed_show_window(
     *, today: date | None = None, days: int = 7
 ) -> tuple[str, str]:
-    """Return the recent completed-show window, excluding today."""
+    """Return the recent completed-show window, excluding today.
+    
+    Args:
+        today: The reference date to calculate from (defaults to today).
+        days: The number of days to look back for completed shows.
+        
+    Returns:
+        A tuple of (cutoff_date_iso, end_date_iso) representing the window.
+    """
     today = today or date.today()
     cutoff = today - timedelta(days=days)
     end_date = today - timedelta(days=1)
@@ -24,7 +32,15 @@ def completed_show_window(
 
 
 def batched_values(values: Iterable[Any], batch_size: int = 50) -> List[List[Any]]:
-    """Split values into stable batches for Supabase `in_` queries."""
+    """Split values into stable batches for Supabase `in_` queries.
+    
+    Args:
+        values: An iterable of values to batch.
+        batch_size: The maximum number of items per batch.
+        
+    Returns:
+        A list of lists, where each inner list is a batch of values.
+    """
     items = list(values)
     return [items[idx : idx + batch_size] for idx in range(0, len(items), batch_size)]
 
@@ -149,8 +165,9 @@ def resolve_reference_date(
             if target_date != today:
                 is_today = False
         except ValueError:
-            print(f"Error: Invalid date format '{date_str}'. Please use YYYY-MM-DD.")
-            sys.exit(1)
+            raise ValueError(
+                f"Invalid date format '{date_str}'. Please use YYYY-MM-DD."
+            )
 
     if is_today:
         # Ensure _show_date_dt is created on a copy to avoid SettingWithCopyWarning
@@ -163,8 +180,9 @@ def resolve_reference_date(
 
         if not future_shows.empty:
             next_show_date = future_shows["_show_date_dt"].min()
-            print(
-                f"No specific date provided; defaulting to next upcoming show: {next_show_date.date().isoformat()}"
+            logger.info(
+                "No specific date provided; defaulting to next upcoming show: %s",
+                next_show_date.date().isoformat(),
             )
             return next_show_date.date()
 
@@ -181,25 +199,25 @@ def resolve_reference_date(
                 ]
                 if future_candidates:
                     next_show = min(future_candidates)
-                    print(
-                        "Using upcoming shows table for next show date: "
-                        f"{next_show.isoformat()}"
+                    logger.info(
+                        "Using upcoming shows table for next show date: %s",
+                        next_show.isoformat(),
                     )
                     return next_show
 
         # Fallback: use most recent past show when no future shows are available
         past_shows = shows_df_copy[shows_df_copy["_show_date_dt"] < today_ts]
         if past_shows.empty:
-            print("Error: No shows found in the database to use as a reference.")
-            sys.exit(1)
+            raise ValueError("No shows found in the database to use as a reference.")
         last_show_date = past_shows["_show_date_dt"].max()
-        print(
-            f"No future shows found; defaulting to most recent past show: {last_show_date.date().isoformat()}"
+        logger.info(
+            "No future shows found; defaulting to most recent past show: %s",
+            last_show_date.date().isoformat(),
         )
         return last_show_date.date()
     else:
         # If a specific historical date is given, use it
-        print(f"Using specified historical date: {target_date.isoformat()}")
+        logger.info("Using specified historical date: %s", target_date.isoformat())
         return target_date
 
 
@@ -231,15 +249,15 @@ def fetch_table(
             client.table(table_name).select("*", count="exact").limit(0).execute()
         )
         total_rows = count_response.count
-        print(f"Found {total_rows} total rows in {table_name}.")
+        logger.info("Found %s total rows in %s.", total_rows, table_name)
     except Exception as e:
-        print(f"Could not get count from {table_name}: {e}. Fetching until empty.")
+        logger.warning("Could not get count from %s: %s. Fetching until empty.", table_name, e)
         total_rows = -1
 
-    print(f"Fetching all records from {table_name} in chunks of {chunk_size}...")
+    logger.info("Fetching all records from %s in chunks of %s...", table_name, chunk_size)
     while True:
         try:
-            print(f"Fetching rows from offset {offset}...")
+            logger.debug("Fetching rows from offset %s...", offset)
             response = (
                 client.table(table_name)
                 .select("*")
@@ -248,27 +266,27 @@ def fetch_table(
             )
 
             if not response.data:
-                print("Received no more data. Ending fetch.")
+                logger.debug("Received no more data. Ending fetch.")
                 break
 
             num_fetched = len(response.data)
             all_data.extend(response.data)
-            print(f"Fetched {num_fetched} rows. Total so far: {len(all_data)}.")
+            logger.debug("Fetched %s rows. Total so far: %s.", num_fetched, len(all_data))
 
             if total_rows != -1 and len(all_data) >= total_rows:
-                print("Fetched all expected rows based on count. Ending fetch.")
+                logger.debug("Fetched all expected rows based on count. Ending fetch.")
                 break
             if num_fetched < chunk_size:
-                print("Fetched last chunk. Ending fetch.")
+                logger.debug("Fetched last chunk. Ending fetch.")
                 break
 
             offset += num_fetched
 
         except Exception as e:
-            print(f"An error occurred during fetch: {e}")
+            logger.error("An error occurred during fetch: %s", e)
             break
 
-    print(f"Fetched a total of {len(all_data)} records from {table_name}.")
+    logger.info("Fetched a total of %s records from %s.", len(all_data), table_name)
     return all_data
 
 
@@ -400,5 +418,6 @@ def fetch_column_values_for_ids(
     return values
 
 
-# Backward compatibility alias for callers using the old private name
+# Deprecated: backward compatibility alias — use ``fetch_table`` directly.
+# Will be removed in a future release.
 _fetch_table = fetch_table

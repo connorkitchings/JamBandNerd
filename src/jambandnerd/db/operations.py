@@ -255,14 +255,36 @@ def upsert_dataframe(
         conflict_columns: A list of column names to use for conflict resolution.
         chunk_size: The number of rows to upsert per chunk.
     """
+    import time
+    
     client = get_supabase_client()
     records = _dataframe_to_records(df)
 
     for i in range(0, len(records), chunk_size):
         chunk = records[i : i + chunk_size]
-        client.table(table_name).upsert(
-            chunk, on_conflict=",".join(conflict_columns)
-        ).execute()
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                client.table(table_name).upsert(
+                    chunk, on_conflict=",".join(conflict_columns)
+                ).execute()
+                break
+            except Exception as e:
+                if attempt == max_retries - 1:
+                    logger.error(
+                        "Upsert failed for table %s after %d attempts: %s",
+                        table_name,
+                        max_retries,
+                        e,
+                    )
+                    raise
+                logger.warning(
+                    "Upsert failed for table %s chunk (attempt %d). Retrying... Error: %s",
+                    table_name,
+                    attempt + 1,
+                    e,
+                )
+                time.sleep(2 ** attempt)
 
 
 def _cleanup_stale_prediction_songs(
@@ -676,15 +698,22 @@ def check_prediction_staleness(
 
         if not is_fresh:
             logger.warning(
-                f"Predictions for {band}/{model_version} are stale: "
-                f"{age_hours:.1f}h old (max: {max_age_hours}h)"
+                "Predictions for %s/%s are stale: "
+                "%.1fh old (max: %sh)",
+                band,
+                model_version,
+                age_hours,
+                max_age_hours,
             )
 
         return is_fresh, last_predicted_at
 
     except Exception as e:
         logger.error(
-            f"Error checking prediction staleness for {band}/{model_version}: {e}"
+            "Error checking prediction staleness for %s/%s: %s",
+            band,
+            model_version,
+            e,
         )
         return False, None
 
@@ -696,5 +725,5 @@ def fetch_active_bands() -> list[dict[str, Any]]:
         response = client.table("bands").select("*").eq("is_active", True).execute()
         return response.data or []
     except Exception as e:
-        logger.warning(f"Failed to fetch active bands from registry: {e}")
+        logger.warning("Failed to fetch active bands from registry: %s", e)
         return []
