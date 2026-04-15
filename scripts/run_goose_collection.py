@@ -91,7 +91,7 @@ def run_goose_collection(skip_validation: bool = False) -> None:
     print("Goose data collection finished.")
 
 
-if __name__ == "__main__":
+def main() -> None:
     parser = argparse.ArgumentParser(
         description="Run Goose data collection with optional schema validation"
     )
@@ -102,3 +102,7 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
     run_goose_collection(skip_validation=args.skip_validation)
+
+
+if __name__ == "__main__":
+    main()
