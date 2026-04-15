@@ -13,6 +13,7 @@ import {
   getBands,
   getLatestPredictions,
   getNextShowDetails,
+  getShowDetailsByDate,
   getRecentAccuracy,
   resolveBandSelection,
 } from "@/lib/data";
@@ -128,19 +129,26 @@ export default async function PredictionsPage({ searchParams }: Props) {
   };
   const bandName = bandEntry.displayName;
 
-  const [nextShowState, accuracyState] = await Promise.all([
+  const [nextShowState, specificShowState, accuracyState] = await Promise.all([
     getNextShowDetails(predictionState.band),
+    getShowDetailsByDate(predictionState.band, predictionState.snapshot.referenceDate),
     getRecentAccuracy(predictionState.band, predictionState.model, 50),
   ]);
   const nextShow = nextShowState.status === "ready" ? nextShowState.show : null;
-  const heroDate = nextShow?.showDate ?? predictionState.snapshot.referenceDate;
+  const specificShow = specificShowState.status === "ready" ? specificShowState.show : null;
+
+  const targetShow = nextShow?.showDate === predictionState.snapshot.referenceDate
+    ? nextShow
+    : specificShow;
+
+  const heroDate = predictionState.snapshot.referenceDate;
   const dateLabel = formatDateLabel(heroDate);
   const locationLabel = buildLocationLabel([
-    nextShow?.city ?? null,
-    nextShow?.state ?? nextShow?.country ?? null,
+    targetShow?.city ?? null,
+    targetShow?.state ?? targetShow?.country ?? null,
   ]);
   const isLiveShow = isShowTonight(heroDate);
-  const statusLabel = getPredictionStatusLabel(nextShow?.showDate ?? null);
+  const statusLabel = getPredictionStatusLabel(heroDate);
   const snapshotLabel = formatTimestampLabel(predictionState.snapshot.predictedAt);
   const accuracyRows = accuracyState.status === "ready" ? accuracyState.rows : [];
   const accuracyWindow = accuracyRows.length || 50;
@@ -174,7 +182,7 @@ export default async function PredictionsPage({ searchParams }: Props) {
     bandName,
     dateLabel,
     locationLabel,
-    venueName: nextShow?.venueName ?? "",
+    venueName: targetShow?.venueName ?? "",
     predictions: predictionState.snapshot.predictions,
     modelDisplayName: MODEL_CONFIG[predictionState.model].displayName,
     shareUrl: `jambandnerd.com/predictions?band=${predictionState.band}&model=${predictionState.model}`,
@@ -199,7 +207,7 @@ export default async function PredictionsPage({ searchParams }: Props) {
       )}
 
       <PredictionHero
-        venueName={nextShow?.venueName ?? `${bandName} Next Show`}
+        venueName={targetShow?.venueName ?? `${bandName} Show`}
         dateLabel={dateLabel}
         locationLabel={locationLabel}
         statusLabel={statusLabel}
