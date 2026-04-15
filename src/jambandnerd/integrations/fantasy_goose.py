@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import os
 import re
 from dataclasses import dataclass, field
@@ -17,11 +18,15 @@ from playwright.async_api import Browser, Page, async_playwright
 
 from jambandnerd.db.operations import fetch_prediction_songs_for_date
 
+logger = logging.getLogger(__name__)
+
 FANTASY_GOOSE_BASE_URL = "https://www.fantasygoose.com"
 ENTRY_CREATE_URL = f"{FANTASY_GOOSE_BASE_URL}/entry/create"
 LOGIN_URL = f"{FANTASY_GOOSE_BASE_URL}/login"
 MY_PICKS_URL = f"{FANTASY_GOOSE_BASE_URL}/entry/mypicks"
 EASTERN_TZ = ZoneInfo("America/New_York")
+FANTASY_GOOSE_VERIFICATION_RETRIES = 3
+FANTASY_GOOSE_VERIFICATION_DELAY_MS = 2000
 DEFAULT_ALIAS_MAP: dict[str, str] = {}
 
 
@@ -374,6 +379,8 @@ async def submit_entry(
           showSelect.value = String(showId);
           showSelect.dispatchEvent(new Event('change', { bubbles: true }));
 
+          await new Promise(resolve => setTimeout(resolve, 500));
+
           songIds.forEach((songId, index) => {
             const hidden = form.querySelector(`input[name="song[${index}]"]`);
             if (!hidden) {
@@ -387,7 +394,7 @@ async def submit_entry(
         """,
         {"showId": show.show_id, "songIds": song_ids},
     )
-    await page.wait_for_load_state("domcontentloaded")
+    await page.wait_for_load_state("networkidle")
 
 
 async def run_fantasy_goose(
@@ -477,10 +484,29 @@ async def run_fantasy_goose(
                 )
 
             await submit_entry(page, show=target_show, picks=picks)
-            mypicks_text = await fetch_my_picks_text(page)
-            if not has_existing_entry(mypicks_text, target_show):
+            submit_url = page.url
+            submit_body = await page.locator("body").inner_text()
+
+            found = False
+            for _attempt in range(FANTASY_GOOSE_VERIFICATION_RETRIES):
+                await page.wait_for_timeout(FANTASY_GOOSE_VERIFICATION_DELAY_MS)
+                mypicks_text = await fetch_my_picks_text(page)
+                if has_existing_entry(mypicks_text, target_show):
+                    found = True
+                    break
+
+            if not found:
+                logger.warning("Post-submit URL: %s", submit_url)
+                logger.warning(
+                    "Post-submit body (first 500 chars): %s", submit_body[:500]
+                )
+                logger.warning(
+                    "My Picks body (first 500 chars): %s", mypicks_text[:500]
+                )
                 raise RuntimeError(
-                    f"Fantasy Goose submission did not appear in My Picks for {target_show.label}."
+                    f"Fantasy Goose submission did not appear in My Picks "
+                    f"after {FANTASY_GOOSE_VERIFICATION_RETRIES} attempts "
+                    f"for {target_show.label}."
                 )
 
             return FantasyGooseRunResult(

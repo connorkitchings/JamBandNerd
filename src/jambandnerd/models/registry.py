@@ -103,7 +103,17 @@ _MODELS_BY_SLUG = {definition.slug: definition for definition in _MODEL_DEFINITI
 
 
 def get_model_definition(slug: str) -> ModelDefinition:
-    """Return the model definition for a slug."""
+    """Return the model definition for a slug.
+
+    Args:
+        slug: The unique identifier for a prediction model.
+
+    Returns:
+        The matched ModelDefinition.
+
+    Raises:
+        ValueError: If the requested model slug is not registered.
+    """
     try:
         return _MODELS_BY_SLUG[slug]
     except KeyError as exc:
@@ -187,7 +197,16 @@ def is_model_promoted_to_web(slug: str) -> bool:
 
 
 def build_predictor(slug: str, *, band: str, **kwargs: Any) -> PredictionModel:
-    """Instantiate a model predictor for a specific band."""
+    """Instantiate a model predictor for a specific band.
+
+    Args:
+        slug: The model identifier.
+        band: The band to predict for.
+        **kwargs: Optional model-specific keyword arguments.
+
+    Returns:
+        An instantiated PredictionModel object ready for use.
+    """
     definition = get_model_definition(slug)
     predictor_cls = definition.predictor_cls
     try:
@@ -200,6 +219,14 @@ def serialize_model_predictions(
     slug: str,
     predictions: Sequence[Any],
 ) -> list[dict[str, Any]]:
-    """Serialize predictions using the registered model serializer."""
+    """Serialize predictions using the registered model serializer.
+
+    Args:
+        slug: The model identifier.
+        predictions: The raw predictions sequence.
+
+    Returns:
+        A list of dictionaries representing the serialized prediction rows.
+    """
     definition = get_model_definition(slug)
     return definition.serializer(predictions)

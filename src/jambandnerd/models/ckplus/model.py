@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from datetime import timedelta
 from typing import Any, Dict, List
@@ -12,6 +13,8 @@ from jambandnerd.config.models import RETIREMENT_GAPS
 from jambandnerd.transformations.gaps import ModelData
 
 from ..base import PredictionModel
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -79,9 +82,10 @@ class CKPlusPredictor(PredictionModel):
             return score if np.isfinite(score) else 0.0
 
         except (ValueError, TypeError, ZeroDivisionError) as e:
-            # Log the error and return 0 score for this song
-            print(
-                f"Warning: Error calculating score for song {row.get('song_name', 'unknown')}: {e}"
+            logger.warning(
+                "Error calculating score for song %s: %s",
+                row.get("song_name", "unknown"),
+                e,
             )
             return 0.0
 
@@ -176,13 +180,12 @@ class CKPlusPredictor(PredictionModel):
         return results
 
     def train(self, data, *args, **kwargs) -> None:
-        """Placeholder for train method."""
-        print("CKPlusPredictor does not require explicit training.")
-        pass
+        """No-op: statistical model does not require explicit training."""
+        logger.debug("CKPlusPredictor does not require explicit training.")
 
     def calculate_accuracy(
         self, predictions, actual_songs, *args, **kwargs
     ) -> Dict[str, Any]:
-        """Placeholder for calculate_accuracy method."""
-        print("Accuracy calculation not implemented for this model.")
+        """No-op: accuracy is calculated externally by the accuracy module."""
+        logger.debug("Accuracy calculation handled externally for CKPlusPredictor.")
         return {}

@@ -11,15 +11,15 @@ sys.path.insert(0, str(project_root / "src"))
 
 
 @pytest.fixture
-def project_root():
+def project_root_dir():
     """Return the project root directory."""
     return Path(__file__).parent.parent
 
 
 @pytest.fixture
-def sample_data_dir(project_root):
+def sample_data_dir(project_root_dir):
     """Return the sample data directory for tests."""
-    return project_root / "tests" / "data"
+    return project_root_dir / "tests" / "data"
 
 
 @pytest.fixture
