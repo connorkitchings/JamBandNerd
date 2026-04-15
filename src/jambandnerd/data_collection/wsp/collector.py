@@ -165,11 +165,37 @@ class WSPCollector(BandCollector):
             )
             setlist_df.dropna(subset=["song_name"], inplace=True)
 
+            # Markers that signal the per-song stats section has begun.
+            # When encountered, skip rows until the next set-header resets the context.
+            _STATS_SECTION_MARKERS = (
+                "Song Stats",
+                "StatsSong",
+                "LTPL3TP",
+                "LTP Date",
+                "LTP (Last Time Played)",
+            )
+
             setlist_data = []
             current_set = "1"
             song_position = 1
+            in_stats_section = False
             for _, row in setlist_df.iterrows():
                 song_name = row["song_name"]
+
+                # Entering the stats section: skip rows until the next set marker.
+                if any(m in str(song_name) for m in _STATS_SECTION_MARKERS):
+                    in_stats_section = True
+                    continue
+
+                # A new set marker exits the stats section and resets context.
+                is_set_marker = song_name.startswith("Set ") or song_name.startswith(
+                    "Encore"
+                )
+                if in_stats_section and not is_set_marker:
+                    continue
+                if is_set_marker:
+                    in_stats_section = False
+
                 if not _validate_song_name(song_name):
                     continue
 
