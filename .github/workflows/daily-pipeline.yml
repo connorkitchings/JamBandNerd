@@ -327,6 +327,51 @@ jobs:
 
           echo "::endgroup::"
 
+      - name: Audit Website Supabase Tables
+        id: supabase_audit
+        if: always() && steps.preflight.outputs.should_run_collection == 'true'
+        env:
+          AUDIT_PATH: .github/workflow-audits/${{ matrix.band }}.json
+        run: |
+          echo "::group::Auditing website-facing Supabase tables for ${{ matrix.band }}"
+
+          mkdir -p .github/workflow-audits
+          ARGS=(--band ${{ matrix.band }} --max-age-hours 72 --output "$AUDIT_PATH")
+          if [[ "${{ github.event.inputs.skip_accuracy }}" == "true" ]]; then
+            ARGS+=(--skip-accuracy)
+          fi
+
+          set +e
+          uv run python scripts/audit_supabase_tables.py "${ARGS[@]}"
+          AUDIT_EXIT=$?
+          set -e
+
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          path = Path(os.environ["AUDIT_PATH"])
+          github_output = os.environ["GITHUB_OUTPUT"]
+
+          state = "unknown"
+          blocker_count = 0
+          warning_count = 0
+          if path.exists():
+              payload = json.loads(path.read_text())
+              state = str(payload.get("state", "unknown"))
+              blocker_count = len(payload.get("blockers", []))
+              warning_count = len(payload.get("warnings", []))
+
+          with open(github_output, "a", encoding="utf-8") as handle:
+              handle.write(f"audit_state={state}\n")
+              handle.write(f"audit_blocker_count={blocker_count}\n")
+              handle.write(f"audit_warning_count={warning_count}\n")
+          PY
+
+          echo "::endgroup::"
+          exit $AUDIT_EXIT
+
       - name: Write Band Status
         if: always()
         env:
@@ -358,6 +403,9 @@ jobs:
           MAX_PREDICTION_AGE_HOURS: ${{ steps.freshness_audit.outputs.max_prediction_age_hours || '' }}
           MAX_ACCURACY_AGE_HOURS: ${{ steps.freshness_audit.outputs.max_accuracy_age_hours || '' }}
           FRESHNESS_REASON: ${{ steps.freshness_audit.outputs.freshness_reason || '' }}
+          SUPABASE_AUDIT_STATE: ${{ steps.supabase_audit.outputs.audit_state || 'unknown' }}
+          SUPABASE_AUDIT_BLOCKER_COUNT: ${{ steps.supabase_audit.outputs.audit_blocker_count || '0' }}
+          SUPABASE_AUDIT_WARNING_COUNT: ${{ steps.supabase_audit.outputs.audit_warning_count || '0' }}
         run: |
           mkdir -p .github/workflow-status
           python - <<'PY'
@@ -419,6 +467,9 @@ jobs:
               "max_prediction_age_hours": parse_optional_float(os.environ.get("MAX_PREDICTION_AGE_HOURS")),
               "max_accuracy_age_hours": parse_optional_float(os.environ.get("MAX_ACCURACY_AGE_HOURS")),
               "freshness_reason": os.environ.get("FRESHNESS_REASON", ""),
+              "supabase_audit_state": os.environ.get("SUPABASE_AUDIT_STATE", "unknown"),
+              "supabase_audit_blocker_count": int(os.environ.get("SUPABASE_AUDIT_BLOCKER_COUNT", "0") or 0),
+              "supabase_audit_warning_count": int(os.environ.get("SUPABASE_AUDIT_WARNING_COUNT", "0") or 0),
           }
 
           path = f".github/workflow-status/{payload['band']}.json"
@@ -435,6 +486,14 @@ jobs:
           path: .github/workflow-status/${{ matrix.band }}.json
           if-no-files-found: error
 
+      - name: Upload Supabase Audit
+        if: always() && steps.preflight.outputs.should_run_collection == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: supabase-audit-${{ matrix.band }}
+          path: .github/workflow-audits/${{ matrix.band }}.json
+          if-no-files-found: error
+
       - name: Append Band Summary
         if: always()
         env:
@@ -448,6 +507,9 @@ jobs:
           STALE_ACCURACY_MODELS: ${{ steps.freshness_audit.outputs.stale_accuracy_models || '' }}
           MAX_PREDICTION_AGE_HOURS: ${{ steps.freshness_audit.outputs.max_prediction_age_hours || '' }}
           MAX_ACCURACY_AGE_HOURS: ${{ steps.freshness_audit.outputs.max_accuracy_age_hours || '' }}
+          SUPABASE_AUDIT_STATE: ${{ steps.supabase_audit.outputs.audit_state || 'unknown' }}
+          SUPABASE_AUDIT_BLOCKER_COUNT: ${{ steps.supabase_audit.outputs.audit_blocker_count || '0' }}
+          SUPABASE_AUDIT_WARNING_COUNT: ${{ steps.supabase_audit.outputs.audit_warning_count || '0' }}
         run: |
           echo "### ${BAND^^}" >> $GITHUB_STEP_SUMMARY
           echo "- Execution mode: ${EXECUTION_MODE}" >> $GITHUB_STEP_SUMMARY
@@ -467,6 +529,7 @@ jobs:
           if [[ -n "${MAX_ACCURACY_AGE_HOURS}" ]]; then
             echo "- Max accuracy age: ${MAX_ACCURACY_AGE_HOURS}h" >> $GITHUB_STEP_SUMMARY
           fi
+          echo "- Website Supabase audit: ${SUPABASE_AUDIT_STATE} (blockers=${SUPABASE_AUDIT_BLOCKER_COUNT}, warnings=${SUPABASE_AUDIT_WARNING_COUNT})" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
       - name: Enforce Supported Model Freshness

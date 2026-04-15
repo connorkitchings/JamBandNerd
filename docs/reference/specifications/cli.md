@@ -67,6 +67,47 @@ shared model features.
 - `--band <slug[,slug...]|all>`: (Optional) Bands to audit. Defaults to `all`.
 - `--output <path>`: (Optional) Write the JSON audit report to disk.
 
+### `audit_supabase_tables.py`
+
+Runs the canonical read-only Supabase audit for the public website surfaces.
+By default it targets active bands plus the currently promoted website models,
+then checks:
+
+- live prediction completeness in `predictions` and `prediction_songs`
+- replay/history coverage in `historical_prediction_runs`
+- per-show accuracy coverage in `accuracy_per_show`
+- replay overlap across promoted models
+- supported-model freshness using the existing freshness policy
+- recent completed-show setlist completeness as supporting evidence
+
+Usage:
+
+```bash
+uv run python scripts/audit_supabase_tables.py
+uv run python scripts/audit_supabase_tables.py --band goose --band phish
+uv run python scripts/audit_supabase_tables.py --max-age-hours 72 --replay-window 50 --output artifacts/supabase_audit.json
+```
+
+Arguments:
+
+- `--band <slug>`: (Optional, repeatable) Limit the audit to specific active bands.
+- `--max-age-hours <N>`: (Optional) Freshness threshold for website-facing prediction and accuracy surfaces. Defaults to `72`.
+- `--replay-window <N>`: (Optional) Override the required replay-history window. If omitted, the audit uses each promoted model's registry `readiness_windows` metadata.
+- `--output <path>`: (Optional) Write the JSON audit report to disk.
+- `--skip-accuracy`: (Optional) Preserve the existing workflow behavior that degrades stale supported-model accuracy from a hard failure to a warning for runs where accuracy regeneration was intentionally skipped.
+
+Exit behavior:
+
+- `ok`: no blockers and no warnings
+- `warning`: no blockers, but informational issues remain such as skipped-accuracy freshness warnings or missing recent raw setlists
+- `failed`: one or more website-facing blockers were found
+
+Replay completeness is measured against the required window for each promoted
+model. A healthy surface must retain at least that many recent unique
+`target_show_date` rows in `historical_prediction_runs`, at least that many
+`accuracy_per_show` rows, and at least that much overlap between promoted
+models so `/replay` can compare boards for the same nights.
+
 ### Future Considerations: `jbn` CLI
 
 A `jbn` command-line tool, built with Typer, was originally planned for the project. This tool would provide a more user-friendly interface for running the various pipeline components. While the core logic is implemented in the Python scripts, the `jbn` CLI has been deferred to a future development phase.

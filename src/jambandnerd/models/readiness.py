@@ -18,10 +18,16 @@ class BandReadinessStatus:
     """Backend readiness status for one band/model pair."""
 
     band: str
+    model_slug: str
+    model_version: str
     required_window: int
     prediction_rows: int
     projection_rows: int
+    latest_reference_date: str | None
+    latest_prediction_top_k: int | None
+    latest_projection_rows: int
     historical_runs: int
+    unique_historical_target_dates: int
     per_show_rows: int
     aggregate_windows: dict[str, bool]
     replay_overlap: dict[str, int]
@@ -31,6 +37,52 @@ class BandReadinessStatus:
 
 def _row_count(query) -> int:
     response = query.execute()
+    return int(response.count or 0)
+
+
+def _latest_prediction_row(
+    client,
+    *,
+    table: str,
+    band: str,
+    model_slug: str,
+    model_version: str,
+) -> dict[str, Any] | None:
+    response = (
+        client.table(table)
+        .select("reference_date, top_k, predicted_at")
+        .eq("band", band)
+        .eq("model_slug", model_slug)
+        .eq("model_version", model_version)
+        .order("predicted_at", desc=True)
+        .order("reference_date", desc=True)
+        .limit(1)
+        .execute()
+    )
+    rows = response.data or []
+    return rows[0] if rows else None
+
+
+def _projection_row_count_for_reference_date(
+    client,
+    *,
+    band: str,
+    model_slug: str,
+    model_version: str,
+    reference_date: str | None,
+) -> int:
+    if not reference_date:
+        return 0
+
+    response = (
+        client.table("prediction_songs")
+        .select("id", count="exact")
+        .eq("band", band)
+        .eq("model_slug", model_slug)
+        .eq("model_version", model_version)
+        .eq("reference_date", reference_date)
+        .execute()
+    )
     return int(response.count or 0)
 
 
@@ -92,6 +144,23 @@ def build_model_readiness_report(
 
     band_statuses: list[BandReadinessStatus] = []
     for band in selected_bands:
+        latest_prediction_row = _latest_prediction_row(
+            client,
+            table=definition.prediction_table,
+            band=band,
+            model_slug=definition.slug,
+            model_version=definition.version,
+        )
+        latest_reference_date = (
+            str(latest_prediction_row.get("reference_date"))
+            if latest_prediction_row and latest_prediction_row.get("reference_date")
+            else None
+        )
+        latest_prediction_top_k = (
+            int(latest_prediction_row["top_k"])
+            if latest_prediction_row and latest_prediction_row.get("top_k") is not None
+            else None
+        )
         prediction_rows = _row_count(
             client.table(definition.prediction_table)
             .select("reference_date", count="exact")
@@ -104,6 +173,13 @@ def build_model_readiness_report(
             .eq("band", band)
             .eq("model_slug", definition.slug)
             .eq("model_version", definition.version)
+        )
+        latest_projection_rows = _projection_row_count_for_reference_date(
+            client,
+            band=band,
+            model_slug=definition.slug,
+            model_version=definition.version,
+            reference_date=latest_reference_date,
         )
         historical_runs = _row_count(
             client.table("historical_prediction_runs")
@@ -131,6 +207,7 @@ def build_model_readiness_report(
             model_version=definition.version,
             limit=required_window,
         )
+        unique_historical_target_dates = len(candidate_dates)
         candidate_date_set = set(candidate_dates)
         for overlap_model in overlap_models:
             overlap_definition = get_model_definition(overlap_model)
@@ -150,6 +227,14 @@ def build_model_readiness_report(
             blockers.append("canonical_predictions_missing")
         if definition.supports_live_predictions and projection_rows <= 0:
             blockers.append("prediction_projection_missing")
+        if (
+            definition.supports_backtest
+            and unique_historical_target_dates < required_window
+        ):
+            blockers.append(
+                "historical_unique_target_dates_below_window:"
+                f"{unique_historical_target_dates}/{required_window}"
+            )
         if definition.supports_backtest and historical_runs < required_window:
             blockers.append(
                 f"historical_runs_below_window:{historical_runs}/{required_window}"
@@ -167,10 +252,16 @@ def build_model_readiness_report(
         band_statuses.append(
             BandReadinessStatus(
                 band=band,
+                model_slug=definition.slug,
+                model_version=definition.version,
                 required_window=required_window,
                 prediction_rows=prediction_rows,
                 projection_rows=projection_rows,
+                latest_reference_date=latest_reference_date,
+                latest_prediction_top_k=latest_prediction_top_k,
+                latest_projection_rows=latest_projection_rows,
                 historical_runs=historical_runs,
+                unique_historical_target_dates=unique_historical_target_dates,
                 per_show_rows=per_show_rows,
                 aggregate_windows=aggregate_windows,
                 replay_overlap=replay_overlap,
