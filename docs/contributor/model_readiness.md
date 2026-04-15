@@ -71,10 +71,35 @@ uv run python scripts/model_readiness.py --model <slug> --band all --phase valid
 `readiness_verified` means the model is ready in Supabase but still hidden from
 the product UI.
 
+Before exposing or trusting the public website surface, run the canonical
+website-facing Supabase audit:
+
+```bash
+uv run python scripts/audit_supabase_tables.py
+```
+
+Interpretation:
+
+- `ok` means the promoted website models have complete live predictions,
+  sufficient replay history, sufficient per-show accuracy rows, and healthy
+  cross-model replay overlap.
+- `warning` means the surface is still readable but supporting issues remain,
+  such as intentionally skipped accuracy freshness or missing recent raw
+  setlists.
+- `failed` means the website-facing prediction or replay contract is incomplete
+  and should be fixed before relying on `/predictions`, `/performance`, or
+  `/replay`.
+
+Replay completeness is measured against each promoted model's required
+readiness window. The audit expects enough unique recent
+`historical_prediction_runs.target_show_date` rows, enough `accuracy_per_show`
+rows, and enough overlap between promoted models to support paired replay.
+
 `web_promoted` is a separate, explicit final step:
 
 1. confirm the readiness report is clean
-2. verify `/performance`, `/compare`, and `/replay`
-3. update website model visibility metadata
+2. confirm `audit_supabase_tables.py` is `ok` for the target bands
+3. verify `/performance`, `/compare`, and `/replay`
+4. update website model visibility metadata
 
 This separation keeps model backfills and site exposure decoupled.

@@ -96,15 +96,37 @@ def _check_stale_projection_rows(
     max_age_hours: int,
     reference_window_days: int = 7,
 ) -> int:
-    """Flag stale reference_date entries in prediction_songs.
+    stale = list_stale_projection_reference_dates(
+        band=band,
+        model_slug=model_slug,
+        model_version=model_version,
+        max_age_hours=max_age_hours,
+        reference_window_days=reference_window_days,
+    )
+    if not stale:
+        return 0
 
-    Only checks entries whose *reference_date* falls within
-    ``reference_window_days`` of today.  Older entries are archival and
-    should not cause freshness failures.
-    """
+    for ref in stale:
+        print(
+            f"[STALE] {band}/{model_slug}: prediction_songs reference_date={ref} "
+            f"has predicted_at older than {max_age_hours}h cutoff"
+        )
+    return len(stale)
+
+
+def list_stale_projection_reference_dates(
+    *,
+    band: str,
+    model_slug: str,
+    model_version: str,
+    max_age_hours: int,
+    reference_window_days: int = 7,
+    client=None,
+) -> list[str]:
+    """Return stale recent reference_date entries in prediction_songs."""
     from datetime import date, timedelta
 
-    client = get_supabase_client()
+    client = client or get_supabase_client()
 
     resp = (
         client.table("prediction_songs")
@@ -115,7 +137,7 @@ def _check_stale_projection_rows(
     )
     rows = resp.data or []
     if not rows:
-        return 0
+        return []
 
     latest_key = max(
         (
@@ -144,20 +166,11 @@ def _check_stale_projection_rows(
         if current is None or predicted_at > current:
             projected_by_ref[reference_date] = predicted_at
 
-    stale = [
+    return [
         ref
         for ref, predicted_at in sorted(projected_by_ref.items())
         if predicted_at < cutoff and (predicted_at, ref) != latest_key
     ]
-    if not stale:
-        return 0
-
-    for ref in stale:
-        print(
-            f"[STALE] {band}/{model_slug}: prediction_songs reference_date={ref} "
-            f"has predicted_at older than {max_age_hours}h cutoff"
-        )
-    return len(stale)
 
 
 def validate_predictions(
