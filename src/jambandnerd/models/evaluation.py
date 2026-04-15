@@ -24,11 +24,11 @@ def list_completed_shows(
     setlists_df: pd.DataFrame,
 ) -> pd.DataFrame:
     """Return completed shows in canonical historical order.
-    
+
     Args:
         shows_df: DataFrame containing all shows for a band.
         setlists_df: DataFrame containing raw setlists.
-        
+
     Returns:
         A sorted DataFrame of shows that have corresponding setlist data.
     """
@@ -48,14 +48,14 @@ def select_target_shows(
     all_history: bool = False,
 ) -> pd.DataFrame:
     """Select the target completed-show window for a scoring run.
-    
+
     Args:
         completed_shows: DataFrame of completed shows.
         start: Optional start date string (YYYY-MM-DD).
         end: Optional end date string (YYYY-MM-DD).
         shows: Optional number of most recent shows to select.
         all_history: If True, select all available shows.
-        
+
     Returns:
         A DataFrame containing the subset of target shows.
     """

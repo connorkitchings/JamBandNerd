@@ -21,11 +21,11 @@ logger = logging.getLogger(__name__)
 
 def _stats_for_song(group: pd.DataFrame) -> pd.Series:
     """Helper function to calculate historical stats for a single song.
-    
+
     Args:
         group: A pandas DataFrame containing all historical plays for a single song.
                Must contain 'show_index' and 'show_date' columns.
-               
+
     Returns:
         A pandas Series containing aggregated statistical features (times_played,
         avg_gap, std_gap, etc.) for the song.
@@ -92,7 +92,9 @@ def _compute_base_features(
     shows["show_date"] = pd.to_datetime(shows["show_date"], errors="coerce").dt.date
     historical_shows = shows[shows["show_date"] < reference_date].copy()
     if debug:
-        logger.debug("Shape after filtering for historical shows: %s", historical_shows.shape)
+        logger.debug(
+            "Shape after filtering for historical shows: %s", historical_shows.shape
+        )
 
     if historical_shows.empty:
         return pd.DataFrame(), pd.DataFrame(), 0, []
@@ -114,7 +116,9 @@ def _compute_base_features(
 
     if debug:
         logger.debug("First 5 show_ids from historical_shows: %s", list(map_keys)[:5])
-        logger.debug("First 5 show_ids from setlists_df: %s", plays['show_id'].unique()[:5])
+        logger.debug(
+            "First 5 show_ids from setlists_df: %s", plays["show_id"].unique()[:5]
+        )
 
     plays = plays[plays["show_id"].isin(map_keys)]
     if debug:
