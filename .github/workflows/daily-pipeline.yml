@@ -52,7 +52,7 @@ jobs:
     name: Daily Pipeline - ${{ matrix.band }}
     needs: setup
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 120
     strategy:
       matrix:
         band: ${{ fromJson(needs.setup.outputs.bands) }}
@@ -108,7 +108,7 @@ jobs:
 
       - name: Install Playwright Browsers
         if: matrix.band == 'wsp' || matrix.band == 'eggy'
-        run: uv run playwright install --with-deps firefox
+        run: uv run python -m playwright install --with-deps firefox
 
       - name: Compute Collection Preflight
         id: preflight
@@ -298,9 +298,9 @@ jobs:
         run: |
           echo "::group::Running backtest for ${{ matrix.band }}"
           
-          # Run backtest for last 100 shows to populate per-show accuracy
-          uv run python scripts/run_backtest.py --band ${{ matrix.band }} --model notebook --shows 100 --require-results
-          uv run python scripts/run_backtest.py --band ${{ matrix.band }} --model deal --shows 50 --require-results
+          # Run backtest for last 50 shows to populate per-show accuracy
+          uv run python scripts/run_backtest.py --band ${{ matrix.band }} --model notebook --shows 50 --require-results
+          uv run python scripts/run_backtest.py --band ${{ matrix.band }} --model deal --shows 25 --require-results
 
           echo "::endgroup::"
 
