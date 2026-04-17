@@ -268,14 +268,35 @@ def test_run_supabase_audit_fails_on_invalid_latest_json(monkeypatch):
     assert "goose:notebook:canonical_predictions_invalid_json" in report.blockers
 
 
-def test_run_supabase_audit_fails_on_top_k_mismatch(monkeypatch):
+def test_run_supabase_audit_allows_consistent_lower_top_k(monkeypatch):
     _install_audit_stubs(
         monkeypatch,
         latest_rows={
-            "notebook": _prediction_row(top_k=25),
+            "notebook": _prediction_row(top_k=49),
             "deal": _prediction_row(song_name="Song B"),
         },
-        readiness_overrides={"notebook": {"latest_prediction_top_k": 25}},
+        projection_rows={
+            "notebook": _projection_rows(count=49),
+            "deal": _projection_rows(top_song="Song B"),
+        },
+    )
+
+    report = module.run_supabase_audit(bands=["goose"])
+
+    assert "goose:notebook:canonical_predictions_top_k_mismatch" not in report.blockers
+    assert report.state == "ok"
+
+
+def test_run_supabase_audit_fails_on_top_k_payload_mismatch(monkeypatch):
+    _install_audit_stubs(
+        monkeypatch,
+        latest_rows={
+            "notebook": _prediction_row(
+                top_k=25,
+                predictions=json.dumps([{"song_name": "Song A"}] * 50),
+            ),
+            "deal": _prediction_row(song_name="Song B"),
+        },
         projection_rows={
             "notebook": _projection_rows(count=25),
             "deal": _projection_rows(top_song="Song B"),
