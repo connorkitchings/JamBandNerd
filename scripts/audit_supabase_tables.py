@@ -224,6 +224,23 @@ def _derive_model_audit(
                 else None
             )
 
+        raw_top_k = latest_prediction_row.get("top_k")
+        try:
+            latest_prediction_top_k = int(raw_top_k)
+        except (TypeError, ValueError):
+            latest_prediction_top_k = None
+            _append_unique(blockers, "canonical_predictions_top_k_mismatch")
+        else:
+            # Canonical rows may legitimately contain fewer than the registry default
+            # when the model produces a smaller unique candidate set. The audit should
+            # enforce self-consistency between the stored top_k, JSON payload, and
+            # flattened projection rows rather than forcing the registry default.
+            if latest_prediction_top_k <= 0 or (
+                parsed_predictions
+                and latest_prediction_top_k != len(parsed_predictions)
+            ):
+                _append_unique(blockers, "canonical_predictions_top_k_mismatch")
+
         predicted_at = _parse_prediction_timestamp(
             latest_prediction_row.get("predicted_at")
         )
@@ -235,9 +252,6 @@ def _derive_model_audit(
             ).total_seconds() / 3600
             if latest_prediction_age_hours > max_age_hours:
                 _append_unique(blockers, "canonical_predictions_stale")
-
-        if latest_prediction_top_k != definition.default_top_k:
-            _append_unique(blockers, "canonical_predictions_top_k_mismatch")
 
         if latest_reference_date:
             projection_rows = fetch_prediction_songs_for_date(
