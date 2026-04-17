@@ -52,7 +52,7 @@ jobs:
     name: Daily Pipeline - ${{ matrix.band }}
     needs: setup
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 120
     strategy:
       matrix:
         band: ${{ fromJson(needs.setup.outputs.bands) }}
@@ -106,9 +106,13 @@ jobs:
       - name: Install dependencies
         run: uv sync --locked --no-dev
 
+      - name: Install Playwright OS Dependencies
+        if: matrix.band == 'wsp' || matrix.band == 'eggy'
+        run: sudo uv run python -m playwright install-deps firefox
+
       - name: Install Playwright Browsers
         if: matrix.band == 'wsp' || matrix.band == 'eggy'
-        run: uv run playwright install --with-deps firefox
+        run: uv run python -m playwright install firefox
 
       - name: Compute Collection Preflight
         id: preflight
@@ -298,8 +302,8 @@ jobs:
         run: |
           echo "::group::Running backtest for ${{ matrix.band }}"
           
-          # Run backtest for last 100 shows to populate per-show accuracy
-          uv run python scripts/run_backtest.py --band ${{ matrix.band }} --model notebook --shows 100 --require-results
+          # Run backtest for last 50 shows to populate per-show accuracy
+          uv run python scripts/run_backtest.py --band ${{ matrix.band }} --model notebook --shows 50 --require-results
           uv run python scripts/run_backtest.py --band ${{ matrix.band }} --model deal --shows 50 --require-results
 
           echo "::endgroup::"
@@ -323,7 +327,7 @@ jobs:
             ARGS+=(--skip-accuracy)
           fi
 
-          uv run python scripts/check_supported_model_freshness.py "${ARGS[@]}"
+          uv run python -m scripts.check_supported_model_freshness "${ARGS[@]}"
 
           echo "::endgroup::"
 
@@ -342,7 +346,7 @@ jobs:
           fi
 
           set +e
-          uv run python scripts/audit_supabase_tables.py "${ARGS[@]}"
+          uv run python -m scripts.audit_supabase_tables "${ARGS[@]}"
           AUDIT_EXIT=$?
           set -e
 
@@ -584,7 +588,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Download band status artifacts
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@v7
         with:
           pattern: band-status-*
           path: .github/workflow-status
