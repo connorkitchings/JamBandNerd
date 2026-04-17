@@ -108,7 +108,7 @@ jobs:
 
       - name: Install Playwright OS Dependencies
         if: matrix.band == 'wsp' || matrix.band == 'eggy'
-        run: sudo uv run python -m playwright install-deps firefox
+        run: uv run python -m playwright install-deps firefox
 
       - name: Install Playwright Browsers
         if: matrix.band == 'wsp' || matrix.band == 'eggy'
