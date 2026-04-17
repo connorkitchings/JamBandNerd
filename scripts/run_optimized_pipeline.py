@@ -16,12 +16,11 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import logging
 import os
 import sys
 import time
 import traceback
-import logging
-from datetime import datetime
 
 # Add project root to path
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -45,7 +44,7 @@ from src.jambandnerd.models.registry import list_backfill_models, list_pipeline_
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S"
+    datefmt="%Y-%m-%d %H:%M:%S",
 )
 logger = logging.getLogger(__name__)
 

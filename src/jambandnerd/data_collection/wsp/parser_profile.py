@@ -31,7 +31,19 @@ class ParserProfile:
     )
 
     setlist_table_range: tuple[int, int] = (4, 8)
-    setlist_set_markers: tuple[str, ...] = ("0:", "1:", "2:", "3:", "E:")
+    # Markers that, when present in a table's text, indicate it is a setlist table.
+    # Covers both the "1: Song, Song" text format and the "Set 1" / "Encore" row format.
+    setlist_set_markers: tuple[str, ...] = (
+        "0:",
+        "1:",
+        "2:",
+        "3:",
+        "E:",
+        "Set 1",
+        "Set 2",
+        "Set 3",
+        "Encore",
+    )
     setlist_noise_markers: tuple[str, ...] = ("Song Stats",)
 
     tour_link_extension: str = ".asp"

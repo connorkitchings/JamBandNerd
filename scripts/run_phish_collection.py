@@ -202,7 +202,7 @@ def run_phish_collection(
     logging.info("Phish data collection finished.")
 
 
-if __name__ == "__main__":
+def main() -> None:
     parser = argparse.ArgumentParser(
         description="Run Phish data collection with optional schema validation"
     )
@@ -237,3 +237,7 @@ if __name__ == "__main__":
         year_end=args.year_end,
         full_backfill=args.full_backfill,
     )
+
+
+if __name__ == "__main__":
+    main()

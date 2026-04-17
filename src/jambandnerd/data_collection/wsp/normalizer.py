@@ -148,6 +148,7 @@ def normalize_setlists(raw: Iterable[Dict[str, Any]]) -> pd.DataFrame:
             # Database doesn't have 'encore' column (derived from set_number)
             "is_segue": item.get("is_segue", False),
             "song_notes": item.get("footnote") or item.get("song_notes"),
+            "source": item.get("source", "everydaycompanion"),
             "source_hash": compute_source_hash(item),
             "created_at": item.get("created_at"),  # Not in API, will be None
             "updated_at": item.get("updated_at"),  # Not in API, will be None

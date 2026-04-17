@@ -40,7 +40,7 @@ Prediction entry points (band-specific wrappers):
 - `export_backtest_snapshots.py` — export raw show/setlist tables into local JSON snapshots for offline historical scoring
 - `rebuild_prediction_songs.py` — rebuild the `prediction_songs` projection from canonical prediction tables; supports bounded `--reference-date-from/--reference-date-to` window reconciliation
 - `rebuild_derived_data.py` — rebuild predictions, `prediction_songs`, and/or accuracy tables band by band with per-model phase logging and just-in-time clearing
-- `backfill_predictions.py` — regenerate historical predictions for one or more band/model combinations
+- `backfill_predictions.py` — regenerate historical predictions for one or more band/model combinations; supports `--snapshot-root` to load raw show/setlist data from local JSON snapshots instead of re-fetching from Supabase per prediction
 - `recover_deal_last50_local.py` — local-first recovery for missing Deal `last_50` historical rows using exported raw snapshots, local scored-run bundles, and per-band Supabase upload/verification
 - `wipe_band_data.py` — clear derived outputs per band/model
 
@@ -61,6 +61,7 @@ Manual tools that write to Supabase. Use with care.
 
 - `admin/add_setlist.py`
 - `admin/delete_setlist_data.py`
+- `admin/repair_wsp_setlists_range.py`
 - `admin/get_schemas.py`
 
 ## Manual utilities

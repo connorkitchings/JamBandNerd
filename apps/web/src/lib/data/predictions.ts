@@ -26,8 +26,6 @@ import type {
   PredictionSnapshot,
   ProjectionRow,
   RouteState,
-  SetlistSnapshot,
-  SetlistSong,
   ExplorerSnapshot,
 } from "./types";
 import { getSetlistForDate } from "./shows";

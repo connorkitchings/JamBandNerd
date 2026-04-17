@@ -256,7 +256,7 @@ def upsert_dataframe(
         chunk_size: The number of rows to upsert per chunk.
     """
     import time
-    
+
     client = get_supabase_client()
     records = _dataframe_to_records(df)
 
@@ -284,7 +284,7 @@ def upsert_dataframe(
                     attempt + 1,
                     e,
                 )
-                time.sleep(2 ** attempt)
+                time.sleep(2**attempt)
 
 
 def _cleanup_stale_prediction_songs(
@@ -698,8 +698,7 @@ def check_prediction_staleness(
 
         if not is_fresh:
             logger.warning(
-                "Predictions for %s/%s are stale: "
-                "%.1fh old (max: %sh)",
+                "Predictions for %s/%s are stale: " "%.1fh old (max: %sh)",
                 band,
                 model_version,
                 age_hours,

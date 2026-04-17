@@ -497,8 +497,12 @@ async def run_fantasy_goose(
 
             if not found:
                 logger.warning("Post-submit URL: %s", submit_url)
-                logger.warning("Post-submit body (first 500 chars): %s", submit_body[:500])
-                logger.warning("My Picks body (first 500 chars): %s", mypicks_text[:500])
+                logger.warning(
+                    "Post-submit body (first 500 chars): %s", submit_body[:500]
+                )
+                logger.warning(
+                    "My Picks body (first 500 chars): %s", mypicks_text[:500]
+                )
                 raise RuntimeError(
                     f"Fantasy Goose submission did not appear in My Picks "
                     f"after {FANTASY_GOOSE_VERIFICATION_RETRIES} attempts "

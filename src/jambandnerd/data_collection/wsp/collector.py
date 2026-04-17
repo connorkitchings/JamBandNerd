@@ -15,7 +15,11 @@ from ...db.connection import get_supabase_client
 from ..base import BandCollector
 from ..config import get_collector_config
 from ..setlist_reviewer import review_setlist
-from .parser import _validate_song_name, parse_setlist_from_text
+from .parser import (
+    _validate_song_name,
+    parse_setlist_from_text,
+    parsed_output_has_fragmented_comma_titles,
+)
 from .parser_profile import DEFAULT_PROFILE, fingerprint_page, validate_fingerprint
 from .session import (
     IS_GITHUB_ACTIONS,
@@ -88,6 +92,14 @@ class WSPCollector(BandCollector):
 
             soup = BeautifulSoup(decode_ec_response(response), "html.parser")
             setlist_data = parse_setlist_from_text(soup, show_id)
+            if setlist_data and parsed_output_has_fragmented_comma_titles(
+                setlist_data, soup.get_text(" ", strip=True)
+            ):
+                logger.warning(
+                    "Primary WSP parser produced fragmented comma-title output for %s. Falling back to HTML table parsing.",
+                    show_url,
+                )
+                setlist_data = []
         except requests.exceptions.HTTPError as e:
             if e.response and e.response.status_code == 403:
                 self.status.record_403_error(show_url)
@@ -165,11 +177,37 @@ class WSPCollector(BandCollector):
             )
             setlist_df.dropna(subset=["song_name"], inplace=True)
 
+            # Markers that signal the per-song stats section has begun.
+            # When encountered, skip rows until the next set-header resets the context.
+            _STATS_SECTION_MARKERS = (
+                "Song Stats",
+                "StatsSong",
+                "LTPL3TP",
+                "LTP Date",
+                "LTP (Last Time Played)",
+            )
+
             setlist_data = []
             current_set = "1"
             song_position = 1
+            in_stats_section = False
             for _, row in setlist_df.iterrows():
                 song_name = row["song_name"]
+
+                # Entering the stats section: skip rows until the next set marker.
+                if any(m in str(song_name) for m in _STATS_SECTION_MARKERS):
+                    in_stats_section = True
+                    continue
+
+                # A new set marker exits the stats section and resets context.
+                is_set_marker = song_name.startswith("Set ") or song_name.startswith(
+                    "Encore"
+                )
+                if in_stats_section and not is_set_marker:
+                    continue
+                if is_set_marker:
+                    in_stats_section = False
+
                 if not _validate_song_name(song_name):
                     continue
 

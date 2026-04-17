@@ -12,10 +12,19 @@ export function isShowTonight(showDate: string | null, now: Date = new Date()) {
   return showDate === getEasternDateString(now);
 }
 
-export function getPredictionStatusLabel(showDate: string | null) {
+export function getPredictionStatusLabel(showDate: string | null, now: Date = new Date()) {
   if (!showDate) {
     return "Prediction Outlook";
   }
 
-  return isShowTonight(showDate) ? TONIGHT_STATUS_LABEL : "Next Show";
+  if (isShowTonight(showDate, now)) {
+    return TONIGHT_STATUS_LABEL;
+  }
+
+  const easternDate = getEasternDateString(now);
+  if (showDate < easternDate) {
+    return "Previous Show";
+  }
+
+  return "Next Show";
 }

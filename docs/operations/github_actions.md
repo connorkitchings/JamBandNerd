@@ -60,6 +60,7 @@ The primary production workflow. Collects raw data, generates predictions, runs 
 - Eggy (`thecarton.net`) is behind Cloudflare bot protection with JS challenges.
 - The Eggy collector tries standard HTTP requests first; on 403 it falls back to Playwright (Firefox) via the shared `data_collection/browser.py` module.
 - Playwright is installed in CI for both WSP and Eggy bands.
+- Because browser-backed collection and automation import Playwright directly at runtime, it is a locked runtime dependency rather than a dev-only tool.
 - If Cloudflare is lifted, Eggy automatically skips Playwright and uses direct HTTP.
 
 ### Failure Policy
@@ -100,6 +101,7 @@ Automatically plays Fantasy Goose using JamBandNerd notebook predictions for Goo
   - `no_show_tonight`, `cutoff_passed`, `already_submitted`, and `dry_run` are non-error no-ops
 
 - **Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `FG_USER_EMAIL`, `FG_PASSWORD`
+- The workflow installs browsers through `uv run python -m playwright ...`, matching the Python runtime dependency that powers the automation code.
 
 ---
 

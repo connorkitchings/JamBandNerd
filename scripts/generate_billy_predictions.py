@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import argparse
 
-from generate_predictions import generate_predictions
+from scripts.generate_predictions import generate_predictions
 
 
 def main() -> None:

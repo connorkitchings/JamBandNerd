@@ -33,11 +33,13 @@ class TestCollectorConfig:
             assert config.base_url, f"{band} config missing base_url"
             assert config.timeout > 0, f"{band} config has non-positive timeout"
             assert config.max_retries >= 0, f"{band} config has negative retries"
-            assert config.rate_limit_calls > 0, f"{band} config has non-positive rate limit"
+            assert (
+                config.rate_limit_calls > 0
+            ), f"{band} config has non-positive rate limit"
 
     def test_user_agent_is_set(self):
         """All configs should have a JamBandNerd user-agent string."""
         for band, config in COLLECTOR_CONFIGS.items():
-            assert "JamBandNerd" in (config.user_agent or ""), (
-                f"{band} config missing JamBandNerd user-agent"
-            )
+            assert "JamBandNerd" in (
+                config.user_agent or ""
+            ), f"{band} config missing JamBandNerd user-agent"

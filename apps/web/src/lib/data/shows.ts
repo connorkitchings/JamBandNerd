@@ -11,7 +11,7 @@ import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { buildShowDetails, selectUmUpcomingShowRow, type ShowDetails } from "@/lib/next-show";
 
 import { getClientOrState, getBandContext, bandEntryBySlug, getBands } from "./bands";
-import { asRecord, parseNumber, parseStringArray, getVenueNameFromRow } from "./parsers";
+import { asRecord, parseNumber, parseStringArray } from "./parsers";
 import type { RouteState, SetlistSnapshot, SetlistSong } from "./types";
 
 // ---------------------------------------------------------------------------

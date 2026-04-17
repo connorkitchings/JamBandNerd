@@ -17,11 +17,11 @@ def completed_show_window(
     *, today: date | None = None, days: int = 7
 ) -> tuple[str, str]:
     """Return the recent completed-show window, excluding today.
-    
+
     Args:
         today: The reference date to calculate from (defaults to today).
         days: The number of days to look back for completed shows.
-        
+
     Returns:
         A tuple of (cutoff_date_iso, end_date_iso) representing the window.
     """
@@ -33,11 +33,11 @@ def completed_show_window(
 
 def batched_values(values: Iterable[Any], batch_size: int = 50) -> List[List[Any]]:
     """Split values into stable batches for Supabase `in_` queries.
-    
+
     Args:
         values: An iterable of values to batch.
         batch_size: The maximum number of items per batch.
-        
+
     Returns:
         A list of lists, where each inner list is a batch of values.
     """
@@ -251,10 +251,14 @@ def fetch_table(
         total_rows = count_response.count
         logger.info("Found %s total rows in %s.", total_rows, table_name)
     except Exception as e:
-        logger.warning("Could not get count from %s: %s. Fetching until empty.", table_name, e)
+        logger.warning(
+            "Could not get count from %s: %s. Fetching until empty.", table_name, e
+        )
         total_rows = -1
 
-    logger.info("Fetching all records from %s in chunks of %s...", table_name, chunk_size)
+    logger.info(
+        "Fetching all records from %s in chunks of %s...", table_name, chunk_size
+    )
     while True:
         try:
             logger.debug("Fetching rows from offset %s...", offset)
@@ -271,7 +275,9 @@ def fetch_table(
 
             num_fetched = len(response.data)
             all_data.extend(response.data)
-            logger.debug("Fetched %s rows. Total so far: %s.", num_fetched, len(all_data))
+            logger.debug(
+                "Fetched %s rows. Total so far: %s.", num_fetched, len(all_data)
+            )
 
             if total_rows != -1 and len(all_data) >= total_rows:
                 logger.debug("Fetched all expected rows based on count. Ending fetch.")

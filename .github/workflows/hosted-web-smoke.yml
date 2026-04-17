@@ -9,7 +9,7 @@ on:
         default: "https://jambandnerd.com"
         type: string
   schedule:
-    - cron: "30 20 * * *"
+    - cron: "0 22 * * *"
 
 permissions:
   contents: read
