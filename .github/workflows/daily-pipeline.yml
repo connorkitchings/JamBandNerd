@@ -106,9 +106,13 @@ jobs:
       - name: Install dependencies
         run: uv sync --locked --no-dev
 
+      - name: Install Playwright OS Dependencies
+        if: matrix.band == 'wsp' || matrix.band == 'eggy'
+        run: sudo uv run python -m playwright install-deps firefox
+
       - name: Install Playwright Browsers
         if: matrix.band == 'wsp' || matrix.band == 'eggy'
-        run: uv run python -m playwright install --with-deps firefox
+        run: uv run python -m playwright install firefox
 
       - name: Compute Collection Preflight
         id: preflight
@@ -300,7 +304,7 @@ jobs:
           
           # Run backtest for last 50 shows to populate per-show accuracy
           uv run python scripts/run_backtest.py --band ${{ matrix.band }} --model notebook --shows 50 --require-results
-          uv run python scripts/run_backtest.py --band ${{ matrix.band }} --model deal --shows 25 --require-results
+          uv run python scripts/run_backtest.py --band ${{ matrix.band }} --model deal --shows 50 --require-results
 
           echo "::endgroup::"
 
