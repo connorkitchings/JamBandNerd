@@ -29,7 +29,7 @@ dependencies = [
 dev = [
   "ruff",
   "black",
-  "pytest>=8.4.1",
+  "pytest>=9.0.3",
   "mypy",
   "pytest-cov",
   "playwright>=1.40.0",
