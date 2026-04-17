@@ -39,6 +39,7 @@ site/
 tw_test_backups/
 docs/reports/model_baselines/cache/
 artifacts/model_readiness/
+.snapshots/
 
 # Node / Next.js
 node_modules/

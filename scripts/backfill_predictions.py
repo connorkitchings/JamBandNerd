@@ -11,6 +11,9 @@ Usage:
 
     # Backfill specific band and model
     uv run python scripts/backfill_predictions.py --band wsp --model deal
+
+    # Backfill using local snapshots to avoid re-downloading from Supabase
+    uv run python scripts/backfill_predictions.py --band wsp --model deal --snapshot-root .snapshots/wsp
 """
 
 from __future__ import annotations
@@ -45,10 +48,66 @@ logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger(__name__)
 
 
+def _fetch_raw_table(table_name: str, *, snapshot_root: str | None = None):
+    """Fetch a raw table, preserving older helper call shapes when no snapshot is used."""
+
+    if snapshot_root is None:
+        return fetch_table(table_name)
+    return fetch_table(table_name, snapshot_root=snapshot_root)
+
+
+def _load_band_data_kwargs(snapshot_root: str | None = None) -> dict[str, str]:
+    """Build optional kwargs for helpers that can read from local snapshots."""
+
+    return {"snapshot_root": snapshot_root} if snapshot_root is not None else {}
+
+
+def _shared_band_data_kwargs(
+    *,
+    shows_df: pd.DataFrame | None = None,
+    setlists_df: pd.DataFrame | None = None,
+    snapshot_root: str | None = None,
+) -> dict[str, object]:
+    """Build optional kwargs without forcing newer call shapes on older helpers."""
+
+    kwargs: dict[str, object] = {}
+    if shows_df is not None:
+        kwargs["shows_df"] = shows_df
+    if setlists_df is not None:
+        kwargs["setlists_df"] = setlists_df
+    if snapshot_root is not None:
+        kwargs["snapshot_root"] = snapshot_root
+    return kwargs
+
+
+def _load_band_data(
+    band: str,
+    *,
+    snapshot_root: str | None = None,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Load and prepare shows + setlists for a band, optionally from a local snapshot."""
+
+    shows_df = pd.DataFrame(
+        _fetch_raw_table(f"{band}_shows_raw", snapshot_root=snapshot_root)
+    )
+    setlists_df = pd.DataFrame(
+        _fetch_raw_table(f"{band}_setlists_raw", snapshot_root=snapshot_root)
+    )
+
+    if shows_df.empty or setlists_df.empty:
+        return shows_df, setlists_df
+
+    return prepare_band_data(shows_df, setlists_df, band=band)
+
+
 def check_stale_predictions(
     band: str,
     model: str,
     prediction_table: str,
+    *,
+    shows_df: pd.DataFrame | None = None,
+    setlists_df: pd.DataFrame | None = None,
+    snapshot_root: str | None = None,
 ) -> list[dict]:
     """Find predictions that may need refreshing due to new setlist data.
 
@@ -67,17 +126,14 @@ def check_stale_predictions(
     pred_df = pred_df[pred_df["band"] == band].copy()
     pred_df = pred_df.sort_values("reference_date").reset_index(drop=True)
 
-    shows_raw = fetch_table(f"{band}_shows_raw")
-    shows_df = pd.DataFrame(shows_raw)
-
-    setlists_raw = fetch_table(f"{band}_setlists_raw")
-    setlists_df = pd.DataFrame(setlists_raw)
+    if shows_df is None or setlists_df is None:
+        shows_df, setlists_df = _load_band_data(
+            band, **_load_band_data_kwargs(snapshot_root)
+        )
 
     if shows_df.empty or setlists_df.empty:
         logger.info(f"[{band}/{model}] No shows or setlists found")
         return []
-
-    shows_df, setlists_df = prepare_band_data(shows_df, setlists_df, band=band)
 
     shows_df["show_date_str"] = shows_df["show_date"].astype(str)
     setlist_show_ids = set(setlists_df["show_id"].unique())
@@ -137,6 +193,10 @@ def regenerate_prediction(
     model: str,
     reference_date_str: str,
     exclusion_window: int,
+    *,
+    shows_df: pd.DataFrame | None = None,
+    setlists_df: pd.DataFrame | None = None,
+    snapshot_root: str | None = None,
 ) -> bool:
     """Regenerate a prediction for a specific reference date."""
     try:
@@ -145,14 +205,14 @@ def regenerate_prediction(
         logger.error(f"Invalid reference date: {reference_date_str}")
         return False
 
-    shows_df = pd.DataFrame(fetch_table(f"{band}_shows_raw"))
-    setlists_df = pd.DataFrame(fetch_table(f"{band}_setlists_raw"))
+    if shows_df is None or setlists_df is None:
+        shows_df, setlists_df = _load_band_data(
+            band, **_load_band_data_kwargs(snapshot_root)
+        )
 
     if shows_df.empty or setlists_df.empty:
         logger.error(f"No data available for {band}")
         return False
-
-    shows_df, setlists_df = prepare_band_data(shows_df, setlists_df, band=band)
 
     try:
         model_data = generate_model_data(
@@ -227,6 +287,7 @@ def backfill_band(
     band: str,
     model: str,
     dry_run: bool = False,
+    snapshot_root: str | None = None,
 ) -> dict:
     """Backfill stale predictions for a single band and model."""
 
@@ -234,7 +295,23 @@ def backfill_band(
     prediction_table = model_definition.prediction_table
     exclusion_window = BAND_EXCLUSION_WINDOWS.get(band, 3)
 
-    stale = check_stale_predictions(band, model, prediction_table)
+    shows_df: pd.DataFrame | None = None
+    setlists_df: pd.DataFrame | None = None
+    if snapshot_root:
+        shows_df, setlists_df = _load_band_data(
+            band, **_load_band_data_kwargs(snapshot_root)
+        )
+
+    stale = check_stale_predictions(
+        band,
+        model,
+        prediction_table,
+        **_shared_band_data_kwargs(
+            shows_df=shows_df,
+            setlists_df=setlists_df,
+            snapshot_root=snapshot_root,
+        ),
+    )
 
     if not stale:
         return {"band": band, "model": model, "stale_count": 0, "regenerated": 0}
@@ -256,6 +333,11 @@ def backfill_band(
             model,
             stale_pred["reference_date"],
             exclusion_window,
+            **_shared_band_data_kwargs(
+                shows_df=shows_df,
+                setlists_df=setlists_df,
+                snapshot_root=snapshot_root,
+            ),
         )
         if success:
             regenerated += 1
@@ -290,6 +372,10 @@ def main() -> None:
         action="store_true",
         help="Check for stale predictions without regenerating",
     )
+    parser.add_argument(
+        "--snapshot-root",
+        help="Optional local snapshot directory for raw table reads.",
+    )
     args = parser.parse_args()
 
     bands = get_active_bands() if args.band == "all" else [args.band]
@@ -300,7 +386,12 @@ def main() -> None:
 
     results = []
     for band in bands:
-        result = backfill_band(band, args.model, dry_run=args.dry_run)
+        result = backfill_band(
+            band,
+            args.model,
+            dry_run=args.dry_run,
+            snapshot_root=args.snapshot_root,
+        )
         results.append(result)
         if args.dry_run:
             logger.info(
