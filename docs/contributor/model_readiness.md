@@ -94,6 +94,9 @@ Replay completeness is measured against each promoted model's required
 readiness window. The audit expects enough unique recent
 `historical_prediction_runs.target_show_date` rows, enough `accuracy_per_show`
 rows, and enough overlap between promoted models to support paired replay.
+Those windows are model-specific registry metadata, not a universal `50`-show
+rule. As of the current promoted set, Notebook requires `50` while Deal
+requires `10`.
 
 `web_promoted` is a separate, explicit final step:
 

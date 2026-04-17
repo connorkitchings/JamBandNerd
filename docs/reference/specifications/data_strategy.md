@@ -215,8 +215,9 @@ Historical scored backtests are stored separately in
 `historical_prediction_runs`. This preserves the exact ranked board used for a
 completed-show evaluation without mixing historical replay snapshots into the
 live prediction tables. The website's `/replay` surface treats this table as
-its canonical historical source and assumes roughly the last 50 completed shows
-per band/model remain queryable.
+its canonical historical source and assumes each promoted model retains its
+registry-defined replay window. In the current promoted set, Notebook keeps
+roughly the last 50 completed shows per band while Deal keeps the last 10.
 
 ### Accuracy storage
 
@@ -312,8 +313,9 @@ enabling the Replay feature. Each row stores:
 The `accuracy_per_show` table links back to `historical_prediction_runs` via
 `prediction_run_id`, creating full lineage from evaluation back to the original prediction.
 
-The website's `/replay` surface assumes roughly the last 50 completed shows per band/model
-remain queryable.
+The website's `/replay` surface assumes each promoted model's registry-defined
+replay window remains queryable. In the current promoted set, Notebook is 50
+shows and Deal is 10.
 
 ## Per-Song Prediction Projection
 

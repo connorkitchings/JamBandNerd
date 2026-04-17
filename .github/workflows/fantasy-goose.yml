@@ -67,8 +67,19 @@ jobs:
       - name: Install dependencies
         run: uv sync --locked --no-dev
 
+      - name: Install Playwright OS Dependencies
+        run: uv run python -m playwright install-deps chromium
+
+      - name: Cache Playwright Browsers
+        uses: actions/cache@v4
+        id: playwright-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-chromium-${{ hashFiles('uv.lock') }}
+
       - name: Install Playwright Browsers
-        run: uv run python -m playwright install --with-deps chromium
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: uv run python -m playwright install chromium
 
       - name: Play Fantasy Goose
         id: play
