@@ -173,6 +173,13 @@ def check_stale_predictions(
         ]
 
         if not shows_with_setlist.empty:
+            if predicted_at_str:
+                try:
+                    predicted_at_dt = datetime.fromisoformat(predicted_at_str)
+                    if predicted_at_dt.date() > previous_ref_date:
+                        continue
+                except (ValueError, TypeError):
+                    pass
             stale_predictions.append(
                 {
                     "reference_date": reference_date_str,

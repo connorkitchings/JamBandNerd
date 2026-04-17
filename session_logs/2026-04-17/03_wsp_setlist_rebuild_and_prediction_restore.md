@@ -46,10 +46,11 @@ npm run verify:docs
 - `src/jambandnerd/data_collection/wsp/parser.py` — Rewritten structured EC parser with comma-title protection
 - `src/jambandnerd/data_collection/wsp/collector.py` — Added sanity gate for fragmented comma-title fallback
 - `scripts/admin/repair_wsp_setlists_range.py` — New repair utility for deleting setlist rows by date range
-- `scripts/backfill_predictions.py` — Added `--snapshot-root` support for local snapshot data loading
+- `scripts/backfill_predictions.py` — Added `--snapshot-root` support for local snapshot data loading; fixed staleness-loop heuristic with `predicted_at` guard
 - `tests/data_collection/wsp/test_wsp_html_parsing.py` — Regression tests for comma-title handling
 - `tests/data_collection/wsp/fixtures/setlist_page_with_comma_title.html` — Test fixture
 - `tests/data_collection/wsp/fixtures/setlist_table_rows_with_comma_title.html` — Test fixture
+- `tests/pipeline/test_backfill_predictions.py` — Tests for staleness heuristic `predicted_at` guard
 - `scripts/README.md` — Documented `--snapshot-root` on backfill script
 - `.agent/PLAYBOOK.md` — Added local-snapshot backfill lesson
 
@@ -61,10 +62,11 @@ npm run verify:docs
 
 ## Validation
 
-- `npm run verify:python`: 312 tests passed, 6 skipped (live-band smoke — require env vars)
+- `npm run verify:python`: 314 tests passed, 6 skipped (live-band smoke — require env vars)
 - `npm run verify:docs`: mkdocs build succeeded (warnings are pre-existing orphaned pages)
+- `npm run verify:web`: 11 passed, 11 skipped (no web code changed on this branch)
 - `validate_prediction_tables.py`: predictions present and fresh; 3 "stale" warnings are false positives from 1h window
 
 ## Next Step
 
-- Push `pr-audit-supabase` for review. CI daily pipeline will organically expand Deal accuracy history (25 shows/night). The Deal backfill staleness-loop heuristic could be improved in a follow-up but is not blocking.
+- Push `pr-audit-supabase` for review. Deal full-history backtest remains deferred — CI scores a sliding 25-show window nightly and does not walk backwards. Full coverage requires a local `--all-history --snapshot-root` run (~3,265 shows × ~5 min/show). Consider running in era-based chunks overnight.

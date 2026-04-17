@@ -146,3 +146,86 @@ def test_regenerate_prediction_disables_artifact_persistence_for_training_models
 
     assert success is True
     assert captured["kwargs"] == {"persist_artifacts": False}
+
+
+def test_check_stale_skips_predictions_regenerated_after_show_date(monkeypatch):
+    predictions = pd.DataFrame(
+        [
+            {
+                "band": "wsp",
+                "reference_date": "2026-01-05",
+                "predicted_at": "2026-01-05T08:00:00+00:00",
+                "model_version": "v1",
+            },
+            {
+                "band": "wsp",
+                "reference_date": "2026-01-06",
+                "predicted_at": "2026-01-07T14:00:00+00:00",
+                "model_version": "v1",
+            },
+        ]
+    )
+    monkeypatch.setattr(
+        module,
+        "fetch_table",
+        lambda table, **kwargs: predictions.to_dict("records"),
+    )
+    shows_df = pd.DataFrame(
+        [
+            {"show_date": "2026-01-05", "show_id": "wsp-1"},
+        ]
+    )
+    shows_df["show_date"] = shows_df["show_date"].astype(str)
+    setlists_df = pd.DataFrame([{"show_id": "wsp-1", "song_name": "Song A"}])
+
+    stale = module.check_stale_predictions(
+        "wsp",
+        "deal",
+        "predictions_deal",
+        shows_df=shows_df,
+        setlists_df=setlists_df,
+    )
+
+    assert stale == []
+
+
+def test_check_stale_flags_predictions_older_than_show_date(monkeypatch):
+    predictions = pd.DataFrame(
+        [
+            {
+                "band": "wsp",
+                "reference_date": "2026-01-05",
+                "predicted_at": "2026-01-05T08:00:00+00:00",
+                "model_version": "v1",
+            },
+            {
+                "band": "wsp",
+                "reference_date": "2026-01-06",
+                "predicted_at": "2026-01-05T09:00:00+00:00",
+                "model_version": "v1",
+            },
+        ]
+    )
+    monkeypatch.setattr(
+        module,
+        "fetch_table",
+        lambda table, **kwargs: predictions.to_dict("records"),
+    )
+    shows_df = pd.DataFrame(
+        [
+            {"show_date": "2026-01-05", "show_id": "wsp-1"},
+        ]
+    )
+    shows_df["show_date"] = shows_df["show_date"].astype(str)
+    setlists_df = pd.DataFrame([{"show_id": "wsp-1", "song_name": "Song A"}])
+
+    stale = module.check_stale_predictions(
+        "wsp",
+        "deal",
+        "predictions_deal",
+        shows_df=shows_df,
+        setlists_df=setlists_df,
+    )
+
+    assert len(stale) == 1
+    assert stale[0]["reference_date"] == "2026-01-06"
