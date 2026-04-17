@@ -73,6 +73,16 @@ def _accuracy_rows(*, stale_hours: int = 0):
     }
 
 
+def _repeat_rows(row: dict[str, object], *, count: int, with_lineage: bool = True):
+    rows = []
+    for index in range(count):
+        payload = dict(row)
+        payload["show_date"] = f"2026-03-{index + 1:02d}"
+        payload["prediction_run_id"] = 1000 + index if with_lineage else None
+        rows.append(payload)
+    return rows
+
+
 def test_validate_accuracy_passes_for_fresh_rows(monkeypatch):
     monkeypatch.setattr(
         "scripts.validate_accuracy_tables.get_supabase_client",
@@ -169,5 +179,45 @@ def test_validate_accuracy_prefers_lineaged_duplicate_show_date(monkeypatch):
     )
 
     failures = validate_accuracy(bands=["goose"], max_age_hours=72)
+
+    assert failures == 0
+
+
+def test_validate_accuracy_uses_model_specific_replay_windows(monkeypatch):
+    base_rows = _accuracy_rows()
+    notebook_row = base_rows["accuracy_per_show"][0]
+    deal_row = base_rows["accuracy_per_show"][1]
+    rows = {
+        "accuracy_per_show": _repeat_rows(notebook_row, count=50)
+        + _repeat_rows(deal_row, count=10)
+    }
+    monkeypatch.setattr(
+        "scripts.validate_accuracy_tables.get_supabase_client",
+        lambda: _ClientStub(rows),
+    )
+
+    failures = validate_accuracy(bands=["goose"], max_age_hours=72)
+
+    assert failures == 0
+
+
+def test_validate_accuracy_respects_global_replay_window_override(monkeypatch):
+    base_rows = _accuracy_rows()
+    notebook_row = base_rows["accuracy_per_show"][0]
+    deal_row = base_rows["accuracy_per_show"][1]
+    rows = {
+        "accuracy_per_show": _repeat_rows(notebook_row, count=10)
+        + _repeat_rows(deal_row, count=10)
+    }
+    monkeypatch.setattr(
+        "scripts.validate_accuracy_tables.get_supabase_client",
+        lambda: _ClientStub(rows),
+    )
+
+    failures = validate_accuracy(
+        bands=["goose"],
+        max_age_hours=72,
+        replay_window=10,
+    )
 
     assert failures == 0

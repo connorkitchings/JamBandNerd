@@ -33,7 +33,7 @@ The primary production workflow. Collects raw data, generates predictions, runs 
   4. Generate predictions for Notebook and Deal models via `scripts/generate_predictions.py`
   5. Rebuild the bounded `prediction_songs` projection window via `scripts/rebuild_prediction_songs.py --reference-date-from ... --reference-date-to ...`
   6. Validate prediction tables via `scripts/validate_prediction_tables.py`
-  7. Run backtests and save aggregate accuracy (skippable via `skip_accuracy`)
+  7. Run backtests and save aggregate accuracy (skippable via `skip_accuracy`; Notebook uses `--shows 50`, Deal uses `--shows 10`)
   8. Validate accuracy tables via `scripts/validate_accuracy_tables.py`
   9. Audit supported-model freshness via `scripts/check_supported_model_freshness.py`
   10. Write per-band status summary and enforce stale-freshness escalation after artifacts are uploaded
@@ -102,6 +102,7 @@ Automatically plays Fantasy Goose using JamBandNerd notebook predictions for Goo
 
 - **Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `FG_USER_EMAIL`, `FG_PASSWORD`
 - The workflow installs browsers through `uv run python -m playwright ...`, matching the Python runtime dependency that powers the automation code.
+- Playwright browser binaries are cached in `~/.cache/ms-playwright`; OS dependencies are still installed per run because they are runner-level packages rather than cacheable repo artifacts.
 
 ---
 
@@ -153,7 +154,7 @@ CI quality gate for the `apps/web` Next.js website.
 - **Triggers**: `pull_request` and `push` to `main`
 - **Steps**:
   1. Set up Node 22 + `npm ci`
-  2. Install Playwright Chromium
+  2. Install Playwright OS dependencies and cache Chromium browser binaries
   3. `npm run verify:web`
   4. `npm run verify:clean`
 
@@ -167,6 +168,7 @@ Daily smoke test against the live deployed website.
   - `schedule`: `30 20 * * *` (daily at 20:30 UTC)
   - `workflow_dispatch` with input: `base_url` (default `https://jambandnerd.com`)
 - **Steps**: Runs `npm run test:web:smoke:hosted` with Playwright Chromium
+- Browser binaries are cached in `~/.cache/ms-playwright`; OS dependencies are installed per run.
 - **Secrets**: `VERCEL_PROTECTION_BYPASS_TOKEN` (for preview URLs)
 
 ---

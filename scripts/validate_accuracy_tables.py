@@ -128,7 +128,7 @@ def validate_accuracy(
     max_age_hours: int,
     *,
     validate_replay: bool = True,
-    replay_window: int = 50,
+    replay_window: int | None = None,
 ) -> int:
     client = get_supabase_client()
 
@@ -138,6 +138,9 @@ def validate_accuracy(
     for definition in list_accuracy_validation_models():
         model_slug = definition.slug
         model_version = definition.version
+        required_replay_window = replay_window or max(
+            definition.readiness_windows or (50,)
+        )
         per_show_table = "accuracy_per_show"
         print(f"\n== Validating {model_slug} accuracy ({model_version}) ==")
 
@@ -162,7 +165,7 @@ def validate_accuracy(
                     table=per_show_table,
                     band=band,
                     model_version=model_version,
-                    limit=replay_window,
+                    limit=required_replay_window,
                 )
                 if not replay_rows:
                     print(
@@ -214,8 +217,8 @@ def main() -> None:
     parser.add_argument(
         "--replay-window",
         type=int,
-        default=50,
-        help="Number of recent scored shows that must retain replay lineage.",
+        default=None,
+        help="Optional override for the required replay lineage window.",
     )
     args = parser.parse_args()
 
