@@ -323,7 +323,7 @@ jobs:
             ARGS+=(--skip-accuracy)
           fi
 
-          uv run python scripts/check_supported_model_freshness.py "${ARGS[@]}"
+          uv run python -m scripts.check_supported_model_freshness "${ARGS[@]}"
 
           echo "::endgroup::"
 
@@ -342,7 +342,7 @@ jobs:
           fi
 
           set +e
-          uv run python scripts/audit_supabase_tables.py "${ARGS[@]}"
+          uv run python -m scripts.audit_supabase_tables "${ARGS[@]}"
           AUDIT_EXIT=$?
           set -e
 
