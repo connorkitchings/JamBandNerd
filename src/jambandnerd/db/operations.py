@@ -726,3 +726,36 @@ def fetch_active_bands() -> list[dict[str, Any]]:
     except Exception as e:
         logger.warning("Failed to fetch active bands from registry: %s", e)
         return []
+
+
+def fetch_scored_show_ids(
+    band: str,
+    model_version: str,
+    *,
+    candidate_show_ids: Iterable[str],
+    table_name: str = "accuracy_per_show",
+) -> set[str]:
+    """Return the subset of candidate show_ids already scored in accuracy_per_show.
+
+    Used by incremental backtesting to skip shows that have already been
+    evaluated for a given band/model_version, avoiding redundant recomputation.
+    """
+    unique_ids = list(dict.fromkeys(str(s) for s in candidate_show_ids))
+    if not unique_ids:
+        return set()
+
+    client = get_supabase_client()
+    rows: list[dict[str, Any]] = []
+    chunk_size = 200
+    for start in range(0, len(unique_ids), chunk_size):
+        chunk = unique_ids[start : start + chunk_size]
+        response = (
+            client.table(table_name)
+            .select("show_id")
+            .eq("band", band)
+            .eq("model_version", model_version)
+            .in_("show_id", chunk)
+            .execute()
+        )
+        rows.extend(response.data or [])
+    return {str(row["show_id"]) for row in rows if row.get("show_id") is not None}
