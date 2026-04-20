@@ -14,7 +14,7 @@ import pandas as pd
 import requests
 from bs4 import BeautifulSoup
 
-from jambandnerd.data_collection.utils import CollectionTimer
+from jambandnerd.data_collection.utils import CollectionTimer, compute_source_hash
 from jambandnerd.db.connection import get_supabase_client
 from jambandnerd.db.operations import (
     fetch_existing_values,
@@ -776,6 +776,10 @@ def tourwrangler_fallback(client) -> tuple[int, int]:
                     backup_df["source"] = backup_df.get("source", "panicstream")
                 elif "source" in backup_df.columns:
                     backup_df = backup_df.drop(columns=["source"])
+
+                backup_df["source_hash"] = backup_df.apply(
+                    lambda row: compute_source_hash(row.to_dict()), axis=1
+                )
 
                 validate_and_upsert_dataframe(
                     table_name="wsp_setlists_raw",
