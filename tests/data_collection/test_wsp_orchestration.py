@@ -142,8 +142,8 @@ def test_classify_missing_recent_setlists_marks_upstream_missing(monkeypatch):
         lambda source_url, show_id: "upstream_missing_setlist",
     )
     monkeypatch.setattr(
-        "src.jambandnerd.data_collection.wsp.orchestration.fetch_setlist_from_tourwrangler",
-        lambda *_args, **_kwargs: [],
+        "src.jambandnerd.data_collection.wsp.orchestration._resolve_recent_wsp_fallback",
+        lambda *_args, **_kwargs: ([], None, []),
     )
 
     diagnostics = classify_missing_recent_setlists(
@@ -175,8 +175,12 @@ def test_classify_missing_recent_setlists_marks_fallback_available(monkeypatch):
         lambda source_url, show_id: "ec_request_failed",
     )
     monkeypatch.setattr(
-        "src.jambandnerd.data_collection.wsp.orchestration.fetch_setlist_from_tourwrangler",
-        lambda *_args, **_kwargs: [{"song_name": "Surprise Valley"}],
+        "src.jambandnerd.data_collection.wsp.orchestration._resolve_recent_wsp_fallback",
+        lambda *_args, **_kwargs: (
+            [{"song_name": "Surprise Valley"}],
+            "panicstream",
+            [],
+        ),
     )
 
     diagnostics = classify_missing_recent_setlists(
@@ -193,3 +197,72 @@ def test_classify_missing_recent_setlists_marks_fallback_available(monkeypatch):
     )
 
     assert diagnostics[0]["diagnosis"] == "fallback_data_available"
+    assert diagnostics[0]["detail"] == "PanicStream returned backup rows for this show"
+
+
+def test_classify_missing_recent_setlists_uses_tourwrangler_after_empty_panicstream(
+    monkeypatch,
+):
+    monkeypatch.setattr(
+        "src.jambandnerd.data_collection.wsp.orchestration._probe_everydaycompanion_setlist_status",
+        lambda source_url, show_id: "ec_request_failed",
+    )
+    monkeypatch.setattr(
+        "src.jambandnerd.data_collection.wsp.orchestration._resolve_recent_wsp_fallback",
+        lambda *_args, **_kwargs: (
+            [{"song_name": "Surprise Valley"}],
+            "tourwrangler",
+            [],
+        ),
+    )
+
+    diagnostics = classify_missing_recent_setlists(
+        client=None,
+        missing_shows=[
+            {
+                "show_id": 22456,
+                "show_date": "2026-03-21",
+                "city": "St. Augustine",
+                "state": "FL",
+                "source_url": "https://www.everydaycompanion.com/setlists/20260321a.asp",
+            }
+        ],
+    )
+
+    assert diagnostics[0]["diagnosis"] == "fallback_data_available"
+    assert diagnostics[0]["detail"] == "TourWrangler returned backup rows for this show"
+
+
+def test_classify_missing_recent_setlists_keeps_request_failed_when_all_fallbacks_empty(
+    monkeypatch,
+):
+    monkeypatch.setattr(
+        "src.jambandnerd.data_collection.wsp.orchestration._probe_everydaycompanion_setlist_status",
+        lambda source_url, show_id: "ec_request_failed",
+    )
+    monkeypatch.setattr(
+        "src.jambandnerd.data_collection.wsp.orchestration._resolve_recent_wsp_fallback",
+        lambda *_args, **_kwargs: ([], None, []),
+    )
+
+    diagnostics = classify_missing_recent_setlists(
+        client=None,
+        missing_shows=[
+            {
+                "show_id": 22457,
+                "show_date": "2026-03-22",
+                "city": "St. Augustine",
+                "state": "FL",
+                "source_url": "https://www.everydaycompanion.com/setlists/20260322a.asp",
+            }
+        ],
+    )
+
+    assert diagnostics == [
+        {
+            "show_id": "22457",
+            "show_date": "2026-03-22",
+            "diagnosis": "ec_request_failed",
+            "detail": "Everyday Companion request failed and fallback was empty",
+        }
+    ]

@@ -188,5 +188,5 @@ class TestCollectionStatus:
 
         assert "WSP collection degraded due to upstream blocking" in summary
         assert "Outcome code: degraded_upstream_blocked" in summary
-        assert "TourWrangler fallback shows filled: 2" in summary
+        assert "Recent fallback shows filled: 2" in summary
         assert "Prediction action: reused_existing" in summary

@@ -63,14 +63,37 @@ def test_scrape_single_setlist_scrape_new(
     mock_parse_setlist.assert_called_once()
 
 
-@patch(
-    "src.jambandnerd.data_collection.wsp.orchestration.fetch_setlist_from_tourwrangler"
-)
 @patch("src.jambandnerd.data_collection.wsp.orchestration.get_supabase_client")
-def test_tourwrangler_fallback(mock_get_supabase_client, mock_fetch_from_tw):
+def test_tourwrangler_fallback_uses_recent_resolver(
+    mock_get_supabase_client, monkeypatch
+):
     # Arrange
     mock_supabase_client = MagicMock()
     mock_get_supabase_client.return_value = mock_supabase_client
+    monkeypatch.setattr(
+        "src.jambandnerd.data_collection.wsp.orchestration._resolve_recent_wsp_fallback",
+        lambda *_args, **_kwargs: (
+            [
+                {
+                    "show_id": "456",
+                    "set_number": "1",
+                    "song_position": 1,
+                    "song_name": "Disco",
+                    "source": "panicstream",
+                }
+            ],
+            "panicstream",
+            [],
+        ),
+    )
+    monkeypatch.setattr(
+        "src.jambandnerd.data_collection.wsp.orchestration.get_table_schema",
+        lambda *_args, **_kwargs: [{"column_name": "source"}],
+    )
+    monkeypatch.setattr(
+        "src.jambandnerd.data_collection.wsp.orchestration.validate_and_upsert_dataframe",
+        lambda *_args, **_kwargs: None,
+    )
 
     # Mock a recent show that is missing a setlist
     yesterday = date.today() - timedelta(days=1)
@@ -88,7 +111,8 @@ def test_tourwrangler_fallback(mock_get_supabase_client, mock_fetch_from_tw):
     )  # No existing setlist
 
     # Act
-    tourwrangler_fallback(mock_supabase_client)
+    row_count, show_count = tourwrangler_fallback(mock_supabase_client)
 
     # Assert
-    mock_fetch_from_tw.assert_called_once()
+    assert row_count == 1
+    assert show_count == 1
