@@ -52,6 +52,31 @@ For the Deal model this meant 20,000 epochs of logistic regression gradient desc
 | Deal training epochs/band | 20,000 | ~800 (1–2 new shows) |
 | Supabase writes/run | ~1,200 rows | ~24 rows |
 
+## Actual CI Results (run 24686325598, 2026-04-20)
+
+All 6 bands ran successfully in 8m26s wall-clock.
+
+**Incremental output per band/model:**
+- Eggy, Billy, WSP, Phish, UM: 50/50 already scored, 0 new — instant
+- Goose/Deal: 49 already scored, **1 new** (April 19 show) — scored correctly
+
+**WSP step timing (slowest band at 7m53s):**
+| Step | Duration |
+|------|----------|
+| Setup + Playwright install | ~60s |
+| Collection (Playwright browser) | 2m59s |
+| Prediction generation (Deal ×2 dates) | **3m37s** |
+| Run Backtest (both models, 0 new) | **7s** |
+| Validation/audit | ~30s |
+
+Backtest is no longer in the critical path. **Deal prediction generation** is now the dominant compute cost — trains from scratch for 2 reference dates per band per run. The two dates are typically 1–2 days apart with nearly identical training data.
+
+## Performance Opportunities Remaining
+
+1. **Deal prediction generation (primary)**: Two training runs per band per day (~1m45s each for large bands). Options: warm-start second training from first run's weights, or detect when both reference dates share the same completed-show list and reuse predictions.
+2. **Playwright collection** (WSP/Eggy): Infrastructure constraint, hard to optimize further.
+3. The 8m26s wall-clock is already fast for a 6-band parallel run. May not need further optimization unless CI minutes become a concern.
+
 ## Next Step
 
-Merge to `dev`, then PR to `main`. Monitor first CI run to confirm Deal backfills 50-show catch-up cleanly and subsequent runs show the "already scored" skip log lines.
+Monitor future runs to confirm the 0-new pattern holds on off-days and 1–2 shows score correctly on show days. If Deal prediction generation time grows, revisit artifact reuse between adjacent reference dates in `generate_predictions.py`.
