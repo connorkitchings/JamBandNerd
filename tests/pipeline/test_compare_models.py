@@ -247,6 +247,9 @@ def test_compare_models_candidate_notebook_matches_backtest_metrics(monkeypatch)
         "upsert_dataframe",
         lambda table_name, df, conflict_columns: captured.update({"df": df.copy()}),
     )
+    monkeypatch.setattr(
+        backtest_module, "fetch_scored_show_ids", lambda *a, **kw: set()
+    )
 
     backtest_module.run_backtest(
         band="goose",
