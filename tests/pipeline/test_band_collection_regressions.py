@@ -322,6 +322,14 @@ def test_wsp_process_uses_paginated_existing_setlist_reads(monkeypatch):
         "classify_missing_recent_setlists",
         lambda *_args, **_kwargs: [],
     )
+    statuses: list[str] = []
+    monkeypatch.setattr(
+        wsp_orchestration,
+        "CollectionTimer",
+        lambda *_args, **_kwargs: type(
+            "T", (), {"log": lambda _self, _band, status: statuses.append(status)}
+        )(),
+    )
 
     wsp_orchestration.process_wsp_data(
         skip_existing_setlists=True,
@@ -338,3 +346,4 @@ def test_wsp_process_uses_paginated_existing_setlist_reads(monkeypatch):
             "source_url": "https://ec.example/show-2",
         }
     ]
+    assert statuses == ["success"]

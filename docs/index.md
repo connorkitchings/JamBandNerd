@@ -23,7 +23,7 @@ This documentation is organized into current operating docs first, then historic
 - **[Website Delivery Strategy](operations/website_delivery.md)**: Website architecture and deployment.
 - **[Mobile Verification](operations/mobile_verification.md)**: Real-device and responsive checks for the website.
 
-- **[TourWrangler Fallback](operations/tourwrangler_fallback.md)**: Backup ingestion runbook for WSP.
+- **[WSP Recent Fallbacks](operations/tourwrangler_fallback.md)**: PanicStream and TourWrangler recent-gap ingestion runbook for WSP.
 
 ### 📚 Reference Library
 - **Specs**: [Data Strategy](reference/specifications/data_strategy.md) · [CLI](reference/specifications/cli.md) · [Transformations](reference/specifications/transformations.md) · [Database](reference/specifications/database.md) · [Predictions Schema](reference/specifications/predictions_schema.md).
