@@ -106,6 +106,9 @@ def test_run_backtest_persists_string_show_ids(monkeypatch):
         "upsert_historical_prediction_run",
         capture_historical_run,
     )
+    monkeypatch.setattr(
+        run_backtest_module, "fetch_scored_show_ids", lambda *a, **kw: set()
+    )
 
     run_backtest_module.run_backtest(
         band="goose",
@@ -202,6 +205,9 @@ def test_run_backtest_disables_cached_artifacts_for_training_models(monkeypatch)
         "upsert_historical_prediction_run",
         lambda **kwargs: 123,
     )
+    monkeypatch.setattr(
+        run_backtest_module, "fetch_scored_show_ids", lambda *a, **kw: set()
+    )
 
     run_backtest_module.run_backtest(
         band="goose",
@@ -251,6 +257,9 @@ def test_run_backtest_raises_when_results_required_and_none_generated(monkeypatc
         run_backtest_module,
         "build_scored_run_records",
         lambda **kwargs: [],
+    )
+    monkeypatch.setattr(
+        run_backtest_module, "fetch_scored_show_ids", lambda *a, **kw: set()
     )
 
     with pytest.raises(RuntimeError, match="No results generated from backtest"):

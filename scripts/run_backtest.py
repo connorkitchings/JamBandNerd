@@ -32,6 +32,7 @@ from scripts.common import fetch_table, prepare_band_data
 from src.jambandnerd.config import HISTORICAL_PREDICTION_RUNS_TABLE
 from src.jambandnerd.config.bands import get_active_bands
 from src.jambandnerd.db.operations import (
+    fetch_scored_show_ids,
     upsert_dataframe,
     upsert_historical_prediction_run,
 )
@@ -314,10 +315,20 @@ def run_backtest(
     shows: int | None,
     exclusion_window: int | None,
     all_history: bool = False,
+    incremental: bool = True,
     snapshot_root: str | None = None,
     require_results: bool = False,
 ) -> int:
-    """Run a backtest for a given band and model."""
+    """Run a backtest for a given band and model.
+
+    When ``incremental=True`` (the default), shows that already have a scored
+    row in ``accuracy_per_show`` for this band/model_version are skipped.
+    This means a typical daily run scores only the 0-2 new shows that occurred
+    since the last run rather than recomputing the entire window.
+
+    Use ``incremental=False`` (or ``--all-history``) to force a full recompute,
+    e.g. after a model version bump or a data correction.
+    """
     log_prefix = f"[{band.upper()}/{model.upper()}]"
 
     # 1. Fetch and prepare data
@@ -369,6 +380,29 @@ def run_backtest(
 
     # 3. Score target shows and persist results
     definition = get_model_definition(model)
+
+    # 2b. Incremental filter: skip shows already present in accuracy_per_show.
+    # This is applied after the window is selected and the empty-window check,
+    # so data-loading failures still raise under --require-results.
+    # "All already scored" is a valid steady state and does NOT raise.
+    if incremental and not all_history:
+        candidate_ids = set(target_shows["show_id"].astype(str))
+        already_scored = fetch_scored_show_ids(
+            band,
+            definition.version,
+            candidate_show_ids=candidate_ids,
+        )
+        new_ids = candidate_ids - already_scored
+        skipped = len(candidate_ids) - len(new_ids)
+        if skipped:
+            print(
+                f"{log_prefix} Incremental: {skipped} show(s) already scored, {len(new_ids)} new."
+            )
+        if not new_ids:
+            print(f"{log_prefix} All shows in window already scored. Nothing to do.")
+            return 0
+        target_shows = target_shows[target_shows["show_id"].astype(str).isin(new_ids)]
+
     if not definition.supports_backtest:
         raise ValueError(f"Model does not support backtests: {model}")
     if definition.supports_training:
@@ -459,6 +493,15 @@ def main() -> None:
         action="store_true",
         help="Exit non-zero if the run would otherwise finish without writing scored results.",
     )
+    parser.add_argument(
+        "--incremental",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help=(
+            "Skip shows already present in accuracy_per_show for this band/model "
+            "(default: on). Use --no-incremental to force a full recompute."
+        ),
+    )
     args = parser.parse_args()
 
     run_backtest(
@@ -469,6 +512,7 @@ def main() -> None:
         shows=args.shows,
         exclusion_window=args.exclusion_window,
         all_history=args.all_history,
+        incremental=args.incremental,
         snapshot_root=args.snapshot_root,
         require_results=args.require_results,
     )
