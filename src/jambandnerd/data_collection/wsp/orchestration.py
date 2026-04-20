@@ -30,6 +30,7 @@ from .normalizer import (
     normalize_songs,
     normalize_venues,
 )
+from .panicstream import fetch_setlist_from_panicstream
 from .parser import parse_setlist_from_text
 from .parser_profile import (
     DEFAULT_PROFILE,
@@ -42,6 +43,11 @@ from .tourwrangler import fetch_setlist_from_tourwrangler
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
+
+RECENT_WSP_FALLBACK_SOURCES = (
+    ("panicstream", fetch_setlist_from_panicstream),
+    ("tourwrangler", fetch_setlist_from_tourwrangler),
 )
 
 
@@ -122,23 +128,19 @@ def classify_missing_recent_setlists(
 
         diagnosis = _probe_everydaycompanion_setlist_status(source_url, show_id)
         if diagnosis in {"upstream_missing_setlist", "ec_request_failed"}:
-            try:
-                backup_rows = fetch_setlist_from_tourwrangler(
-                    pd.to_datetime(show_date).date(), show_id, city, state
-                )
-            except Exception as exc:
-                backup_rows = []
-                detail = f"{diagnosis}; TourWrangler lookup failed: {exc}"
-            else:
-                detail = (
-                    "Everyday Companion page has no setlist table"
-                    if diagnosis == "upstream_missing_setlist"
-                    else "Everyday Companion request failed and fallback was empty"
-                )
-
+            backup_rows, backup_source, lookup_errors = _resolve_recent_wsp_fallback(
+                pd.to_datetime(show_date).date(), show_id, city, state
+            )
+            detail = (
+                "Everyday Companion page has no setlist table"
+                if diagnosis == "upstream_missing_setlist"
+                else "Everyday Companion request failed and fallback was empty"
+            )
             if backup_rows:
                 diagnosis = "fallback_data_available"
-                detail = "TourWrangler returned backup rows for this show"
+                detail = f"{_format_fallback_source(backup_source)} returned backup rows for this show"
+            elif lookup_errors:
+                detail = f"{detail}; {'; '.join(lookup_errors)}"
         elif diagnosis == "collector_missed_setlist":
             detail = "Everyday Companion page appears to contain a setlist"
         else:
@@ -173,6 +175,51 @@ def _normalize_venue_name(value: object) -> str | None:
     if normalized.startswith("the "):
         normalized = normalized[4:]
     return normalized or None
+
+
+def _format_fallback_source(source_name: str | None) -> str:
+    if source_name == "panicstream":
+        return "PanicStream"
+    if source_name == "tourwrangler":
+        return "TourWrangler"
+    return "Fallback source"
+
+
+def _setlist_table_has_source_column() -> bool:
+    schema = get_table_schema("wsp_setlists_raw")
+    return any(str(col.get("column_name", "")).lower() == "source" for col in schema)
+
+
+def _resolve_recent_wsp_fallback(
+    show_date: date,
+    show_id: str,
+    city: object,
+    state: object,
+) -> tuple[list[dict[str, object]], str | None, list[str]]:
+    """Return the first recent-gap fallback source that yields parseable rows."""
+    lookup_errors: list[str] = []
+    city_text = None if city in (None, "") else str(city)
+    state_text = None if state in (None, "") else str(state)
+
+    for source_name, fetcher in RECENT_WSP_FALLBACK_SOURCES:
+        try:
+            rows = fetcher(show_date, show_id, city_text, state_text)
+        except Exception as exc:
+            lookup_errors.append(
+                f"{_format_fallback_source(source_name)} lookup failed: {exc}"
+            )
+            continue
+        if not rows:
+            continue
+
+        normalized_rows: list[dict[str, object]] = []
+        for row in rows:
+            normalized = dict(row)
+            normalized.setdefault("source", source_name)
+            normalized_rows.append(normalized)
+        return normalized_rows, source_name, lookup_errors
+
+    return [], None, lookup_errors
 
 
 def _show_fallback_key(show: dict[str, object]) -> tuple[str, str] | None:
@@ -505,10 +552,7 @@ def process_wsp_data(
         today = date.today()
         window_days = int(os.environ.get("WSP_BACKUP_WINDOW_DAYS", "3"))
         window_start = today - timedelta(days=window_days)
-        schema = get_table_schema("wsp_setlists_raw")
-        has_source_col = any(
-            str(col.get("column_name", "")).lower() == "source" for col in schema
-        )
+        has_source_col = _setlist_table_has_source_column()
 
         resp_shows = (
             client.table("wsp_shows_raw")
@@ -540,16 +584,18 @@ def process_wsp_data(
                 }
             )
             if ec_ids:
-                client.table("wsp_setlists_raw").delete().in_("show_id", ec_ids).eq(
-                    "source", "tourwrangler"
-                ).execute()
+                for source_name in ("panicstream", "tourwrangler"):
+                    client.table("wsp_setlists_raw").delete().in_("show_id", ec_ids).eq(
+                        "source", source_name
+                    ).execute()
                 logging.info(
-                    f"Removed TourWrangler rows for {len(ec_ids)} show(s) now covered by EC."
+                    "Removed fallback rows for %s show(s) now covered by EC.",
+                    len(ec_ids),
                 )
     except Exception as exc:
         logging.warning(f"EC-over-TW promotion step encountered an error: {exc}")
 
-    # 7. TourWrangler fallback for missing recent historical setlists
+    # 7. PanicStream / TourWrangler fallback for missing recent historical setlists
     fallback_rows, fallback_shows = tourwrangler_fallback(client)
     status.fallback_setlists_collected = fallback_rows
     status.fallback_shows_filled = fallback_shows
@@ -615,8 +661,7 @@ def process_wsp_data(
 
     # 8. Log collection run
     try:
-        status_str = "degraded" if status.has_errors() else "success"
-        timer.log("wsp", status=status_str)
+        timer.log("wsp", status=status.workflow_state())
         logging.info("Logged collection run.")
     except Exception as exc:
         logging.warning(f"Could not log collection run ({exc}).")
@@ -642,10 +687,11 @@ def process_wsp_data(
 
 
 def tourwrangler_fallback(client) -> tuple[int, int]:
-    """Fetch missing recent historical setlists from TourWrangler.
+    """Fetch missing recent historical WSP setlists from fallback sources.
 
     This function checks for shows in the configured backup window that are missing
-    setlist data and attempts to fetch them from TourWrangler as a fallback source.
+    setlist data and attempts to fetch them from PanicStream first, then
+    TourWrangler if PanicStream yields nothing parseable.
 
     Args:
         client: Supabase client instance.
@@ -703,27 +749,33 @@ def tourwrangler_fallback(client) -> tuple[int, int]:
                         continue
                     city = rec.get("city")
                     state = rec.get("state")
-                    try:
-                        rows = fetch_setlist_from_tourwrangler(sdate, sid, city, state)
-                    except Exception as e:
+                    rows, source_name, lookup_errors = _resolve_recent_wsp_fallback(
+                        sdate, sid, city, state
+                    )
+                    for error in lookup_errors:
                         logging.warning(
-                            f"TourWrangler fetch failed for show_id={sid} ({sdate_str}): {e}"
+                            "%s for show_id=%s (%s)",
+                            error,
+                            sid,
+                            sdate_str,
                         )
-                        rows = []
                     if rows:
                         backup_rows.extend(rows)
                         logging.info(
-                            f"TourWrangler provided {len(rows)} rows for show_id={sid} ({sdate_str})."
+                            "%s provided %s rows for show_id=%s (%s).",
+                            _format_fallback_source(source_name),
+                            len(rows),
+                            sid,
+                            sdate_str,
                         )
 
             if backup_rows:
                 backup_df = pd.DataFrame(backup_rows)
-                schema = get_table_schema("wsp_setlists_raw")
-                if any(
-                    str(col.get("column_name", "")).lower() == "source"
-                    for col in schema
-                ):
-                    backup_df["source"] = "tourwrangler"
+                has_source_col = _setlist_table_has_source_column()
+                if has_source_col:
+                    backup_df["source"] = backup_df.get("source", "panicstream")
+                elif "source" in backup_df.columns:
+                    backup_df = backup_df.drop(columns=["source"])
 
                 validate_and_upsert_dataframe(
                     table_name="wsp_setlists_raw",
@@ -732,10 +784,11 @@ def tourwrangler_fallback(client) -> tuple[int, int]:
                     required_columns=["set_number", "song_position"],
                 )
                 logging.info(
-                    f"Upserted {len(backup_df)} TourWrangler backup setlist rows."
+                    "Upserted %s recent fallback setlist rows.",
+                    len(backup_df),
                 )
                 return len(backup_df), backup_df["show_id"].astype(str).nunique()
         return 0, 0
     except Exception as exc:
-        logging.warning(f"TourWrangler fallback step encountered an error: {exc}")
+        logging.warning(f"Recent fallback step encountered an error: {exc}")
         return 0, 0

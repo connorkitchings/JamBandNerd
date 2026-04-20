@@ -175,8 +175,8 @@ class CollectionStatus:
             f"  - Songs collected: {self.songs_collected}",
             f"  - Shows collected: {self.shows_collected}",
             f"  - Setlists collected: {self.setlists_collected}",
-            f"  - TourWrangler fallback shows filled: {self.fallback_shows_filled}",
-            f"  - TourWrangler fallback setlists collected: {self.fallback_setlists_collected}",
+            f"  - Recent fallback shows filled: {self.fallback_shows_filled}",
+            f"  - Recent fallback setlists collected: {self.fallback_setlists_collected}",
         ]
         if self.critical_failures:
             lines.append("  Recent failures:")
@@ -195,14 +195,14 @@ class CollectionStatus:
             f"  - Songs collected: {self.songs_collected}",
             f"  - Shows collected: {self.shows_collected}",
             f"  - Setlists collected: {self.setlists_collected}",
-            f"  - TourWrangler fallback shows filled: {self.fallback_shows_filled}",
-            f"  - TourWrangler fallback setlists collected: {self.fallback_setlists_collected}",
+            f"  - Recent fallback shows filled: {self.fallback_shows_filled}",
+            f"  - Recent fallback setlists collected: {self.fallback_setlists_collected}",
             f"  - Upstream pages without setlists: {self.upstream_missing_setlists}",
             "  - Collector-visible pages still missing in raw tables: "
             f"{self.collector_missing_setlists}",
             "  - EC request failures without fallback: "
             f"{self.request_blocked_missing_setlists}",
-            "  - TourWrangler data available but not stored: "
+            "  - Fallback data available but not stored: "
             f"{self.fallback_available_missing_setlists}",
             f"  - Prediction action: {self.prediction_action}",
         ]
@@ -227,7 +227,7 @@ class CollectionStatus:
             f"  - Prediction action: {self.prediction_action}",
         ]
         if self.fallback_setlists_collected > 0 or self.fallback_shows_filled > 0:
-            lines.append("  - TourWrangler fallback:")
+            lines.append("  - Recent fallback:")
             lines.append(f"    - Shows filled: {self.fallback_shows_filled}")
             lines.append(
                 f"    - Setlist rows inserted: {self.fallback_setlists_collected}"
@@ -255,7 +255,7 @@ class CollectionStatus:
                 f"{self.request_blocked_missing_setlists}"
             )
             lines.append(
-                "    - TourWrangler data available but not stored: "
+                "    - Fallback data available but not stored: "
                 f"{self.fallback_available_missing_setlists}"
             )
         return "\n".join(lines)
