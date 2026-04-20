@@ -86,7 +86,7 @@ If `DISCORD_WEBHOOK_URL` is set in GitHub Secrets, the workflow posts a success/
 Automatically plays Fantasy Goose using JamBandNerd notebook predictions for Goose.
 
 - **Triggers**:
-  - `workflow_run`: After a successful `Daily Data Pipeline` run on `main`
+  - `workflow_run`: After a `Daily Data Pipeline` run on `main` completes (any conclusion). A gate job downloads the `band-status-goose` artifact and checks that Goose predictions were freshly generated (`prediction_action == "generated"`) before proceeding.
   - `workflow_dispatch` with inputs: `date` (YYYY-MM-DD), `dry_run` (boolean)
 
 - **Behavior**:

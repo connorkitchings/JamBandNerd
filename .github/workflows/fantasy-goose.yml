@@ -19,11 +19,77 @@ on:
         type: boolean
 
 jobs:
-  play-fantasy-goose:
+  check-goose-predictions:
+    name: Check Goose Predictions
     if: >
       github.event_name == 'workflow_dispatch' ||
-      (github.event.workflow_run.conclusion == 'success' &&
-       github.event.workflow_run.head_branch == 'main')
+      github.event.workflow_run.head_branch == 'main'
+    runs-on: ubuntu-latest
+    outputs:
+      should_play: ${{ steps.gate.outputs.should_play }}
+    permissions:
+      contents: read
+      actions: read
+
+    steps:
+      - name: Download Goose band status
+        if: github.event_name == 'workflow_run'
+        uses: actions/download-artifact@v8
+        with:
+          name: band-status-goose
+          run-id: ${{ github.event.workflow_run.id }}
+          path: band-status
+        continue-on-error: true
+
+      - name: Gate on Goose prediction success
+        id: gate
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "should_play=true" >> "$GITHUB_OUTPUT"
+            echo "Manual dispatch — skipping gate."
+            exit 0
+          fi
+
+          STATUS_FILE="band-status/goose.json"
+          if [[ ! -f "$STATUS_FILE" ]]; then
+            echo "should_play=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::No Goose band-status artifact found. Skipping Fantasy Goose."
+            exit 0
+          fi
+
+          PREDICTION_ACTION=$(python3 -c "
+          import json, sys
+          with open('$STATUS_FILE') as f:
+              print(json.load(f).get('prediction_action', 'unknown'))
+          ")
+
+          WORKFLOW_STATE=$(python3 -c "
+          import json, sys
+          with open('$STATUS_FILE') as f:
+              print(json.load(f).get('workflow_state', 'unknown'))
+          ")
+
+          echo "Goose workflow_state=${WORKFLOW_STATE} prediction_action=${PREDICTION_ACTION}"
+
+          if [[ "$WORKFLOW_STATE" == "failed" ]]; then
+            echo "should_play=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Goose band pipeline failed. Skipping Fantasy Goose."
+            exit 0
+          fi
+
+          if [[ "$PREDICTION_ACTION" != "generated" ]]; then
+            echo "should_play=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Goose predictions not freshly generated (action=${PREDICTION_ACTION}). Skipping Fantasy Goose."
+            exit 0
+          fi
+
+          echo "should_play=true" >> "$GITHUB_OUTPUT"
+          echo "Goose predictions freshly generated. Proceeding to play."
+
+  play-fantasy-goose:
+    name: Play Fantasy Goose
+    needs: check-goose-predictions
+    if: needs.check-goose-predictions.outputs.should_play == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
