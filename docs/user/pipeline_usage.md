@@ -47,4 +47,9 @@ For debugging or more granular control, you can run individual pipeline componen
 - **Prediction Generation**: `scripts/generate_predictions.py --band <band> --model <model>`
 - **Backtesting & Accuracy**: `scripts/run_backtest.py --band <band> --model <model>`
 
+  The backtest script runs in **incremental mode by default**: it checks which shows in the target window are already scored and only computes the new ones. This makes daily reruns near-instant after the initial population.
+
+  - To force a full recompute (e.g. after a data correction or model version bump): add `--no-incremental`
+  - To backtest across all historical shows: add `--all-history` (implies full recompute)
+
 Refer to the source code of these scripts for their specific command-line arguments.

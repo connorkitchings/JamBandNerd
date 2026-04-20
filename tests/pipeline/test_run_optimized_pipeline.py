@@ -120,16 +120,18 @@ def test_run_band_pipeline_executes_full_orchestrator_path(band, pipeline_record
         "model": "notebook",
         "start": None,
         "end": None,
-        "shows": 100,
+        "shows": 50,
         "exclusion_window": None,
+        "incremental": True,
     }
     assert deal_backtest == {
         "band": band,
         "model": "deal",
         "start": None,
         "end": None,
-        "shows": 100,
+        "shows": 50,
         "exclusion_window": None,
+        "incremental": True,
     }
     assert pipeline_recorder[5][1]["kwargs"] == {
         "band": band,

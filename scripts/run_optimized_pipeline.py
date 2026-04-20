@@ -195,8 +195,9 @@ def run_band_pipeline(band: str, skip_accuracy: bool = False) -> bool:
                 model=model,
                 start=None,
                 end=None,
-                shows=100,
+                shows=50,
                 exclusion_window=None,
+                incremental=True,
             ):
                 return False
 

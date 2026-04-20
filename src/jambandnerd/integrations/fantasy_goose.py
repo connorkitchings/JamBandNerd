@@ -363,7 +363,7 @@ async def submit_entry(
     await page.goto(ENTRY_CREATE_URL, wait_until="networkidle")
     await page.evaluate(
         """
-        ({ showId, songIds }) => {
+        async ({ showId, songIds }) => {
           const form = Array.from(document.forms).find((candidate) =>
             candidate.action.includes('/entry/store')
           );

@@ -310,9 +310,11 @@ jobs:
         run: |
           echo "::group::Running backtest for ${{ matrix.band }}"
           
-          # Keep Notebook at the long replay window and run Deal on its smaller operational window.
-          uv run python scripts/run_backtest.py --band ${{ matrix.band }} --model notebook --shows 50 --require-results
-          uv run python scripts/run_backtest.py --band ${{ matrix.band }} --model deal --shows 10 --require-results
+          # Incremental mode (default) skips already-scored shows so only new shows are computed.
+          # Both models use the same 50-show window that the website queries.
+          # Use --no-incremental on a manual dispatch to force a full recompute (e.g. after a data correction).
+          uv run python scripts/run_backtest.py --band ${{ matrix.band }} --model notebook --shows 50 --incremental --require-results
+          uv run python scripts/run_backtest.py --band ${{ matrix.band }} --model deal --shows 50 --incremental --require-results
 
           echo "::endgroup::"
 
