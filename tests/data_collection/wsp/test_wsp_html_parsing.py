@@ -18,6 +18,8 @@ from jambandnerd.data_collection.wsp.parser_profile import (
     DEFAULT_PROFILE,
     fingerprint_page,
     validate_fingerprint,
+    validate_setlist_page_fingerprint,
+    validate_song_catalog_columns,
 )
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -194,3 +196,42 @@ def test_fingerprint_detects_layout_change():
     fp = fingerprint_page(soup, DEFAULT_PROFILE)
     warnings = validate_fingerprint(fp, DEFAULT_PROFILE)
     assert len(warnings) > 0
+
+
+def test_setlist_page_fingerprint_no_warnings_on_fixture():
+    """validate_setlist_page_fingerprint returns no warnings on a real setlist fixture."""
+    soup = _soup("setlist_page.html")
+    fp = fingerprint_page(soup, DEFAULT_PROFILE)
+    warnings = validate_setlist_page_fingerprint(fp, DEFAULT_PROFILE)
+    assert warnings == [], f"Unexpected warnings on setlist_page.html: {warnings}"
+
+
+def test_setlist_page_fingerprint_warns_missing_set_markers():
+    """validate_setlist_page_fingerprint warns when set markers are absent."""
+    no_markers_html = (
+        "<html><body>"
+        + "<table><tr><td>x</td></tr></table>" * 6
+        + "</body></html>"
+    )
+    soup = BeautifulSoup(no_markers_html, "html.parser")
+    fp = fingerprint_page(soup, DEFAULT_PROFILE)
+    warnings = validate_setlist_page_fingerprint(fp, DEFAULT_PROFILE)
+    assert len(warnings) == 1
+    assert "No set markers" in warnings[0]
+
+
+def test_validate_song_catalog_columns_no_warnings_on_correct_count():
+    """validate_song_catalog_columns returns no warnings when count matches profile."""
+    correct_columns = list(DEFAULT_PROFILE.song_table_columns)
+    warnings = validate_song_catalog_columns(correct_columns, DEFAULT_PROFILE)
+    assert warnings == []
+
+
+def test_validate_song_catalog_columns_warns_on_count_mismatch():
+    """validate_song_catalog_columns warns when column count does not match the profile."""
+    wrong_columns = ["code", "song_name", "first_played"]  # 3 instead of 6
+    warnings = validate_song_catalog_columns(wrong_columns, DEFAULT_PROFILE)
+    assert len(warnings) == 1
+    assert "mismatch" in warnings[0]
+    assert "3" in warnings[0]
+    assert str(len(DEFAULT_PROFILE.song_table_columns)) in warnings[0]
