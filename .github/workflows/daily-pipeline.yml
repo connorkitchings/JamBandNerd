@@ -557,6 +557,7 @@ jobs:
           STALE_ACCURACY_MODELS: ${{ steps.freshness_audit.outputs.stale_accuracy_models || '' }}
           FRESHNESS_REASON: ${{ steps.freshness_audit.outputs.freshness_reason || '' }}
           ACCURACY_SKIPPED: ${{ github.event.inputs.skip_accuracy == 'true' }}
+          BACKTEST_INCREMENTAL_ALL_SCORED: ${{ steps.accuracy_calc.outputs.backtest_incremental_all_scored }}
         run: |
           if [[ "${FRESHNESS_STATE}" != "stale" ]]; then
             echo "Supported-model freshness state for ${BAND}: ${FRESHNESS_STATE}"
@@ -570,6 +571,11 @@ jobs:
               echo "::error::${BAND} regeneration completed but supported-model predictions remained stale: ${STALE_PREDICTION_MODELS}. ${FRESHNESS_REASON}"
             fi
             exit 1
+          fi
+
+          if [[ "${BACKTEST_INCREMENTAL_ALL_SCORED}" == "true" ]]; then
+            echo "All shows in window were already scored; accuracy staleness is expected and not enforced."
+            exit 0
           fi
 
           if [[ "${ACCURACY_SKIPPED}" != "true" && -n "${STALE_ACCURACY_MODELS}" ]]; then

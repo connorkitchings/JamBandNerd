@@ -52,6 +52,14 @@ from src.jambandnerd.models.registry import (
 from src.jambandnerd.transformations.gaps import generate_model_data
 
 
+def _write_github_output(key: str, value: str) -> None:
+    github_output = os.environ.get("GITHUB_OUTPUT")
+    if not github_output:
+        return
+    with open(github_output, "a", encoding="utf-8") as handle:
+        handle.write(f"{key}={value}\n")
+
+
 def load_backtest_frames(
     band: str,
     *,
@@ -400,8 +408,11 @@ def run_backtest(
             )
         if not new_ids:
             print(f"{log_prefix} All shows in window already scored. Nothing to do.")
+            _write_github_output("backtest_incremental_all_scored", "true")
             return 0
         target_shows = target_shows[target_shows["show_id"].astype(str).isin(new_ids)]
+
+    _write_github_output("backtest_incremental_all_scored", "false")
 
     if not definition.supports_backtest:
         raise ValueError(f"Model does not support backtests: {model}")

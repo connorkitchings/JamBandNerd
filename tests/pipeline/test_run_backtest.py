@@ -272,3 +272,173 @@ def test_run_backtest_raises_when_results_required_and_none_generated(monkeypatc
             exclusion_window=3,
             require_results=True,
         )
+
+
+def test_run_backtest_writes_github_output_true_when_all_scored(monkeypatch, tmp_path):
+    monkeypatch.setattr(
+        run_backtest_module,
+        "load_backtest_frames",
+        lambda band, snapshot_root=None: (
+            pd.DataFrame(
+                [
+                    {"show_id": "goose-show-1", "show_date": "2024-01-20"},
+                    {"show_id": "goose-show-2", "show_date": "2024-01-25"},
+                ]
+            ),
+            pd.DataFrame(
+                [
+                    {"show_id": "goose-show-1", "song_name": "Song A"},
+                    {"show_id": "goose-show-1", "song_name": "Song B"},
+                    {"show_id": "goose-show-1", "song_name": "Song C"},
+                    {"show_id": "goose-show-2", "song_name": "Song D"},
+                    {"show_id": "goose-show-2", "song_name": "Song E"},
+                    {"show_id": "goose-show-2", "song_name": "Song F"},
+                ]
+            ),
+        ),
+    )
+    monkeypatch.setattr(
+        run_backtest_module,
+        "list_completed_shows",
+        lambda shows_df, sets_df: shows_df,
+    )
+    monkeypatch.setattr(
+        run_backtest_module,
+        "select_target_shows",
+        lambda completed_shows, **kwargs: completed_shows,
+    )
+    monkeypatch.setattr(
+        run_backtest_module,
+        "fetch_scored_show_ids",
+        lambda *a, **kw: {"goose-show-1", "goose-show-2"},
+    )
+
+    output_file = tmp_path / "gha_output"
+    monkeypatch.setenv("GITHUB_OUTPUT", str(output_file))
+
+    result = run_backtest_module.run_backtest(
+        band="goose",
+        model="notebook",
+        start=None,
+        end=None,
+        shows=2,
+        exclusion_window=3,
+    )
+
+    assert result == 0
+    assert output_file.read_text() == "backtest_incremental_all_scored=true\n"
+
+
+def test_run_backtest_writes_github_output_false_when_new_shows(monkeypatch, tmp_path):
+    monkeypatch.setattr(
+        run_backtest_module,
+        "load_backtest_frames",
+        lambda band, snapshot_root=None: (
+            pd.DataFrame([{"show_id": "goose-show-1", "show_date": "2024-01-20"}]),
+            pd.DataFrame(
+                [
+                    {"show_id": "goose-show-1", "song_name": "Song A"},
+                    {"show_id": "goose-show-1", "song_name": "Song B"},
+                    {"show_id": "goose-show-1", "song_name": "Song C"},
+                ]
+            ),
+        ),
+    )
+    monkeypatch.setattr(
+        run_backtest_module,
+        "list_completed_shows",
+        lambda shows_df, sets_df: shows_df,
+    )
+    monkeypatch.setattr(
+        run_backtest_module,
+        "select_target_shows",
+        lambda completed_shows, **kwargs: completed_shows,
+    )
+    monkeypatch.setattr(
+        run_backtest_module,
+        "get_model_definition",
+        lambda slug: get_model_definition("notebook"),
+    )
+    monkeypatch.setattr(
+        run_backtest_module,
+        "build_scored_run_records",
+        lambda **kwargs: [],
+    )
+    monkeypatch.setattr(
+        run_backtest_module,
+        "fetch_scored_show_ids",
+        lambda *a, **kw: set(),
+    )
+
+    output_file = tmp_path / "gha_output"
+    monkeypatch.setenv("GITHUB_OUTPUT", str(output_file))
+
+    result = run_backtest_module.run_backtest(
+        band="goose",
+        model="notebook",
+        start=None,
+        end=None,
+        shows=1,
+        exclusion_window=3,
+    )
+
+    assert result == 0
+    assert output_file.read_text() == "backtest_incremental_all_scored=false\n"
+
+
+def test_run_backtest_no_github_output_when_env_not_set(monkeypatch, tmp_path):
+    monkeypatch.setattr(
+        run_backtest_module,
+        "load_backtest_frames",
+        lambda band, snapshot_root=None: (
+            pd.DataFrame([{"show_id": "goose-show-1", "show_date": "2024-01-20"}]),
+            pd.DataFrame(
+                [
+                    {"show_id": "goose-show-1", "song_name": "Song A"},
+                    {"show_id": "goose-show-1", "song_name": "Song B"},
+                    {"show_id": "goose-show-1", "song_name": "Song C"},
+                ]
+            ),
+        ),
+    )
+    monkeypatch.setattr(
+        run_backtest_module,
+        "list_completed_shows",
+        lambda shows_df, sets_df: shows_df,
+    )
+    monkeypatch.setattr(
+        run_backtest_module,
+        "select_target_shows",
+        lambda completed_shows, **kwargs: completed_shows,
+    )
+    monkeypatch.setattr(
+        run_backtest_module,
+        "get_model_definition",
+        lambda slug: get_model_definition("notebook"),
+    )
+    monkeypatch.setattr(
+        run_backtest_module,
+        "build_scored_run_records",
+        lambda **kwargs: [],
+    )
+    monkeypatch.setattr(
+        run_backtest_module,
+        "fetch_scored_show_ids",
+        lambda *a, **kw: {"goose-show-1"},
+    )
+    monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
+
+    candidate_file = tmp_path / "gha_output"
+    assert not candidate_file.exists()
+
+    result = run_backtest_module.run_backtest(
+        band="goose",
+        model="notebook",
+        start=None,
+        end=None,
+        shows=1,
+        exclusion_window=3,
+    )
+
+    assert result == 0
+    assert not candidate_file.exists()
