@@ -8,6 +8,10 @@ import pytest
 from scripts import generate_predictions as module
 from src.jambandnerd.models.registry import get_model_definition
 
+# ---------------------------------------------------------------------------
+# Shared test infrastructure
+# ---------------------------------------------------------------------------
+
 
 class _Prediction:
     def __init__(self, song_name: str):
@@ -52,6 +56,11 @@ def _setup_common_monkeypatches(monkeypatch):
     monkeypatch.setattr(
         module, "generate_model_data", lambda *_args, **_kwargs: _ModelData()
     )
+
+
+def _setup_write_monkeypatches(monkeypatch):
+    monkeypatch.setattr(module, "upsert_dataframe", lambda **kwargs: None)
+    monkeypatch.setattr(module, "replace_prediction_projection", lambda **kwargs: None)
 
 
 def test_generate_predictions_uses_registry_for_tuple_predictors(monkeypatch):
@@ -240,3 +249,144 @@ def test_generate_predictions_raises_when_output_required_and_none_written(monke
             exclusion_window=3,
             require_output=True,
         )
+
+
+# ---------------------------------------------------------------------------
+# Multi-date batching tests
+# ---------------------------------------------------------------------------
+
+
+def test_batched_trains_once_for_two_dates(monkeypatch):
+    """Training-capable models must train exactly once even with two distinct dates."""
+    dates_iter = iter([date(2026, 3, 27), date(2026, 3, 28)])
+    monkeypatch.setattr(module, "fetch_table", lambda table: [{"id": table}])
+    monkeypatch.setattr(
+        module,
+        "prepare_band_data",
+        lambda shows_df, setlists_df, band: (shows_df, setlists_df),
+    )
+    monkeypatch.setattr(
+        module,
+        "resolve_reference_date",
+        lambda *_args, **_kwargs: next(dates_iter),
+    )
+    monkeypatch.setattr(
+        module, "generate_model_data", lambda *_args, **_kwargs: _ModelData()
+    )
+
+    predictor = _TrainingPredictor()
+    monkeypatch.setattr(
+        module,
+        "build_predictor",
+        lambda slug, *, band, **kwargs: predictor,
+    )
+    monkeypatch.setattr(
+        module, "get_model_definition", lambda slug: get_model_definition("deal")
+    )
+    monkeypatch.setattr(
+        module,
+        "serialize_model_predictions",
+        lambda slug, predictions: [
+            {"song_name": p.song_name} for p in predictions
+        ],
+    )
+    _setup_write_monkeypatches(monkeypatch)
+
+    result = module.generate_predictions_batched(
+        band="goose",
+        model="deal",
+        date_strs=["2026-03-27", "2026-03-28"],
+        exclusion_window=None,
+    )
+
+    assert result is True
+    assert predictor.trained == 1, (
+        f"Expected train() to be called once, got {predictor.trained}"
+    )
+
+
+def test_batched_default_sentinel_resolves_as_upcoming_show(monkeypatch):
+    """The 'default' string sentinel must be treated as None (upcoming show lookup)."""
+    resolved: list = []
+    monkeypatch.setattr(module, "fetch_table", lambda table: [{"id": table}])
+    monkeypatch.setattr(
+        module,
+        "prepare_band_data",
+        lambda shows_df, setlists_df, band: (shows_df, setlists_df),
+    )
+
+    def _track_resolve(date_str, *args, **kwargs):
+        resolved.append(date_str)
+        return date(2026, 3, 27)
+
+    monkeypatch.setattr(module, "resolve_reference_date", _track_resolve)
+    monkeypatch.setattr(
+        module, "generate_model_data", lambda *_args, **_kwargs: _ModelData()
+    )
+    monkeypatch.setattr(
+        module, "build_predictor", lambda slug, *, band, **kwargs: _TuplePredictor()
+    )
+    monkeypatch.setattr(
+        module, "get_model_definition", lambda slug: get_model_definition("notebook")
+    )
+    monkeypatch.setattr(
+        module,
+        "serialize_model_predictions",
+        lambda slug, predictions: [{"song_name": p.song_name} for p in predictions],
+    )
+    _setup_write_monkeypatches(monkeypatch)
+
+    module.generate_predictions_batched(
+        band="goose",
+        model="notebook",
+        date_strs=["default", "2026-03-28"],
+        exclusion_window=None,
+    )
+
+    # "default" should arrive at resolve_reference_date as None
+    assert None in resolved, f"Expected None in resolved calls, got {resolved}"
+
+
+def test_batched_deduplicates_identical_dates(monkeypatch):
+    """Passing the same date twice should result in exactly one prediction write."""
+    monkeypatch.setattr(module, "fetch_table", lambda table: [{"id": table}])
+    monkeypatch.setattr(
+        module,
+        "prepare_band_data",
+        lambda shows_df, setlists_df, band: (shows_df, setlists_df),
+    )
+    monkeypatch.setattr(
+        module,
+        "resolve_reference_date",
+        lambda *_args, **_kwargs: date(2026, 3, 27),
+    )
+    monkeypatch.setattr(
+        module, "generate_model_data", lambda *_args, **_kwargs: _ModelData()
+    )
+    monkeypatch.setattr(
+        module, "build_predictor", lambda slug, *, band, **kwargs: _TuplePredictor()
+    )
+    monkeypatch.setattr(
+        module, "get_model_definition", lambda slug: get_model_definition("notebook")
+    )
+    monkeypatch.setattr(
+        module,
+        "serialize_model_predictions",
+        lambda slug, predictions: [{"song_name": p.song_name} for p in predictions],
+    )
+    write_count = {"n": 0}
+    monkeypatch.setattr(
+        module,
+        "upsert_dataframe",
+        lambda **kwargs: write_count.update({"n": write_count["n"] + 1}),
+    )
+    monkeypatch.setattr(module, "replace_prediction_projection", lambda **kwargs: None)
+
+    module.generate_predictions_batched(
+        band="goose",
+        model="notebook",
+        date_strs=["2026-03-27", "2026-03-27"],
+        exclusion_window=None,
+    )
+
+    assert write_count["n"] == 1, f"Expected 1 write, got {write_count['n']}"

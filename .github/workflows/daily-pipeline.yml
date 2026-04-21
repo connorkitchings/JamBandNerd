@@ -266,20 +266,21 @@ jobs:
         run: |
           echo "::group::Generating predictions for ${{ matrix.band }}"
 
-          # Generate for the next upcoming show (default behavior)
-          uv run python scripts/generate_predictions.py --band ${{ matrix.band }} --model notebook --require-output
-          uv run python scripts/generate_predictions.py --band ${{ matrix.band }} --model deal --require-output
-
-          # Also generate for the most recent completed show to power setlist highlighting
+          # Resolve the last completed show date once, then batch both reference dates
+          # (upcoming + last completed) into a single invocation per model.  For
+          # training-capable models (Deal) this avoids a second full training pass when
+          # the two dates share nearly identical training data.
           echo "Finding last completed show date..."
           LAST_COMPLETED_DATE=$(uv run python scripts/get_last_completed_show_date.py --band ${{ matrix.band }})
 
           if [[ -n "$LAST_COMPLETED_DATE" ]]; then
-            echo "Last completed show date is $LAST_COMPLETED_DATE. Generating predictions for this date."
-            uv run python scripts/generate_predictions.py --band ${{ matrix.band }} --model notebook --date $LAST_COMPLETED_DATE --require-output
-            uv run python scripts/generate_predictions.py --band ${{ matrix.band }} --model deal --date $LAST_COMPLETED_DATE --require-output
+            echo "Last completed show date is $LAST_COMPLETED_DATE. Batching upcoming and completed predictions."
+            uv run python scripts/generate_predictions.py --band ${{ matrix.band }} --model notebook --date default --date $LAST_COMPLETED_DATE --require-output
+            uv run python scripts/generate_predictions.py --band ${{ matrix.band }} --model deal --date default --date $LAST_COMPLETED_DATE --require-output
           else
-            echo "Could not determine last completed show date. Skipping predictions for it."
+            echo "Could not determine last completed show date. Generating for upcoming show only."
+            uv run python scripts/generate_predictions.py --band ${{ matrix.band }} --model notebook --require-output
+            uv run python scripts/generate_predictions.py --band ${{ matrix.band }} --model deal --require-output
           fi
 
           echo "::endgroup::"
