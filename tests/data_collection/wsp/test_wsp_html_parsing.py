@@ -209,9 +209,7 @@ def test_setlist_page_fingerprint_no_warnings_on_fixture():
 def test_setlist_page_fingerprint_warns_missing_set_markers():
     """validate_setlist_page_fingerprint warns when set markers are absent."""
     no_markers_html = (
-        "<html><body>"
-        + "<table><tr><td>x</td></tr></table>" * 6
-        + "</body></html>"
+        "<html><body>" + "<table><tr><td>x</td></tr></table>" * 6 + "</body></html>"
     )
     soup = BeautifulSoup(no_markers_html, "html.parser")
     fp = fingerprint_page(soup, DEFAULT_PROFILE)

@@ -146,7 +146,9 @@ class WSPCollector(BandCollector):
                 return []
 
             fp = fingerprint_page(soup, DEFAULT_PROFILE)
-            fp_warnings = validate_fingerprint(fp, DEFAULT_PROFILE) + validate_setlist_page_fingerprint(fp, DEFAULT_PROFILE)
+            fp_warnings = validate_fingerprint(
+                fp, DEFAULT_PROFILE
+            ) + validate_setlist_page_fingerprint(fp, DEFAULT_PROFILE)
             if fp_warnings:
                 logger.warning(
                     "WSP DOM fingerprint mismatch for %s: %s",
@@ -525,7 +527,9 @@ class WSPCollector(BandCollector):
             songs_df = pd.read_html(
                 StringIO(str(tables[DEFAULT_PROFILE.song_table_index]))
             )[0]
-            col_warnings = validate_song_catalog_columns(songs_df.columns, DEFAULT_PROFILE)
+            col_warnings = validate_song_catalog_columns(
+                songs_df.columns, DEFAULT_PROFILE
+            )
             if col_warnings:
                 logger.warning(
                     "WSP song catalog column mismatch: %s. "

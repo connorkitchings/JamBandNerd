@@ -23,7 +23,7 @@ import json
 import os
 import sys
 from datetime import date, datetime, timezone
-from typing import Any, List
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -101,9 +101,7 @@ def generate_predictions_batched(
         try:
             upcoming_df = pd.DataFrame(fetch_table("um_upcoming_shows"))
         except Exception as exc:  # pragma: no cover - Supabase connectivity
-            print(
-                f"{log_prefix} Warning: could not load upcoming shows ({exc})."
-            )
+            print(f"{log_prefix} Warning: could not load upcoming shows ({exc}).")
 
     if shows_df.empty or setlists_df.empty:
         message = f"{log_prefix} Error: Could not fetch raw data. Aborting."
@@ -117,8 +115,7 @@ def generate_predictions_batched(
     # Resolve all reference dates, deduplicate, and sort ascending so training
     # always uses the earliest (most conservative) snapshot.
     resolved: list[date] = [
-        resolve_reference_date(d, shows_df, upcoming_df=upcoming_df)
-        for d in normalised
+        resolve_reference_date(d, shows_df, upcoming_df=upcoming_df) for d in normalised
     ]
     reference_dates = sorted(set(resolved))
 
@@ -193,7 +190,9 @@ def generate_predictions_batched(
         )
         if isinstance(prediction_output, tuple):
             predictions, diagnostics = prediction_output
-            print(f"{log_prefix} --- Model Diagnostics ({reference_date.isoformat()}) ---")
+            print(
+                f"{log_prefix} --- Model Diagnostics ({reference_date.isoformat()}) ---"
+            )
             print(json.dumps(diagnostics, indent=2, cls=NpEncoder))
             print(
                 f"{log_prefix} Recently played songs (excluded): "

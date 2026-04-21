@@ -286,9 +286,7 @@ def test_batched_trains_once_for_two_dates(monkeypatch):
     monkeypatch.setattr(
         module,
         "serialize_model_predictions",
-        lambda slug, predictions: [
-            {"song_name": p.song_name} for p in predictions
-        ],
+        lambda slug, predictions: [{"song_name": p.song_name} for p in predictions],
     )
     _setup_write_monkeypatches(monkeypatch)
 
@@ -300,9 +298,9 @@ def test_batched_trains_once_for_two_dates(monkeypatch):
     )
 
     assert result is True
-    assert predictor.trained == 1, (
-        f"Expected train() to be called once, got {predictor.trained}"
-    )
+    assert (
+        predictor.trained == 1
+    ), f"Expected train() to be called once, got {predictor.trained}"
 
 
 def test_batched_default_sentinel_resolves_as_upcoming_show(monkeypatch):
