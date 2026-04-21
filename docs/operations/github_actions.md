@@ -75,10 +75,6 @@ The primary production workflow. Collects raw data, generates predictions, runs 
   - missing supported-model rows count as stale, not as pass
 - The workflow summary shows per-band health, execution mode, missing-setlist counts, prediction handling, and supported-model freshness.
 
-### Optional Notifications
-
-If `DISCORD_WEBHOOK_URL` is set in GitHub Secrets, the workflow posts a success/failure message.
-
 ---
 
 ## Fantasy Goose

@@ -681,28 +681,3 @@ jobs:
           echo "- Check the Supabase dashboard for data validation." >> $GITHUB_STEP_SUMMARY
           echo "- Review any warnings above and re-run collection if needed." >> $GITHUB_STEP_SUMMARY
 
-  notify-discord:
-    name: Notify Discord
-    needs: [daily-pipeline, pipeline-summary]
-    if: failure()
-    runs-on: ubuntu-latest
-    env:
-      DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-    steps:
-      - name: Post status to Discord
-        if: env.DISCORD_WEBHOOK_URL != ''
-        env:
-          WORKFLOW_STATUS: ${{ needs.daily-pipeline.result }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-        run: |
-          STATUS_TEXT="⚠️ Daily pipeline completed with issues (check GitHub Actions)"
-
-          payload=$(STATUS_TEXT="$STATUS_TEXT" python - <<'PY'
-          import json, os
-          content = f"{os.environ['STATUS_TEXT']}\n{os.environ['RUN_URL']}"
-          print(json.dumps({"content": content}))
-          PY
-          )
-
-          curl -sS -X POST -H "Content-Type: application/json" -d "$payload" "$DISCORD_WEBHOOK_URL"
-          
