@@ -20,7 +20,13 @@ from .parser import (
     parse_setlist_from_text,
     parsed_output_has_fragmented_comma_titles,
 )
-from .parser_profile import DEFAULT_PROFILE, fingerprint_page, validate_fingerprint
+from .parser_profile import (
+    DEFAULT_PROFILE,
+    fingerprint_page,
+    validate_fingerprint,
+    validate_setlist_page_fingerprint,
+    validate_song_catalog_columns,
+)
 from .session import (
     IS_GITHUB_ACTIONS,
     cleanup_playwright,
@@ -140,12 +146,14 @@ class WSPCollector(BandCollector):
                 return []
 
             fp = fingerprint_page(soup, DEFAULT_PROFILE)
-            warnings = validate_fingerprint(fp, DEFAULT_PROFILE)
-            if warnings:
+            fp_warnings = validate_fingerprint(
+                fp, DEFAULT_PROFILE
+            ) + validate_setlist_page_fingerprint(fp, DEFAULT_PROFILE)
+            if fp_warnings:
                 logger.warning(
                     "WSP DOM fingerprint mismatch for %s: %s",
                     show_url,
-                    "; ".join(warnings),
+                    "; ".join(fp_warnings),
                 )
 
             setlist_table = None
@@ -163,7 +171,15 @@ class WSPCollector(BandCollector):
                         setlist_table = table
 
             if not setlist_table:
-                logger.warning(f"Could not find setlist table for {show_url}")
+                if any("No set markers" in w for w in fp_warnings):
+                    logger.warning(
+                        "WSP setlist table not found for %s — set markers absent from page; "
+                        "DOM structure may have changed (ParserProfile version: %s)",
+                        show_url,
+                        DEFAULT_PROFILE.version,
+                    )
+                else:
+                    logger.warning(f"Could not find setlist table for {show_url}")
                 return []
 
             setlist_df = pd.read_html(StringIO(str(setlist_table)))[0]
@@ -511,6 +527,17 @@ class WSPCollector(BandCollector):
             songs_df = pd.read_html(
                 StringIO(str(tables[DEFAULT_PROFILE.song_table_index]))
             )[0]
+            col_warnings = validate_song_catalog_columns(
+                songs_df.columns, DEFAULT_PROFILE
+            )
+            if col_warnings:
+                logger.warning(
+                    "WSP song catalog column mismatch: %s. "
+                    "Assigning profile column names anyway — data may be mis-labelled "
+                    "(ParserProfile version: %s).",
+                    "; ".join(col_warnings),
+                    DEFAULT_PROFILE.version,
+                )
             songs_df.columns = list(DEFAULT_PROFILE.song_table_columns)
             songs_df.dropna(subset=["code", "song_name"], inplace=True)
 

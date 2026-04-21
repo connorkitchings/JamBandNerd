@@ -210,7 +210,6 @@ The platform features comprehensive automation through GitHub Actions:
 - **Manual Triggers**: On-demand execution with band selection via the GitHub UI.
 - **Error Resilience**: Parallel matrix execution with graceful failure handling and explicit degraded-mode reporting for volatile upstreams such as WSP.
 - **Secret Management**: Secure API key and database credential handling.
-- **Optional Notifications**: Discord webhook alerts can be re-enabled via a `notify-discord` job in `.github/workflows/daily-pipeline.yml` if needed.
 
 ## Contributing
 

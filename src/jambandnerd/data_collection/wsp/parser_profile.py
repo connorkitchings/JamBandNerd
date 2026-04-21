@@ -85,3 +85,41 @@ def validate_fingerprint(
             f"found {fingerprint['table_count']}"
         )
     return warnings
+
+
+def validate_setlist_page_fingerprint(
+    fingerprint: dict[str, object], profile: ParserProfile = DEFAULT_PROFILE
+) -> list[str]:
+    """Return warnings specific to setlist page structure.
+
+    Use this in addition to ``validate_fingerprint`` when processing a page
+    that should contain a setlist.  It checks for signals only meaningful on
+    setlist pages, so it should not be used on tour index or song catalog pages.
+    """
+    warnings: list[str] = []
+    if not fingerprint.get("has_set_markers"):
+        sample = ", ".join(profile.setlist_set_markers[:4])
+        warnings.append(
+            f"No set markers found on setlist page (expected one of: {sample}, ...)"
+        )
+    return warnings
+
+
+def validate_song_catalog_columns(
+    columns: "list[str] | tuple[str, ...]",
+    profile: ParserProfile = DEFAULT_PROFILE,
+) -> list[str]:
+    """Return warnings if the song catalog table column count does not match the profile.
+
+    Call this before force-assigning ``profile.song_table_columns`` to a
+    parsed DataFrame so that column renames or table shifts surface as explicit
+    warnings rather than silently producing mis-labelled data.
+    """
+    actual_count = len(list(columns))
+    expected_count = len(profile.song_table_columns)
+    if actual_count != expected_count:
+        return [
+            f"Song catalog column count mismatch: "
+            f"expected {expected_count}, got {actual_count} (columns: {list(columns)})"
+        ]
+    return []

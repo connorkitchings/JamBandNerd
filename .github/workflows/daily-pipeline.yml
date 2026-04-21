@@ -266,20 +266,21 @@ jobs:
         run: |
           echo "::group::Generating predictions for ${{ matrix.band }}"
 
-          # Generate for the next upcoming show (default behavior)
-          uv run python scripts/generate_predictions.py --band ${{ matrix.band }} --model notebook --require-output
-          uv run python scripts/generate_predictions.py --band ${{ matrix.band }} --model deal --require-output
-
-          # Also generate for the most recent completed show to power setlist highlighting
+          # Resolve the last completed show date once, then batch both reference dates
+          # (upcoming + last completed) into a single invocation per model.  For
+          # training-capable models (Deal) this avoids a second full training pass when
+          # the two dates share nearly identical training data.
           echo "Finding last completed show date..."
           LAST_COMPLETED_DATE=$(uv run python scripts/get_last_completed_show_date.py --band ${{ matrix.band }})
 
           if [[ -n "$LAST_COMPLETED_DATE" ]]; then
-            echo "Last completed show date is $LAST_COMPLETED_DATE. Generating predictions for this date."
-            uv run python scripts/generate_predictions.py --band ${{ matrix.band }} --model notebook --date $LAST_COMPLETED_DATE --require-output
-            uv run python scripts/generate_predictions.py --band ${{ matrix.band }} --model deal --date $LAST_COMPLETED_DATE --require-output
+            echo "Last completed show date is $LAST_COMPLETED_DATE. Batching upcoming and completed predictions."
+            uv run python scripts/generate_predictions.py --band ${{ matrix.band }} --model notebook --date default --date $LAST_COMPLETED_DATE --require-output
+            uv run python scripts/generate_predictions.py --band ${{ matrix.band }} --model deal --date default --date $LAST_COMPLETED_DATE --require-output
           else
-            echo "Could not determine last completed show date. Skipping predictions for it."
+            echo "Could not determine last completed show date. Generating for upcoming show only."
+            uv run python scripts/generate_predictions.py --band ${{ matrix.band }} --model notebook --require-output
+            uv run python scripts/generate_predictions.py --band ${{ matrix.band }} --model deal --require-output
           fi
 
           echo "::endgroup::"
@@ -556,6 +557,7 @@ jobs:
           STALE_ACCURACY_MODELS: ${{ steps.freshness_audit.outputs.stale_accuracy_models || '' }}
           FRESHNESS_REASON: ${{ steps.freshness_audit.outputs.freshness_reason || '' }}
           ACCURACY_SKIPPED: ${{ github.event.inputs.skip_accuracy == 'true' }}
+          BACKTEST_INCREMENTAL_ALL_SCORED: ${{ steps.accuracy_calc.outputs.backtest_incremental_all_scored }}
         run: |
           if [[ "${FRESHNESS_STATE}" != "stale" ]]; then
             echo "Supported-model freshness state for ${BAND}: ${FRESHNESS_STATE}"
@@ -569,6 +571,11 @@ jobs:
               echo "::error::${BAND} regeneration completed but supported-model predictions remained stale: ${STALE_PREDICTION_MODELS}. ${FRESHNESS_REASON}"
             fi
             exit 1
+          fi
+
+          if [[ "${BACKTEST_INCREMENTAL_ALL_SCORED}" == "true" ]]; then
+            echo "All shows in window were already scored; accuracy staleness is expected and not enforced."
+            exit 0
           fi
 
           if [[ "${ACCURACY_SKIPPED}" != "true" && -n "${STALE_ACCURACY_MODELS}" ]]; then
@@ -681,28 +688,3 @@ jobs:
           echo "- Check the Supabase dashboard for data validation." >> $GITHUB_STEP_SUMMARY
           echo "- Review any warnings above and re-run collection if needed." >> $GITHUB_STEP_SUMMARY
 
-  notify-discord:
-    name: Notify Discord
-    needs: [daily-pipeline, pipeline-summary]
-    if: failure()
-    runs-on: ubuntu-latest
-    env:
-      DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-    steps:
-      - name: Post status to Discord
-        if: env.DISCORD_WEBHOOK_URL != ''
-        env:
-          WORKFLOW_STATUS: ${{ needs.daily-pipeline.result }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-        run: |
-          STATUS_TEXT="⚠️ Daily pipeline completed with issues (check GitHub Actions)"
-
-          payload=$(STATUS_TEXT="$STATUS_TEXT" python - <<'PY'
-          import json, os
-          content = f"{os.environ['STATUS_TEXT']}\n{os.environ['RUN_URL']}"
-          print(json.dumps({"content": content}))
-          PY
-          )
-
-          curl -sS -X POST -H "Content-Type: application/json" -d "$payload" "$DISCORD_WEBHOOK_URL"
-          
