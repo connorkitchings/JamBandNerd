@@ -72,6 +72,8 @@ The primary production workflow. Collects raw data, generates predictions, runs 
 - Supported-model freshness is a separate enforcement path from collection success:
   - degraded reuse older than `48h` is a hard failure for supported predictions
   - stale supported accuracy is also a hard failure unless the run was manually dispatched with `skip_accuracy=true`
+  - when incremental backtest finds all shows in the window already scored, accuracy staleness is expected and not enforced (scores are immutable; the backtest emits `backtest_incremental_all_scored=true`)
+  - prediction freshness is always enforced regardless of backtest state
   - missing supported-model rows count as stale, not as pass
 - The workflow summary shows per-band health, execution mode, missing-setlist counts, prediction handling, and supported-model freshness.
 
