@@ -311,6 +311,11 @@ jobs:
         run: |
           echo "::group::Running backtest for ${{ matrix.band }}"
           
+          # Default: assume all shows are already scored. Any model with new shows
+          # will overwrite backtest_incremental_all_scored=false. This ensures
+          # correct AND semantics when two models run sequentially (last-write-wins).
+          echo "backtest_incremental_all_scored=true" >> "$GITHUB_OUTPUT"
+
           # Incremental mode (default) skips already-scored shows so only new shows are computed.
           # Both models use the same 50-show window that the website queries.
           # Use --no-incremental on a manual dispatch to force a full recompute (e.g. after a data correction).
@@ -322,9 +327,15 @@ jobs:
       - name: Validate Accuracy Tables
         id: accuracy_validation
         if: github.event.inputs.skip_accuracy != 'true' && steps.preflight.outputs.should_run_collection == 'true' && steps.collection.outputs.workflow_state != 'degraded'
+        env:
+          BACKTEST_INCREMENTAL_ALL_SCORED: ${{ steps.accuracy_calc.outputs.backtest_incremental_all_scored }}
         run: |
           echo "::group::Validating accuracy tables for ${{ matrix.band }}"
-          uv run python scripts/validate_accuracy_tables.py --band ${{ matrix.band }} --max-age-hours 72
+          ARGS=(--band ${{ matrix.band }} --max-age-hours 72)
+          if [[ "${BACKTEST_INCREMENTAL_ALL_SCORED}" == "true" ]]; then
+            ARGS+=(--skip-freshness)
+          fi
+          uv run python scripts/validate_accuracy_tables.py "${ARGS[@]}"
           echo "::endgroup::"
 
       - name: Audit Supported Model Freshness
@@ -347,12 +358,13 @@ jobs:
         if: always() && steps.preflight.outputs.should_run_collection == 'true'
         env:
           AUDIT_PATH: .github/workflow-audits/${{ matrix.band }}.json
+          BACKTEST_INCREMENTAL_ALL_SCORED: ${{ steps.accuracy_calc.outputs.backtest_incremental_all_scored }}
         run: |
           echo "::group::Auditing website-facing Supabase tables for ${{ matrix.band }}"
 
           mkdir -p .github/workflow-audits
           ARGS=(--band ${{ matrix.band }} --max-age-hours 72 --output "$AUDIT_PATH")
-          if [[ "${{ github.event.inputs.skip_accuracy }}" == "true" ]]; then
+          if [[ "${{ github.event.inputs.skip_accuracy }}" == "true" || "${BACKTEST_INCREMENTAL_ALL_SCORED}" == "true" ]]; then
             ARGS+=(--skip-accuracy)
           fi
 

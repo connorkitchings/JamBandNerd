@@ -408,7 +408,6 @@ def run_backtest(
             )
         if not new_ids:
             print(f"{log_prefix} All shows in window already scored. Nothing to do.")
-            _write_github_output("backtest_incremental_all_scored", "true")
             return 0
         target_shows = target_shows[target_shows["show_id"].astype(str).isin(new_ids)]
 

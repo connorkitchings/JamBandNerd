@@ -274,7 +274,7 @@ def test_run_backtest_raises_when_results_required_and_none_generated(monkeypatc
         )
 
 
-def test_run_backtest_writes_github_output_true_when_all_scored(monkeypatch, tmp_path):
+def test_run_backtest_writes_no_output_when_all_scored(monkeypatch, tmp_path):
     monkeypatch.setattr(
         run_backtest_module,
         "load_backtest_frames",
@@ -314,6 +314,7 @@ def test_run_backtest_writes_github_output_true_when_all_scored(monkeypatch, tmp
     )
 
     output_file = tmp_path / "gha_output"
+    output_file.write_text("backtest_incremental_all_scored=true\n")
     monkeypatch.setenv("GITHUB_OUTPUT", str(output_file))
 
     result = run_backtest_module.run_backtest(
