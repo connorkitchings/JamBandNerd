@@ -63,8 +63,8 @@ graph TD
   rows still exist in storage.
 - All three registered models rely on the same ordered historical show sequence and
   the same `reference_date` anti-leakage rule.
-- `accuracy_per_show` is the granular evaluation source; aggregate accuracy
-  tables are derived summaries.
+- `accuracy_per_show` is the canonical granular evaluation source used by the
+  workflow, audits, and website-facing diagnostics.
 
 ### Delivery
 
@@ -93,12 +93,15 @@ Key shared components:
 
 ### Orchestration
 
-- `scripts/run_optimized_pipeline.py` is the canonical end-to-end local runner.
-- GitHub Actions executes the daily pipeline in production-like automation.
+- GitHub Actions YAML is the canonical daily orchestration surface.
+- `scripts/run_optimized_pipeline.py` is a local helper that mirrors the daily
+  workflow sequence for repo-supported bands.
 - Pull requests targeting `main` should clear `Repo Quality` and `Verify Website` before merge.
+- Workflow band support is repo-authoritative via `src/jambandnerd/config/bands.py`.
 - Band metadata (slug, display name, raw table names, ID column) is managed in the
-  `bands` Supabase table as the single write point. The website reads it dynamically;
-  adding a new band requires only inserting a row into `bands` and creating a collector.
+  `bands` Supabase table for runtime consumers such as the website. Adding a
+  new band requires both updating the repo band config and inserting a row into
+  `bands`.
 - Supported bands: Goose, Phish, Eggy, Billy Strings, Widespread Panic, Umphrey's McGee
 
 ### Model Platform

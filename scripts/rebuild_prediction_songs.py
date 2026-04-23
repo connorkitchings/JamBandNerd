@@ -20,7 +20,7 @@ from typing import Any
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, project_root)
 
-from src.jambandnerd.config.bands import get_active_bands
+from src.jambandnerd.config.bands import get_repo_supported_bands
 from src.jambandnerd.db.connection import get_supabase_client
 from src.jambandnerd.db.operations import replace_prediction_projection
 from src.jambandnerd.models.registry import get_model_definition, list_pipeline_models
@@ -178,7 +178,7 @@ def rebuild_prediction_songs(
     reference_date_from: str | None = None,
     reference_date_to: str | None = None,
 ) -> None:
-    bands = [band] if band else list(get_active_bands())
+    bands = [band] if band else list(get_repo_supported_bands())
     models = [get_model_definition(model)] if model else list_pipeline_models()
     model_slugs = [m.slug for m in models]
 
@@ -215,7 +215,7 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    if args.band and args.band not in get_active_bands():
+    if args.band and args.band not in get_repo_supported_bands():
         raise SystemExit(f"Unknown band: {args.band}")
 
     if args.model:

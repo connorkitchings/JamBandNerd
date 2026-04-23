@@ -454,7 +454,7 @@ def test_run_supabase_audit_default_scope_excludes_non_promoted_models(monkeypat
             "deal": _projection_rows(top_song="Song B"),
         },
     )
-    monkeypatch.setattr(module, "get_active_bands", lambda: ["goose"])
+    monkeypatch.setattr(module, "get_repo_supported_bands", lambda: ["goose"])
 
     original_build = module.build_model_readiness_report
 

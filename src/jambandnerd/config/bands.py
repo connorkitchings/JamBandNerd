@@ -1,11 +1,11 @@
-"""Band-specific configuration."""
+"""Band-specific configuration and source-of-truth helpers."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Final, Sequence
+from typing import Any, Final, Sequence
 
-# Supported bands (Fallback)
+# Repo-authoritative automation band list.
 SUPPORTED_BANDS: Final[tuple[str, ...]] = (
     "goose",
     "eggy",
@@ -35,9 +35,9 @@ BAND_ID_COLUMNS: Final[dict[str, str]] = {
     "um": "show_id",
 }
 
-# In-memory cache for dynamic registry
-_cached_active_bands: list[str] | None = None
-_cached_band_id_columns: dict[str, str] | None = None
+# In-memory caches for runtime metadata sourced from the Supabase registry.
+_cached_registry_band_rows: list[dict[str, Any]] | None = None
+_cached_runtime_band_id_columns: dict[str, str] | None = None
 
 
 @dataclass(frozen=True)
@@ -85,41 +85,66 @@ COLLECTION_POLICIES: Final[dict[str, CollectionPolicy]] = {
 }
 
 
-def get_active_bands() -> Sequence[str]:
-    """Get active bands from the DB registry, falling back to static config."""
-    global _cached_active_bands
-    if _cached_active_bands is not None:
-        return _cached_active_bands
+def get_repo_supported_bands() -> Sequence[str]:
+    """Return the repo-authoritative workflow and CLI band list."""
+    return SUPPORTED_BANDS
+
+
+def get_repo_band_id_column(band: str) -> str:
+    """Return the repo-authoritative default show id column for a band."""
+    return BAND_ID_COLUMNS.get(band, "show_id")
+
+
+def get_registry_active_band_rows() -> list[dict[str, Any]]:
+    """Return active band rows from the runtime Supabase registry when available."""
+    global _cached_registry_band_rows
+    if _cached_registry_band_rows is not None:
+        return _cached_registry_band_rows
 
     try:
         from jambandnerd.db.operations import fetch_active_bands
 
-        db_bands = fetch_active_bands()
-        if db_bands:
-            _cached_active_bands = [b["slug"] for b in db_bands]
-            return _cached_active_bands
+        rows = fetch_active_bands()
     except ImportError:
-        pass
+        rows = []
 
-    return SUPPORTED_BANDS
+    _cached_registry_band_rows = list(rows or [])
+    return _cached_registry_band_rows
+
+
+def get_registry_active_band_slugs() -> Sequence[str]:
+    """Return active runtime band slugs from the Supabase registry."""
+    rows = get_registry_active_band_rows()
+    if not rows:
+        return SUPPORTED_BANDS
+    return [str(row["slug"]) for row in rows if row.get("slug")]
+
+
+def get_runtime_band_id_column(band: str) -> str:
+    """Return the runtime show id column, preferring registry metadata."""
+    global _cached_runtime_band_id_columns
+    if _cached_runtime_band_id_columns is None:
+        rows = get_registry_active_band_rows()
+        if rows:
+            _cached_runtime_band_id_columns = {
+                str(row["slug"]): str(row["id_column"])
+                for row in rows
+                if row.get("slug") and row.get("id_column")
+            }
+        else:
+            _cached_runtime_band_id_columns = dict(BAND_ID_COLUMNS)
+
+    return _cached_runtime_band_id_columns.get(band, get_repo_band_id_column(band))
+
+
+def get_active_bands() -> Sequence[str]:
+    """Compatibility alias for repo-supported workflow bands."""
+    return get_repo_supported_bands()
 
 
 def get_band_id_column(band: str) -> str:
-    """Get the primary key column name for a band from the DB registry."""
-    global _cached_band_id_columns
-    if _cached_band_id_columns is None:
-        try:
-            from jambandnerd.db.operations import fetch_active_bands
-
-            db_bands = fetch_active_bands()
-            if db_bands:
-                _cached_band_id_columns = {b["slug"]: b["id_column"] for b in db_bands}
-            else:
-                _cached_band_id_columns = dict(BAND_ID_COLUMNS)
-        except ImportError:
-            _cached_band_id_columns = dict(BAND_ID_COLUMNS)
-
-    return _cached_band_id_columns.get(band, BAND_ID_COLUMNS.get(band, "show_id"))
+    """Compatibility alias for runtime band metadata lookup."""
+    return get_runtime_band_id_column(band)
 
 
 def get_collection_policy(band: str) -> CollectionPolicy:

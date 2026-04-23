@@ -221,3 +221,69 @@ def test_validate_accuracy_respects_global_replay_window_override(monkeypatch):
     )
 
     assert failures == 0
+
+
+def test_skip_freshness_passes_stale_rows(monkeypatch):
+    monkeypatch.setattr(
+        "scripts.validate_accuracy_tables.get_supabase_client",
+        lambda: _ClientStub(_accuracy_rows(stale_hours=96)),
+    )
+
+    failures = validate_accuracy(
+        bands=["goose"],
+        max_age_hours=72,
+        skip_freshness=True,
+    )
+
+    assert failures == 0
+
+
+def test_skip_freshness_fails_missing_rows(monkeypatch):
+    monkeypatch.setattr(
+        "scripts.validate_accuracy_tables.get_supabase_client",
+        lambda: _ClientStub({"accuracy_per_show": []}),
+    )
+
+    failures = validate_accuracy(
+        bands=["goose"],
+        max_age_hours=72,
+        skip_freshness=True,
+    )
+
+    assert failures == 4
+
+
+def test_skip_freshness_fails_invalid_timestamp(monkeypatch):
+    rows = _accuracy_rows()
+    rows["accuracy_per_show"][0]["evaluated_at"] = "not-a-timestamp"
+    rows["accuracy_per_show"][1]["evaluated_at"] = "not-a-timestamp"
+    monkeypatch.setattr(
+        "scripts.validate_accuracy_tables.get_supabase_client",
+        lambda: _ClientStub(rows),
+    )
+
+    failures = validate_accuracy(
+        bands=["goose"],
+        max_age_hours=72,
+        skip_freshness=True,
+    )
+
+    assert failures == 2
+
+
+def test_skip_freshness_still_checks_replay_lineage(monkeypatch):
+    rows = _accuracy_rows()
+    rows["accuracy_per_show"][0]["prediction_run_id"] = None
+    rows["accuracy_per_show"][1]["prediction_run_id"] = None
+    monkeypatch.setattr(
+        "scripts.validate_accuracy_tables.get_supabase_client",
+        lambda: _ClientStub(rows),
+    )
+
+    failures = validate_accuracy(
+        bands=["goose"],
+        max_age_hours=72,
+        skip_freshness=True,
+    )
+
+    assert failures == 2

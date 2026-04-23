@@ -3,9 +3,9 @@ from __future__ import annotations
 from datetime import date, timedelta
 from typing import Any
 
-from src.jambandnerd.config.bands import get_active_bands
+from src.jambandnerd.config.bands import get_repo_supported_bands
 
-BANDS = tuple(get_active_bands())
+BANDS = tuple(get_repo_supported_bands())
 
 
 def band_raw_tables(

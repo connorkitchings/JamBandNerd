@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from jambandnerd.config.bands import get_active_bands
+from jambandnerd.config.bands import get_repo_supported_bands
 from jambandnerd.db.connection import get_supabase_client
 from jambandnerd.db.operations import fetch_prediction_songs_for_date
 from jambandnerd.models.readiness import build_model_readiness_report
@@ -370,7 +370,7 @@ def run_supabase_audit(
     replay_window: int | None = None,
     skip_accuracy: bool = False,
 ) -> SupabaseAuditReport:
-    selected_bands = bands or list(get_active_bands())
+    selected_bands = bands or list(get_repo_supported_bands())
     promoted_models = list_promoted_web_models()
     client = get_supabase_client()
     readiness_reports = _load_readiness_reports(bands=selected_bands, client=client)

@@ -7,7 +7,7 @@ import json
 from datetime import datetime, timezone
 from typing import Dict, Iterable, List
 
-from jambandnerd.config.bands import get_active_bands
+from jambandnerd.config.bands import get_repo_supported_bands
 from jambandnerd.db.connection import get_supabase_client
 from jambandnerd.db.operations import fetch_prediction_songs_for_date
 from jambandnerd.models.registry import (
@@ -184,7 +184,7 @@ def validate_predictions(
 
     band_list = list(bands)
     if not band_list:
-        band_list = list(get_active_bands())
+        band_list = list(get_repo_supported_bands())
     selected_models = list(models) if models is not None else []
     definitions = (
         [get_model_definition(model_slug) for model_slug in selected_models]

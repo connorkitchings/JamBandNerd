@@ -46,7 +46,10 @@ A cloud-based data platform for collecting, transforming, and predicting jam ban
 
 ### Optimized Pipeline (Recommended)
 
-The primary way to run the data pipeline is with the `run_optimized_pipeline.py` script. This script handles data collection, transformations, predictions, and accuracy calculations for the specified band(s).
+The primary local helper for running the data pipeline is `run_optimized_pipeline.py`.
+It mirrors the promoted daily workflow sequence for the repo-supported bands.
+The canonical automation contract itself lives in
+`.github/workflows/daily-pipeline.yml`.
 
 ```bash
 # Run the complete pipeline for all supported bands
@@ -179,10 +182,11 @@ NO_MKDOCS_2_WARNING=true uv run --with mkdocs --with mkdocs-material --with pymd
 Normalization -> In-Memory Transform -> Models -> Predictions/Accuracy ->
 Website
 
-**Supported Bands**: Runtime band discovery comes from the live `bands`
-registry in Supabase, with static config retained only as a local fallback.
-New bands should follow the collector script pattern, add a `bands` row, and
-then validate the consolidated pipeline and website paths.
+**Supported Bands**: Workflow support is repo-authoritative and defined in
+`src/jambandnerd/config/bands.py`. The live `bands` registry in Supabase is
+runtime metadata for the website and other data consumers. New bands should
+follow the collector script pattern, update the repo band config, add a
+`bands` row, and then validate the consolidated pipeline and website paths.
 
 **Key Components**:
 
@@ -206,7 +210,7 @@ The platform features comprehensive automation through GitHub Actions:
 
 - **Daily Pipeline**: Runs automatically at 3 PM ET every day.
 - **Fantasy Goose**: A dedicated GitHub Actions workflow can auto-submit Goose notebook picks when Fantasy Goose exposes an eligible show and the required secrets are configured.
-- **Dynamic Matrix**: The pipeline automatically discovers and runs for all supported bands.
+- **Dynamic Matrix**: The pipeline runs the repo-authoritative automation band list through `scripts/get_all_bands.py`.
 - **Manual Triggers**: On-demand execution with band selection via the GitHub UI.
 - **Error Resilience**: Parallel matrix execution with graceful failure handling and explicit degraded-mode reporting for volatile upstreams such as WSP.
 - **Secret Management**: Secure API key and database credential handling.

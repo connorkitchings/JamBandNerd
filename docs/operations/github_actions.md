@@ -33,12 +33,13 @@ The primary production workflow. Collects raw data, generates predictions, runs 
   4. Generate predictions for Notebook and Deal models via `scripts/generate_predictions.py`
   5. Rebuild the bounded `prediction_songs` projection window via `scripts/rebuild_prediction_songs.py --reference-date-from ... --reference-date-to ...`
   6. Validate prediction tables via `scripts/validate_prediction_tables.py`
-  7. Run backtests and save aggregate accuracy (skippable via `skip_accuracy`; Notebook uses `--shows 50`, Deal uses `--shows 10`)
-  8. Validate accuracy tables via `scripts/validate_accuracy_tables.py`
+  7. Run backtests and save per-show accuracy (skippable via `skip_accuracy`; Notebook uses `--shows 50`, Deal uses `--shows 50`; emits `backtest_incremental_all_scored` output)
+  8. Validate accuracy tables via `scripts/validate_accuracy_tables.py` (passes `--skip-freshness` when all shows already scored)
   9. Audit supported-model freshness via `scripts/check_supported_model_freshness.py`
-  10. Write per-band status summary and enforce stale-freshness escalation after artifacts are uploaded
+  10. Audit website Supabase tables via `scripts/audit_supabase_tables.py` (passes `--skip-accuracy` when all shows already scored)
+  11. Write per-band status summary and enforce stale-freshness escalation after artifacts are uploaded
 
-- **Band matrix**: Dynamically built from `scripts/get_all_bands.py`. Current bands: goose, phish, eggy, billy, um, wsp.
+- **Band matrix**: Dynamically built from `scripts/get_all_bands.py`, which returns the repo-authoritative automation band list. Current bands: goose, phish, eggy, billy, um, wsp.
 - **Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`; `PHISH_API_KEY` for Phish only.
 
 ### WSP Degraded-Mode Handling
@@ -48,7 +49,7 @@ The primary production workflow. Collects raw data, generates predictions, runs 
 - Degraded runs skip prediction/backtest regeneration and report whether the website is reusing prior data.
 - WSP upstream blocking that leaves recent completed-show data unusable is a hard failure.
 - WSP Notebook remains an actively supported model surface. It is not deprecated for WSP.
-- The daily workflow now runs Notebook and Deal with strict output requirements. A supported model that exits without writing fresh predictions, backtest rows, or aggregate accuracy is treated as a workflow failure instead of a silent success.
+- The daily workflow now runs Notebook and Deal with strict output requirements. A supported model that exits without writing fresh predictions or per-show backtest rows is treated as a workflow failure instead of a silent success.
 - Supported-model reuse during degraded mode is now bounded:
   - if reused prediction freshness stays within `48h`, the band can remain degraded but non-failing
   - if supported-model prediction freshness exceeds `48h`, the band job fails after the status artifact and summary are written
@@ -73,9 +74,12 @@ The primary production workflow. Collects raw data, generates predictions, runs 
   - degraded reuse older than `48h` is a hard failure for supported predictions
   - stale supported accuracy is also a hard failure unless the run was manually dispatched with `skip_accuracy=true`
   - when incremental backtest finds all shows in the window already scored, accuracy staleness is expected and not enforced (scores are immutable; the backtest emits `backtest_incremental_all_scored=true`)
+  - the `backtest_incremental_all_scored` signal gates three steps: `Validate Accuracy Tables` (uses `--skip-freshness`), `Audit Website Supabase Tables` (uses `--skip-accuracy`), and `Enforce Supported Model Freshness` (exits early)
+  - the signal uses default-true semantics: the workflow writes `true` before running backtest, and each model call only writes `false` when it finds new shows. This ensures correct AND behavior when notebook and deal produce different results
   - prediction freshness is always enforced regardless of backtest state
   - missing supported-model rows count as stale, not as pass
 - The workflow summary shows per-band health, execution mode, missing-setlist counts, prediction handling, and supported-model freshness.
+- GitHub Actions YAML is the canonical daily workflow contract. Local Python helpers mirror it for operator convenience, but do not override it.
 
 ---
 

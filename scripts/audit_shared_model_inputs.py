@@ -15,7 +15,7 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, project_root)
 
 from scripts.common import fetch_table, prepare_band_data
-from src.jambandnerd.config.bands import get_active_bands
+from src.jambandnerd.config.bands import get_repo_supported_bands
 
 SHOW_FIELD_CANDIDATES = ("venue_name", "city", "state", "country")
 
@@ -134,7 +134,9 @@ def main() -> None:
     parser.add_argument("--output", help="Optional path to write the JSON report.")
     args = parser.parse_args()
 
-    bands = list(get_active_bands()) if args.band == "all" else args.band.split(",")
+    bands = (
+        list(get_repo_supported_bands()) if args.band == "all" else args.band.split(",")
+    )
     report = audit_bands([band.strip() for band in bands if band.strip()])
     output = _serialize_report(report)
     if not output.strip():

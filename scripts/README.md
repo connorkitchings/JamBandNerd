@@ -7,23 +7,23 @@ admin/diagnostic/manual utilities.
 
 These are the canonical scripts used by docs and GitHub Actions:
 
-- `run_optimized_pipeline.py` — end-to-end runner for one band or `all`
+- `run_optimized_pipeline.py` — local helper runner for one band or `all`; mirrors the daily workflow sequence, but GitHub Actions YAML is the canonical orchestrator
 - `generate_predictions.py` — generate predictions for `--band` and `--model`
 - `run_backtest.py` — compute per-show accuracy history and persist historical scored-run lineage; supports local raw-table snapshots via `--snapshot-root`
 - `verify_data_freshness.py` — CI data-quality check for recent missing setlists
 - `generate_pipeline_summary.py` — GitHub Actions monitoring summary for recent completed-show freshness and prediction coverage
 - `check_supported_model_freshness.py` — audit supported prediction/accuracy freshness for one band and emit GitHub Actions outputs without failing early
 - `validate_prediction_tables.py` — prediction freshness/JSON integrity check using the latest row by `predicted_at`, plus `prediction_songs` consistency checks
-- `validate_accuracy_tables.py` — per-show and aggregate accuracy freshness/presence check, plus replay-lineage validation for recent scored shows
+- `validate_accuracy_tables.py` — per-show accuracy freshness/presence check, plus replay-lineage validation for recent scored shows
 - `audit_supabase_tables.py` — canonical website-facing Supabase audit that combines live prediction completeness, replay/history coverage, supported-model freshness, and recent raw setlist completeness into one read-only report
 - `collection_preflight.py` — classify collection mode and execution mode before the collector starts
 - `get_prediction_dates.py` — list available prediction reference dates for a band/model
 - `get_last_completed_show_date.py` — resolve the most recent completed show date for a band
 
-Band collection scripts (kept at top-level to support dynamic discovery):
+Band collection scripts (kept at top-level so GitHub Actions and local tooling can address them directly):
 
 - `run_{band}_collection.py` — raw ingestion/upserts for a specific band
-- `get_all_bands.py` — discovers supported bands by scanning for `run_*_collection.py`
+- `get_all_bands.py` — returns the repo-authoritative automation band list from `src/jambandnerd/config/bands.py`
 
 Prediction entry points (band-specific wrappers):
 

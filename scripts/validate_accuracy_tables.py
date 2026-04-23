@@ -9,7 +9,7 @@ from typing import Dict, Iterable, List
 from jambandnerd.config import (
     HISTORICAL_PREDICTION_RUNS_TABLE,
 )
-from jambandnerd.config.bands import get_active_bands
+from jambandnerd.config.bands import get_repo_supported_bands
 from jambandnerd.db.connection import get_supabase_client
 from jambandnerd.models.registry import (
     list_accuracy_validation_models,
@@ -123,16 +123,40 @@ def _validate_row(
     return 0 if freshness_ok else 1
 
 
+def _validate_row_skip_freshness(
+    *,
+    band: str,
+    label: str,
+    row: dict[str, object] | None,
+) -> int:
+    if not row:
+        print(f"[FAIL] {band}: no {label} row found")
+        return 1
+
+    evaluated_at = _parse_timestamp(str(row.get("evaluated_at") or ""))
+    if evaluated_at is None:
+        print(f"[FAIL] {band}: {label} row is missing a valid evaluated_at timestamp")
+        return 1
+
+    age_hrs = (datetime.now(timezone.utc) - evaluated_at).total_seconds() / 3600
+    print(
+        f"[OK] {band}: {label} evaluated_at={evaluated_at.isoformat()} "
+        f"age={age_hrs:.1f}h (freshness check skipped)"
+    )
+    return 0
+
+
 def validate_accuracy(
     bands: Iterable[str],
     max_age_hours: int,
     *,
     validate_replay: bool = True,
     replay_window: int | None = None,
+    skip_freshness: bool = False,
 ) -> int:
     client = get_supabase_client()
 
-    band_list = list(bands) or list(get_active_bands())
+    band_list = list(bands) or list(get_repo_supported_bands())
     failures = 0
 
     for definition in list_accuracy_validation_models():
@@ -151,13 +175,20 @@ def validate_accuracy(
                 band=band,
                 model_version=model_version,
             )
-            failures += _validate_row(
-                band=band,
-                label="per-show accuracy",
-                row=per_show_row,
-                max_age_hours=max_age_hours,
-                required_fields=("show_date",),
-            )
+            if skip_freshness:
+                failures += _validate_row_skip_freshness(
+                    band=band,
+                    label="per-show accuracy",
+                    row=per_show_row,
+                )
+            else:
+                failures += _validate_row(
+                    band=band,
+                    label="per-show accuracy",
+                    row=per_show_row,
+                    max_age_hours=max_age_hours,
+                    required_fields=("show_date",),
+                )
 
             if validate_replay:
                 replay_rows = _recent_replay_eligible_rows(
@@ -220,6 +251,11 @@ def main() -> None:
         default=None,
         help="Optional override for the required replay lineage window.",
     )
+    parser.add_argument(
+        "--skip-freshness",
+        action="store_true",
+        help="Skip the evaluated_at age check. Still validates row presence and replay lineage.",
+    )
     args = parser.parse_args()
 
     failures = validate_accuracy(
@@ -227,6 +263,7 @@ def main() -> None:
         max_age_hours=args.max_age_hours,
         validate_replay=not args.skip_replay_check,
         replay_window=args.replay_window,
+        skip_freshness=args.skip_freshness,
     )
     if failures:
         raise SystemExit(f"Accuracy validation failed with {failures} issue(s)")

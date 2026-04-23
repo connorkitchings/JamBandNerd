@@ -19,7 +19,7 @@ from src.jambandnerd.config import (
     HISTORICAL_PREDICTION_RUNS_TABLE,
     PREDICTION_SONGS_TABLE,
 )
-from src.jambandnerd.config.bands import get_active_bands
+from src.jambandnerd.config.bands import get_repo_supported_bands
 from src.jambandnerd.db.connection import get_supabase_client
 from src.jambandnerd.models.registry import (
     get_model_definition,
@@ -32,7 +32,7 @@ MODELS: tuple[str, ...] = tuple(
 
 
 def _selected_bands(band: str) -> list[str]:
-    return list(get_active_bands()) if band == "all" else [band]
+    return list(get_repo_supported_bands()) if band == "all" else [band]
 
 
 def clear_model_outputs(
@@ -216,7 +216,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--band",
-        choices=[*get_active_bands(), "all"],
+        choices=[*get_repo_supported_bands(), "all"],
         default="all",
         help="Band to rebuild (default: all supported bands).",
     )
