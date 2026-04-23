@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Local pipeline runner to orchestrate the execution of consolidated scripts.
+Local helper to run the consolidated pipeline scripts for one or more bands.
 
-This script provides a way to run the entire pipeline for a band locally,
-mirroring the logic in the GitHub Actions workflow.
+This script mirrors the promoted daily workflow sequence for local use, but the
+canonical orchestration contract lives in `.github/workflows/daily-pipeline.yml`.
 
 Usage:
     # Run the full pipeline for Goose
@@ -38,7 +38,7 @@ from scripts.run_um_collection import run_um_collection
 from scripts.run_wsp_collection import run_wsp_collection
 from scripts.validate_accuracy_tables import validate_accuracy
 from scripts.validate_prediction_tables import validate_predictions
-from src.jambandnerd.config.bands import get_active_bands
+from src.jambandnerd.config.bands import get_repo_supported_bands
 from src.jambandnerd.models.registry import list_backfill_models, list_pipeline_models
 
 logging.basicConfig(
@@ -250,7 +250,7 @@ def main():
     )
     parser.add_argument(
         "--band",
-        choices=[*get_active_bands(), "all"],
+        choices=[*get_repo_supported_bands(), "all"],
         default="all",
         help="Band to process (default: all)",
     )
@@ -264,7 +264,7 @@ def main():
     overall_start_time = time.time()
     log_with_timestamp("🚀 Starting JamBandNerd Pipeline Orchestrator")
 
-    all_bands = list(get_active_bands())
+    all_bands = list(get_repo_supported_bands())
     bands_to_process = all_bands if args.band == "all" else [args.band]
     results = {}
 

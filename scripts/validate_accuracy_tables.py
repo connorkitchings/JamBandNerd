@@ -9,7 +9,7 @@ from typing import Dict, Iterable, List
 from jambandnerd.config import (
     HISTORICAL_PREDICTION_RUNS_TABLE,
 )
-from jambandnerd.config.bands import get_active_bands
+from jambandnerd.config.bands import get_repo_supported_bands
 from jambandnerd.db.connection import get_supabase_client
 from jambandnerd.models.registry import (
     list_accuracy_validation_models,
@@ -156,7 +156,7 @@ def validate_accuracy(
 ) -> int:
     client = get_supabase_client()
 
-    band_list = list(bands) or list(get_active_bands())
+    band_list = list(bands) or list(get_repo_supported_bands())
     failures = 0
 
     for definition in list_accuracy_validation_models():

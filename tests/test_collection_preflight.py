@@ -36,7 +36,7 @@ def test_compute_band_preflight_runs_when_recent_show_has_missing_setlist(monkey
         ),
     )
     monkeypatch.setattr(
-        collection_preflight, "get_band_id_column", lambda _band: "show_id"
+        collection_preflight, "get_runtime_band_id_column", lambda _band: "show_id"
     )
 
     def fetch_rows(table_name, **_kwargs):
@@ -80,7 +80,7 @@ def test_compute_band_preflight_allows_verify_only_for_idle_policy(monkeypatch):
         ),
     )
     monkeypatch.setattr(
-        collection_preflight, "get_band_id_column", lambda _band: "show_id"
+        collection_preflight, "get_runtime_band_id_column", lambda _band: "show_id"
     )
     monkeypatch.setattr(
         collection_preflight, "fetch_table_rows", lambda *_args, **_kwargs: []

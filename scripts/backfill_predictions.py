@@ -31,7 +31,7 @@ sys.path.insert(0, str(project_root))
 
 from scripts.common import fetch_table, prepare_band_data
 from src.jambandnerd.config import BAND_EXCLUSION_WINDOWS
-from src.jambandnerd.config.bands import get_active_bands
+from src.jambandnerd.config.bands import get_repo_supported_bands
 from src.jambandnerd.db.operations import (
     replace_prediction_projection,
     upsert_dataframe,
@@ -385,9 +385,9 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    bands = get_active_bands() if args.band == "all" else [args.band]
+    bands = get_repo_supported_bands() if args.band == "all" else [args.band]
 
-    if args.band != "all" and args.band not in get_active_bands():
+    if args.band != "all" and args.band not in get_repo_supported_bands():
         logger.error(f"Unknown band: {args.band}")
         sys.exit(1)
 

@@ -12,7 +12,7 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, project_root)
 
 from scripts.diagnose_band_data import diagnose_band
-from src.jambandnerd.config.bands import get_active_bands
+from src.jambandnerd.config.bands import get_repo_supported_bands
 
 
 def audit_bands(bands: list[str], *, verbose: bool = False) -> int:
@@ -41,7 +41,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--band",
-        choices=[*get_active_bands(), "all"],
+        choices=[*get_repo_supported_bands(), "all"],
         default="all",
         help="Band to audit (default: all supported bands).",
     )
@@ -52,7 +52,7 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    bands = list(get_active_bands()) if args.band == "all" else [args.band]
+    bands = list(get_repo_supported_bands()) if args.band == "all" else [args.band]
     failures = audit_bands(bands, verbose=args.verbose)
     if failures:
         raise SystemExit(f"Audit found issues in {failures} band(s)")

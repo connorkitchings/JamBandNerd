@@ -17,7 +17,7 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, project_root)
 
 from scripts.common import fetch_table, prepare_band_data, resolve_reference_date
-from src.jambandnerd.config.bands import get_active_bands
+from src.jambandnerd.config.bands import get_repo_supported_bands
 from src.jambandnerd.models.comparison import (
     build_cross_band_summary,
     build_delta_summary,
@@ -56,7 +56,7 @@ def _log_progress(message: str) -> None:
 
 def _parse_bands(raw_band: str) -> list[str]:
     if raw_band == "all":
-        return list(get_active_bands())
+        return list(get_repo_supported_bands())
     return [band.strip() for band in raw_band.split(",") if band.strip()]
 
 

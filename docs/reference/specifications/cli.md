@@ -4,7 +4,10 @@ This document defines the command-line interface and scripting design for JamBan
 
 ## Primary Pipeline Script
 
-The main entry point for running the end-to-end pipeline is `scripts/run_optimized_pipeline.py`. This script is the recommended way to run the full data collection, transformation, prediction, and accuracy calculation process.
+The main local helper for running the end-to-end pipeline is
+`scripts/run_optimized_pipeline.py`. It mirrors the promoted daily workflow
+sequence for the repo-supported bands. The canonical automation contract lives
+in `.github/workflows/daily-pipeline.yml`.
 
 ### Usage
 
@@ -27,7 +30,7 @@ While the optimized pipeline is recommended for end-to-end runs, the core logic 
 
 Generates and saves predictions for a given band and model.
 
-- `--band <active-band-slug>`: (Required) The band to process. The script accepts any active band returned by the registry/config layer.
+- `--band <repo-supported-band-slug>`: (Required) The band to process. The script accepts any repo-supported band from `src/jambandnerd/config/bands.py`.
 - `--model <registered-model-slug>`: (Required) The model to use.
 - `--date {YYYY-MM-DD}`: (Optional) The reference date for predictions. Defaults to the next upcoming show.
 - `--exclusion-window {N}`: (Optional) For the Notebook model, the number of recent shows to exclude songs from. Defaults to 3.
@@ -39,7 +42,7 @@ Runs a historical backtest, storing the scored ranked board in
 `accuracy_per_show` table. Replay readiness is validated from those linked
 `prediction_run_id` rows through `validate_accuracy_tables.py`.
 
-- `--band <active-band-slug>`: (Required) The band to process. The script accepts any active band returned by the registry/config layer.
+- `--band <repo-supported-band-slug>`: (Required) The band to process. The script accepts any repo-supported band from `src/jambandnerd/config/bands.py`.
 - `--model <registered-backtest-model-slug>`: (Required) The model to backtest.
 - `--shows {N}`: (Optional) Backtest the last N completed shows.
 - `--start {YYYY-MM-DD}` / `--end {YYYY-MM-DD}`: (Optional) Define a specific date range for the backtest.
@@ -70,7 +73,7 @@ shared model features.
 ### `audit_supabase_tables.py`
 
 Runs the canonical read-only Supabase audit for the public website surfaces.
-By default it targets active bands plus the currently promoted website models,
+By default it targets the repo-authoritative automation bands plus the currently promoted website models,
 then checks:
 
 - live prediction completeness in `predictions` and `prediction_songs`
@@ -90,7 +93,7 @@ uv run python scripts/audit_supabase_tables.py --max-age-hours 72 --replay-windo
 
 Arguments:
 
-- `--band <slug>`: (Optional, repeatable) Limit the audit to specific active bands.
+- `--band <slug>`: (Optional, repeatable) Limit the audit to specific repo-supported bands.
 - `--max-age-hours <N>`: (Optional) Freshness threshold for website-facing prediction and accuracy surfaces. Defaults to `72`.
 - `--replay-window <N>`: (Optional) Override the required replay-history window. If omitted, the audit uses each promoted model's registry `readiness_windows` metadata.
 - `--output <path>`: (Optional) Write the JSON audit report to disk.
