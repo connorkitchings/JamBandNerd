@@ -43,6 +43,9 @@ jobs:
           if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.band || 'all' }}" != "all" ]]; then
             BANDS_JSON='["${{ github.event.inputs.band }}"]'
           else
+            # Repo-authoritative automation band list. The Supabase `bands` table
+            # remains runtime metadata for website/data consumers, not the source
+            # of truth for which jobs this workflow executes.
             BANDS_JSON=$(python -m scripts.get_all_bands)
           fi
           echo "bands=$BANDS_JSON" >> $GITHUB_OUTPUT
@@ -305,7 +308,7 @@ jobs:
           uv run python scripts/validate_prediction_tables.py --band ${{ matrix.band }} --max-age-hours 72
           echo "::endgroup::"
 
-      - name: Run Backtest and Calculate Aggregate Accuracy
+      - name: Run Backtest and Save Per-Show Accuracy
         id: accuracy_calc
         if: github.event.inputs.skip_accuracy != 'true' && steps.preflight.outputs.should_run_collection == 'true' && steps.collection.outputs.workflow_state != 'degraded'
         run: |
@@ -699,4 +702,3 @@ jobs:
           echo "- Open the JamBandNerd website deployment to review updated predictions." >> $GITHUB_STEP_SUMMARY
           echo "- Check the Supabase dashboard for data validation." >> $GITHUB_STEP_SUMMARY
           echo "- Review any warnings above and re-run collection if needed." >> $GITHUB_STEP_SUMMARY
-

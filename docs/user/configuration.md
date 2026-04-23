@@ -69,8 +69,8 @@ Relevant controls live in:
 - predictor defaults in `src/jambandnerd/models/deal/model.py`
 - shared feature generation in `src/jambandnerd/models/deal/features.py`
 
-Deal is the current promoted second model and participates in pipeline, backfill,
-aggregate accuracy, and website surfaces.
+Deal is the current promoted second model and participates in pipeline,
+backfill, per-show accuracy, and website surfaces.
 
 ### CK+ (Historical)
 

@@ -14,7 +14,7 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, project_root)
 
 from scripts.compare_models import generate_report as generate_comparison_report
-from src.jambandnerd.config.bands import get_active_bands
+from src.jambandnerd.config.bands import get_repo_supported_bands
 
 
 def load_legacy_reference() -> dict[str, float] | None:
@@ -87,7 +87,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="Evaluate the Deal model and emit a JSON report."
     )
-    parser.add_argument("--band", required=True, choices=get_active_bands())
+    parser.add_argument("--band", required=True, choices=get_repo_supported_bands())
     parser.add_argument("--shows", type=int, default=50)
     parser.add_argument("--output", help="Optional path to write the JSON report.")
     args = parser.parse_args()

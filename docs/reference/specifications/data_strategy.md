@@ -115,8 +115,7 @@ Raw ingestion is intentionally source-faithful.
 
 Current examples in the repo:
 
-- Phish uses source fields like `api_show_id`.
-- Goose and WSP use `show_id`.
+- Active raw-table consumers normalize to `show_id` across all supported bands.
 - UM also uses `um_upcoming_shows` to help resolve next-show predictions.
 
 ## Normalization Boundary
@@ -216,8 +215,10 @@ Historical scored backtests are stored separately in
 completed-show evaluation without mixing historical replay snapshots into the
 live prediction tables. The website's `/replay` surface treats this table as
 its canonical historical source and assumes each promoted model retains its
-registry-defined replay window. In the current promoted set, Notebook keeps
-roughly the last 50 completed shows per band while Deal keeps the last 10.
+registry-defined replay window. In the current promoted set, Notebook targets
+roughly the last 50 completed shows per band while Deal has a 10-show
+readiness floor for replay coverage. The daily workflow still backtests both
+promoted models across the last 50 completed shows.
 
 ### Accuracy storage
 
@@ -237,7 +238,7 @@ as canonical now, while keeping the main future alternative explicit.
 Pros:
 
 - simple canonical writes from the current pipeline
-- easy upsert key by `(band, reference_date, model_version)`
+- easy upsert key by `(band, model_slug, reference_date, model_version)`
 - SQL-friendly per-song querying via the derived projection table
 
 Tradeoffs:
@@ -266,10 +267,11 @@ This remains a future implementation decision, not the active architecture.
 
 ## Band Registry
 
-Band metadata (slug, display name, raw table names, ID columns) is maintained in the `bands`
-Supabase table. This is the single write point for band metadata consumed by both the
-pipeline and the website. The website fetches active bands dynamically from this table
-rather than maintaining a hardcoded static list.
+Band metadata (slug, display name, raw table names, ID columns) is maintained
+in the `bands` Supabase table for runtime consumers such as the website. Repo
+workflow support is defined separately in `src/jambandnerd/config/bands.py`.
+The website fetches active bands dynamically from the `bands` table rather than
+maintaining a hardcoded static list.
 
 The `bands` table schema:
 
@@ -287,7 +289,7 @@ CREATE TABLE public.bands (
 
 Current supported bands:
 - `goose` / Goose / goose_shows_raw / show_id
-- `phish` / Phish / phish_shows_raw / api_show_id
+- `phish` / Phish / phish_shows_raw / show_id
 - `eggy` / Eggy / eggy_shows_raw / show_id
 - `billy` / Billy Strings / billy_shows_raw / show_id
 - `wsp` / Widespread Panic / wsp_shows_raw / show_id
@@ -295,8 +297,9 @@ Current supported bands:
 
 New band onboarding workflow:
 1. Write the band's collector script → creates `{band}_shows_raw`, `{band}_setlists_raw`
-2. Insert a row into the `bands` table
-3. The website automatically discovers and surfaces the new band
+2. Update the repo-authoritative workflow/config surface in `src/jambandnerd/config/bands.py`
+3. Insert a row into the `bands` table
+4. The website automatically discovers and surfaces the new band
 
 ## Historical Prediction Runs (Replay Lineage)
 
@@ -314,8 +317,8 @@ The `accuracy_per_show` table links back to `historical_prediction_runs` via
 `prediction_run_id`, creating full lineage from evaluation back to the original prediction.
 
 The website's `/replay` surface assumes each promoted model's registry-defined
-replay window remains queryable. In the current promoted set, Notebook is 50
-shows and Deal is 10.
+replay window remains queryable. In the current promoted set, Notebook's
+readiness target is 50 recent shows while Deal's readiness floor is 10.
 
 ## Per-Song Prediction Projection
 
@@ -329,8 +332,8 @@ Schema:
 - `rank`, `song_name`, `top_k`: song position in the prediction board
 - `prediction_payload`: model-specific JSON object for that ranked song
 
-Unique constraint on `(band, model_version, reference_date, rank)` ensures deterministic
-upserts.
+Unique constraint on `(band, model_slug, model_version, reference_date, rank)`
+ensures deterministic upserts.
 
 ## Files To Treat As Current References
 

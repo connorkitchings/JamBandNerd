@@ -1,7 +1,7 @@
 # Model Readiness Runbook
 
 Use this workflow when preparing a future model for Supabase and eventual
-website rollout across the existing active bands.
+website rollout across the repo-supported bands.
 
 ## Goal
 
@@ -11,7 +11,6 @@ Reach a state where the model has:
 - canonical prediction rows
 - replay lineage in `historical_prediction_runs`
 - per-show accuracy in `accuracy_per_show`
-- aggregate accuracy in the model aggregate table
 - a backend readiness report proving the site can consume it
 
 This does **not** automatically expose the model on the website.
@@ -52,12 +51,6 @@ Build and publish historical readiness rows from local snapshots:
 
 ```bash
 uv run python scripts/model_readiness.py --model <slug> --band all --phase backfill-history
-```
-
-Compute aggregate accuracy windows:
-
-```bash
-uv run python scripts/model_readiness.py --model <slug> --band all --phase aggregate
 ```
 
 Write the backend readiness report:

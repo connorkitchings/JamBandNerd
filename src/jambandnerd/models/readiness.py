@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from typing import Any
 
-from jambandnerd.config.bands import get_active_bands
+from jambandnerd.config.bands import get_repo_supported_bands
 from jambandnerd.db.connection import get_supabase_client
 from jambandnerd.models.registry import (
     get_model_definition,
@@ -128,7 +128,7 @@ def build_model_readiness_report(
     """Build a backend readiness report for one model across the requested bands."""
 
     definition = get_model_definition(model_slug)
-    selected_bands = bands or list(get_active_bands())
+    selected_bands = bands or list(get_repo_supported_bands())
     if client is None:
         client = get_supabase_client()
 

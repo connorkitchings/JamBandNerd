@@ -16,7 +16,7 @@ import sys
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, project_root)
 
-from src.jambandnerd.config.bands import get_active_bands
+from src.jambandnerd.config.bands import get_repo_supported_bands
 from src.jambandnerd.db.connection import get_supabase_client
 from src.jambandnerd.models.registry import list_pipeline_models
 
@@ -78,7 +78,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="Wipe all data for a band from Supabase."
     )
-    parser.add_argument("--band", required=True, choices=get_active_bands())
+    parser.add_argument("--band", required=True, choices=get_repo_supported_bands())
     parser.add_argument(
         "--dry-run", action="store_true", help="Preview what would be deleted"
     )

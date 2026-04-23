@@ -24,14 +24,16 @@ To add a new band, you need to create a new data collector and integrate it into
 3. **Create a collection entrypoint**: add `scripts/run_<band>_collection.py`.
 4. **Preserve the normalized contract**: shared code must be able to derive
    `show_id`, `show_date`, `song_name`, and deterministic show ordering.
-5. **Register the band in Supabase**: add a row to the live `bands` table with
-   the slug, display name, raw shows table, and ID column. The website reads
-   bands dynamically from this registry.
-6. **Wire orchestration**: update current local runners and any automation path
-   that still uses an explicit supported-band list or helper fallback.
-7. **Validate predictions**: confirm `generate_predictions.py` and
+5. **Update repo band support**: add the band to the repo-authoritative
+   workflow/config surface in `src/jambandnerd/config/bands.py`.
+6. **Register runtime metadata in Supabase**: add a row to the live `bands`
+   table with the slug, display name, raw shows table, and ID column. The
+   website reads bands dynamically from this registry.
+7. **Wire orchestration**: update current runners and automation paths that
+   consume the repo-supported band list.
+8. **Validate predictions**: confirm `generate_predictions.py` and
    `run_backtest.py` work for the new band.
-8. **Verify the website path**: ensure the new band appears through the
+9. **Verify the website path**: ensure the new band appears through the
    dynamic website data layer without adding a hardcoded frontend band list.
 
 ## How to Add a New Model
@@ -47,9 +49,9 @@ Adding a new model follows a similar pattern.
    - `scripts/generate_predictions.py`
    - `scripts/run_backtest.py`
    - `scripts/run_optimized_pipeline.py`
-4. **Create storage**: add rows to the unified `predictions` table with the
-   model's slug. Add an aggregate accuracy table if the model is promoted
-   to a supported option.
+4. **Create storage**: write canonical run rows to the unified `predictions`
+   table with the model's slug, plus replay lineage in
+   `historical_prediction_runs` and per-show scoring in `accuracy_per_show`.
 5. **Document versioning**: define the `model_version` contract for the new
    model.
 

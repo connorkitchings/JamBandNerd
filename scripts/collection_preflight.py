@@ -17,7 +17,10 @@ from scripts.common import (
     fetch_column_values_for_ids,
     fetch_table_rows,
 )
-from src.jambandnerd.config.bands import get_band_id_column, get_collection_policy
+from src.jambandnerd.config.bands import (
+    get_collection_policy,
+    get_runtime_band_id_column,
+)
 from src.jambandnerd.db.connection import get_supabase_client
 
 
@@ -113,7 +116,7 @@ def compute_band_preflight(
     today = today or date.today()
     client = client or get_supabase_client()
     policy = get_collection_policy(band)
-    id_column = get_band_id_column(band)
+    id_column = get_runtime_band_id_column(band)
 
     recent_start, recent_end = completed_show_window(today=today, days=recent_days)
     recent_rows = fetch_table_rows(

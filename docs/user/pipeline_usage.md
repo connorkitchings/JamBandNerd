@@ -4,7 +4,10 @@ This guide provides instructions for running the JamBandNerd data pipelines.
 
 ## Recommended Method: Optimized Pipeline
 
-The primary and recommended way to run the data pipeline is with the `run_optimized_pipeline.py` script. This script efficiently handles data collection, transformations, predictions, and accuracy calculations for the specified band(s).
+The primary local helper for running the data pipeline is
+`run_optimized_pipeline.py`. It mirrors the promoted GitHub Actions daily
+workflow for the repo-supported bands, while `.github/workflows/daily-pipeline.yml`
+remains the canonical automation contract.
 
 ### Usage
 

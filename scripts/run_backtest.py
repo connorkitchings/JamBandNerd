@@ -30,7 +30,7 @@ sys.path.insert(0, project_root)
 
 from scripts.common import fetch_table, prepare_band_data
 from src.jambandnerd.config import HISTORICAL_PREDICTION_RUNS_TABLE
-from src.jambandnerd.config.bands import get_active_bands
+from src.jambandnerd.config.bands import get_repo_supported_bands
 from src.jambandnerd.db.operations import (
     fetch_scored_show_ids,
     upsert_dataframe,
@@ -466,7 +466,7 @@ def main() -> None:
         "--band",
         type=str,
         required=True,
-        choices=get_active_bands(),
+        choices=get_repo_supported_bands(),
         help="The band to process.",
     )
     parser.add_argument(

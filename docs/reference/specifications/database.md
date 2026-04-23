@@ -31,8 +31,10 @@ Allowed supporting raw tables:
 
 ### Band registry
 
-- `bands` - Single write point for band metadata (slug, display_name, shows_table,
-  id_column, is_active). Used by both pipeline and website for dynamic band discovery.
+- `bands` - Runtime metadata for band discovery (slug, display_name, shows_table,
+  id_column, is_active). Used by the website and other Supabase-backed
+  consumers. Repo workflow support is defined separately in
+  `src/jambandnerd/config/bands.py`.
 
 Raw tables remain source-faithful. Shared code normalizes them after read, not
 by writing derived tables back to Supabase.

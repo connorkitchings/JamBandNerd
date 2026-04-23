@@ -15,7 +15,7 @@ import pandas as pd
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, project_root)
 
-from src.jambandnerd.config.bands import get_active_bands
+from src.jambandnerd.config.bands import get_repo_supported_bands
 from src.jambandnerd.db.connection import get_supabase_client
 
 
@@ -88,7 +88,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--band",
         required=True,
-        choices=list(get_active_bands()),
+        choices=list(get_repo_supported_bands()),
         help="The band's slug.",
     )
     args = parser.parse_args()

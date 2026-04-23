@@ -33,7 +33,7 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, project_root)
 
 from scripts.common import fetch_table, prepare_band_data, resolve_reference_date
-from src.jambandnerd.config.bands import get_active_bands
+from src.jambandnerd.config.bands import get_repo_supported_bands
 from src.jambandnerd.db.operations import (
     replace_prediction_projection,
     upsert_dataframe,
@@ -292,7 +292,7 @@ def main() -> None:
         "--band",
         type=str,
         required=True,
-        choices=get_active_bands(),
+        choices=get_repo_supported_bands(),
         help="The band to process.",
     )
     parser.add_argument(
