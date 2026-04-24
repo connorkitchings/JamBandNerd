@@ -510,7 +510,7 @@ jobs:
 
       - name: Upload Band Status
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v8
         with:
           name: band-status-${{ matrix.band }}
           path: .github/workflow-status/${{ matrix.band }}.json
@@ -518,7 +518,7 @@ jobs:
 
       - name: Upload Supabase Audit
         if: always() && steps.preflight.outputs.should_run_collection == 'true'
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v8
         with:
           name: supabase-audit-${{ matrix.band }}
           path: .github/workflow-audits/${{ matrix.band }}.json
