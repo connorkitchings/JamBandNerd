@@ -7,7 +7,7 @@ admin/diagnostic/manual utilities.
 
 These are the canonical scripts used by docs and GitHub Actions:
 
-- `run_optimized_pipeline.py` — local helper runner for one band or `all`; mirrors the daily workflow sequence, but GitHub Actions YAML is the canonical orchestrator
+- `run_optimized_pipeline.py` — local helper runner for one band or `all`; mirrors the daily workflow sequence, but GitHub Actions YAML is the canonical orchestrator. If collection preflight selects verify-only mode, prediction/backtest work is skipped unless `--force` is passed.
 - `generate_predictions.py` — generate predictions for `--band` and `--model`
 - `run_backtest.py` — compute per-show accuracy history and persist historical scored-run lineage; supports local raw-table snapshots via `--snapshot-root`
 - `verify_data_freshness.py` — CI data-quality check for recent missing setlists
@@ -79,3 +79,19 @@ One-off scripts used for debugging or investigations.
 ## Shared module
 
 - `common.py` — shared helpers used across pipeline scripts (normalization boundary, Supabase upsert wrappers, band config loading)
+
+## Local artifact cleanup
+
+The repo ignores generated local artifacts such as `apps/web/.next/`, `.opencode/node_modules/`, `.snapshots/`, `.mypy_cache/`, `output/`, Python bytecode caches, and Playwright test output. These can consume significant disk space but are not part of the tracked repo state.
+
+Safe inspection command:
+
+```bash
+git status --short --ignored
+```
+
+Safe cleanup command for generated artifacts only:
+
+```bash
+find . -name '__pycache__' -type d -prune -exec rm -rf {} + && rm -rf apps/web/.next apps/web/test-results .mypy_cache .pytest_cache .ruff_cache output site
+```

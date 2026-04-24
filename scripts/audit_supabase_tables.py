@@ -487,10 +487,18 @@ def _print_report(report: SupabaseAuditReport) -> None:
         f"bands={len(report.bands)} promoted_models={','.join(report.promoted_models)}"
     )
     for band in report.bands:
+        skip_accuracy = bool(band.freshness.get("skip_accuracy"))
+        stale_accuracy_models = band.freshness.get("stale_accuracy_models") or []
         print(
             f"- {band.band}: state={band.state} "
             f"blockers={len(band.blockers)} warnings={len(band.warnings)}"
         )
+        if skip_accuracy and stale_accuracy_models:
+            model_list = ",".join(str(model) for model in stale_accuracy_models)
+            print(
+                "  - accuracy freshness: expected immutable freshness drift "
+                f"for already-scored windows ({model_list})"
+            )
         for model in band.models:
             print(
                 f"  - {model.model_slug}: predictions={model.canonical_prediction_rows} "

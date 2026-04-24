@@ -414,7 +414,9 @@ def test_run_supabase_audit_fails_when_replay_lineage_missing(monkeypatch):
     assert notebook_result.replay_lineage_missing_dates == ("2026-03-01",)
 
 
-def test_run_supabase_audit_treats_stale_accuracy_as_warning_when_skipped(monkeypatch):
+def test_run_supabase_audit_treats_stale_accuracy_as_warning_when_skipped(
+    monkeypatch, capsys
+):
     _install_audit_stubs(
         monkeypatch,
         latest_rows={
@@ -439,6 +441,10 @@ def test_run_supabase_audit_treats_stale_accuracy_as_warning_when_skipped(monkey
     assert report.state == "warning"
     assert "goose:notebook:supported_accuracy_freshness_warning" in report.warnings
     assert "goose:notebook:supported_accuracy_freshness_stale" not in report.blockers
+
+    module._print_report(report)
+    captured = capsys.readouterr().out
+    assert "expected immutable freshness drift" in captured
 
 
 def test_run_supabase_audit_default_scope_excludes_non_promoted_models(monkeypatch):
