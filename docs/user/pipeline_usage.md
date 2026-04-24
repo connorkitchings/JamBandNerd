@@ -29,6 +29,10 @@ remains the canonical automation contract.
     uv run python scripts/run_optimized_pipeline.py --band all --skip-accuracy
     ```
 
+When collection preflight determines a band is idle, the local helper uses a
+verify-only path and does not regenerate predictions or backtests. To force a
+full local regeneration anyway, pass `--force`.
+
 ## Website Direction
 
 The public product surface is now the website in `apps/web`, backed by the existing pipeline and Supabase data model.
