@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import argparse
 import json
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import Dict, Iterable, List
 
+from jambandnerd.config import NEXT_SHOW_PREDICTION_RUNS_TABLE
 from jambandnerd.config.bands import get_repo_supported_bands
 from jambandnerd.db.connection import get_supabase_client
 from jambandnerd.db.operations import fetch_prediction_songs_for_date
@@ -33,17 +34,48 @@ def _latest_prediction_row(
     """Fetch the most recently written prediction row for a band/model."""
     resp = (
         client.table(table)
-        .select("band, reference_date, predicted_at, predictions, top_k")
+        .select(
+            "band, target_show_date, reference_date, generated_at, predictions, top_k"
+        )
         .eq("band", band)
         .eq("model_slug", model_slug)
         .eq("model_version", model_version)
-        .order("predicted_at", desc=True)
-        .order("reference_date", desc=True)
+        .order("generated_at", desc=True)
+        .order("target_show_date", desc=True)
         .limit(1)
         .execute()
     )
     rows: List[Dict[str, str]] = resp.data or []
     return rows[0] if rows else None
+
+
+def _has_upcoming_show(client, *, band: str) -> bool:
+    today_iso = date.today().isoformat()
+    try:
+        response = (
+            client.table(f"{band}_shows_raw")
+            .select("show_date")
+            .gte("show_date", today_iso)
+            .limit(1)
+            .execute()
+        )
+    except AttributeError:
+        # Lightweight test clients and older operational stubs may not expose
+        # range filters. In that case keep validation strict by requiring a
+        # live row instead of silently accepting absence.
+        return True
+    if response.data:
+        return True
+    if band == "um":
+        upcoming = (
+            client.table("um_upcoming_shows")
+            .select("starts_at_local")
+            .gte("starts_at_local", today_iso)
+            .limit(1)
+            .execute()
+        )
+        return bool(upcoming.data)
+    return False
 
 
 def _validate_projection(
@@ -62,6 +94,7 @@ def _validate_projection(
         band=band,
         model_slug=model_slug,
         reference_date=reference_date,
+        table_name="next_show_prediction_songs",
     )
     if not projection_rows:
         print(
@@ -108,8 +141,8 @@ def _check_stale_projection_rows(
 
     for ref in stale:
         print(
-            f"[STALE] {band}/{model_slug}: prediction_songs reference_date={ref} "
-            f"has predicted_at older than {max_age_hours}h cutoff"
+            f"[STALE] {band}/{model_slug}: next_show_prediction_songs "
+            f"reference_date={ref} has generated_at older than {max_age_hours}h cutoff"
         )
     return len(stale)
 
@@ -123,15 +156,16 @@ def list_stale_projection_reference_dates(
     reference_window_days: int = 7,
     client=None,
 ) -> list[str]:
-    """Return stale recent reference_date entries in prediction_songs."""
+    """Return stale recent reference_date entries in next_show_prediction_songs."""
     from datetime import date, timedelta
 
     client = client or get_supabase_client()
 
     resp = (
-        client.table("prediction_songs")
-        .select("reference_date, predicted_at")
+        client.table("next_show_prediction_songs")
+        .select("reference_date, generated_at")
         .eq("band", band)
+        .eq("model_slug", model_slug)
         .eq("model_version", model_version)
         .execute()
     )
@@ -142,7 +176,7 @@ def list_stale_projection_reference_dates(
     latest_key = max(
         (
             (
-                _parse_timestamp(row.get("predicted_at"))
+                _parse_timestamp(row.get("generated_at"))
                 or datetime.min.replace(tzinfo=timezone.utc),
                 row.get("reference_date") or "",
             )
@@ -157,7 +191,7 @@ def list_stale_projection_reference_dates(
     projected_by_ref: dict[str, datetime] = {}
     for row in rows:
         reference_date = row.get("reference_date")
-        predicted_at = _parse_timestamp(row.get("predicted_at"))
+        predicted_at = _parse_timestamp(row.get("generated_at"))
         if not reference_date or predicted_at is None:
             continue
         if reference_date < ref_window_start:
@@ -196,7 +230,7 @@ def validate_predictions(
     failures = 0
 
     for definition in definitions:
-        table = definition.prediction_table
+        table = NEXT_SHOW_PREDICTION_RUNS_TABLE
         model_slug = definition.slug
         model_version = definition.version
         print(f"\n== Validating {table} ({model_version}) ==")
@@ -209,11 +243,16 @@ def validate_predictions(
                 model_version=model_version,
             )
             if not row:
-                print(f"[FAIL] {band}: no rows found")
-                failures += 1
+                if _has_upcoming_show(client, band=band):
+                    print(f"[FAIL] {band}: no live next-show rows found")
+                    failures += 1
+                else:
+                    print(
+                        f"[OK] {band}: no upcoming show; live prediction row not required"
+                    )
                 continue
 
-            predicted_at = _parse_timestamp(row.get("predicted_at"))
+            predicted_at = _parse_timestamp(row.get("generated_at"))
             age_hrs = None
             if predicted_at:
                 age_hrs = (now - predicted_at).total_seconds() / 3600
@@ -233,7 +272,7 @@ def validate_predictions(
 
             if predicted_at is None:
                 print(
-                    f"[WARN] {band}: missing predicted_at timestamp; latest reference_date={row.get('reference_date')}"
+                    f"[WARN] {band}: missing generated_at timestamp; latest target_show_date={row.get('target_show_date')}"
                 )
                 failures += 1
                 continue
@@ -245,7 +284,7 @@ def validate_predictions(
 
             age_display = f"{age_hrs:.1f}h" if age_hrs is not None else "unknown age"
             print(
-                f"[{status}] {band}: reference_date={row.get('reference_date')} predicted_at={predicted_at.isoformat()} age={age_display} top_song={top_song}"
+                f"[{status}] {band}: target_show_date={row.get('target_show_date')} reference_date={row.get('reference_date')} generated_at={predicted_at.isoformat()} age={age_display} top_song={top_song}"
             )
 
             if validate_projection:
@@ -281,12 +320,12 @@ def main() -> None:
         "--max-age-hours",
         type=int,
         default=48,
-        help="Maximum allowed staleness (hours) for predicted_at timestamps.",
+        help="Maximum allowed staleness (hours) for generated_at timestamps.",
     )
     parser.add_argument(
         "--skip-projection-check",
         action="store_true",
-        help="Skip validation of the derived prediction_songs projection.",
+        help="Skip validation of the derived next_show_prediction_songs projection.",
     )
     parser.add_argument(
         "--model",

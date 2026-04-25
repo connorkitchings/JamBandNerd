@@ -1,4 +1,4 @@
-name: Backfill Predictions
+name: Sync Retained Prediction Corpus
 
 on:
   workflow_dispatch:
@@ -16,15 +16,6 @@ on:
           - phish
           - um
           - wsp
-      model:
-        description: "Model to backfill"
-        required: false
-        default: "all"
-        type: choice
-        options:
-          - all
-          - deal
-          - notebook
       dry_run:
         description: "Show what would run without executing"
         required: false
@@ -37,7 +28,6 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       bands: ${{ steps.set_bands.outputs.bands }}
-      models: ${{ steps.set_models.outputs.models }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -56,23 +46,14 @@ jobs:
             echo "bands=[\"${{ github.event.inputs.band }}\"]" >> $GITHUB_OUTPUT
           fi
 
-      - id: set_models
-        run: |
-          if [[ "${{ github.event.inputs.model }}" == "all" ]]; then
-            echo "models=[\"deal\", \"notebook\"]" >> $GITHUB_OUTPUT
-          else
-            echo "models=[\"${{ github.event.inputs.model }}\"]" >> $GITHUB_OUTPUT
-          fi
-
   backfill:
-    name: Backfill - ${{ matrix.band }} / ${{ matrix.model }}
+    name: Sync retained corpus - ${{ matrix.band }}
     needs: setup
     runs-on: ubuntu-latest
     timeout-minutes: 120
     strategy:
       matrix:
         band: ${{ fromJson(needs.setup.outputs.bands) }}
-        model: ${{ fromJson(needs.setup.outputs.models) }}
       fail-fast: false
 
     env:
@@ -108,51 +89,23 @@ jobs:
       - name: Install dependencies
         run: uv sync --locked --no-dev
 
-      - name: Get prediction dates
-        id: get_dates
-        run: |
-          echo "::group::Fetching prediction dates for ${{ matrix.band }} / ${{ matrix.model }}"
-
-          # When backfilling Deal, source dates from Notebook that are missing in Deal.
-          # For other models, re-generate dates already in their own table.
-          if [[ "${{ matrix.model }}" == "deal" ]]; then
-            DATES_JSON=$(uv run python scripts/get_prediction_dates.py --band ${{ matrix.band }} --model notebook --limit 500 --missing-from deal)
-          else
-            DATES_JSON=$(uv run python scripts/get_prediction_dates.py --band ${{ matrix.band }} --model ${{ matrix.model }} --limit 100)
-          fi
-
-          echo "dates=$DATES_JSON" >> $GITHUB_OUTPUT
-          DATE_COUNT=$(echo "$DATES_JSON" | python -c "import json,sys; print(len(json.load(sys.stdin)))")
-          echo "date_count=$DATE_COUNT" >> $GITHUB_OUTPUT
-          echo "Found $DATE_COUNT dates to backfill"
-          echo "::endgroup::"
-
-      - name: Show dates (dry run)
+      - name: Show retained-corpus dry run
         if: github.event.inputs.dry_run == 'true'
         run: |
-          echo "Would regenerate predictions for ${{ matrix.band }} / ${{ matrix.model }}:"
-          echo "${{ steps.get_dates.outputs.dates }}"
-          echo ""
-          echo "Total dates: ${{ steps.get_dates.outputs.date_count }}"
+          echo "Would sync retained last-50 completed-show corpus for ${{ matrix.band }}"
 
-      - name: Regenerate predictions
+      - name: Sync retained prediction corpus
         if: github.event.inputs.dry_run != 'true'
         run: |
-          echo "::group::Backfilling ${{ steps.get_dates.outputs.date_count }} dates for ${{ matrix.band }} / ${{ matrix.model }}"
-
-          DATES='${{ steps.get_dates.outputs.dates }}'
-          for DATE in $(echo "$DATES" | python -c "import json,sys; print(' '.join(json.load(sys.stdin)))"); do
-            echo "Regenerating prediction for ${{ matrix.band }} / ${{ matrix.model }} on $DATE"
-            uv run python scripts/generate_predictions.py --band ${{ matrix.band }} --model ${{ matrix.model }} --date "$DATE"
-          done
-
+          echo "::group::Syncing retained last-50 corpus for ${{ matrix.band }}"
+          uv run python scripts/sync_retained_prediction_corpus.py --band ${{ matrix.band }} --window 50 --no-incremental
           echo "::endgroup::"
 
       - name: Validate Prediction Tables
         if: github.event.inputs.dry_run != 'true'
         run: |
-          echo "::group::Validating prediction tables for ${{ matrix.band }} / ${{ matrix.model }}"
-          uv run python scripts/validate_prediction_tables.py --band ${{ matrix.band }} --model ${{ matrix.model }} --max-age-hours 168
+          echo "::group::Validating retained accuracy tables for ${{ matrix.band }}"
+          uv run python scripts/validate_accuracy_tables.py --band ${{ matrix.band }} --skip-freshness
           echo "::endgroup::"
 
   summary:
@@ -166,7 +119,6 @@ jobs:
           echo "## Backfill Results" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Bands: ${{ needs.setup.outputs.bands }}" >> $GITHUB_STEP_SUMMARY
-          echo "Models: ${{ needs.setup.outputs.models }}" >> $GITHUB_STEP_SUMMARY
           echo "Dry run: ${{ github.event.inputs.dry_run }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Jobs: ${{ needs.setup.result == 'success' && 'completed' || 'failed' }}" >> $GITHUB_STEP_SUMMARY

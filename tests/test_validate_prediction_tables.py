@@ -54,20 +54,20 @@ class _ClientStub:
 
 
 def _prediction_rows(
-    *, latest_predictions, stale_predictions=None, latest_predicted_at=None
+    *, latest_predictions, stale_predictions=None, latest_generated_at=None
 ):
-    latest_predicted_at = latest_predicted_at or datetime.now(timezone.utc)
-    stale_predicted_at = latest_predicted_at - timedelta(days=3)
+    latest_generated_at = latest_generated_at or datetime.now(timezone.utc)
+    stale_generated_at = latest_generated_at - timedelta(days=3)
     stale_predictions = stale_predictions or latest_predictions
 
     rows = {
-        "predictions": [
+        "next_show_prediction_runs": [
             {
                 "band": "goose",
                 "model_slug": "notebook",
                 "model_version": "notebook_v1",
                 "reference_date": "2026-03-25",
-                "predicted_at": stale_predicted_at.isoformat(),
+                "generated_at": stale_generated_at.isoformat(),
                 "top_k": len(stale_predictions),
                 "predictions": json.dumps(stale_predictions),
             },
@@ -76,7 +76,7 @@ def _prediction_rows(
                 "model_slug": "notebook",
                 "model_version": "notebook_v1",
                 "reference_date": "2026-03-20",
-                "predicted_at": latest_predicted_at.isoformat(),
+                "generated_at": latest_generated_at.isoformat(),
                 "top_k": len(latest_predictions),
                 "predictions": json.dumps(latest_predictions),
             },
@@ -85,7 +85,7 @@ def _prediction_rows(
                 "model_slug": "deal",
                 "model_version": "deal_v2",
                 "reference_date": "2026-03-25",
-                "predicted_at": stale_predicted_at.isoformat(),
+                "generated_at": stale_generated_at.isoformat(),
                 "top_k": len(stale_predictions),
                 "predictions": json.dumps(stale_predictions),
             },
@@ -94,7 +94,7 @@ def _prediction_rows(
                 "model_slug": "deal",
                 "model_version": "deal_v2",
                 "reference_date": "2026-03-20",
-                "predicted_at": latest_predicted_at.isoformat(),
+                "generated_at": latest_generated_at.isoformat(),
                 "top_k": len(latest_predictions),
                 "predictions": json.dumps(latest_predictions),
             },
@@ -103,7 +103,7 @@ def _prediction_rows(
     return rows
 
 
-def test_validate_predictions_uses_latest_predicted_at(monkeypatch, capsys):
+def test_validate_predictions_uses_latest_generated_at(monkeypatch, capsys):
     rows = _prediction_rows(
         latest_predictions=[{"song_name": "Fresh Song"}],
         stale_predictions=[{"song_name": "Old Song"}],
@@ -114,9 +114,9 @@ def test_validate_predictions_uses_latest_predicted_at(monkeypatch, capsys):
     )
     monkeypatch.setattr(
         "scripts.validate_prediction_tables.fetch_prediction_songs_for_date",
-        lambda band, model_slug, reference_date: [
+        lambda **kwargs: [
             {
-                "reference_date": reference_date,
+                "reference_date": kwargs["reference_date"],
                 "song_name": "Fresh Song",
                 "rank": 1,
             }
@@ -134,17 +134,17 @@ def test_validate_predictions_uses_latest_predicted_at(monkeypatch, capsys):
 def test_validate_predictions_fails_on_invalid_latest_json(monkeypatch, capsys):
     now = datetime.now(timezone.utc)
     rows = _prediction_rows(
-        latest_predictions=[{"song_name": "Fresh Song"}], latest_predicted_at=now
+        latest_predictions=[{"song_name": "Fresh Song"}], latest_generated_at=now
     )
-    rows["predictions"][1]["predictions"] = "{bad json"
-    rows["predictions"][3]["predictions"] = "{bad json"
+    rows["next_show_prediction_runs"][1]["predictions"] = "{bad json"
+    rows["next_show_prediction_runs"][3]["predictions"] = "{bad json"
     monkeypatch.setattr(
         "scripts.validate_prediction_tables.get_supabase_client",
         lambda: _ClientStub(rows),
     )
     monkeypatch.setattr(
         "scripts.validate_prediction_tables.fetch_prediction_songs_for_date",
-        lambda band, model_slug, reference_date: [],
+        lambda **kwargs: [],
     )
 
     failures = validate_predictions(bands=["goose"], max_age_hours=48)
@@ -154,24 +154,24 @@ def test_validate_predictions_fails_on_invalid_latest_json(monkeypatch, capsys):
     assert "[FAIL] goose: invalid JSON payload" in captured
 
 
-def test_validate_predictions_warns_on_missing_latest_predicted_at(monkeypatch, capsys):
+def test_validate_predictions_warns_on_missing_latest_generated_at(monkeypatch, capsys):
     rows = _prediction_rows(latest_predictions=[{"song_name": "Fresh Song"}])
-    rows["predictions"][1]["predicted_at"] = None
-    rows["predictions"][3]["predicted_at"] = None
+    rows["next_show_prediction_runs"][1]["generated_at"] = None
+    rows["next_show_prediction_runs"][3]["generated_at"] = None
     monkeypatch.setattr(
         "scripts.validate_prediction_tables.get_supabase_client",
         lambda: _ClientStub(rows),
     )
     monkeypatch.setattr(
         "scripts.validate_prediction_tables.fetch_prediction_songs_for_date",
-        lambda band, model_slug, reference_date: [],
+        lambda **kwargs: [],
     )
 
     failures = validate_predictions(bands=["goose"], max_age_hours=48)
 
     assert failures == 2
     captured = capsys.readouterr().out
-    assert "[WARN] goose: missing predicted_at timestamp" in captured
+    assert "[WARN] goose: missing generated_at timestamp" in captured
 
 
 def test_validate_predictions_fails_on_projection_mismatch(monkeypatch, capsys):
@@ -187,14 +187,14 @@ def test_validate_predictions_fails_on_projection_mismatch(monkeypatch, capsys):
     )
     monkeypatch.setattr(
         "scripts.validate_prediction_tables.fetch_prediction_songs_for_date",
-        lambda band, model_slug, reference_date: [
+        lambda **kwargs: [
             {
-                "reference_date": reference_date,
+                "reference_date": kwargs["reference_date"],
                 "song_name": "Wrong Song",
                 "rank": 1,
             },
             {
-                "reference_date": reference_date,
+                "reference_date": kwargs["reference_date"],
                 "song_name": "Second Song",
                 "rank": 2,
             },
@@ -219,32 +219,36 @@ def test_validate_predictions_flags_stale_recent_projection_dates(monkeypatch, c
             {"song_name": "Fresh Song"},
             {"song_name": "Second Song"},
         ],
-        latest_predicted_at=now,
+        latest_generated_at=now,
     )
-    rows["prediction_songs"] = [
+    rows["next_show_prediction_songs"] = [
         {
             "band": "goose",
+            "model_slug": "notebook",
             "model_version": "notebook_v1",
             "reference_date": recent_ref,
-            "predicted_at": (now - timedelta(days=7)).isoformat(),
+            "generated_at": (now - timedelta(days=7)).isoformat(),
         },
         {
             "band": "goose",
+            "model_slug": "notebook",
             "model_version": "notebook_v1",
             "reference_date": old_ref,
-            "predicted_at": now.isoformat(),
+            "generated_at": now.isoformat(),
         },
         {
             "band": "goose",
+            "model_slug": "deal",
             "model_version": "deal_v2",
             "reference_date": recent_ref,
-            "predicted_at": (now - timedelta(days=7)).isoformat(),
+            "generated_at": (now - timedelta(days=7)).isoformat(),
         },
         {
             "band": "goose",
+            "model_slug": "deal",
             "model_version": "deal_v2",
             "reference_date": old_ref,
-            "predicted_at": now.isoformat(),
+            "generated_at": now.isoformat(),
         },
     ]
     monkeypatch.setattr(
@@ -253,14 +257,14 @@ def test_validate_predictions_flags_stale_recent_projection_dates(monkeypatch, c
     )
     monkeypatch.setattr(
         "scripts.validate_prediction_tables.fetch_prediction_songs_for_date",
-        lambda band, model_slug, reference_date: [
+        lambda **kwargs: [
             {
-                "reference_date": reference_date,
+                "reference_date": kwargs["reference_date"],
                 "song_name": "Fresh Song",
                 "rank": 1,
             },
             {
-                "reference_date": reference_date,
+                "reference_date": kwargs["reference_date"],
                 "song_name": "Second Song",
                 "rank": 2,
             },
@@ -272,10 +276,10 @@ def test_validate_predictions_flags_stale_recent_projection_dates(monkeypatch, c
     assert failures == 2
     captured = capsys.readouterr().out
     assert (
-        f"prediction_songs reference_date={recent_ref} has predicted_at older than 48h cutoff"
+        f"next_show_prediction_songs reference_date={recent_ref} has generated_at older than 48h cutoff"
         in captured
     )
-    assert f"prediction_songs reference_date={old_ref}" not in captured
+    assert f"next_show_prediction_songs reference_date={old_ref}" not in captured
 
 
 def test_validate_predictions_ignores_stale_old_projection_outside_window(
@@ -288,20 +292,22 @@ def test_validate_predictions_ignores_stale_old_projection_outside_window(
             {"song_name": "Fresh Song"},
             {"song_name": "Second Song"},
         ],
-        latest_predicted_at=now,
+        latest_generated_at=now,
     )
-    rows["prediction_songs"] = [
+    rows["next_show_prediction_songs"] = [
         {
             "band": "goose",
+            "model_slug": "notebook",
             "model_version": "notebook_v1",
             "reference_date": old_ref,
-            "predicted_at": (now - timedelta(days=10)).isoformat(),
+            "generated_at": (now - timedelta(days=10)).isoformat(),
         },
         {
             "band": "goose",
+            "model_slug": "deal",
             "model_version": "deal_v2",
             "reference_date": old_ref,
-            "predicted_at": (now - timedelta(days=10)).isoformat(),
+            "generated_at": (now - timedelta(days=10)).isoformat(),
         },
     ]
     monkeypatch.setattr(
@@ -310,14 +316,14 @@ def test_validate_predictions_ignores_stale_old_projection_outside_window(
     )
     monkeypatch.setattr(
         "scripts.validate_prediction_tables.fetch_prediction_songs_for_date",
-        lambda band, model_slug, reference_date: [
+        lambda **kwargs: [
             {
-                "reference_date": reference_date,
+                "reference_date": kwargs["reference_date"],
                 "song_name": "Fresh Song",
                 "rank": 1,
             },
             {
-                "reference_date": reference_date,
+                "reference_date": kwargs["reference_date"],
                 "song_name": "Second Song",
                 "rank": 2,
             },
@@ -328,19 +334,19 @@ def test_validate_predictions_ignores_stale_old_projection_outside_window(
 
     assert failures == 0
     captured = capsys.readouterr().out
-    assert f"prediction_songs reference_date={old_ref}" not in captured
+    assert f"next_show_prediction_songs reference_date={old_ref}" not in captured
 
 
 def test_validate_predictions_can_scope_to_selected_model(monkeypatch, capsys):
     now = datetime.now(timezone.utc)
     rows = {
-        "predictions": [
+        "next_show_prediction_runs": [
             {
                 "band": "goose",
                 "model_slug": "notebook",
                 "model_version": "notebook_v1",
                 "reference_date": "2026-03-25",
-                "predicted_at": (now - timedelta(days=10)).isoformat(),
+                "generated_at": (now - timedelta(days=10)).isoformat(),
                 "top_k": 1,
                 "predictions": json.dumps([{"song_name": "Old Song"}]),
             },
@@ -349,7 +355,7 @@ def test_validate_predictions_can_scope_to_selected_model(monkeypatch, capsys):
                 "model_slug": "deal",
                 "model_version": "deal_v2",
                 "reference_date": "2026-03-27",
-                "predicted_at": now.isoformat(),
+                "generated_at": now.isoformat(),
                 "top_k": 1,
                 "predictions": json.dumps([{"song_name": "Fresh Deal Song"}]),
             },
@@ -361,9 +367,9 @@ def test_validate_predictions_can_scope_to_selected_model(monkeypatch, capsys):
     )
     monkeypatch.setattr(
         "scripts.validate_prediction_tables.fetch_prediction_songs_for_date",
-        lambda band, model_slug, reference_date: [
+        lambda **kwargs: [
             {
-                "reference_date": reference_date,
+                "reference_date": kwargs["reference_date"],
                 "song_name": "Fresh Deal Song",
                 "rank": 1,
             }

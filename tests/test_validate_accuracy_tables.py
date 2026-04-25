@@ -51,25 +51,27 @@ class _ClientStub:
 def _accuracy_rows(*, stale_hours: int = 0):
     now = datetime.now(timezone.utc) - timedelta(hours=stale_hours)
     iso = now.isoformat()
+    notebook_row = {
+        "band": "goose",
+        "model_slug": "notebook",
+        "model_version": "notebook_v1",
+        "evaluated_at": iso,
+        "show_date": "2026-03-20",
+        "prediction_run_id": 101,
+        "actual_song_count": 12,
+    }
+    deal_row = {
+        "band": "goose",
+        "model_slug": "deal",
+        "model_version": "deal_v2",
+        "evaluated_at": iso,
+        "show_date": "2026-03-20",
+        "prediction_run_id": 201,
+        "actual_song_count": 12,
+    }
     return {
-        "accuracy_per_show": [
-            {
-                "band": "goose",
-                "model_version": "notebook_v1",
-                "evaluated_at": iso,
-                "show_date": "2026-03-20",
-                "prediction_run_id": 101,
-                "actual_song_count": 12,
-            },
-            {
-                "band": "goose",
-                "model_version": "deal_v2",
-                "evaluated_at": iso,
-                "show_date": "2026-03-20",
-                "prediction_run_id": 201,
-                "actual_song_count": 12,
-            },
-        ],
+        "completed_show_accuracy": _repeat_rows(notebook_row, count=50)
+        + _repeat_rows(deal_row, count=50)
     }
 
 
@@ -107,8 +109,8 @@ def test_validate_accuracy_fails_for_stale_rows(monkeypatch):
 
 def test_validate_accuracy_fails_when_replay_lineage_missing(monkeypatch):
     rows = _accuracy_rows()
-    rows["accuracy_per_show"][0]["prediction_run_id"] = None
-    rows["accuracy_per_show"][1]["prediction_run_id"] = None
+    for row in rows["completed_show_accuracy"]:
+        row["prediction_run_id"] = None
     monkeypatch.setattr(
         "scripts.validate_accuracy_tables.get_supabase_client",
         lambda: _ClientStub(rows),
@@ -121,26 +123,30 @@ def test_validate_accuracy_fails_when_replay_lineage_missing(monkeypatch):
 
 def test_validate_accuracy_ignores_sparse_recent_rows_for_replay_lineage(monkeypatch):
     rows = _accuracy_rows()
-    rows["accuracy_per_show"] = [
+    rows["completed_show_accuracy"] = [
         {
             "band": "goose",
+            "model_slug": "notebook",
             "model_version": "notebook_v1",
-            "evaluated_at": rows["accuracy_per_show"][0]["evaluated_at"],
+            "evaluated_at": rows["completed_show_accuracy"][0]["evaluated_at"],
             "show_date": "2026-03-21",
             "prediction_run_id": None,
             "actual_song_count": 1,
         },
-        rows["accuracy_per_show"][0],
+        *rows["completed_show_accuracy"],
+    ]
+    rows["completed_show_accuracy"].insert(
+        1,
         {
             "band": "goose",
+            "model_slug": "deal",
             "model_version": "deal_v2",
-            "evaluated_at": rows["accuracy_per_show"][1]["evaluated_at"],
+            "evaluated_at": rows["completed_show_accuracy"][2]["evaluated_at"],
             "show_date": "2026-03-21",
             "prediction_run_id": None,
             "actual_song_count": 1,
         },
-        rows["accuracy_per_show"][1],
-    ]
+    )
     monkeypatch.setattr(
         "scripts.validate_accuracy_tables.get_supabase_client",
         lambda: _ClientStub(rows),
@@ -153,10 +159,11 @@ def test_validate_accuracy_ignores_sparse_recent_rows_for_replay_lineage(monkeyp
 
 def test_validate_accuracy_prefers_lineaged_duplicate_show_date(monkeypatch):
     rows = _accuracy_rows()
-    iso = rows["accuracy_per_show"][0]["evaluated_at"]
-    rows["accuracy_per_show"] = [
+    iso = rows["completed_show_accuracy"][0]["evaluated_at"]
+    rows["completed_show_accuracy"] = [
         {
             "band": "goose",
+            "model_slug": "notebook",
             "model_version": "notebook_v1",
             "evaluated_at": iso,
             "show_date": "2026-03-19",
@@ -165,13 +172,14 @@ def test_validate_accuracy_prefers_lineaged_duplicate_show_date(monkeypatch):
         },
         {
             "band": "goose",
+            "model_slug": "notebook",
             "model_version": "notebook_v1",
             "evaluated_at": iso,
             "show_date": "2026-03-19",
             "prediction_run_id": 101,
             "actual_song_count": 10,
         },
-        rows["accuracy_per_show"][1],
+        *rows["completed_show_accuracy"],
     ]
     monkeypatch.setattr(
         "scripts.validate_accuracy_tables.get_supabase_client",
@@ -185,11 +193,11 @@ def test_validate_accuracy_prefers_lineaged_duplicate_show_date(monkeypatch):
 
 def test_validate_accuracy_uses_model_specific_replay_windows(monkeypatch):
     base_rows = _accuracy_rows()
-    notebook_row = base_rows["accuracy_per_show"][0]
-    deal_row = base_rows["accuracy_per_show"][1]
+    notebook_row = base_rows["completed_show_accuracy"][0]
+    deal_row = base_rows["completed_show_accuracy"][50]
     rows = {
-        "accuracy_per_show": _repeat_rows(notebook_row, count=50)
-        + _repeat_rows(deal_row, count=10)
+        "completed_show_accuracy": _repeat_rows(notebook_row, count=50)
+        + _repeat_rows(deal_row, count=50)
     }
     monkeypatch.setattr(
         "scripts.validate_accuracy_tables.get_supabase_client",
@@ -203,10 +211,10 @@ def test_validate_accuracy_uses_model_specific_replay_windows(monkeypatch):
 
 def test_validate_accuracy_respects_global_replay_window_override(monkeypatch):
     base_rows = _accuracy_rows()
-    notebook_row = base_rows["accuracy_per_show"][0]
-    deal_row = base_rows["accuracy_per_show"][1]
+    notebook_row = base_rows["completed_show_accuracy"][0]
+    deal_row = base_rows["completed_show_accuracy"][50]
     rows = {
-        "accuracy_per_show": _repeat_rows(notebook_row, count=10)
+        "completed_show_accuracy": _repeat_rows(notebook_row, count=10)
         + _repeat_rows(deal_row, count=10)
     }
     monkeypatch.setattr(
@@ -241,7 +249,7 @@ def test_skip_freshness_passes_stale_rows(monkeypatch):
 def test_skip_freshness_fails_missing_rows(monkeypatch):
     monkeypatch.setattr(
         "scripts.validate_accuracy_tables.get_supabase_client",
-        lambda: _ClientStub({"accuracy_per_show": []}),
+        lambda: _ClientStub({"completed_show_accuracy": []}),
     )
 
     failures = validate_accuracy(
@@ -255,8 +263,8 @@ def test_skip_freshness_fails_missing_rows(monkeypatch):
 
 def test_skip_freshness_fails_invalid_timestamp(monkeypatch):
     rows = _accuracy_rows()
-    rows["accuracy_per_show"][0]["evaluated_at"] = "not-a-timestamp"
-    rows["accuracy_per_show"][1]["evaluated_at"] = "not-a-timestamp"
+    rows["completed_show_accuracy"][0]["evaluated_at"] = "not-a-timestamp"
+    rows["completed_show_accuracy"][50]["evaluated_at"] = "not-a-timestamp"
     monkeypatch.setattr(
         "scripts.validate_accuracy_tables.get_supabase_client",
         lambda: _ClientStub(rows),
@@ -273,8 +281,8 @@ def test_skip_freshness_fails_invalid_timestamp(monkeypatch):
 
 def test_skip_freshness_still_checks_replay_lineage(monkeypatch):
     rows = _accuracy_rows()
-    rows["accuracy_per_show"][0]["prediction_run_id"] = None
-    rows["accuracy_per_show"][1]["prediction_run_id"] = None
+    for row in rows["completed_show_accuracy"]:
+        row["prediction_run_id"] = None
     monkeypatch.setattr(
         "scripts.validate_accuracy_tables.get_supabase_client",
         lambda: _ClientStub(rows),

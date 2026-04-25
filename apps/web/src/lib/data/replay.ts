@@ -57,7 +57,7 @@ export const getReplaySnapshot = cache(
       const historicalRowsByModel = await Promise.all(
         modelVersions.map(async ({ model, version }) => {
           const { data, error } = await client
-            .from("historical_prediction_runs")
+            .from("completed_show_prediction_runs")
             .select("target_show_date, generated_at")
             .eq("band", band)
             .eq("model_slug", model)
@@ -144,7 +144,7 @@ export const getReplaySnapshot = cache(
       const historicalSnapshots = await Promise.all(
         modelVersions.map(async ({ model, version }) => {
           const { data, error } = await client
-            .from("historical_prediction_runs")
+            .from("completed_show_prediction_runs")
             .select("*")
             .eq("band", band)
             .eq("model_slug", model)

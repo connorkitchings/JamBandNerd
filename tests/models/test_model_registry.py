@@ -77,6 +77,6 @@ def test_registry_lifecycle_metadata_tracks_staged_rollout() -> None:
     assert notebook.web_visibility == "promoted"
     assert deal.lifecycle_stage == "web_promoted"
     assert deal.web_visibility == "promoted"
-    assert deal.readiness_windows == (10,)
+    assert deal.readiness_windows == (50,)
     assert deal.readiness_baselines == ("notebook",)
     assert ckplus.lifecycle_stage == "retired"

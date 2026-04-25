@@ -10,9 +10,9 @@ export function DataState({ title, body }: Props) {
         <p className="font-label text-[10px] font-semibold uppercase tracking-[0.24em] text-primary">
           Data state
         </p>
-        <h2 className="mt-3 font-headline text-2xl font-semibold uppercase tracking-[-0.03em] text-on-surface">
+        <h1 className="mt-3 font-headline text-2xl font-semibold uppercase tracking-[-0.03em] text-on-surface">
           {title}
-        </h2>
+        </h1>
         <p className="mt-3 text-sm leading-7 text-on-surface-variant">{body}</p>
       </div>
     </div>

@@ -63,8 +63,9 @@ graph TD
   rows still exist in storage.
 - All three registered models rely on the same ordered historical show sequence and
   the same `reference_date` anti-leakage rule.
-- `accuracy_per_show` is the canonical granular evaluation source used by the
-  workflow, audits, and website-facing diagnostics.
+- `completed_show_accuracy` is the canonical granular evaluation source used by
+  the workflow, audits, and website-facing diagnostics. It is retained to the
+  last 50 eligible completed shows per band/model.
 
 ### Delivery
 
@@ -125,9 +126,10 @@ New prediction models are added through the registry workflow (see
 3. Add one `ModelDefinition` entry in the registry
 4. Optionally add frontend presentation metadata in website config
 
-All models write canonical run-level rows to the shared `predictions` table and
-project song-level rows through `replace_prediction_projection()`, making them
-automatically available to the website's analytics and explorer routes.
+Live model runs write canonical rows to `next_show_prediction_runs` and derived
+rows to `next_show_prediction_songs`. Completed-show evaluation writes retained
+rows to `completed_show_prediction_runs` and `completed_show_accuracy`, making
+the live prediction surface independent from Replay and metrics.
 
 ## Non-Negotiable Rules
 

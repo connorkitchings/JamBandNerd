@@ -46,12 +46,13 @@ Adding a new model follows a similar pattern.
 2. **Consume `ModelData`**: reuse the shared normalized transform boundary rather
    than introducing a separate raw-data path.
 3. **Update consolidated scripts**: wire the model into:
-   - `scripts/generate_predictions.py`
+   - `scripts/generate_live_predictions.py`
    - `scripts/run_backtest.py`
    - `scripts/run_optimized_pipeline.py`
-4. **Create storage**: write canonical run rows to the unified `predictions`
-   table with the model's slug, plus replay lineage in
-   `historical_prediction_runs` and per-show scoring in `accuracy_per_show`.
+4. **Create storage**: write live next-show rows to
+   `next_show_prediction_runs`/`next_show_prediction_songs`, and write retained
+   completed-show rows to `completed_show_prediction_runs` plus
+   `completed_show_accuracy`.
 5. **Document versioning**: define the `model_version` contract for the new
    model.
 

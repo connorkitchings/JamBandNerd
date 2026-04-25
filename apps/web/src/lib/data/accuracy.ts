@@ -56,9 +56,10 @@ export const getRecentAccuracy = cache(
     try {
       const modelVersion = await getCurrentModelVersion(client, band, model);
       const { data, error } = await client
-        .from("accuracy_per_show")
+        .from("completed_show_accuracy")
         .select("show_id, show_date, k10_recall, k25_recall, k50_recall, k10_precision, k25_precision, k50_precision")
         .eq("band", band)
+        .eq("model_slug", model)
         .eq("model_version", modelVersion)
         .order("show_date", { ascending: false })
         .limit(limit);

@@ -248,6 +248,7 @@ def fetch_goose_notebook_predictions(
         band="goose",
         model_slug="notebook",
         reference_date=reference_date,
+        table_name="next_show_prediction_songs",
         limit=limit,
     )
 

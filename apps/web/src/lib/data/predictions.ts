@@ -14,8 +14,6 @@ import {
   normalizeModel,
 } from "@/lib/config";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
-import { selectLivePredictionSeedRow } from "@/lib/prediction-selection";
-
 import { getClientOrState, getBandContext } from "./bands";
 import {
   asRecord,
@@ -47,8 +45,8 @@ async function fetchProjectedPredictionSnapshot(
   },
 ): Promise<PredictionSnapshot | null> {
   let seedQuery = client
-    .from("prediction_songs")
-    .select("reference_date, predicted_at, model_version")
+    .from("next_show_prediction_songs")
+    .select("target_show_date, reference_date, generated_at, model_version")
     .eq("band", band)
     .eq("model_slug", model)
     .eq("rank", 1);
@@ -58,30 +56,15 @@ async function fetchProjectedPredictionSnapshot(
   }
 
   const { data: seedRows, error: seedError } = await seedQuery
-    .order("predicted_at", { ascending: false })
-    .order("reference_date", { ascending: false })
-    .limit(referenceDate ? 1 : 100);
+    .order("generated_at", { ascending: false })
+    .order("target_show_date", { ascending: true })
+    .limit(1);
 
   if (seedError) {
     throw seedError;
   }
 
-  const seedRow = referenceDate
-    ? asRecord(seedRows?.[0])
-    : selectLivePredictionSeedRow(
-        (seedRows ?? [])
-          .map((item) => asRecord(item))
-          .filter((item): item is Record<string, unknown> => item !== null)
-          .map((row) => ({
-            reference_date:
-              typeof row.reference_date === "string" ? row.reference_date : null,
-            predicted_at:
-              typeof row.predicted_at === "string" ? row.predicted_at : null,
-            model_version:
-              typeof row.model_version === "string" ? row.model_version : null,
-          })),
-        { todayIso: new Date().toISOString().slice(0, 10) },
-      );
+  const seedRow = asRecord(seedRows?.[0]);
   const seedReferenceDate =
     seedRow && typeof seedRow.reference_date === "string"
       ? seedRow.reference_date
@@ -96,9 +79,9 @@ async function fetchProjectedPredictionSnapshot(
   }
 
   const { data, error } = await client
-    .from("prediction_songs")
+    .from("next_show_prediction_songs")
     .select(
-      "reference_date, predicted_at, model_version, rank, song_name, prediction_payload",
+      "target_show_date, reference_date, generated_at, model_version, rank, song_name, prediction_payload",
     )
     .eq("band", band)
     .eq("model_slug", model)
@@ -135,16 +118,19 @@ export async function getCurrentModelVersion(
       return projectionSnapshot.modelVersion;
     }
   } catch (error) {
-    console.error("Failed to resolve model version from prediction_songs", error);
+    console.error(
+      "Failed to resolve model version from next_show_prediction_songs",
+      error,
+    );
   }
 
   const { data } = await client
-    .from("predictions")
+    .from("completed_show_prediction_runs")
     .select("model_version")
     .eq("band", band)
     .eq("model_slug", model)
-    .order("predicted_at", { ascending: false })
-    .order("reference_date", { ascending: false })
+    .order("target_show_date", { ascending: false })
+    .order("generated_at", { ascending: false })
     .limit(1);
 
   const row = asRecord(data?.[0]);
@@ -219,32 +205,16 @@ export const getLatestPredictions = cache(
           return { status: "ready", band, model, snapshot: projectionSnapshot };
         }
       } catch (error) {
-        console.error("Failed to load latest projected predictions", error);
+        return {
+          status: "error",
+          message:
+            error instanceof Error
+              ? error.message
+              : "Failed to load live predictions",
+        };
       }
 
-      const { data, error } = await client
-        .from("predictions")
-        .select("*")
-        .eq("band", band)
-        .eq("model_slug", model)
-        .order("reference_date", { ascending: false })
-        .limit(1);
-
-      if (error) {
-        return { status: "error", message: error.message };
-      }
-
-      const row = data?.[0];
-      if (!row) {
-        return { status: "empty" };
-      }
-
-      return {
-        status: "ready",
-        band,
-        model,
-        snapshot: buildPredictionSnapshotFromCanonicalRow(row),
-      };
+      return { status: "empty" };
     } catch (error) {
       return {
         status: "error",
@@ -301,7 +271,7 @@ export const getPredictionsForDate = cache(
       }
 
       const { data, error } = await client
-        .from("predictions")
+        .from("next_show_prediction_runs")
         .select("*")
         .eq("band", band)
         .eq("model_slug", model)
@@ -368,7 +338,7 @@ export const getPredictionDates = cache(
 
       try {
         const { data: projectionData, error: projectionError } = await client
-          .from("prediction_songs")
+          .from("next_show_prediction_songs")
           .select("reference_date")
           .eq("band", band)
           .eq("model_slug", model)
@@ -383,26 +353,6 @@ export const getPredictionDates = cache(
           )];
         }
       } catch {
-      }
-
-      if (dates.length === 0) {
-        const { data, error } = await client
-          .from("predictions")
-          .select("reference_date")
-          .eq("band", band)
-          .eq("model_slug", model)
-          .order("reference_date", { ascending: false })
-          .limit(100);
-
-        if (error) {
-          return { status: "error", message: error.message };
-        }
-
-        dates = [...new Set(
-          (data ?? [])
-            .map((row) => asRecord(row)?.reference_date)
-            .filter((d): d is string => typeof d === "string")
-        )];
       }
 
       return dates.length === 0

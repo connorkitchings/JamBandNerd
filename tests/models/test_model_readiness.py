@@ -69,14 +69,17 @@ def _history_rows(
 def test_build_model_readiness_report_marks_band_ready():
     client = _ClientStub(
         {
-            "predictions": [
+            "next_show_prediction_runs": [
                 {
                     "band": "goose",
+                    "model_slug": "deal",
                     "model_version": "deal_v2",
                     "reference_date": "2026-04-10",
+                    "generated_at": "2026-04-09T00:00:00+00:00",
+                    "top_k": 50,
                 }
             ],
-            "prediction_songs": [
+            "next_show_prediction_songs": [
                 {
                     "band": "goose",
                     "model_slug": "deal",
@@ -84,11 +87,12 @@ def test_build_model_readiness_report_marks_band_ready():
                     "reference_date": "2026-04-10",
                 }
             ],
-            "historical_prediction_runs": _history_rows("deal", "deal_v2", count=50)
+            "completed_show_prediction_runs": _history_rows("deal", "deal_v2", count=50)
             + _history_rows("notebook", "notebook_v1", count=50),
-            "accuracy_per_show": [
+            "completed_show_accuracy": [
                 {
                     "band": "goose",
+                    "model_slug": "deal",
                     "model_version": "deal_v2",
                     "show_id": f"show-{index}",
                 }
@@ -102,20 +106,21 @@ def test_build_model_readiness_report_marks_band_ready():
     assert report["ready_for_backend"] is True
     assert report["ready_for_web_promotion"] is False
     assert report["bands"][0]["ready"] is True
-    assert report["bands"][0]["required_window"] == 10
-    assert report["bands"][0]["replay_overlap"]["notebook"] == 10
+    assert report["bands"][0]["required_window"] == 50
+    assert report["bands"][0]["replay_overlap"]["notebook"] == 50
 
 
 def test_build_model_readiness_report_surfaces_missing_requirements():
     client = _ClientStub(
         {
-            "predictions": [],
-            "prediction_songs": [],
-            "historical_prediction_runs": _history_rows("deal", "deal_v2", count=8)
+            "next_show_prediction_runs": [],
+            "next_show_prediction_songs": [],
+            "completed_show_prediction_runs": _history_rows("deal", "deal_v2", count=8)
             + _history_rows("notebook", "notebook_v1", count=7),
-            "accuracy_per_show": [
+            "completed_show_accuracy": [
                 {
                     "band": "goose",
+                    "model_slug": "deal",
                     "model_version": "deal_v2",
                     "show_id": f"show-{index}",
                 }
@@ -130,7 +135,7 @@ def test_build_model_readiness_report_surfaces_missing_requirements():
     blockers = report["bands"][0]["blockers"]
     assert "canonical_predictions_missing" in blockers
     assert "prediction_projection_missing" in blockers
-    assert report["bands"][0]["required_window"] == 10
-    assert "historical_runs_below_window:8/10" in blockers
-    assert "per_show_accuracy_below_window:7/10" in blockers
-    assert "replay_overlap_below_window:notebook:7/10" in blockers
+    assert report["bands"][0]["required_window"] == 50
+    assert "historical_runs_below_window:8/50" in blockers
+    assert "per_show_accuracy_below_window:7/50" in blockers
+    assert "replay_overlap_below_window:notebook:7/50" in blockers

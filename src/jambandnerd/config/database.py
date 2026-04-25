@@ -19,3 +19,11 @@ PREDICTION_SONGS_TABLE: Final[str] = "prediction_songs"
 
 # Canonical historical scored-run table for backtest lineage
 HISTORICAL_PREDICTION_RUNS_TABLE: Final[str] = "historical_prediction_runs"
+
+# Product-facing live next-show prediction tables
+NEXT_SHOW_PREDICTION_RUNS_TABLE: Final[str] = "next_show_prediction_runs"
+NEXT_SHOW_PREDICTION_SONGS_TABLE: Final[str] = "next_show_prediction_songs"
+
+# Product-facing retained completed-show prediction and metric tables
+COMPLETED_SHOW_PREDICTION_RUNS_TABLE: Final[str] = "completed_show_prediction_runs"
+COMPLETED_SHOW_ACCURACY_TABLE: Final[str] = "completed_show_accuracy"

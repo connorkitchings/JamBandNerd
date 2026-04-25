@@ -39,13 +39,10 @@ def test_daily_workflow_matrix_and_backtest_windows_match_repo_contract() -> Non
     for band in get_repo_supported_bands():
         assert f"          - {band}" in workflow
 
+    assert "uv run python scripts/generate_live_predictions.py" in workflow
     assert (
-        "uv run python scripts/run_backtest.py --band ${{ matrix.band }} "
-        "--model notebook --shows 50 --incremental --require-results"
-    ) in workflow
-    assert (
-        "uv run python scripts/run_backtest.py --band ${{ matrix.band }} "
-        "--model deal --shows 50 --incremental --require-results"
+        "uv run python scripts/sync_retained_prediction_corpus.py --band ${{ matrix.band }} "
+        "--window 50 --incremental --require-results"
     ) in workflow
 
 
@@ -63,5 +60,5 @@ def test_active_docs_do_not_reference_retired_storage_contract_terms() -> None:
 def test_github_actions_docs_match_current_deal_window_and_band_authority() -> None:
     contents = Path("docs/operations/github_actions.md").read_text()
 
-    assert "Deal uses `--shows 50`" in contents
+    assert "both models use the same last-50 window" in contents
     assert "repo-authoritative automation band list" in contents

@@ -195,75 +195,48 @@ Any new model must consume the same leakage-safe ordering and cutoff rules.
 
 ### Prediction storage
 
-The current canonical prediction write boundary is one row per prediction run
-context in a unified `predictions` table with a `model_slug` discriminator:
+Prediction storage is split by product intent.
+
+Live next-show predictions use `next_show_prediction_runs` as the canonical run
+table and `next_show_prediction_songs` as the derived per-song projection. These
+tables contain only active next-show boards. If no upcoming show is known, the
+pipeline does not write a live prediction row and the website shows no live
+board.
+
+Completed-show history uses `completed_show_prediction_runs` as the canonical
+retained run table and `completed_show_accuracy` as the retained per-show metric
+table. The active corpus is exactly the last 50 eligible completed shows per
+band/model; rows outside that corpus are hard-deleted from the derived
+prediction/accuracy storage.
+
+The live canonical row includes:
 
 - `band`
 - `model_slug`
+- `target_show_key`
+- `target_show_date`
 - `reference_date`
 - `model_version`
 - `top_k`
-- `predicted_at`
+- `generated_at`
 - JSON `predictions` payload
 
-JamBandNerd also maintains a derived `prediction_songs` table with one row per
-predicted song for SQL-friendly reads and analytics. That table is rebuildable
-from the canonical run-level rows.
-
-Historical scored backtests are stored separately in
-`historical_prediction_runs`. This preserves the exact ranked board used for a
-completed-show evaluation without mixing historical replay snapshots into the
-live prediction tables. The website's `/replay` surface treats this table as
-its canonical historical source and assumes each promoted model retains its
-registry-defined replay window. In the current promoted set, Notebook targets
-roughly the last 50 completed shows per band while Deal has a 10-show
-readiness floor for replay coverage. The daily workflow still backtests both
-promoted models across the last 50 completed shows.
+The completed-show canonical row additionally includes `actual_songs` and
+`actual_song_count`.
 
 ### Accuracy storage
 
-- `accuracy_per_show` is the canonical granular evaluation store.
-- new `accuracy_per_show` rows link to `historical_prediction_runs` through
+- `completed_show_accuracy` is the canonical granular evaluation store.
+- new `completed_show_accuracy` rows link to `completed_show_prediction_runs` through
   `prediction_run_id`
-- pipeline validation now checks that recent `accuracy_per_show` rows retain
+- pipeline validation checks that exactly the retained last-50 rows carry
   replay lineage, so replay readiness is part of normal data health.
 
 ## Current Decision: Prediction Storage
 
-JamBandNerd is intentionally documenting the current JSON-row prediction storage
-as canonical now, while keeping the main future alternative explicit.
-
-### Current design: hybrid canonical row plus derived projection
-
-Pros:
-
-- simple canonical writes from the current pipeline
-- easy upsert key by `(band, model_slug, reference_date, model_version)`
-- SQL-friendly per-song querying via the derived projection table
-
-Tradeoffs:
-
-- one extra derived write path to maintain
-- projection consistency now needs validation during rebuilds and diagnostics
-
-### Future alternative: row-per-song as the canonical write path
-
-Potential benefits:
-
-- simpler read model if all consumers eventually converge on song-level rows
-- cleaner lineage if the projection ever becomes the only storage shape
-
-Potential costs:
-
-- larger behavior change for scripts, validations, and website consumers
-- less direct continuity with the current run-level upsert contract
-
-This remains a future implementation decision, not the active architecture.
-
-## Current Gaps To Address Later
-
-- prediction storage may later move to row-per-song tables if the website or
-  analytics layer requires it
+The active architecture uses canonical JSON run rows plus derived projections
+where the website needs song-level reads. Live and completed history are
+separate so next-show reads never fall back to retained historical rows.
 
 ## Band Registry
 
@@ -301,10 +274,10 @@ New band onboarding workflow:
 3. Insert a row into the `bands` table
 4. The website automatically discovers and surfaces the new band
 
-## Historical Prediction Runs (Replay Lineage)
+## Completed Prediction Runs (Replay Lineage)
 
-The `historical_prediction_runs` table preserves exact prediction boards for completed shows,
-enabling the Replay feature. Each row stores:
+The `completed_show_prediction_runs` table preserves exact prediction boards for
+the retained completed-show corpus, enabling the Replay feature. Each row stores:
 
 - `band`, `model_slug`, `model_version`: prediction context
 - `reference_date`: when the prediction was made
@@ -313,18 +286,18 @@ enabling the Replay feature. Each row stores:
 - `predictions`: exact ranked JSON payload emitted by the model
 - `run_type`: either 'backtest' or 'live'
 
-The `accuracy_per_show` table links back to `historical_prediction_runs` via
+The `completed_show_accuracy` table links back to `completed_show_prediction_runs` via
 `prediction_run_id`, creating full lineage from evaluation back to the original prediction.
 
-The website's `/replay` surface assumes each promoted model's registry-defined
-replay window remains queryable. In the current promoted set, Notebook's
-readiness target is 50 recent shows while Deal's readiness floor is 10.
+The website's `/replay`, `/performance`, `/compare`, and `/last-show` surfaces
+read only this retained completed-show corpus. Notebook and Deal both require
+the same 50-show retained window.
 
 ## Per-Song Prediction Projection
 
-`prediction_songs` is a derived table storing one row per predicted song for SQL-friendly
-reads and analytics. It is rebuildable from the canonical run-level rows in
-the unified `predictions` table.
+`next_show_prediction_songs` is a derived table storing one row per live
+predicted song for SQL-friendly reads and realtime updates. It is rebuildable
+from `next_show_prediction_runs`.
 
 Schema:
 - `band`, `model_slug`, `model_version`, `reference_date`: prediction context

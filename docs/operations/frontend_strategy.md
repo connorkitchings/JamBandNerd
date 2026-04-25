@@ -257,10 +257,10 @@ The frontend reads from these Supabase tables:
 
 | Table | Purpose |
 |-------|---------|
-| `predictions` | Canonical run-level prediction rows keyed by `band`, `model_slug`, `reference_date`, and `model_version` |
-| `prediction_songs` | Projection view of latest predictions per band/model |
-| `accuracy_per_show` | Per-show accuracy metrics keyed by band/model_version |
-| `historical_prediction_runs` | Replay lineage linking scored boards to completed shows |
+| `next_show_prediction_runs` | Canonical live next-show prediction rows |
+| `next_show_prediction_songs` | Live per-song projection for `/predictions` and realtime refresh |
+| `completed_show_prediction_runs` | Retained last-50 completed-show boards for Replay |
+| `completed_show_accuracy` | Per-show accuracy metrics keyed by band/model/version over the retained last-50 corpus |
 
 ### Prediction Row Schema
 

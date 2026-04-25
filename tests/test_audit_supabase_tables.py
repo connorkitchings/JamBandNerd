@@ -15,7 +15,7 @@ def _definition(slug: str, version: str):
     return SimpleNamespace(
         slug=slug,
         version=version,
-        prediction_table="predictions",
+        prediction_table="next_show_prediction_runs",
         default_top_k=50,
     )
 
@@ -63,19 +63,19 @@ def _prediction_row(
     *,
     top_k: int = 50,
     song_name: str = "Song A",
-    predicted_at: datetime | None = None,
+    generated_at: datetime | None = None,
     predictions: object | None = None,
 ) -> dict[str, object]:
     value = predictions
     if value is None:
         value = json.dumps([{"song_name": song_name}] * top_k)
-    timestamp = predicted_at or NOW
+    timestamp = generated_at or NOW
     return {
         "band": "goose",
         "model_slug": "notebook",
         "model_version": "notebook_v1",
         "reference_date": "2026-04-10",
-        "predicted_at": timestamp.isoformat() if timestamp else None,
+        "generated_at": timestamp.isoformat() if timestamp else None,
         "top_k": top_k,
         "predictions": value,
     }
@@ -188,7 +188,7 @@ def _install_audit_stubs(
     monkeypatch.setattr(
         module,
         "fetch_prediction_songs_for_date",
-        lambda *, band, model_slug, reference_date: projection_rows.get(
+        lambda *, band, model_slug, reference_date, table_name=None: projection_rows.get(
             model_slug, _projection_rows()
         ),
     )

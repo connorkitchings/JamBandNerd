@@ -19,8 +19,9 @@ truth for current model rollout, CI schedules, or product delivery.
 - normalization and feature generation are shared and in-memory
 - Notebook and Deal are the promoted website-facing models
 - CK+ is retired and kept only for historical reference
-- predictions and accuracy are stored in unified model-oriented tables
-- replay lineage is preserved through `historical_prediction_runs`
+- live next-show predictions are stored separately from completed-show history
+- model metrics come from the retained last-50 completed-show corpus in
+  `completed_show_prediction_runs` and `completed_show_accuracy`
 
 ## Read Next
 

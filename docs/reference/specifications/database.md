@@ -41,23 +41,24 @@ by writing derived tables back to Supabase.
 
 ### Prediction tables
 
-- `predictions`
-- `prediction_songs` (derived per-song projection)
-- `historical_prediction_runs` (historical scored-run lineage for Replay)
+- `next_show_prediction_runs` (active live next-show runs)
+- `next_show_prediction_songs` (derived live per-song projection)
+- `completed_show_prediction_runs` (retained completed-show lineage for Replay)
 
-`predictions` stores one canonical row per
-`(band, model_slug, reference_date, model_version)` with a JSON predictions
-payload.
-`prediction_songs` stores one derived row per predicted song for SQL-friendly reads.
-`historical_prediction_runs` preserves exact prediction boards for completed shows,
-enabling the Replay feature with full lineage back to the original prediction.
+`next_show_prediction_runs` stores one active live row per
+`(band, model_slug, model_version, target_show_key)` with a JSON predictions
+payload. `next_show_prediction_songs` stores one derived row per live predicted
+song for SQL-friendly reads and realtime refresh. `completed_show_prediction_runs`
+preserves exact prediction boards for the active last-50 completed-show corpus.
 
 ### Accuracy tables
 
-- `accuracy_per_show`
+- `completed_show_accuracy`
 
-`accuracy_per_show` is the canonical granular evaluation store. New rows link to
-`historical_prediction_runs` via `prediction_run_id` for Replay lineage.
+`completed_show_accuracy` is the canonical granular evaluation store. Rows link
+to `completed_show_prediction_runs` via `prediction_run_id` for Replay lineage.
+Rows outside the retained last-50 completed-show corpus are hard-deleted from
+the active metric store.
 
 ## Utility Modules
 
@@ -76,6 +77,10 @@ Current high-level operations include:
 - `bulk_insert_dataframe()`
 - `upsert_dataframe()`
 - `replace_prediction_projection()`
+- `upsert_next_show_prediction_run()`
+- `replace_next_show_prediction_projection()`
+- `upsert_completed_show_prediction_run()`
+- `prune_completed_show_corpus()`
 - `fetch_existing_ids()`
 - `fetch_existing_values()`
 - `fetch_rows_by_column_values()`
@@ -128,7 +133,8 @@ server-side contexts.
 - large writes should be chunked
 - raw writes should preserve enough source information for reprocessing and
   traceability
-- prediction freshness should be validated using `predicted_at`
+- live prediction freshness should be validated using `generated_at`
+- completed-show metrics should be derived only from the retained last-50 corpus
 
 ## Related Documents
 

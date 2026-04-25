@@ -7,63 +7,54 @@ evaluation data.
 
 Prediction tables:
 
-- `predictions` (canonical run-level storage across models)
-- `prediction_songs` (derived per-song projection)
-- `historical_prediction_runs` (canonical scored backtest snapshots)
+- `next_show_prediction_runs` (canonical live next-show storage)
+- `next_show_prediction_songs` (derived live per-song projection)
+- `completed_show_prediction_runs` (canonical retained completed-show snapshots)
 
 Accuracy tables:
 
-- `accuracy_per_show`
+- `completed_show_accuracy`
 
 Model metadata for table/version/serializer mapping is registered in
 `src/jambandnerd/models/registry.py`. Scripts should derive model behavior from
 that registry rather than hardcoded slug lists.
 
-## Current Prediction Storage
+## Live Next-Show Storage
 
-JamBandNerd stores one canonical row per prediction run context in the shared
-`predictions` table and derives a shared per-song projection from those rows.
+JamBandNerd stores active live predictions separately from completed-show
+history. `next_show_prediction_runs` contains one active run per
+`(band, model_slug, model_version, target_show_key)`, and the pipeline deletes
+older live rows once the target is no longer the next known show.
 
 Canonical columns:
 
 - `band`
 - `model_slug`
+- `target_show_key`
+- `target_show_date`
 - `reference_date`
 - `model_version`
 - `top_k`
 - `predictions`
-- `predicted_at`
+- `generated_at`
 
 Uniqueness:
 
-- `(band, model_slug, reference_date, model_version)`
+- `(band, model_slug, model_version, target_show_key)`
 
 The `predictions` column is a JSON array ordered by rank. The payload shape is
 model-specific.
 
-## Derived Per-Song Projection
+`next_show_prediction_songs` is the live per-song projection consumed by the
+website prediction board and realtime refresh logic. It is derived from
+`next_show_prediction_runs`.
 
-`prediction_songs` stores one row per predicted song for the canonical
-prediction run.
+## Retained Completed-Show Storage
 
-Canonical columns:
-
-- `band`
-- `model_slug`
-- `model_version`
-- `reference_date`
-- `predicted_at`
-- `rank`
-- `song_name`
-- `top_k`
-- `prediction_payload`
-
-Uniqueness:
-
-- `(band, model_slug, model_version, reference_date, rank)`
-
-`prediction_payload` preserves the exact model-specific JSON object emitted for
-that ranked song.
+`completed_show_prediction_runs` stores the exact ranked boards for the active
+last-50 completed-show corpus per band/model. It is the replay source of truth.
+Rows outside the retained 50-show corpus are hard-deleted by the retained corpus
+sync.
 
 ### Notebook payload fields
 
@@ -91,14 +82,16 @@ Current payload entries contain:
 
 ## Per-Show Accuracy Storage
 
-`accuracy_per_show` stores one row per evaluated completed show and model
-version.
+`completed_show_accuracy` stores one row per retained evaluated completed show
+and model version.
 
 Canonical columns include:
 
 - `band`
+- `model_slug`
 - `model_version`
 - `show_id`
+- `target_show_key`
 - `show_date`
 - `prediction_run_id`
 - `actual_song_count`
@@ -107,16 +100,16 @@ Canonical columns include:
 
 Uniqueness:
 
-- `(band, model_version, show_id)`
+- `(band, model_slug, model_version, target_show_key)`
 
-This is the canonical evaluation source for historical performance analysis.
-For new backtest rows, `prediction_run_id` links each evaluation row to the
-exact stored ranked board that produced it.
+This is the only active evaluation source for historical performance analysis.
+For retained rows, `prediction_run_id` links each evaluation row to the exact
+stored ranked board that produced it.
 
 ## Historical Scored Run Storage
 
-`historical_prediction_runs` stores one canonical row per scored historical
-prediction context.
+`historical_prediction_runs` remains a legacy lineage table for older rows.
+New website-facing scored history is written to `completed_show_prediction_runs`.
 
 Canonical columns include:
 
@@ -156,22 +149,24 @@ new `model_version`.
 
 ### Active design
 
-The active architecture is hybrid:
+The active product architecture is split by intent:
 
-- canonical per-run JSON row in `predictions`
-- derived per-song rows in `prediction_songs`
+- live next-show rows in `next_show_prediction_runs` plus
+  `next_show_prediction_songs`
+- retained last-50 completed-show rows in `completed_show_prediction_runs` plus
+  `completed_show_accuracy`
 
 Reasons:
 
-- simple canonical write path from the current pipeline
-- stable upsert semantics at the run level
-- SQL-friendly song-level reads without replacing the existing contract
+- live prediction reads cannot fall back to completed-show history
+- all model metrics share the same retained 50-show corpus
+- replay rows carry exact stored boards and actual setlists
 
 ### Deferred alternative
 
-A future row-per-song-only prediction schema is still a valid option if
-JamBandNerd eventually wants to make the projection table itself the canonical
-write boundary.
+The legacy `predictions`, `prediction_songs`, `historical_prediction_runs`, and
+`accuracy_per_show` tables may remain temporarily for compatibility and
+migration safety, but they are not the active website-facing source of truth.
 
 That alternative is not the current system and should not be documented as if
 it already exists.

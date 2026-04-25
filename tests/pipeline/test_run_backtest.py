@@ -59,7 +59,7 @@ def test_run_backtest_persists_string_show_ids(monkeypatch):
         raise AssertionError(f"Unexpected table: {table_name}")
 
     captured: dict[str, pd.DataFrame] = {}
-    historical_runs: list[dict[str, object]] = []
+    completed_runs: list[dict[str, object]] = []
 
     def capture_upsert(
         table_name: str, df: pd.DataFrame, conflict_columns
@@ -68,8 +68,8 @@ def test_run_backtest_persists_string_show_ids(monkeypatch):
         captured["df"] = df.copy()
         captured["conflict_columns"] = list(conflict_columns)
 
-    def capture_historical_run(**kwargs):  # noqa: ANN003
-        historical_runs.append(dict(kwargs))
+    def capture_completed_run(**kwargs):  # noqa: ANN003
+        completed_runs.append(dict(kwargs))
         return 987
 
     monkeypatch.setattr(run_backtest_module, "fetch_table", fetch_table)
@@ -103,11 +103,14 @@ def test_run_backtest_persists_string_show_ids(monkeypatch):
     monkeypatch.setattr(run_backtest_module, "upsert_dataframe", capture_upsert)
     monkeypatch.setattr(
         run_backtest_module,
-        "upsert_historical_prediction_run",
-        capture_historical_run,
+        "upsert_completed_show_prediction_run",
+        capture_completed_run,
     )
     monkeypatch.setattr(
         run_backtest_module, "fetch_scored_show_ids", lambda *a, **kw: set()
+    )
+    monkeypatch.setattr(
+        run_backtest_module, "prune_completed_show_corpus", lambda **kwargs: None
     )
 
     run_backtest_module.run_backtest(
@@ -119,21 +122,26 @@ def test_run_backtest_persists_string_show_ids(monkeypatch):
         exclusion_window=3,
     )
 
-    assert captured["table_name"] == "accuracy_per_show"
-    assert captured["conflict_columns"] == ["band", "model_version", "show_id"]
+    assert captured["table_name"] == "completed_show_accuracy"
+    assert captured["conflict_columns"] == [
+        "band",
+        "model_slug",
+        "model_version",
+        "target_show_key",
+    ]
     assert captured["df"]["show_id"].tolist() == ["goose-show-3"]
     assert captured["df"]["show_id"].map(type).eq(str).all()
     assert captured["df"]["prediction_run_id"].tolist() == [987]
-    assert len(historical_runs) == 1
-    assert historical_runs[0]["band"] == "goose"
-    assert historical_runs[0]["model_slug"] == "notebook"
-    assert historical_runs[0]["model_version"] == "notebook_v1"
-    assert historical_runs[0]["reference_date"] == "2024-01-19"
-    assert historical_runs[0]["target_show_id"] == "goose-show-3"
-    assert historical_runs[0]["target_show_date"] == "2024-01-20"
-    assert historical_runs[0]["actual_songs"] == ["Song A", "Song G", "Song H"]
-    assert historical_runs[0]["table_name"] == "historical_prediction_runs"
-    assert historical_runs[0]["predictions"] == [
+    assert len(completed_runs) == 1
+    assert completed_runs[0]["band"] == "goose"
+    assert completed_runs[0]["model_slug"] == "notebook"
+    assert completed_runs[0]["model_version"] == "notebook_v1"
+    assert completed_runs[0]["reference_date"] == "2024-01-19"
+    assert completed_runs[0]["target_show_key"] == "goose-show-3"
+    assert completed_runs[0]["target_show_date"] == "2024-01-20"
+    assert completed_runs[0]["actual_songs"] == ["Song A", "Song G", "Song H"]
+    assert completed_runs[0]["table_name"] == "completed_show_prediction_runs"
+    assert completed_runs[0]["predictions"] == [
         {
             "rank": 1,
             "song_name": "Song A",
@@ -202,11 +210,14 @@ def test_run_backtest_disables_cached_artifacts_for_training_models(monkeypatch)
     monkeypatch.setattr(run_backtest_module, "upsert_dataframe", lambda **kwargs: None)
     monkeypatch.setattr(
         run_backtest_module,
-        "upsert_historical_prediction_run",
+        "upsert_completed_show_prediction_run",
         lambda **kwargs: 123,
     )
     monkeypatch.setattr(
         run_backtest_module, "fetch_scored_show_ids", lambda *a, **kw: set()
+    )
+    monkeypatch.setattr(
+        run_backtest_module, "prune_completed_show_corpus", lambda **kwargs: None
     )
 
     run_backtest_module.run_backtest(

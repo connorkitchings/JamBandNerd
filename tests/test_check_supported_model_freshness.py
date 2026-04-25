@@ -77,12 +77,12 @@ def _install_registry(monkeypatch):
         _model_definition(
             slug="notebook",
             version="notebook_v1",
-            prediction_table="predictions",
+            prediction_table="next_show_prediction_runs",
         ),
         _model_definition(
             slug="deal",
             version="deal_v2",
-            prediction_table="predictions",
+            prediction_table="next_show_prediction_runs",
         ),
     ]
     monkeypatch.setattr(
@@ -106,30 +106,30 @@ def _freshness_rows(
     deal_per_show_hours: int | None = 6,
 ):
     rows: dict[str, list[dict[str, object]]] = {
-        "predictions": [],
-        "accuracy_per_show": [],
+        "next_show_prediction_runs": [],
+        "completed_show_accuracy": [],
     }
 
     if notebook_prediction_hours is not None:
-        rows["predictions"].append(
+        rows["next_show_prediction_runs"].append(
             {
                 "band": "wsp",
                 "model_slug": "notebook",
                 "model_version": "notebook_v1",
-                "predicted_at": _iso(notebook_prediction_hours),
+                "generated_at": _iso(notebook_prediction_hours),
             }
         )
     if deal_prediction_hours is not None:
-        rows["predictions"].append(
+        rows["next_show_prediction_runs"].append(
             {
                 "band": "wsp",
                 "model_slug": "deal",
                 "model_version": "deal_v2",
-                "predicted_at": _iso(deal_prediction_hours),
+                "generated_at": _iso(deal_prediction_hours),
             }
         )
     if notebook_per_show_hours is not None:
-        rows["accuracy_per_show"].append(
+        rows["completed_show_accuracy"].append(
             {
                 "band": "wsp",
                 "model_version": "notebook_v1",
@@ -137,7 +137,7 @@ def _freshness_rows(
             }
         )
     if deal_per_show_hours is not None:
-        rows["accuracy_per_show"].append(
+        rows["completed_show_accuracy"].append(
             {
                 "band": "wsp",
                 "model_version": "deal_v2",
