@@ -37,6 +37,25 @@ class ModelMetadata:
     notes: str | None = None
 
 
+@dataclass(frozen=True)
+class BandMetadata:
+    """Per-band metadata for the single-model-per-band architecture."""
+
+    band: str
+    model_version: str
+    default_top_k: int = 25
+    notes: str | None = None
+
+
+BAND_METADATA: tuple[BandMetadata, ...] = (
+    BandMetadata(band="goose", model_version="goose_baseline_v1"),
+    BandMetadata(band="phish", model_version="phish_baseline_v1"),
+    BandMetadata(band="wsp", model_version="wsp_baseline_v1"),
+    BandMetadata(band="billy", model_version="billy_baseline_v1"),
+    BandMetadata(band="um", model_version="um_baseline_v1"),
+)
+
+
 MODEL_METADATA: tuple[ModelMetadata, ...] = (
     ModelMetadata(
         slug="notebook",

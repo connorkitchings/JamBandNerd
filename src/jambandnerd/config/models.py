@@ -55,3 +55,15 @@ DEAL_L2_REGULARIZATION: Final[float] = 0.01
 
 # Deal retraining interval (days)
 DEAL_RETRAIN_INTERVAL_DAYS: Final[int] = 7
+
+# ── Single-model-per-band config ─────────────────────────────────────────────
+
+ACTIVE_BANDS: Final[tuple[str, ...]] = ("goose", "phish", "wsp", "billy", "um")
+
+BAND_TOP_N: Final[dict[str, int]] = {band: 25 for band in ACTIVE_BANDS}
+
+WEIGHTED_PRECISION_WEIGHTS: Final[dict[str, float]] = {
+    "p10": 0.2,
+    "p25": 0.7,
+    "p50": 0.1,
+}
