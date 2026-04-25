@@ -232,6 +232,85 @@ def test_run_backtest_disables_cached_artifacts_for_training_models(monkeypatch)
     assert seen["kwargs"] == {"persist_artifacts": False}
 
 
+def test_run_backtest_dry_run_skips_writes_and_pruning(monkeypatch, capsys):
+    shows_rows = [
+        {"show_id": "goose-show-1", "show_date": "2024-01-01"},
+        {"show_id": "goose-show-2", "show_date": "2024-01-20"},
+    ]
+    setlist_rows = [
+        {"show_id": "goose-show-1", "song_name": "Song A"},
+        {"show_id": "goose-show-1", "song_name": "Song B"},
+        {"show_id": "goose-show-1", "song_name": "Song C"},
+        {"show_id": "goose-show-2", "song_name": "Song A"},
+        {"show_id": "goose-show-2", "song_name": "Song G"},
+        {"show_id": "goose-show-2", "song_name": "Song H"},
+    ]
+
+    def fetch_table(table_name: str, chunk_size: int = 10000):  # noqa: ARG001
+        if table_name == "goose_shows_raw":
+            return shows_rows
+        if table_name == "goose_setlists_raw":
+            return setlist_rows
+        raise AssertionError(f"Unexpected table: {table_name}")
+
+    monkeypatch.setattr(run_backtest_module, "fetch_table", fetch_table)
+    monkeypatch.setattr(
+        run_backtest_module, "generate_model_data", lambda *args, **kwargs: object()
+    )
+    monkeypatch.setattr(
+        run_backtest_module,
+        "build_predictor",
+        lambda slug, *, band: _NotebookPredictorStub(),
+    )
+    monkeypatch.setattr(
+        run_backtest_module,
+        "get_model_definition",
+        lambda slug: replace(get_model_definition(slug), default_top_k=50),
+    )
+    monkeypatch.setattr(
+        run_backtest_module,
+        "serialize_model_predictions",
+        lambda slug, preds: [
+            {"rank": index + 1, "song_name": prediction.song_name}
+            for index, prediction in enumerate(preds)
+        ],
+    )
+    monkeypatch.setattr(
+        run_backtest_module,
+        "persist_scored_run_records",
+        lambda *a, **kw: pytest.fail("dry run should not persist scored records"),
+    )
+    monkeypatch.setattr(
+        run_backtest_module,
+        "prune_completed_show_corpus",
+        lambda **kwargs: pytest.fail("dry run should not prune retained rows"),
+    )
+    monkeypatch.setattr(
+        run_backtest_module, "fetch_scored_show_ids", lambda *a, **kw: set()
+    )
+
+    scored = run_backtest_module.run_backtest(
+        band="goose",
+        model="notebook",
+        start=None,
+        end=None,
+        shows=2,
+        exclusion_window=3,
+        dry_run=True,
+    )
+
+    assert scored == 2
+    output = capsys.readouterr().out
+    assert (
+        "[GOOSE/NOTEBOOK] Scoring retained show 1/2: "
+        "target_show_date=2024-01-01 show_id=goose-show-1"
+    ) in output
+    assert (
+        "[GOOSE/NOTEBOOK] Scoring retained show 2/2: "
+        "target_show_date=2024-01-20 show_id=goose-show-2"
+    ) in output
+
+
 def test_run_backtest_raises_when_results_required_and_none_generated(monkeypatch):
     monkeypatch.setattr(
         run_backtest_module,

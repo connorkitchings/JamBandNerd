@@ -59,6 +59,26 @@ be `SELECT` only for `anon` and `authenticated`; writes should be limited to
 
 ## Rebuild Derived Outputs
 
+Before writing any new split-storage rows, run the rollout checker in empty
+mode. This confirms the parallel tables are readable and still unpopulated:
+
+```bash
+uv run python scripts/check_prediction_storage_rollout.py --band goose --expected-state empty
+```
+
+Use dry runs to rehearse the Goose payloads without mutating Supabase:
+
+```bash
+uv run python scripts/generate_live_predictions.py --band goose --model notebook --dry-run
+uv run python scripts/generate_live_predictions.py --band goose --model deal --dry-run
+uv run python scripts/sync_retained_prediction_corpus.py --band goose --window 50 --model notebook --dry-run --no-incremental
+uv run python scripts/sync_retained_prediction_corpus.py --band goose --window 50 --model deal --dry-run --no-incremental
+```
+
+The retained-corpus command emits one progress line per scored show. This is
+especially important for Deal, which performs fresh in-memory training during
+historical scoring and can run much longer than Notebook.
+
 Regenerate the active live board for a band/model:
 
 ```bash
@@ -69,6 +89,14 @@ Sync the retained last-50 completed-show corpus for all promoted models:
 
 ```bash
 uv run python scripts/sync_retained_prediction_corpus.py --band goose --window 50 --no-incremental
+```
+
+For a first-band rollout, prefer model-by-model writes so a slow Deal run is
+observable and independently retryable:
+
+```bash
+uv run python scripts/sync_retained_prediction_corpus.py --band goose --window 50 --model notebook --no-incremental
+uv run python scripts/sync_retained_prediction_corpus.py --band goose --window 50 --model deal --no-incremental
 ```
 
 Sync all supported bands:
@@ -82,6 +110,7 @@ uv run python scripts/sync_retained_prediction_corpus.py --band all --window 50 
 After rebuild:
 
 - rerun `scripts/audit_raw_data.py` for any band that required re-ingestion
+- confirm `scripts/check_prediction_storage_rollout.py --band goose --expected-state populated` passes for rebuilt bands
 - confirm `scripts/validate_prediction_tables.py` passes for rebuilt bands
 - confirm `next_show_prediction_songs` row counts match `top_k` for the latest
   live prediction run per band/model when an upcoming show exists

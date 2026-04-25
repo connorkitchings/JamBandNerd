@@ -125,6 +125,7 @@ def generate_live_predictions(
     exclusion_window: int | None = None,
     require_output: bool = False,
     today: date | None = None,
+    dry_run: bool = False,
 ) -> bool:
     """Generate and store one active next-show prediction board."""
     band = band.lower()
@@ -187,6 +188,20 @@ def generate_live_predictions(
     predictions_list = json.loads(
         json.dumps(serialize_model_predictions(model, predictions), cls=NpEncoder)
     )
+    top_song = (
+        str(predictions_list[0].get("song_name"))
+        if predictions_list and predictions_list[0].get("song_name")
+        else "<none>"
+    )
+    if dry_run:
+        print(
+            f"{log_prefix} Dry run: target_show_date={target['target_show_date']} "
+            f"target_show_key={target['target_show_key']} "
+            f"model_version={model_definition.version} top_k={len(predictions_list)} "
+            f"top_song={top_song}; no Supabase writes performed."
+        )
+        return True
+
     generated_at = datetime.now(timezone.utc).isoformat()
     run_id = upsert_next_show_prediction_run(
         band=band,
@@ -229,6 +244,11 @@ def main() -> None:
     )
     parser.add_argument("--exclusion-window", type=int, default=None)
     parser.add_argument("--require-output", action="store_true")
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Compute and report the live prediction payload without writing tables.",
+    )
     args = parser.parse_args()
 
     generate_live_predictions(
@@ -236,6 +256,7 @@ def main() -> None:
         model=args.model,
         exclusion_window=args.exclusion_window,
         require_output=args.require_output,
+        dry_run=args.dry_run,
     )
 
 

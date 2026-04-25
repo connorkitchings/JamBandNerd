@@ -509,6 +509,12 @@ def replace_next_show_prediction_projection(
     table_name: str = "next_show_prediction_songs",
 ) -> None:
     """Replace the active per-song live projection for a next-show run."""
+    if not predictions:
+        raise RuntimeError(
+            "Refusing to replace next-show prediction projection with no "
+            f"predictions for {band}/{model_slug}/{model_version}."
+        )
+
     client = get_supabase_client()
     (
         client.table(table_name)
@@ -518,9 +524,6 @@ def replace_next_show_prediction_projection(
         .eq("model_version", model_version)
         .execute()
     )
-
-    if not predictions:
-        return
 
     rows = [
         {
@@ -608,9 +611,16 @@ def prune_completed_show_corpus(
     retained_target_show_keys: Iterable[str],
     runs_table: str = "completed_show_prediction_runs",
     accuracy_table: str = "completed_show_accuracy",
+    allow_empty_retained: bool = False,
 ) -> int:
     """Hard-delete completed-show rows outside the retained active corpus."""
     retained = {str(key) for key in retained_target_show_keys}
+    if not retained and not allow_empty_retained:
+        raise RuntimeError(
+            "Refusing to prune completed-show corpus with an empty retained key set "
+            f"for {band}/{model_slug}/{model_version}."
+        )
+
     client = get_supabase_client()
     response = (
         client.table(runs_table)

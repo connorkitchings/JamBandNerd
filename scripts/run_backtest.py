@@ -95,6 +95,7 @@ def build_scored_run_records(
     target_shows: pd.DataFrame,
     exclusion_window: int | None,
     local_cache: LocalModelTestCache | None = None,
+    show_progress: bool = False,
 ) -> list[dict[str, Any]]:
     """Build detailed per-show scored-run records without writing to Supabase."""
 
@@ -105,10 +106,21 @@ def build_scored_run_records(
     predictor = build_predictor(model, band=band, **kwargs)
     model_version = definition.version
     scored_run_records: list[dict[str, Any]] = []
+    total_shows = len(target_shows)
 
-    for _, show_row in target_shows.iterrows():
+    for index, (_, show_row) in enumerate(target_shows.iterrows(), start=1):
         ref_date = show_row["show_date"]
         show_id = str(show_row["show_id"])
+        if show_progress:
+            target_date = (
+                ref_date.isoformat() if isinstance(ref_date, date) else ref_date
+            )
+            print(
+                f"[{band.upper()}/{model.upper()}] Scoring retained show "
+                f"{index}/{total_shows}: target_show_date={target_date} "
+                f"show_id={show_id}",
+                flush=True,
+            )
 
         if not isinstance(ref_date, date):
             continue
@@ -351,6 +363,7 @@ def run_backtest(
     snapshot_root: str | None = None,
     require_results: bool = False,
     prune_to_window: bool = True,
+    dry_run: bool = False,
 ) -> int:
     """Run a backtest for a given band and model.
 
@@ -452,16 +465,24 @@ def run_backtest(
         sets_df=sets_df,
         target_shows=target_shows,
         exclusion_window=exclusion_window,
+        show_progress=True,
     )
 
     # 5. Save results and print summary
     if scored_run_records:
-        results_df = persist_scored_run_records(
-            scored_run_records,
-            historical_runs_table=COMPLETED_SHOW_PREDICTION_RUNS_TABLE,
-            accuracy_table=COMPLETED_SHOW_ACCURACY_TABLE,
-        )
-        if prune_to_window:
+        results_df = pd.DataFrame()
+        if dry_run:
+            print(
+                f"{log_prefix} Dry run: scored {len(scored_run_records)} "
+                "completed-show record(s); no Supabase writes or pruning performed."
+            )
+        else:
+            results_df = persist_scored_run_records(
+                scored_run_records,
+                historical_runs_table=COMPLETED_SHOW_PREDICTION_RUNS_TABLE,
+                accuracy_table=COMPLETED_SHOW_ACCURACY_TABLE,
+            )
+        if prune_to_window and not dry_run:
             retained_keys = target_shows["show_id"].astype(str).tolist()
             deleted = prune_completed_show_corpus(
                 band=band,
@@ -475,10 +496,11 @@ def run_backtest(
                 print(
                     f"{log_prefix} Pruned {deleted} completed-show row(s) outside retained window."
                 )
-        print(
-            f"{log_prefix} Saving {len(results_df)} per-show accuracy records to the database..."
-        )
-        print(f"{log_prefix} Save complete.")
+        if not dry_run:
+            print(
+                f"{log_prefix} Saving {len(results_df)} per-show accuracy records to the database..."
+            )
+            print(f"{log_prefix} Save complete.")
 
         print(f"\n{log_prefix} --- Aggregate Metrics for Window ---")
         summary = summarize_scored_run_records(scored_run_records)
@@ -558,6 +580,11 @@ def main() -> None:
         default=True,
         help="Hard-delete completed-show rows outside the selected retained window.",
     )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Score the selected window and print metrics without writing tables.",
+    )
     args = parser.parse_args()
 
     run_backtest(
@@ -572,6 +599,7 @@ def main() -> None:
         snapshot_root=args.snapshot_root,
         require_results=args.require_results,
         prune_to_window=args.prune_to_window,
+        dry_run=args.dry_run,
     )
 
 
