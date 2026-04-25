@@ -5,6 +5,15 @@
 - Populate Goose as the first production band on the split live/completed
   prediction storage architecture.
 
+## Constraints
+
+- Preserve legacy prediction tables during the parallel-table rollout.
+- Keep other bands empty on the new split-storage architecture until Goose is
+  validated.
+- Commit rollout tooling before production Supabase writes.
+- Run retained-history writes model by model so a slow Deal run can be retried
+  independently.
+
 ## Commands Run
 
 ```bash
@@ -33,6 +42,18 @@ uv run python scripts/audit_supabase_tables.py --band goose --skip-accuracy --ou
 - Both live boards wrote 50 projected songs with top song `Give It Time`.
 - Retained completed-show corpus wrote 50 completed-show runs and 50 accuracy
   rows per model for `2025-06-07` through `2026-04-23`.
+
+## Files And Artifacts
+
+- Commit `d53810e`: rollout hardening, dry-run support, model-scoped retained
+  corpus sync, progress output, tests, and docs.
+- Commit `c92764f`: Goose rollout session log.
+- Audit artifact: `/tmp/jbn_goose_populated_audit.json`.
+- New Supabase rows:
+  - `next_show_prediction_runs`: 2 Goose rows
+  - `next_show_prediction_songs`: 100 Goose rows
+  - `completed_show_prediction_runs`: 100 Goose rows
+  - `completed_show_accuracy`: 100 Goose rows
 
 ## Validation
 
