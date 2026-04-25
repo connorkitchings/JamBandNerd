@@ -58,7 +58,7 @@ Open on demand:
 1. Use `README.md` and `docs/user/pipeline_usage.md` as the source of truth for commands.
 2. Do not create intermediate Supabase tables. Transform data in memory through `ModelData`.
 3. All feature engineering must respect `reference_date`. Never use future data in features or backtests.
-4. Keep band-specific logic inside collectors under `src/jambandnerd/data_collection/`.
+4. Band-specific collector logic belongs in `src/jambandnerd/data_collection/{band}/`. Per-band predictor classes are allowed under `src/jambandnerd/models/{band}/` as the platform transitions to a single precision-optimized model per band (see ADR 0001). Shared infrastructure — `ModelData`, `PredictionModel` ABC, training/eval harness, storage contract — remains band-agnostic.
 5. Prefer the consolidated scripts in `scripts/` over one-off or historical entrypoints.
 6. Never work directly on `main`. Use a feature branch.
 7. Every logic change needs tests or a documented reason why no tests apply.

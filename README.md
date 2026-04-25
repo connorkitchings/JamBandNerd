@@ -93,11 +93,9 @@ JamBandNerd now ships a website-first product surface in `apps/web`. The target 
 The target website experience includes:
 
 - **Multi-band selection**: Switch between all dynamically discovered bands.
-- **Model comparison**: Toggle between Notebook and Deal models.
-- **Live predictions**: View latest predictions with detailed metrics.
-- **Replay**: Browse recent retained shows to review both model boards against the actual setlist.
+- **Live predictions**: One precision-optimized prediction board per band — the single best answer to "what's likely tonight?"
 - **Accuracy visualization**: Historical performance charts with configurable K values (K=10/25/50; selected K highlighted).
-- **Show details**: Prominent Next Show header with venue, plus model and prediction timestamp.
+- **Show details**: Prominent Next Show header with venue and prediction timestamp.
 
 The primary local UI workflow is:
 
@@ -193,7 +191,7 @@ follow the collector script pattern, update the repo band config, add a
 - Band-specific raw collectors with unified downstream contracts.
 - Show-centric normalization of shows, setlists, and songs before modeling.
 - In-memory transformation pipeline (no intermediate transformed tables).
-- Pluggable prediction models (Notebook, Deal).
+- Single per-band prediction model, precision-optimized for top-25 setlist accuracy.
 - Unified cross-band prediction and accuracy storage.
 - Supabase backend with automated validation.
 - Website-first product delivery through the live `apps/web` surface.

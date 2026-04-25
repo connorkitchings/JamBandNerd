@@ -6,7 +6,7 @@ This file stores persistent lessons and operating patterns that should survive a
 
 1. Treat `README.md` and `docs/user/pipeline_usage.md` as the command source of truth.
 2. Preserve the `reference_date` anti-leakage boundary in any transformation or modeling change.
-3. Keep shared pipeline code band-agnostic; push source-specific behavior into collectors.
+3. Band-agnostic core covers `ModelData`, `PredictionModel` ABC, training/eval harness, and storage contract. Collector logic stays in `data_collection/{band}/`. Per-band predictor classes are allowed in `models/{band}/` as the architecture transitions to a single model per band. See `docs/contributor/adr/0001-single-model-per-band.md` for the full decision record.
 4. Prefer consolidated scripts in `scripts/` before reaching for historical or manual utilities.
 5. If you change agent workflows, update `.agent/`, `README.md`, and relevant contributor docs together.
 

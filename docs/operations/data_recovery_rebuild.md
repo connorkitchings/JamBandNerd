@@ -1,5 +1,12 @@
 # Data Recovery And Derived Rebuild
 
+> **Branch note (feat/single-model-per-band)**: This runbook describes recovery
+> procedures for the **legacy multi-model storage** (`next_show_prediction_runs`,
+> `completed_show_prediction_runs`, `predictions`, etc.) which remains active on
+> `main`/`dev`. Once the single-model-per-band architecture is cut over, this
+> runbook will be updated to reference the new `setlist_*` tables and the
+> simplified (no `--model` flag) pipeline scripts.
+
 This runbook covers the recommended recovery path when JamBandNerd needs schema
 or normalization corrections without assuming the raw layer should be wiped.
 
