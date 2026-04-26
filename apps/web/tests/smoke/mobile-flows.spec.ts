@@ -26,14 +26,12 @@ async function expectMainHeadingOrDataFallback(page: import("@playwright/test").
   await expect(
     page
       .locator("main h1")
-      .or(page.getByRole("heading", { name: "Supabase environment required" }))
-      .or(page.getByText("Comparison data unavailable"))
-      .or(page.getByText("No replay history available")),
+      .or(page.getByRole("heading", { name: "Supabase environment required" })),
   ).toBeVisible();
 }
 
 test.describe("mobile flows", () => {
-  test("bottom nav renders all 5 items", async ({ page }, testInfo) => {
+  test("bottom nav renders expected items", async ({ page }, testInfo) => {
     test.skip(
       testInfo.project.name !== "mobile-chromium",
       "mobile-only test",
@@ -46,28 +44,9 @@ test.describe("mobile flows", () => {
     await expect(mobileNav).toBeVisible();
 
     const labels = await mobileNav.getByRole("link").locator("span:last-child").allTextContents();
-    expect(labels.length).toBeGreaterThanOrEqual(4);
+    expect(labels.length).toBeGreaterThanOrEqual(3);
     expect(labels).toContain("Stats");
     expect(labels).toContain("Predict");
-  });
-
-  test("replay comparison cards render on mobile", async ({ page }, testInfo) => {
-    test.skip(
-      testInfo.project.name !== "mobile-chromium",
-      "mobile-only test",
-    );
-
-    await bootstrapHostedPreviewBypass(page);
-    await page.goto("/replay?band=goose");
-
-    const cards = page.getByTestId("replay-comparison-cards");
-    if (await cards.count()) {
-      await expect(cards).toBeVisible();
-      await expect(cards.locator("article").first()).toBeVisible();
-      return;
-    }
-
-    await expectMainHeadingOrDataFallback(page);
   });
 
   test("mobile top controls use compact dropdown selectors", async ({ page }, testInfo) => {
@@ -80,33 +59,16 @@ test.describe("mobile flows", () => {
     await page.goto("/predictions?band=goose");
 
     const bandSelect = page.getByRole("combobox", { name: "Band" });
-    const modelSelect = page.getByRole("combobox", { name: "Model" });
-    if ((await bandSelect.count()) === 0 || (await modelSelect.count()) === 0) {
+    if ((await bandSelect.count()) === 0) {
       await expectMainHeadingOrDataFallback(page);
       return;
     }
 
     await expect(bandSelect).toBeVisible();
-    await expect(modelSelect).toBeVisible();
 
     const bandBox = await bandSelect.boundingBox();
-    const modelBox = await modelSelect.boundingBox();
     expect(bandBox).not.toBeNull();
-    expect(modelBox).not.toBeNull();
     expect(bandBox!.height).toBeGreaterThanOrEqual(44);
-    expect(modelBox!.height).toBeGreaterThanOrEqual(44);
-  });
-
-  test("compare page stacks on narrow viewport", async ({ page }, testInfo) => {
-    test.skip(
-      testInfo.project.name !== "mobile-chromium",
-      "mobile-only test",
-    );
-
-    await bootstrapHostedPreviewBypass(page);
-    await page.goto("/compare?band=goose");
-
-    await expectMainHeadingOrDataFallback(page);
   });
 
   test("key mobile flows render without page crashes", async ({ page }, testInfo) => {
@@ -122,7 +84,7 @@ test.describe("mobile flows", () => {
 
     await bootstrapHostedPreviewBypass(page);
     
-    const routes = ["/", "/predictions", "/performance", "/compare", "/replay"];
+    const routes = ["/", "/predictions", "/performance"];
     for (const route of routes) {
       await page.goto(route);
       await page.waitForLoadState("networkidle");

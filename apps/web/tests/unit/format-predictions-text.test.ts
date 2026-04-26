@@ -10,14 +10,13 @@ function buildRow(songName: string, rank: number): PredictionRow {
     songName,
     lastPlayed: null,
     currentGap: null,
+    recentPlays50: null,
     playsPastYear: null,
     avgGap: null,
     recentAvgGap: null,
     gapRatio: null,
     gapZScore: null,
-    ckplusScore: null,
     probability: null,
-    timesPlayed: null,
     tier: "expected",
   };
 }
@@ -41,8 +40,7 @@ test("formatTop10Text formats full output with venue, location, and top 10 songs
       buildRow("Rockdale", 10),
       buildRow("Slow Stir", 11),
     ],
-    modelDisplayName: "Notebook",
-    shareUrl: "jambandnerd.com/predictions?band=goose&model=notebook",
+    shareUrl: "jambandnerd.com/predictions?band=goose",
   });
 
   assert.ok(result.startsWith("Goose Setlist Predictions\n"));
@@ -51,7 +49,7 @@ test("formatTop10Text formats full output with venue, location, and top 10 songs
   assert.ok(result.includes("1. Arrow"));
   assert.ok(result.includes("10. Rockdale"));
   assert.ok(!result.includes("11. Slow Stir"), "should not include songs beyond top 10");
-  assert.ok(result.endsWith("jambandnerd.com/predictions?band=goose&model=notebook"));
+  assert.ok(result.endsWith("jambandnerd.com/predictions?band=goose"));
 });
 
 test("formatTop10Text handles fewer than 10 predictions gracefully", () => {
@@ -61,8 +59,7 @@ test("formatTop10Text handles fewer than 10 predictions gracefully", () => {
     locationLabel: "",
     venueName: "",
     predictions: [buildRow("Arrow", 1), buildRow("Yeti", 2)],
-    modelDisplayName: "Notebook",
-    shareUrl: "jambandnerd.com/predictions?band=goose&model=notebook",
+    shareUrl: "jambandnerd.com/predictions?band=goose",
   });
 
   assert.ok(result.includes("1. Arrow"));
@@ -77,8 +74,7 @@ test("formatTop10Text omits sublabel when venue and location are empty", () => {
     locationLabel: "",
     venueName: "",
     predictions: [buildRow("Tweezer", 1)],
-    modelDisplayName: "CK+",
-    shareUrl: "jambandnerd.com/predictions?band=phish&model=ckplus",
+    shareUrl: "jambandnerd.com/predictions?band=phish",
   });
 
   assert.ok(result.includes("Phish Setlist Predictions"));
@@ -93,7 +89,6 @@ test("formatTop10Text handles empty predictions array", () => {
     locationLabel: "New York, NY",
     venueName: "Terminal 5",
     predictions: [],
-    modelDisplayName: "Notebook",
     shareUrl: "jambandnerd.com/predictions?band=goose",
   });
 

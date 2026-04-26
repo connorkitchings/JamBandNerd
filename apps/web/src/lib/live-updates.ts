@@ -1,6 +1,5 @@
 type PredictionUpdateScope = {
   band: string;
-  model: string;
   referenceDate: string;
 };
 
@@ -29,12 +28,10 @@ export function matchesPredictionUpdateScope(
   }
 
   const band = readTextField(record, ["band"]);
-  const model = readTextField(record, ["model_slug", "modelSlug", "model"]);
   const referenceDate = readTextField(record, ["reference_date", "referenceDate"]);
 
   return (
     band === scope.band &&
-    model === scope.model &&
     referenceDate === scope.referenceDate
   );
 }

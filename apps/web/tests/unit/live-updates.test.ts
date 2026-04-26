@@ -5,16 +5,14 @@ import { matchesPredictionUpdateScope } from "../../src/lib/live-updates.ts";
 
 const scope = {
   band: "goose",
-  model: "notebook",
   referenceDate: "2026-03-26",
 };
 
-test("matchesPredictionUpdateScope accepts canonical prediction_songs payload fields", () => {
+test("matchesPredictionUpdateScope accepts canonical payload fields", () => {
   assert.equal(
     matchesPredictionUpdateScope(
       {
         band: "goose",
-        model_slug: "notebook",
         reference_date: "2026-03-26",
       },
       scope,
@@ -28,7 +26,6 @@ test("matchesPredictionUpdateScope rejects non-matching updates", () => {
     matchesPredictionUpdateScope(
       {
         band: "phish",
-        model_slug: "notebook",
         reference_date: "2026-03-26",
       },
       scope,
@@ -39,8 +36,7 @@ test("matchesPredictionUpdateScope rejects non-matching updates", () => {
     matchesPredictionUpdateScope(
       {
         band: "goose",
-        model_slug: "ckplus",
-        reference_date: "2026-03-26",
+        reference_date: "2026-03-27",
       },
       scope,
     ),

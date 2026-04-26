@@ -26,9 +26,7 @@ async function expectPrimaryHeadingOrMissingEnv(page: Page) {
   await expect(
     page
       .locator("main h1")
-      .or(page.getByRole("heading", { name: "Supabase environment required" }))
-      .or(page.getByText("Comparison data unavailable"))
-      .or(page.getByText("No replay history available")),
+      .or(page.getByRole("heading", { name: "Supabase environment required" })),
   ).toBeVisible();
 }
 
@@ -46,17 +44,11 @@ test("desktop routes render the public shell", async ({ page }, testInfo) => {
   await page.goto("/performance");
   await expectPrimaryHeadingOrMissingEnv(page);
 
-  await page.goto("/replay");
-  await expectPrimaryHeadingOrMissingEnv(page);
-
-  await page.goto("/compare");
-  await expectPrimaryHeadingOrMissingEnv(page);
-
   await page.goto("/predictions");
   await expectPrimaryHeadingOrMissingEnv(page);
 
-  await page.goto("/?band=goose&model=notebook");
-  await page.waitForURL(/\/predictions\?band=goose&model=notebook$/);
+  await page.goto("/?band=goose");
+  await page.waitForURL(/\/predictions\?band=goose$/);
   await expectPrimaryHeadingOrMissingEnv(page);
 
   await page.goto("/about");
@@ -84,7 +76,7 @@ test("mobile navigation uses thumb-first ordering", async ({ page }, testInfo) =
   await expect(mobileNav).toBeVisible();
 
   const labels = await mobileNav.getByRole("link").locator("span:last-child").allTextContents();
-  expect(labels.length).toBeGreaterThanOrEqual(4);
+  expect(labels.length).toBeGreaterThanOrEqual(3);
   expect(labels).toContain("Stats");
   expect(labels).toContain("Predict");
 });
@@ -96,14 +88,6 @@ test("mobile detail routes show a back affordance", async ({ page }, testInfo) =
   await page.goto("/last-show");
   await expect(page.getByRole("button", { name: "Go back" })).toBeVisible();
 
-  await page.goto("/replay");
-  const replayCards = page.getByTestId("replay-comparison-cards");
-  if (await replayCards.count()) {
-    await expect(replayCards).toBeVisible();
-  } else {
-    await expectPrimaryHeadingOrMissingEnv(page);
-  }
-
   await page.goto("/about");
   await expect(page.getByRole("button", { name: "Go back" })).toHaveCount(0);
 });
@@ -114,6 +98,5 @@ test("preview tables remain scrollable on mobile", async ({ page }, testInfo) =>
   await bootstrapHostedPreviewBypass(page);
   await page.goto("/preview/tables");
 
-  // The song board renders inside the preview page
   await expect(page.getByRole("heading", { name: "Song board" })).toBeVisible();
 });

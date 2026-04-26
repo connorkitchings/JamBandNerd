@@ -34,7 +34,7 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
 
   return {
     title: `${bandName} Last Show Setlist | JamBandNerd`,
-    description: `View the setlist from the most recent ${bandName} show and compare it to the Notebook prediction snapshot.`,
+    description: `View the setlist from the most recent ${bandName} show and compare it to the prediction snapshot.`,
   };
 }
 
@@ -89,9 +89,9 @@ export default async function LastShowPage({ searchParams }: Props) {
     typeof state.setlist.showDetails?.show_date === "string"
       ? state.setlist.showDetails.show_date
       : "Unknown date";
-  const [showState, replayState] = await Promise.all([
+  const [showState, predictionState] = await Promise.all([
     getShowDetailsByDate(state.band, showDate),
-    getPredictionsForDate(state.band, "notebook", showDate),
+    getPredictionsForDate(state.band, showDate),
   ]);
   const show = showState.status === "ready" ? showState.show : null;
   const venue = show?.venueName ?? "Venue unavailable";
@@ -99,11 +99,11 @@ export default async function LastShowPage({ searchParams }: Props) {
     show?.city ?? null,
     show?.state ?? show?.country ?? null,
   ]);
-  const replayRows = replayState.status === "ready" ? replayState.snapshot.predictions : [];
+  const predictionRows = predictionState.status === "ready" ? predictionState.snapshot.predictions : [];
   const actualSongs = new Set(
     state.setlist.songs.map((song) => normalizeSongName(song.songName)),
   );
-  const replayHits = replayRows
+  const replayHits = predictionRows
     .slice(0, 10)
     .filter((row) => actualSongs.has(normalizeSongName(row.songName)));
 
@@ -116,7 +116,7 @@ export default async function LastShowPage({ searchParams }: Props) {
         eyebrow="Last completed set"
         title={venue}
         meta={`${formatDateLabel(showDate)}${locationLabel ? ` • ${locationLabel}` : ""}`}
-        description="Use this page as the bridge between the live dashboard and the historical analysis. It anchors the latest finished setlist, then replays the notebook snapshot for the same night when history exists."
+        description="The latest finished setlist anchored against the prediction snapshot for the same night, so you can see what landed and what missed."
         aside={
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
             <div className="editorial-panel p-5">
@@ -129,11 +129,11 @@ export default async function LastShowPage({ searchParams }: Props) {
             </div>
             <div className="editorial-panel p-5">
               <p className="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">
-                Replay hits
+                Top-10 hits
               </p>
               <p className="mt-3 font-headline text-2xl font-semibold text-primary">
-                {replayState.status === "ready"
-                  ? `${replayHits.length}/${Math.min(10, replayRows.length || 10)}`
+                {predictionState.status === "ready"
+                  ? `${replayHits.length}/${Math.min(10, predictionRows.length || 10)}`
                   : "—"}
               </p>
             </div>
@@ -149,33 +149,22 @@ export default async function LastShowPage({ searchParams }: Props) {
         <SectionCard title="Jump Back In" eyebrow="Related routes">
           <div className="space-y-4">
             <Link
-              href={`/replay?band=${state.band}&date=${showDate}`}
-              className="block rounded-xl border border-outline-variant/20 bg-surface-container-low p-4 transition hover:border-primary"
-            >
-              <p className="font-headline text-lg font-medium text-on-surface">
-                Open Prediction Replay
-              </p>
-              <p className="mt-2 text-sm leading-6 text-on-surface-variant">
-                Open both retained model boards for this exact show date.
-              </p>
-            </Link>
-            <Link
-              href={`/predictions?band=${state.band}&model=notebook`}
+              href={`/predictions?band=${state.band}`}
               className="block rounded-xl border border-outline-variant/20 bg-surface-container-low p-4 transition hover:border-primary"
             >
               <p className="font-headline text-lg font-medium text-on-surface">
                 Return to live predictions
               </p>
               <p className="mt-2 text-sm leading-6 text-on-surface-variant">
-                Compare the latest public board to the most recent completed show.
+                Compare the latest board to the most recent completed show.
               </p>
             </Link>
           </div>
         </SectionCard>
       </div>
 
-      <SectionCard title="Prediction Replay" eyebrow="Notebook snapshot">
-        {replayState.status === "ready" ? (
+      <SectionCard title="Prediction Replay" eyebrow="Matched snapshot">
+        {predictionState.status === "ready" ? (
           <div className="space-y-5">
             <div className="grid gap-4 md:grid-cols-3">
               <div className="rounded-xl border border-outline-variant/20 bg-surface-container-low p-4">
@@ -183,7 +172,7 @@ export default async function LastShowPage({ searchParams }: Props) {
                   Snapshot date
                 </p>
                 <p className="mt-2 text-sm text-on-surface">
-                  {formatDateLabel(replayState.snapshot.referenceDate)}
+                  {formatDateLabel(predictionState.snapshot.referenceDate)}
                 </p>
               </div>
               <div className="rounded-xl border border-outline-variant/20 bg-surface-container-low p-4">
@@ -201,12 +190,12 @@ export default async function LastShowPage({ searchParams }: Props) {
                 <p className="mt-2 text-sm text-on-surface">{bandName}</p>
               </div>
             </div>
-            <SongBoard rows={replayRows} highlightSongs={actualSongs} compact />
+            <SongBoard rows={predictionRows} highlightSongs={actualSongs} compact />
           </div>
         ) : (
           <DataState
-            title="No replay snapshot available"
-            body="A completed show was found, but there was no notebook prediction snapshot stored for the same date."
+            title="No prediction snapshot available"
+            body="A completed show was found, but there was no prediction snapshot stored for the same date."
           />
         )}
       </SectionCard>

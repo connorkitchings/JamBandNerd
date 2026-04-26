@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { PageHero } from "@/components/page-hero";
 import { SectionCard } from "@/components/section-card";
-import { MODEL_CONFIG } from "@/lib/config";
 
 export const metadata: Metadata = {
   title: "About | JamBandNerd",
@@ -11,22 +10,22 @@ const FAQ_ITEMS = [
   {
     question: "How do you measure accuracy?",
     answer:
-      "Accuracy measures how much of the actual setlist was captured by the model's top predictions. For example, 30% accuracy at Top 10 means the model's top-10 group captured 30% of that night's actual songs. The site tracks that across multiple Top-X thresholds and shows the recent scoring history for each band and model.",
+      "Accuracy measures how much of the actual setlist was captured by the model's top predictions. For example, 30% accuracy at Top 10 means the model's top-10 group captured 30% of that night's actual songs. The site tracks that across multiple Top-X thresholds and shows the recent scoring history for each band.",
   },
   {
     question: "What drives the predictions?",
     answer:
-      "Each model uses different signals:\n\nNotebook — An independent implementation of the weighted-recency algorithm popularized by Phish.net, provided as a benchmark for comparison. It emphasizes songs active in the recent rotation and uses current gap to separate likely candidates, while excluding songs played in the last 3 shows.\n\nDeal — A personally developed explainable logistic ranking model. It learns from true per-show candidate rows and shared rotation signals such as gap behavior, venue context, and recent activity patterns.",
+      "Each band has a dedicated prediction model that ranks every song in the catalog by likelihood of appearing at the next show. The model uses signals like rotation patterns, gap behavior, venue context, and recent activity to produce calibrated rankings.",
   },
   {
     question: "Does accuracy vary by band?",
     answer:
-      "Yes. Each band has a different catalog size, rotation pattern, and setlist variability. We track accuracy separately for each band. Check the Performance page to see how each model performs for a specific band.",
+      "Yes. Each band has a different catalog size, rotation pattern, and setlist variability. We track accuracy separately for each band. Check the Performance page to see how predictions perform for a specific band.",
   },
   {
     question: "How often are predictions updated?",
     answer:
-      "The pipeline runs daily at 3 PM ET. Each run collects the latest setlist data, re-generates predictions for every supported band and model, and publishes them to Supabase.",
+      "The pipeline runs daily at 3 PM ET. Each run collects the latest setlist data, re-generates predictions for every supported band, and publishes them to Supabase.",
   },
   {
     question: "What do the likelihood tiers mean?",
@@ -62,7 +61,7 @@ const PIPELINE_STEPS = [
     step: "03",
     title: "Predict",
     description:
-      "Multiple models rank every song in the catalog by likelihood of appearing at the next show.",
+      "A per-band model ranks every song in the catalog by likelihood of appearing at the next show.",
   },
   {
     step: "04",
@@ -78,43 +77,30 @@ export default function AboutPage() {
       <PageHero
         kicker="Platform brief"
         title="About JamBandNerd"
-        description="JamBandNerd is a data platform that collects jam band setlists, transforms them into shared prediction features, and publishes a live website for next-show reads, historical replay, and model auditing."
-        meta="Daily pipeline • multi-model prediction surface"
+        description="JamBandNerd is a data platform that collects jam band setlists, transforms them into shared prediction features, and publishes a live website for next-show reads, historical analysis, and model auditing."
+        meta="Daily pipeline • per-band prediction model"
       />
 
-      {/* Model Explainers */}
-      <SectionCard title="How the Models Work">
+      {/* Prediction approach */}
+      <SectionCard title="How Predictions Work">
         <p className="mb-6 text-sm leading-6 text-on-surface-variant">
-          Two models generate independent predictions for every band. Each takes a distinct
-          approach, which makes the Compare and Replay pages useful rather than redundant.
+          Each supported band has a dedicated prediction model that generates
+          an independent ranked board for every upcoming show. The model uses
+          rotation patterns, gap behavior, venue context, and recent activity
+          signals to produce calibrated song rankings.
         </p>
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="editorial-chip rounded-[1.5rem] p-6">
-            <p className="font-label text-[10px] uppercase tracking-[0.2em] text-primary">
-              {MODEL_CONFIG.notebook.displayName}
-            </p>
-            <ul className="mt-3 space-y-3 pl-5 text-sm leading-6 text-on-surface-variant marker:text-primary/75 list-disc">
-              <li>Weighted-recency benchmark inspired by the method popularized by Phish.net.</li>
-              <li>Leans on active rotation trends and current gap to separate likely songs.</li>
-              <li>Excludes songs played in the last 3 shows.</li>
-            </ul>
-            <p className="mt-4 border-t border-outline-variant/15 pt-4 font-label text-[10px] uppercase tracking-[0.16em] text-on-surface-variant">
-              Credit: Based on the weighted-recency method popularized by Phish.net.
-            </p>
-          </div>
-          <div className="editorial-chip rounded-[1.5rem] p-6">
-            <p className="font-label text-[10px] uppercase tracking-[0.2em] text-primary">
-              {MODEL_CONFIG.deal.displayName}
-            </p>
-            <ul className="mt-3 space-y-3 pl-5 text-sm leading-6 text-on-surface-variant marker:text-primary/75 list-disc">
-              <li>Personally developed explainable ranking model built specifically for this site.</li>
-              <li>Trains on true per-show candidate rows instead of relying on one fixed heuristic.</li>
-              <li>Uses shared rotation, venue, and recency signals to produce calibrated song rankings.</li>
-            </ul>
-            <p className="mt-4 border-t border-outline-variant/15 pt-4 font-label text-[10px] uppercase tracking-[0.16em] text-on-surface-variant">
-              Credit: Deal is an original personally developed model.
-            </p>
-          </div>
+        <div className="editorial-chip rounded-[1.5rem] p-6">
+          <p className="font-label text-[10px] uppercase tracking-[0.2em] text-primary">
+            Approach
+          </p>
+          <ul className="mt-3 space-y-3 pl-5 text-sm leading-6 text-on-surface-variant marker:text-primary/75 list-disc">
+            <li>Explainable ranking model trained on true per-show candidate rows.</li>
+            <li>Uses shared rotation, venue, and recency signals to produce calibrated song rankings.</li>
+            <li>One board per band, refreshed daily as part of the automated pipeline.</li>
+          </ul>
+          <p className="mt-4 border-t border-outline-variant/15 pt-4 font-label text-[10px] uppercase tracking-[0.16em] text-on-surface-variant">
+            The weighted-recency benchmark popularized by Phish.net informed early development.
+          </p>
         </div>
       </SectionCard>
 

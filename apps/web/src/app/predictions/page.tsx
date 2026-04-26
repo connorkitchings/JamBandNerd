@@ -7,7 +7,6 @@ import { PredictionHero } from "@/components/prediction-hero";
 import { SharePredictionsButton } from "@/components/share-predictions-button";
 import { SongBoard } from "@/components/song-board";
 import { SongSearch } from "@/components/song-search";
-import { MODEL_CONFIG, normalizeModel } from "@/lib/config";
 import {
   bandEntryBySlug,
   getBands,
@@ -40,7 +39,6 @@ function average(values: Array<number | null>) {
 type Props = {
   searchParams: Promise<{
     band?: string;
-    model?: string;
   }>;
 };
 
@@ -49,13 +47,11 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
   const bandsResult = await getBands();
   const bands = bandsResult.status === "ready" ? bandsResult.bands : [];
   const bandSelection = resolveBandSelection(bands, params.band);
-  const model = normalizeModel(params.model);
   const bandName = bandSelection.bandEntry?.displayName ?? bandSelection.requestedSlug;
-  const modelName = MODEL_CONFIG[model].displayName;
 
   const title = `${bandName} Setlist Predictions | JamBandNerd`;
-  const description = `Latest ${modelName} model setlist predictions for ${bandName}, ranked by likelihood tier.`;
-  const url = `https://jambandnerd.com/predictions?band=${params.band ?? "goose"}&model=${model}`;
+  const description = `Latest setlist predictions for ${bandName}, ranked by likelihood tier.`;
+  const url = `https://jambandnerd.com/predictions?band=${params.band ?? "goose"}`;
 
   return {
     title,
@@ -89,7 +85,7 @@ export default async function PredictionsPage({ searchParams }: Props) {
 
   const selectedBand =
     bandsResult.status === "ready" ? bandSelection.bandEntry?.slug : params.band;
-  const predictionState = await getLatestPredictions(selectedBand, params.model);
+  const predictionState = await getLatestPredictions(selectedBand);
 
   if (predictionState.status === "missing_env") {
     return (
@@ -115,7 +111,7 @@ export default async function PredictionsPage({ searchParams }: Props) {
       <div className="mx-auto max-w-6xl">
         <DataState
           title="No predictions available"
-          body="No latest prediction snapshot was found for the selected band and model."
+          body="No latest prediction snapshot was found for the selected band."
         />
       </div>
     );
@@ -132,7 +128,7 @@ export default async function PredictionsPage({ searchParams }: Props) {
   const [nextShowState, specificShowState, accuracyState] = await Promise.all([
     getNextShowDetails(predictionState.band),
     getShowDetailsByDate(predictionState.band, predictionState.snapshot.referenceDate),
-    getRecentAccuracy(predictionState.band, predictionState.model, 50),
+    getRecentAccuracy(predictionState.band, 50),
   ]);
   const nextShow = nextShowState.status === "ready" ? nextShowState.show : null;
   const specificShow = specificShowState.status === "ready" ? specificShowState.show : null;
@@ -155,17 +151,17 @@ export default async function PredictionsPage({ searchParams }: Props) {
   const precisionCards = [
     {
       title: "Top 10 Accuracy",
-      value: formatPercent(average(accuracyRows.map((row) => row.k10Recall))),
+      value: formatPercent(average(accuracyRows.map((row) => row.recall10))),
       description: `last ${accuracyWindow} shows`,
     },
     {
       title: "Top 25 Accuracy",
-      value: formatPercent(average(accuracyRows.map((row) => row.k25Recall))),
+      value: formatPercent(average(accuracyRows.map((row) => row.recall25))),
       description: `last ${accuracyWindow} shows`,
     },
     {
       title: "Top 50 Accuracy",
-      value: formatPercent(average(accuracyRows.map((row) => row.k50Recall))),
+      value: formatPercent(average(accuracyRows.map((row) => row.recall50))),
       description: `last ${accuracyWindow} shows`,
     },
   ] as const;
@@ -184,22 +180,19 @@ export default async function PredictionsPage({ searchParams }: Props) {
     locationLabel,
     venueName: targetShow?.venueName ?? "",
     predictions: predictionState.snapshot.predictions,
-    modelDisplayName: MODEL_CONFIG[predictionState.model].displayName,
-    shareUrl: `jambandnerd.com/predictions?band=${predictionState.band}&model=${predictionState.model}`,
+    shareUrl: `jambandnerd.com/predictions?band=${predictionState.band}`,
   });
 
   return (
     <div className="mx-auto w-full max-w-6xl">
       <DashboardSideNav
         band={predictionState.band}
-        model={predictionState.model}
         bands={bands}
       />
 
       {heroDate && isLiveShow && process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY && (
         <LiveTracker
           band={predictionState.band}
-          model={predictionState.model}
           referenceDate={heroDate}
           supabaseUrl={process.env.SUPABASE_URL}
           supabaseAnonKey={process.env.SUPABASE_ANON_KEY}
@@ -228,8 +221,7 @@ export default async function PredictionsPage({ searchParams }: Props) {
                 Song board
               </h2>
               <p className="mt-3 text-sm leading-7 text-on-surface-variant">
-                All ranked predictions for {bandName} using{" "}
-                {MODEL_CONFIG[predictionState.model].displayName}. Use the search first, then scan
+                All ranked predictions for {bandName}. Use the search first, then scan
                 by tier to understand how the board is clustering tonight.
               </p>
             </div>
@@ -241,7 +233,7 @@ export default async function PredictionsPage({ searchParams }: Props) {
             <SongSearch songs={searchSongs} />
           </div>
           <div className="mt-6">
-            <SongBoard rows={predictionState.snapshot.predictions} modelSlug={predictionState.model} />
+            <SongBoard rows={predictionState.snapshot.predictions} />
           </div>
         </div>
       </section>

@@ -3,7 +3,6 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { SectionCard } from "@/components/section-card";
-import { ACTIVE_MODELS } from "@/lib/config";
 import {
   getBands,
   getLatestPredictions,
@@ -29,19 +28,18 @@ const HOW_IT_WORKS = [
   {
     step: "02",
     title: "Apply prediction models",
-    body: "Multiple models score and rank songs to estimate what is most likely to appear next.",
+    body: "A per-band model scores and ranks songs to estimate what is most likely to appear next.",
   },
   {
     step: "03",
     title: "Publish predictions",
-    body: "Predictions, performance reads, and replay views are published together in the website.",
+    body: "Predictions, performance reads, and setlist history are published together in the website.",
   },
 ] as const;
 
 type Props = {
   searchParams: Promise<{
     band?: string;
-    model?: string;
     teaser?: string;
   }>;
 };
@@ -54,18 +52,9 @@ export const metadata: Metadata = {
 
 export default async function HomePage({ searchParams }: Props) {
   const params = await searchParams;
-  const query = new URLSearchParams();
 
   if (params.band) {
-    query.set("band", params.band);
-  }
-
-  if (params.model) {
-    query.set("model", params.model);
-  }
-
-  if (query.size > 0) {
-    redirect(`/predictions${query.toString() ? `?${query}` : ""}`);
+    redirect(`/predictions?band=${params.band}`);
   }
 
   const bandsResult = await getBands();
@@ -76,7 +65,7 @@ export default async function HomePage({ searchParams }: Props) {
     HOME_TEASER_BANDS[0];
   const teaserBandSlug = teaserConfig.slug;
 
-  const teaserPredictionState = await getLatestPredictions(teaserBandSlug, "notebook");
+  const teaserPredictionState = await getLatestPredictions(teaserBandSlug);
   const teaserNextShowState = await getNextShowDetails(teaserBandSlug);
   const teaserNextShow =
     teaserNextShowState.status === "ready" ? teaserNextShowState.show : null;
@@ -102,8 +91,8 @@ export default async function HomePage({ searchParams }: Props) {
                   What are they playing next?
                 </h1>
                 <p className="mt-5 max-w-2xl text-lg leading-relaxed text-on-surface-variant">
-                  Setlist predictions for the next show, plus model comparisons, performance
-                  tracking, and historical replay in one place.
+                  Setlist predictions for the next show, plus performance
+                  tracking and historical analysis in one place.
                 </p>
                 <div className="mt-8 grid gap-4 md:max-w-3xl md:grid-cols-2">
                   <Link
@@ -170,7 +159,7 @@ export default async function HomePage({ searchParams }: Props) {
                 <div className="editorial-chip mt-4 rounded-[1.5rem] p-4">
                   <div className="flex items-center justify-between mb-3 border-b border-outline-variant/15 pb-2">
                     <p className="font-label text-[10px] font-medium uppercase tracking-[0.16rem] text-on-surface-variant/70">
-                      Top Picks (Notebook)
+                      Top Picks
                     </p>
                     <p className="font-label text-[10px] font-medium uppercase tracking-[0.16rem] text-on-surface-variant/70">
                       Current Gap
@@ -221,7 +210,7 @@ export default async function HomePage({ searchParams }: Props) {
       </section>
 
       {/* Stats Ribbon */}
-      <section className="grid grid-cols-2 gap-4 md:grid-cols-3">
+      <section className="grid grid-cols-2 gap-4 md:grid-cols-2">
         <div className="editorial-panel flex flex-col justify-center px-6 py-5 text-center">
           <p className="font-headline text-3xl font-bold text-on-surface">
             {bands.length || "—"}
@@ -231,14 +220,6 @@ export default async function HomePage({ searchParams }: Props) {
           </p>
         </div>
         <div className="editorial-panel flex flex-col justify-center px-6 py-5 text-center">
-          <p className="font-headline text-3xl font-bold text-on-surface">
-            {ACTIVE_MODELS.length}
-          </p>
-          <p className="mt-1 font-label text-[10px] font-bold uppercase tracking-[0.18rem] text-on-surface-variant">
-            Prediction Models
-          </p>
-        </div>
-        <div className="editorial-panel col-span-2 flex flex-col justify-center px-6 py-5 text-center md:col-span-1">
           <p className="font-headline text-3xl font-bold text-on-surface">Daily</p>
           <p className="mt-1 font-label text-[10px] font-bold uppercase tracking-[0.18rem] text-on-surface-variant">
             Refresh Cadence

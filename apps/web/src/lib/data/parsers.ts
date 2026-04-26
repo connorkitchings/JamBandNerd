@@ -164,7 +164,6 @@ export function normalizePredictionRows(rows: JsonPrediction[]): PredictionRow[]
       recentAvgGap: parseNumber(row.recent_avg_gap),
       gapRatio: parseNumber(row.gap_ratio),
       gapZScore: parseNumber(row.gap_z_score),
-      ckplusScore: parseNumber(row.ckplus_score),
       probability,
       tier: computeTier(rank),
     };
@@ -196,7 +195,6 @@ export function normalizeProjectedPredictionRows(rows: ProjectionRow[]): Predict
       recentAvgGap: parseNumber(payload.recent_avg_gap),
       gapRatio: parseNumber(payload.gap_ratio),
       gapZScore: parseNumber(payload.gap_z_score),
-      ckplusScore: parseNumber(payload.ckplus_score),
       probability,
       tier: computeTier(rank),
     };

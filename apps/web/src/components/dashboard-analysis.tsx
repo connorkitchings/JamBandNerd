@@ -52,7 +52,7 @@ export function DashboardAnalysis({
             <div
               key={`${row.showDate}-${index}`}
               className="group relative h-full w-full rounded-t-sm bg-primary-container/20 transition-all hover:bg-primary-container"
-              style={{ height: getBarHeight(row.k10Recall) }}
+              style={{ height: getBarHeight(row.recall10) }}
             />
           ))}
         </div>

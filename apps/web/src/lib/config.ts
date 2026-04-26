@@ -1,36 +1,6 @@
-export type ModelVisibility = "hidden" | "promoted";
-
-export const MODEL_CONFIG = {
-  notebook: {
-    displayName: "Notebook",
-    explanation:
-      "Frequency-based model focused on songs active in the recent rotation while excluding the last three shows.",
-    visibility: "promoted" as ModelVisibility,
-  },
-  ckplus: {
-    displayName: "CK+",
-    explanation:
-      "Gap-based model that ranks songs by how overdue they are relative to their historical cadence.",
-    visibility: "hidden" as ModelVisibility,
-  },
-  deal: {
-    displayName: "Deal",
-    explanation:
-      "Explainable logistic ranking model trained on true per-show candidate rows and rotation-gap signals.",
-    visibility: "promoted" as ModelVisibility,
-  },
-} as const;
-
-export const ALL_MODELS = Object.keys(MODEL_CONFIG) as ModelSlug[];
-
-export const ACTIVE_MODELS = Object.keys(MODEL_CONFIG).filter(
-  (key) => MODEL_CONFIG[key as ModelSlug].visibility === "promoted"
-) as ModelSlug[];
-
 export const DEFAULT_BAND_SLUG = "goose";
 
 export type BandSlug = string;
-export type ModelSlug = keyof typeof MODEL_CONFIG;
 
 export type LikelihoodTier = "expected" | "hot" | "likely" | "possible";
 
@@ -46,7 +16,7 @@ export const TIER_CONFIG: Record<
   },
   hot: {
     label: "Hot",
-    description: "Solid candidate — one or both models rank this song highly",
+    description: "Solid candidate — strong rotation or gap signal",
     className: "text-tier-hot",
     badgeClassName: "border-tier-hot/30 bg-tier-hot-bg text-tier-hot",
   },
@@ -69,10 +39,4 @@ export const TIER_ORDER: LikelihoodTier[] = ["expected", "hot", "likely", "possi
 export function normalizeBand(value?: string): BandSlug {
   const normalized = value?.trim().toLowerCase();
   return normalized && normalized.length > 0 ? normalized : DEFAULT_BAND_SLUG;
-}
-
-export function normalizeModel(value?: string): ModelSlug {
-  return ACTIVE_MODELS.includes(value as ModelSlug)
-    ? (value as ModelSlug)
-    : "notebook";
 }
