@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from jambandnerd.config.bands import get_repo_supported_bands
+from jambandnerd.models.registry import list_active_bands
 
 WORKFLOW_PATH = Path(".github/workflows/daily-pipeline.yml")
 ACTIVE_DOC_PATHS = (
@@ -35,9 +35,10 @@ FORBIDDEN_ACTIVE_DOC_TERMS = (
 def test_daily_workflow_matrix_and_backtest_windows_match_repo_contract() -> None:
     workflow = WORKFLOW_PATH.read_text()
 
-    assert "python -m scripts.get_all_bands" in workflow
-    for band in get_repo_supported_bands():
-        assert f"          - {band}" in workflow
+    assert "Active single-model bands" in workflow
+    for band in list_active_bands():
+        assert f'"{band}"' in workflow
+    assert '"eggy"' not in workflow
 
     assert "uv run python scripts/generate_live_predictions.py" in workflow
     assert (
@@ -60,5 +61,5 @@ def test_active_docs_do_not_reference_retired_storage_contract_terms() -> None:
 def test_github_actions_docs_match_current_deal_window_and_band_authority() -> None:
     contents = Path("docs/operations/github_actions.md").read_text()
 
-    assert "both models use the same last-50 window" in contents
-    assert "repo-authoritative automation band list" in contents
+    assert "active single-model bands" in contents
+    assert "Eggy remains excluded" in contents

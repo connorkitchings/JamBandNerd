@@ -7,29 +7,29 @@ evaluation data.
 
 Prediction tables:
 
-- `next_show_prediction_runs` (canonical live next-show storage)
-- `next_show_prediction_songs` (derived live per-song projection)
-- `completed_show_prediction_runs` (canonical retained completed-show snapshots)
+- `setlist_predictions` (canonical live next-show storage)
+- `setlist_prediction_songs` (derived live per-song projection)
+- `setlist_results` (canonical retained completed-show snapshots)
 
 Accuracy tables:
 
-- `completed_show_accuracy`
+- `setlist_accuracy`
 
-Model metadata for table/version/serializer mapping is registered in
+Band metadata for active model version/serializer mapping is registered in
+`src/jambandnerd/models/metadata.py` and exposed through
 `src/jambandnerd/models/registry.py`. Scripts should derive model behavior from
 that registry rather than hardcoded slug lists.
 
 ## Live Next-Show Storage
 
 JamBandNerd stores active live predictions separately from completed-show
-history. `next_show_prediction_runs` contains one active run per
-`(band, model_slug, model_version, target_show_key)`, and the pipeline deletes
+history. `setlist_predictions` contains one active run per
+`(band, model_version, target_show_key)`, and the pipeline deletes
 older live rows once the target is no longer the next known show.
 
 Canonical columns:
 
 - `band`
-- `model_slug`
 - `target_show_key`
 - `target_show_date`
 - `reference_date`
@@ -40,19 +40,20 @@ Canonical columns:
 
 Uniqueness:
 
-- `(band, model_slug, model_version, target_show_key)`
+- `(band, model_version, target_show_key)`
 
 The `predictions` column is a JSON array ordered by rank. The payload shape is
-model-specific.
+band-model-specific.
 
-`next_show_prediction_songs` is the live per-song projection consumed by the
+`setlist_prediction_songs` is the live per-song projection consumed by the
 website prediction board and realtime refresh logic. It is derived from
-`next_show_prediction_runs`.
+`setlist_predictions`.
 
 ## Retained Completed-Show Storage
 
-`completed_show_prediction_runs` stores the exact ranked boards for the active
-last-50 completed-show corpus per band/model. It is the replay source of truth.
+`setlist_results` stores the exact ranked boards for the active
+last-50 completed-show corpus per band model version. It is the replay source
+of truth.
 Rows outside the retained 50-show corpus are hard-deleted by the retained corpus
 sync.
 
@@ -82,13 +83,12 @@ Current payload entries contain:
 
 ## Per-Show Accuracy Storage
 
-`completed_show_accuracy` stores one row per retained evaluated completed show
-and model version.
+`setlist_accuracy` stores one row per retained evaluated completed show and
+model version.
 
 Canonical columns include:
 
 - `band`
-- `model_slug`
 - `model_version`
 - `show_id`
 - `target_show_key`
@@ -96,11 +96,13 @@ Canonical columns include:
 - `prediction_run_id`
 - `actual_song_count`
 - `evaluated_at`
-- `k10_*`, `k25_*`, `k50_*` metric families
+- `p10`, `p25`, `p50`
+- `recall_10`, `recall_25`, `recall_50`
+- `weighted_precision_score`
 
 Uniqueness:
 
-- `(band, model_slug, model_version, target_show_key)`
+- `(band, model_version, target_show_key)`
 
 This is the only active evaluation source for historical performance analysis.
 For retained rows, `prediction_run_id` links each evaluation row to the exact
@@ -109,7 +111,7 @@ stored ranked board that produced it.
 ## Historical Scored Run Storage
 
 `historical_prediction_runs` remains a legacy lineage table for older rows.
-New website-facing scored history is written to `completed_show_prediction_runs`.
+New website-facing scored history is written to `setlist_results`.
 
 Canonical columns include:
 
@@ -136,11 +138,11 @@ the exact ranked board that was scored without overloading the live
 
 ## Versioning
 
-The current repo uses explicit model version strings such as:
+The active single-model path uses explicit per-band model version strings such as:
 
-- `notebook_v1`
-- `ckplus_v1`
-- `deal_v2`
+- `goose_baseline_v1`
+- `phish_baseline_v1`
+- `wsp_baseline_v1`
 
 Changing output semantics, feature logic, or scoring behavior should produce a
 new `model_version`.
@@ -151,10 +153,10 @@ new `model_version`.
 
 The active product architecture is split by intent:
 
-- live next-show rows in `next_show_prediction_runs` plus
-  `next_show_prediction_songs`
-- retained last-50 completed-show rows in `completed_show_prediction_runs` plus
-  `completed_show_accuracy`
+- live next-show rows in `setlist_predictions` plus
+  `setlist_prediction_songs`
+- retained last-50 completed-show rows in `setlist_results` plus
+  `setlist_accuracy`
 
 Reasons:
 

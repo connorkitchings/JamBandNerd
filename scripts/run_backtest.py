@@ -4,14 +4,14 @@ Unified script to run a historical backtest for any band and model combination.
 This script replaces the individual `backtest_<band>_<model>.py` files.
 It iterates through historical shows, generates predictions for each, compares them
 against the actual setlist, and saves the per-show accuracy metrics to the
-`completed_show_accuracy` table.
+`setlist_accuracy` table.
 
 Usage:
-  # Backtest the last 50 WSP shows with the Deal model
-  uv run python scripts/run_backtest.py --band wsp --model deal --shows 50
+  # Backtest the last 50 WSP shows with its active single-band model
+  uv run python scripts/run_backtest.py --band wsp --shows 50
 
-  # Backtest the Goose Notebook model over a specific date range
-  uv run python scripts/run_backtest.py --band goose --model notebook --start 2023-01-01 --end 2023-12-31
+  # Backtest Goose over a specific date range
+  uv run python scripts/run_backtest.py --band goose --start 2023-01-01 --end 2023-12-31
 """
 
 from __future__ import annotations
@@ -30,16 +30,19 @@ sys.path.insert(0, project_root)
 
 from scripts.common import fetch_table, prepare_band_data
 from src.jambandnerd.config import (
-    COMPLETED_SHOW_ACCURACY_TABLE,
-    COMPLETED_SHOW_PREDICTION_RUNS_TABLE,
+    SETLIST_ACCURACY_TABLE,
+    SETLIST_RESULTS_TABLE,
 )
 from src.jambandnerd.config.bands import get_repo_supported_bands
+from src.jambandnerd.config.models import WEIGHTED_PRECISION_WEIGHTS
 from src.jambandnerd.db.operations import (
     fetch_scored_show_ids,
-    prune_completed_show_corpus,
-    upsert_completed_show_prediction_run,
+    fetch_scored_target_show_keys,
+    prune_setlist_corpus,
     upsert_dataframe,
     upsert_historical_prediction_run,
+    upsert_setlist_accuracy_dataframe,
+    upsert_setlist_result,
 )
 from src.jambandnerd.models.accuracy import aggregate_metrics, compute_per_show_metrics
 from src.jambandnerd.models.evaluation import (
@@ -49,7 +52,10 @@ from src.jambandnerd.models.evaluation import (
 )
 from src.jambandnerd.models.model_test_cache import LocalModelTestCache
 from src.jambandnerd.models.registry import (
+    build_band_predictor,
     build_predictor,
+    get_band_metadata,
+    get_band_serializer,
     get_model_definition,
     list_backtest_models,
     serialize_model_predictions,
@@ -89,7 +95,7 @@ def load_backtest_frames(
 def build_scored_run_records(
     *,
     band: str,
-    model: str,
+    model: str | None,
     shows_df: pd.DataFrame,
     sets_df: pd.DataFrame,
     target_shows: pd.DataFrame,
@@ -99,12 +105,28 @@ def build_scored_run_records(
 ) -> list[dict[str, Any]]:
     """Build detailed per-show scored-run records without writing to Supabase."""
 
-    definition = get_model_definition(model)
-    kwargs: dict[str, Any] = {}
-    if definition.supports_training:
-        kwargs["persist_artifacts"] = False
-    predictor = build_predictor(model, band=band, **kwargs)
-    model_version = definition.version
+    if model is None:
+        band_metadata = get_band_metadata(band)
+        predictor = build_band_predictor(band, persist_artifacts=False)
+        model_version = band_metadata.model_version
+        serializer = get_band_serializer(band)
+        top_k = band_metadata.default_top_k
+        model_label = model_version
+        supports_training = True
+    else:
+        definition = get_model_definition(model)
+        kwargs: dict[str, Any] = {}
+        if definition.supports_training:
+            kwargs["persist_artifacts"] = False
+        predictor = build_predictor(model, band=band, **kwargs)
+        model_version = definition.version
+
+        def serializer(preds):
+            return serialize_model_predictions(model, preds)
+
+        top_k = definition.default_top_k
+        model_label = model.upper()
+        supports_training = definition.supports_training
     scored_run_records: list[dict[str, Any]] = []
     total_shows = len(target_shows)
 
@@ -116,7 +138,7 @@ def build_scored_run_records(
                 ref_date.isoformat() if isinstance(ref_date, date) else ref_date
             )
             print(
-                f"[{band.upper()}/{model.upper()}] Scoring retained show "
+                f"[{band.upper()}/{model_label}] Scoring retained show "
                 f"{index}/{total_shows}: target_show_date={target_date} "
                 f"show_id={show_id}",
                 flush=True,
@@ -138,7 +160,7 @@ def build_scored_run_records(
         if local_cache is not None:
             cached = local_cache.load_scored_run(
                 band=band,
-                model_slug=model,
+                model_slug=model or band,
                 reference_date=prediction_date.isoformat(),
                 target_show_id=show_id,
             )
@@ -155,11 +177,11 @@ def build_scored_run_records(
                 band=band,
             )
 
-            if definition.supports_training:
+            if supports_training:
                 predictor.train(model_data)
             prediction_output = predictor.predict(
                 model_data=model_data,
-                top_k=definition.default_top_k,
+                top_k=top_k,
             )
             preds = (
                 prediction_output[0]
@@ -170,7 +192,7 @@ def build_scored_run_records(
             if not preds:
                 continue
 
-            serialized_predictions = serialize_model_predictions(model, preds)
+            serialized_predictions = serializer(preds)
             pred_songs = [
                 prediction["song_name"] for prediction in serialized_predictions
             ]
@@ -213,7 +235,7 @@ def build_accuracy_results_dataframe(
     *,
     prediction_run_ids: dict[tuple[str, str], int],
 ) -> pd.DataFrame:
-    """Build the completed_show_accuracy payload from detailed scored-run records."""
+    """Build the setlist_accuracy payload from detailed scored-run records."""
 
     rows: list[dict[str, Any]] = []
     for record in scored_run_records:
@@ -224,7 +246,6 @@ def build_accuracy_results_dataframe(
 
         row = {
             "band": record["band"],
-            "model_slug": record["model_slug"],
             "model_version": record["model_version"],
             "show_id": record["show_id"],
             "target_show_key": record["show_id"],
@@ -235,13 +256,17 @@ def build_accuracy_results_dataframe(
             "prediction_run_id": prediction_run_id,
             "evaluated_at": record["generated_at"],
         }
+        precision_by_k: dict[int, float] = {}
         for k in [10, 25, 50]:
             metrics = record["metrics"][f"k{k}"]
-            row[f"k{k}_hit"] = int(metrics["hit"])
-            row[f"k{k}_matches"] = int(metrics["matches"])
-            row[f"k{k}_precision"] = metrics["precision"]
-            row[f"k{k}_recall"] = metrics["recall"]
-            row[f"k{k}_f1"] = metrics["f1"]
+            precision_by_k[k] = metrics["precision"]
+            row[f"p{k}"] = metrics["precision"]
+            row[f"recall_{k}"] = metrics["recall"]
+        row["weighted_precision_score"] = (
+            WEIGHTED_PRECISION_WEIGHTS["p10"] * precision_by_k[10]
+            + WEIGHTED_PRECISION_WEIGHTS["p25"] * precision_by_k[25]
+            + WEIGHTED_PRECISION_WEIGHTS["p50"] * precision_by_k[50]
+        )
         rows.append(row)
 
     return pd.DataFrame(rows)
@@ -250,8 +275,8 @@ def build_accuracy_results_dataframe(
 def persist_scored_run_records(
     scored_run_records: list[dict[str, Any]],
     *,
-    historical_runs_table: str = COMPLETED_SHOW_PREDICTION_RUNS_TABLE,
-    accuracy_table: str = COMPLETED_SHOW_ACCURACY_TABLE,
+    historical_runs_table: str = SETLIST_RESULTS_TABLE,
+    accuracy_table: str = SETLIST_ACCURACY_TABLE,
     legacy_lineage: bool = False,
 ) -> pd.DataFrame:
     """Persist detailed scored-run records to replay lineage and per-show tables."""
@@ -275,9 +300,8 @@ def persist_scored_run_records(
                 table_name=historical_runs_table,
             )
         else:
-            run_id = upsert_completed_show_prediction_run(
+            run_id = upsert_setlist_result(
                 band=str(record["band"]),
-                model_slug=str(record["model_slug"]),
                 model_version=str(record["model_version"]),
                 target_show_key=str(record["show_id"]),
                 target_show_date=str(record["target_show_date"]),
@@ -298,11 +322,14 @@ def persist_scored_run_records(
     if results_df.empty:
         return results_df
 
-    upsert_dataframe(
-        table_name=accuracy_table,
-        df=results_df,
-        conflict_columns=["band", "model_slug", "model_version", "target_show_key"],
-    )
+    if accuracy_table == SETLIST_ACCURACY_TABLE:
+        upsert_setlist_accuracy_dataframe(results_df, table_name=accuracy_table)
+    else:
+        upsert_dataframe(
+            table_name=accuracy_table,
+            df=results_df,
+            conflict_columns=["band", "model_version", "target_show_key"],
+        )
     return results_df
 
 
@@ -353,7 +380,7 @@ def summarize_scored_run_records(
 
 def run_backtest(
     band: str,
-    model: str,
+    model: str | None,
     start: str | None,
     end: str | None,
     shows: int | None,
@@ -368,14 +395,20 @@ def run_backtest(
     """Run a backtest for a given band and model.
 
     When ``incremental=True`` (the default), shows that already have a scored
-    row in ``completed_show_accuracy`` for this band/model_version are skipped.
+    row in ``setlist_accuracy`` for this band/model_version are skipped.
     This means a typical daily run scores only the 0-2 new shows that occurred
     since the last run rather than recomputing the entire window.
 
     Use ``incremental=False`` (or ``--all-history``) to force a full recompute,
     e.g. after a model version bump or a data correction.
     """
-    log_prefix = f"[{band.upper()}/{model.upper()}]"
+    model_context = (
+        get_band_metadata(band) if model is None else get_model_definition(model)
+    )
+    model_version = (
+        model_context.model_version if model is None else model_context.version
+    )
+    log_prefix = f"[{band.upper()}/{model_version}]"
 
     # 1. Fetch and prepare data
     print(f"{log_prefix} Fetching raw data...")
@@ -425,20 +458,29 @@ def run_backtest(
         return 0
 
     # 3. Score target shows and persist results
-    definition = get_model_definition(model)
+    supports_backtest = True if model is None else model_context.supports_backtest
+    supports_training = True if model is None else model_context.supports_training
 
-    # 2b. Incremental filter: skip shows already present in completed_show_accuracy.
+    # 2b. Incremental filter: skip shows already present in setlist_accuracy.
     # This is applied after the window is selected and the empty-window check,
     # so data-loading failures still raise under --require-results.
     # "All already scored" is a valid steady state and does NOT raise.
     if incremental and not all_history:
         candidate_ids = set(target_shows["show_id"].astype(str))
-        already_scored = fetch_scored_show_ids(
-            band,
-            definition.version,
-            candidate_show_ids=candidate_ids,
-            table_name=COMPLETED_SHOW_ACCURACY_TABLE,
-        )
+        if model is None:
+            already_scored = fetch_scored_target_show_keys(
+                band,
+                model_version,
+                candidate_target_show_keys=candidate_ids,
+                table_name=SETLIST_ACCURACY_TABLE,
+            )
+        else:
+            already_scored = fetch_scored_show_ids(
+                band,
+                model_version,
+                candidate_show_ids=candidate_ids,
+                table_name=SETLIST_ACCURACY_TABLE,
+            )
         new_ids = candidate_ids - already_scored
         skipped = len(candidate_ids) - len(new_ids)
         if skipped:
@@ -452,9 +494,9 @@ def run_backtest(
 
     _write_github_output("backtest_incremental_all_scored", "false")
 
-    if not definition.supports_backtest:
+    if not supports_backtest:
         raise ValueError(f"Model does not support backtests: {model}")
-    if definition.supports_training:
+    if supports_training:
         print(
             f"{log_prefix} Historical scoring uses in-memory fresh training; cached model artifacts are disabled."
         )
@@ -479,18 +521,17 @@ def run_backtest(
         else:
             results_df = persist_scored_run_records(
                 scored_run_records,
-                historical_runs_table=COMPLETED_SHOW_PREDICTION_RUNS_TABLE,
-                accuracy_table=COMPLETED_SHOW_ACCURACY_TABLE,
+                historical_runs_table=SETLIST_RESULTS_TABLE,
+                accuracy_table=SETLIST_ACCURACY_TABLE,
             )
         if prune_to_window and not dry_run:
             retained_keys = target_shows["show_id"].astype(str).tolist()
-            deleted = prune_completed_show_corpus(
+            deleted = prune_setlist_corpus(
                 band=band,
-                model_slug=model,
-                model_version=definition.version,
+                model_version=model_version,
                 retained_target_show_keys=retained_keys,
-                runs_table=COMPLETED_SHOW_PREDICTION_RUNS_TABLE,
-                accuracy_table=COMPLETED_SHOW_ACCURACY_TABLE,
+                results_table=SETLIST_RESULTS_TABLE,
+                accuracy_table=SETLIST_ACCURACY_TABLE,
             )
             if deleted:
                 print(
@@ -534,9 +575,9 @@ def main() -> None:
     parser.add_argument(
         "--model",
         type=str,
-        required=True,
+        required=False,
         choices=[definition.slug for definition in list_backtest_models()],
-        help="The model to backtest.",
+        help="Legacy model slug to backtest. Omit for the active single-band model.",
     )
     parser.add_argument("--start", help="Start date for backtest window (YYYY-MM-DD).")
     parser.add_argument("--end", help="End date for backtest window (YYYY-MM-DD).")
@@ -570,7 +611,7 @@ def main() -> None:
         action=argparse.BooleanOptionalAction,
         default=True,
         help=(
-            "Skip shows already present in completed_show_accuracy for this band/model "
+            "Skip shows already present in setlist_accuracy for this band/model "
             "(default: on). Use --no-incremental to force a full recompute."
         ),
     )

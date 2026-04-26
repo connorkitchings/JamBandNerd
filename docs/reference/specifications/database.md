@@ -41,22 +41,22 @@ by writing derived tables back to Supabase.
 
 ### Prediction tables
 
-- `next_show_prediction_runs` (active live next-show runs)
-- `next_show_prediction_songs` (derived live per-song projection)
-- `completed_show_prediction_runs` (retained completed-show lineage for Replay)
+- `setlist_predictions` (active live next-show runs)
+- `setlist_prediction_songs` (derived live per-song projection)
+- `setlist_results` (retained completed-show lineage for Replay)
 
-`next_show_prediction_runs` stores one active live row per
-`(band, model_slug, model_version, target_show_key)` with a JSON predictions
-payload. `next_show_prediction_songs` stores one derived row per live predicted
-song for SQL-friendly reads and realtime refresh. `completed_show_prediction_runs`
-preserves exact prediction boards for the active last-50 completed-show corpus.
+`setlist_predictions` stores one active live row per
+`(band, model_version, target_show_key)` with a JSON predictions payload.
+`setlist_prediction_songs` stores one derived row per live predicted song for
+SQL-friendly reads and realtime refresh. `setlist_results` preserves exact
+prediction boards for the active last-50 completed-show corpus.
 
 ### Accuracy tables
 
-- `completed_show_accuracy`
+- `setlist_accuracy`
 
-`completed_show_accuracy` is the canonical granular evaluation store. Rows link
-to `completed_show_prediction_runs` via `prediction_run_id` for Replay lineage.
+`setlist_accuracy` is the canonical granular evaluation store. Rows link
+to `setlist_results` via `prediction_run_id` for Replay lineage.
 Rows outside the retained last-50 completed-show corpus are hard-deleted from
 the active metric store.
 
@@ -77,10 +77,11 @@ Current high-level operations include:
 - `bulk_insert_dataframe()`
 - `upsert_dataframe()`
 - `replace_prediction_projection()`
-- `upsert_next_show_prediction_run()`
-- `replace_next_show_prediction_projection()`
-- `upsert_completed_show_prediction_run()`
-- `prune_completed_show_corpus()`
+- `upsert_setlist_prediction_run()`
+- `replace_setlist_prediction_projection()`
+- `upsert_setlist_result()`
+- `upsert_setlist_accuracy_dataframe()`
+- `prune_setlist_corpus()`
 - `fetch_existing_ids()`
 - `fetch_existing_values()`
 - `fetch_rows_by_column_values()`

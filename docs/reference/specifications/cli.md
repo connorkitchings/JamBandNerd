@@ -6,13 +6,13 @@ This document defines the command-line interface and scripting design for JamBan
 
 The main local helper for running the end-to-end pipeline is
 `scripts/run_optimized_pipeline.py`. It mirrors the promoted daily workflow
-sequence for the repo-supported bands. The canonical automation contract lives
+sequence for the active single-model bands. The canonical automation contract lives
 in `.github/workflows/daily-pipeline.yml`.
 
 ### Usage
 
 ```bash
-# Run the complete pipeline for all supported bands
+# Run the complete pipeline for all active single-model bands
 uv run python scripts/run_optimized_pipeline.py --band all
 
 # Run the pipeline for a single band (e.g., Goose)
@@ -28,12 +28,11 @@ While the optimized pipeline is recommended for end-to-end runs, the core logic 
 
 ### `generate_live_predictions.py`
 
-Generates and saves active next-show predictions for a given band and model.
+Generates and saves active next-show predictions for a given band.
 If no upcoming show is discoverable, no live board is written.
 
-- `--band <repo-supported-band-slug>`: (Required) The band to process. The script accepts any repo-supported band from `src/jambandnerd/config/bands.py`.
-- `--model <registered-model-slug>`: (Required) The model to use.
-- `--exclusion-window {N}`: (Optional) For the Notebook model, the number of recent shows to exclude songs from. Defaults to 3.
+- `--band <active-band-slug>`: (Required) The band to process. The script accepts active single-model bands from `src/jambandnerd/models/metadata.py`.
+- `--exclusion-window {N}`: (Optional) The number of recent shows to exclude songs from. Defaults to 3.
 
 ### `sync_retained_prediction_corpus.py`
 
@@ -46,12 +45,11 @@ Scores and prunes the active completed-show prediction corpus.
 ### `run_backtest.py`
 
 Runs a historical backtest, storing the scored ranked board in
-`completed_show_prediction_runs`, and saving linked per-show accuracy metrics to the
-`completed_show_accuracy` table. Replay readiness is validated from those linked
+`setlist_results`, and saving linked per-show accuracy metrics to the
+`setlist_accuracy` table. Replay readiness is validated from those linked
 `prediction_run_id` rows through `validate_accuracy_tables.py`.
 
-- `--band <repo-supported-band-slug>`: (Required) The band to process. The script accepts any repo-supported band from `src/jambandnerd/config/bands.py`.
-- `--model <registered-backtest-model-slug>`: (Required) The model to backtest.
+- `--band <active-band-slug>`: (Required) The band to process.
 - `--shows {N}`: (Optional) Backtest the last N completed shows.
 - `--start {YYYY-MM-DD}` / `--end {YYYY-MM-DD}`: (Optional) Define a specific date range for the backtest.
 - `--exclusion-window {N}`: (Optional) For the Notebook model, the number of recent shows to exclude songs from. Defaults to 3.
@@ -81,13 +79,12 @@ shared model features.
 ### `audit_supabase_tables.py`
 
 Runs the canonical read-only Supabase audit for the public website surfaces.
-By default it targets the repo-authoritative automation bands plus the currently promoted website models,
+By default it targets the active single-model bands,
 then checks:
 
-- live prediction completeness in `next_show_prediction_runs` and `next_show_prediction_songs`
-- replay/history coverage in `completed_show_prediction_runs`
-- per-show accuracy coverage in `completed_show_accuracy`
-- replay overlap across promoted models
+- live prediction completeness in `setlist_predictions` and `setlist_prediction_songs`
+- replay/history coverage in `setlist_results`
+- per-show accuracy coverage in `setlist_accuracy`
 - supported-model freshness using the existing freshness policy
 - recent completed-show setlist completeness as supporting evidence
 
@@ -103,7 +100,7 @@ Arguments:
 
 - `--band <slug>`: (Optional, repeatable) Limit the audit to specific repo-supported bands.
 - `--max-age-hours <N>`: (Optional) Freshness threshold for website-facing prediction and accuracy surfaces. Defaults to `72`.
-- `--replay-window <N>`: (Optional) Override the required replay-history window. If omitted, the audit uses each promoted model's registry `readiness_windows` metadata.
+- `--replay-window <N>`: (Optional) Override the required replay-history window. Defaults to `50`.
 - `--output <path>`: (Optional) Write the JSON audit report to disk.
 - `--skip-accuracy`: (Optional) Preserve the existing workflow behavior that degrades stale supported-model accuracy from a hard failure to a warning for runs where accuracy regeneration was intentionally skipped.
 
@@ -113,11 +110,9 @@ Exit behavior:
 - `warning`: no blockers, but informational issues remain such as skipped-accuracy freshness warnings or missing recent raw setlists
 - `failed`: one or more website-facing blockers were found
 
-Replay completeness is measured against the required window for each promoted
-model. A healthy surface must retain at least that many recent unique
-`target_show_date` rows in `completed_show_prediction_runs`, at least that many
-`completed_show_accuracy` rows, and at least that much overlap between promoted
-models so `/replay` can compare boards for the same nights.
+Replay completeness is measured against the required window for each active
+band model version. A healthy surface must retain at least that many recent
+`setlist_results` rows and at least that many linked `setlist_accuracy` rows.
 
 ### Future Considerations: `jbn` CLI
 

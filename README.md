@@ -47,19 +47,17 @@ A cloud-based data platform for collecting, transforming, and predicting jam ban
 ### Optimized Pipeline (Recommended)
 
 The primary local helper for running the data pipeline is `run_optimized_pipeline.py`.
-It mirrors the promoted daily workflow sequence for the repo-supported bands.
+It mirrors the promoted daily workflow sequence for the active single-model
+bands. Eggy remains excluded from this first rollout slice.
 The canonical automation contract itself lives in
 `.github/workflows/daily-pipeline.yml`.
 
 ```bash
-# Run the complete pipeline for all supported bands
+# Run the complete pipeline for all active single-model bands
 uv run python scripts/run_optimized_pipeline.py --band all
 
 # Run the pipeline for a single band (e.g., Goose)
 uv run python scripts/run_optimized_pipeline.py --band goose
-
-# Run the pipeline for Eggy
-uv run python scripts/run_optimized_pipeline.py --band eggy
 
 # Skip accuracy calculations for a faster run
 uv run python scripts/run_optimized_pipeline.py --band all --skip-accuracy
@@ -67,11 +65,11 @@ uv run python scripts/run_optimized_pipeline.py --band all --skip-accuracy
 
 ### Advanced Usage
 
-While the optimized pipeline is recommended, you can also run individual components for debugging or granular control. The main scripts accept `--band` and `--model` arguments.
+While the optimized pipeline is recommended, you can also run individual components for debugging or granular control.
 
 ```bash
-# Generate live next-show predictions for a single band and model
-uv run python scripts/generate_live_predictions.py --band phish --model deal
+# Generate live next-show predictions for a single band
+uv run python scripts/generate_live_predictions.py --band phish
 
 # Sync the retained last-50 completed-show prediction and metric corpus
 uv run python scripts/sync_retained_prediction_corpus.py --band goose --window 50
@@ -81,7 +79,6 @@ uv run python scripts/run_eggy_collection.py --skip-validation
 
 # Convenience wrappers for Billy Strings predictions
 uv run predict-billy -- --date 2025-10-24
-uv run predict-billy -- --date 2025-10-24 --model deal
 ```
 
 For detailed usage, please refer to the full documentation.

@@ -100,17 +100,23 @@ def test_run_backtest_persists_string_show_ids(monkeypatch):
             for index, prediction in enumerate(preds)
         ],
     )
-    monkeypatch.setattr(run_backtest_module, "upsert_dataframe", capture_upsert)
     monkeypatch.setattr(
         run_backtest_module,
-        "upsert_completed_show_prediction_run",
+        "upsert_setlist_accuracy_dataframe",
+        lambda df, table_name: capture_upsert(
+            table_name, df, ["band", "model_version", "target_show_key"]
+        ),
+    )
+    monkeypatch.setattr(
+        run_backtest_module,
+        "upsert_setlist_result",
         capture_completed_run,
     )
     monkeypatch.setattr(
         run_backtest_module, "fetch_scored_show_ids", lambda *a, **kw: set()
     )
     monkeypatch.setattr(
-        run_backtest_module, "prune_completed_show_corpus", lambda **kwargs: None
+        run_backtest_module, "prune_setlist_corpus", lambda **kwargs: None
     )
 
     run_backtest_module.run_backtest(
@@ -122,10 +128,9 @@ def test_run_backtest_persists_string_show_ids(monkeypatch):
         exclusion_window=3,
     )
 
-    assert captured["table_name"] == "completed_show_accuracy"
+    assert captured["table_name"] == "setlist_accuracy"
     assert captured["conflict_columns"] == [
         "band",
-        "model_slug",
         "model_version",
         "target_show_key",
     ]
@@ -134,13 +139,12 @@ def test_run_backtest_persists_string_show_ids(monkeypatch):
     assert captured["df"]["prediction_run_id"].tolist() == [987]
     assert len(completed_runs) == 1
     assert completed_runs[0]["band"] == "goose"
-    assert completed_runs[0]["model_slug"] == "notebook"
     assert completed_runs[0]["model_version"] == "notebook_v1"
     assert completed_runs[0]["reference_date"] == "2024-01-19"
     assert completed_runs[0]["target_show_key"] == "goose-show-3"
     assert completed_runs[0]["target_show_date"] == "2024-01-20"
     assert completed_runs[0]["actual_songs"] == ["Song A", "Song G", "Song H"]
-    assert completed_runs[0]["table_name"] == "completed_show_prediction_runs"
+    assert completed_runs[0]["table_name"] == "setlist_results"
     assert completed_runs[0]["predictions"] == [
         {
             "rank": 1,
@@ -207,17 +211,21 @@ def test_run_backtest_disables_cached_artifacts_for_training_models(monkeypatch)
             for index, prediction in enumerate(preds)
         ],
     )
-    monkeypatch.setattr(run_backtest_module, "upsert_dataframe", lambda **kwargs: None)
     monkeypatch.setattr(
         run_backtest_module,
-        "upsert_completed_show_prediction_run",
+        "upsert_setlist_accuracy_dataframe",
+        lambda *args, **kwargs: None,
+    )
+    monkeypatch.setattr(
+        run_backtest_module,
+        "upsert_setlist_result",
         lambda **kwargs: 123,
     )
     monkeypatch.setattr(
         run_backtest_module, "fetch_scored_show_ids", lambda *a, **kw: set()
     )
     monkeypatch.setattr(
-        run_backtest_module, "prune_completed_show_corpus", lambda **kwargs: None
+        run_backtest_module, "prune_setlist_corpus", lambda **kwargs: None
     )
 
     run_backtest_module.run_backtest(
@@ -282,7 +290,7 @@ def test_run_backtest_dry_run_skips_writes_and_pruning(monkeypatch, capsys):
     )
     monkeypatch.setattr(
         run_backtest_module,
-        "prune_completed_show_corpus",
+        "prune_setlist_corpus",
         lambda **kwargs: pytest.fail("dry run should not prune retained rows"),
     )
     monkeypatch.setattr(

@@ -7,14 +7,11 @@ import json
 from datetime import date, datetime, timezone
 from typing import Dict, Iterable, List
 
-from jambandnerd.config import NEXT_SHOW_PREDICTION_RUNS_TABLE
-from jambandnerd.config.bands import get_repo_supported_bands
+from jambandnerd.config import SETLIST_PREDICTION_SONGS_TABLE, SETLIST_PREDICTIONS_TABLE
 from jambandnerd.db.connection import get_supabase_client
-from jambandnerd.db.operations import fetch_prediction_songs_for_date
 from jambandnerd.models.registry import (
-    get_model_definition,
-    list_model_slugs,
-    list_pipeline_models,
+    get_band_metadata,
+    list_active_bands,
 )
 
 
@@ -28,17 +25,14 @@ def _parse_timestamp(value: str | None) -> datetime | None:
         return None
 
 
-def _latest_prediction_row(
-    client, *, table: str, band: str, model_slug: str, model_version: str
-):
-    """Fetch the most recently written prediction row for a band/model."""
+def _latest_prediction_row(client, *, table: str, band: str, model_version: str):
+    """Fetch the most recently written prediction row for a band."""
     resp = (
         client.table(table)
         .select(
-            "band, target_show_date, reference_date, generated_at, predictions, top_k"
+            "band, target_show_key, target_show_date, reference_date, generated_at, predictions, top_k"
         )
         .eq("band", band)
-        .eq("model_slug", model_slug)
         .eq("model_version", model_version)
         .order("generated_at", desc=True)
         .order("target_show_date", desc=True)
@@ -81,24 +75,29 @@ def _has_upcoming_show(client, *, band: str) -> bool:
 def _validate_projection(
     *,
     band: str,
-    model_slug: str,
+    model_version: str,
+    target_show_key: str | None,
     top_k: int,
     parsed_predictions: list[dict],
-    reference_date: str | None,
 ) -> int:
-    if not reference_date:
-        print(f"[FAIL] {band}: canonical prediction row is missing reference_date")
+    if not target_show_key:
+        print(f"[FAIL] {band}: canonical prediction row is missing target_show_key")
         return 1
 
-    projection_rows = fetch_prediction_songs_for_date(
-        band=band,
-        model_slug=model_slug,
-        reference_date=reference_date,
-        table_name="next_show_prediction_songs",
+    projection = (
+        get_supabase_client()
+        .table(SETLIST_PREDICTION_SONGS_TABLE)
+        .select("target_show_key, rank, song_name")
+        .eq("band", band)
+        .eq("model_version", model_version)
+        .eq("target_show_key", target_show_key)
+        .order("rank")
+        .execute()
     )
+    projection_rows = projection.data or []
     if not projection_rows:
         print(
-            f"[FAIL] {band}: no projected song rows found for reference_date={reference_date}"
+            f"[FAIL] {band}: no projected song rows found for target_show_key={target_show_key}"
         )
         return 1
 
@@ -121,186 +120,83 @@ def _validate_projection(
     return 0
 
 
-def _check_stale_projection_rows(
-    *,
-    band: str,
-    model_slug: str,
-    model_version: str,
-    max_age_hours: int,
-    reference_window_days: int = 7,
-) -> int:
-    stale = list_stale_projection_reference_dates(
-        band=band,
-        model_slug=model_slug,
-        model_version=model_version,
-        max_age_hours=max_age_hours,
-        reference_window_days=reference_window_days,
-    )
-    if not stale:
-        return 0
-
-    for ref in stale:
-        print(
-            f"[STALE] {band}/{model_slug}: next_show_prediction_songs "
-            f"reference_date={ref} has generated_at older than {max_age_hours}h cutoff"
-        )
-    return len(stale)
-
-
-def list_stale_projection_reference_dates(
-    *,
-    band: str,
-    model_slug: str,
-    model_version: str,
-    max_age_hours: int,
-    reference_window_days: int = 7,
-    client=None,
-) -> list[str]:
-    """Return stale recent reference_date entries in next_show_prediction_songs."""
-    from datetime import date, timedelta
-
-    client = client or get_supabase_client()
-
-    resp = (
-        client.table("next_show_prediction_songs")
-        .select("reference_date, generated_at")
-        .eq("band", band)
-        .eq("model_slug", model_slug)
-        .eq("model_version", model_version)
-        .execute()
-    )
-    rows = resp.data or []
-    if not rows:
-        return []
-
-    latest_key = max(
-        (
-            (
-                _parse_timestamp(row.get("generated_at"))
-                or datetime.min.replace(tzinfo=timezone.utc),
-                row.get("reference_date") or "",
-            )
-            for row in rows
-        ),
-        default=None,
-    )
-    cutoff = datetime.now(timezone.utc) - timedelta(hours=max_age_hours)
-    ref_window_start = (
-        date.today() - timedelta(days=reference_window_days)
-    ).isoformat()
-    projected_by_ref: dict[str, datetime] = {}
-    for row in rows:
-        reference_date = row.get("reference_date")
-        predicted_at = _parse_timestamp(row.get("generated_at"))
-        if not reference_date or predicted_at is None:
-            continue
-        if reference_date < ref_window_start:
-            continue
-        current = projected_by_ref.get(reference_date)
-        if current is None or predicted_at > current:
-            projected_by_ref[reference_date] = predicted_at
-
-    return [
-        ref
-        for ref, predicted_at in sorted(projected_by_ref.items())
-        if predicted_at < cutoff and (predicted_at, ref) != latest_key
-    ]
-
-
 def validate_predictions(
     bands: Iterable[str],
     max_age_hours: int,
     *,
     validate_projection: bool = True,
-    models: Iterable[str] | None = None,
 ) -> int:
     client = get_supabase_client()
 
     band_list = list(bands)
     if not band_list:
-        band_list = list(get_repo_supported_bands())
-    selected_models = list(models) if models is not None else []
-    definitions = (
-        [get_model_definition(model_slug) for model_slug in selected_models]
-        if selected_models
-        else list_pipeline_models()
-    )
+        band_list = list_active_bands()
 
     now = datetime.now(timezone.utc)
     failures = 0
 
-    for definition in definitions:
-        table = NEXT_SHOW_PREDICTION_RUNS_TABLE
-        model_slug = definition.slug
-        model_version = definition.version
-        print(f"\n== Validating {table} ({model_version}) ==")
-        for band in band_list:
-            row = _latest_prediction_row(
-                client,
-                table=table,
-                band=band,
-                model_slug=model_slug,
-                model_version=model_version,
-            )
-            if not row:
-                if _has_upcoming_show(client, band=band):
-                    print(f"[FAIL] {band}: no live next-show rows found")
-                    failures += 1
-                else:
-                    print(
-                        f"[OK] {band}: no upcoming show; live prediction row not required"
-                    )
-                continue
-
-            predicted_at = _parse_timestamp(row.get("generated_at"))
-            age_hrs = None
-            if predicted_at:
-                age_hrs = (now - predicted_at).total_seconds() / 3600
-
-            try:
-                predictions_blob = row.get("predictions")
-                parsed = (
-                    json.loads(predictions_blob)
-                    if isinstance(predictions_blob, str)
-                    else predictions_blob
-                )
-                top_song = parsed[0]["song_name"] if parsed else "<empty>"
-            except Exception as exc:
-                print(f"[FAIL] {band}: invalid JSON payload ({exc})")
+    table = SETLIST_PREDICTIONS_TABLE
+    print(f"\n== Validating {table} ==")
+    for band in band_list:
+        model_version = get_band_metadata(band).model_version
+        row = _latest_prediction_row(
+            client,
+            table=table,
+            band=band,
+            model_version=model_version,
+        )
+        if not row:
+            if _has_upcoming_show(client, band=band):
+                print(f"[FAIL] {band}: no live setlist prediction row found")
                 failures += 1
-                continue
-
-            if predicted_at is None:
+            else:
                 print(
-                    f"[WARN] {band}: missing generated_at timestamp; latest target_show_date={row.get('target_show_date')}"
+                    f"[OK] {band}: no upcoming show; live prediction row not required"
                 )
-                failures += 1
-                continue
+            continue
 
-            freshness_ok = age_hrs is not None and age_hrs <= max_age_hours
-            status = "OK" if freshness_ok else "STALE"
-            if not freshness_ok:
-                failures += 1
+        predicted_at = _parse_timestamp(row.get("generated_at"))
+        age_hrs = None
+        if predicted_at:
+            age_hrs = (now - predicted_at).total_seconds() / 3600
 
-            age_display = f"{age_hrs:.1f}h" if age_hrs is not None else "unknown age"
-            print(
-                f"[{status}] {band}: target_show_date={row.get('target_show_date')} reference_date={row.get('reference_date')} generated_at={predicted_at.isoformat()} age={age_display} top_song={top_song}"
+        try:
+            predictions_blob = row.get("predictions")
+            parsed = (
+                json.loads(predictions_blob)
+                if isinstance(predictions_blob, str)
+                else predictions_blob
             )
+            top_song = parsed[0]["song_name"] if parsed else "<empty>"
+        except Exception as exc:
+            print(f"[FAIL] {band}: invalid JSON payload ({exc})")
+            failures += 1
+            continue
 
-            if validate_projection:
-                failures += _validate_projection(
-                    band=band,
-                    model_slug=model_slug,
-                    top_k=int(row.get("top_k") or len(parsed)),
-                    parsed_predictions=parsed,
-                    reference_date=row.get("reference_date"),
-                )
+        if predicted_at is None:
+            print(
+                f"[WARN] {band}: missing generated_at timestamp; latest target_show_date={row.get('target_show_date')}"
+            )
+            failures += 1
+            continue
 
-            failures += _check_stale_projection_rows(
+        freshness_ok = age_hrs is not None and age_hrs <= max_age_hours
+        status = "OK" if freshness_ok else "STALE"
+        if not freshness_ok:
+            failures += 1
+
+        age_display = f"{age_hrs:.1f}h" if age_hrs is not None else "unknown age"
+        print(
+            f"[{status}] {band}: target_show_date={row.get('target_show_date')} reference_date={row.get('reference_date')} generated_at={predicted_at.isoformat()} age={age_display} top_song={top_song}"
+        )
+
+        if validate_projection:
+            failures += _validate_projection(
                 band=band,
-                model_slug=model_slug,
                 model_version=model_version,
-                max_age_hours=max_age_hours,
+                target_show_key=row.get("target_show_key"),
+                top_k=int(row.get("top_k") or len(parsed)),
+                parsed_predictions=parsed,
             )
 
     return failures
@@ -325,14 +221,7 @@ def main() -> None:
     parser.add_argument(
         "--skip-projection-check",
         action="store_true",
-        help="Skip validation of the derived next_show_prediction_songs projection.",
-    )
-    parser.add_argument(
-        "--model",
-        dest="models",
-        action="append",
-        choices=list_model_slugs(),
-        help="Model to validate (repeat for multiple). Defaults to pipeline models.",
+        help="Skip validation of the derived setlist_prediction_songs projection.",
     )
     args = parser.parse_args()
 
@@ -340,7 +229,6 @@ def main() -> None:
         bands=args.bands or [],
         max_age_hours=args.max_age_hours,
         validate_projection=not args.skip_projection_check,
-        models=args.models or None,
     )
     if failures:
         raise SystemExit(f"Validation failed with {failures} issue(s)")

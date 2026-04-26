@@ -52,20 +52,19 @@ Granular commands:
 
 ```bash
 uv run python scripts/run_goose_collection.py
-uv run python scripts/generate_live_predictions.py --band goose --model notebook
-uv run python scripts/generate_live_predictions.py --band goose --model deal
+uv run python scripts/generate_live_predictions.py --band goose
 uv run python scripts/sync_retained_prediction_corpus.py --band goose --window 50
 ```
 
 ## Prediction and Storage
 
-- live next-show predictions are stored in `next_show_prediction_runs` with
-  derived rows in `next_show_prediction_songs`
-- retained completed-show boards are stored in `completed_show_prediction_runs`
-- per-show metrics are stored in `completed_show_accuracy`
+- live next-show predictions are stored in `setlist_predictions` with
+  derived rows in `setlist_prediction_songs`
+- retained completed-show boards are stored in `setlist_results`
+- per-show metrics are stored in `setlist_accuracy`
 
-The active metric corpus is the last 50 eligible completed shows per promoted
-model, shared by band across Notebook and Deal.
+The active metric corpus is the last 50 eligible completed shows for Goose's
+registered model version.
 
 ## Integrity Expectations
 

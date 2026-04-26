@@ -11,7 +11,6 @@ on:
         options:
           - all
           - billy
-          - eggy
           - goose
           - phish
           - um
@@ -40,7 +39,7 @@ jobs:
       - id: set_bands
         run: |
           if [[ "${{ github.event.inputs.band }}" == "all" ]]; then
-            BANDS_JSON=$(python -m scripts.get_all_bands)
+            BANDS_JSON='["goose","phish","wsp","billy","um"]'
             echo "bands=$BANDS_JSON" >> $GITHUB_OUTPUT
           else
             echo "bands=[\"${{ github.event.inputs.band }}\"]" >> $GITHUB_OUTPUT

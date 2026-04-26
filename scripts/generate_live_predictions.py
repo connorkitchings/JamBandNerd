@@ -1,4 +1,4 @@
-"""Generate active next-show predictions into the live prediction tables."""
+"""Generate active next-show predictions into the setlist prediction tables."""
 
 from __future__ import annotations
 
@@ -17,19 +17,18 @@ sys.path.insert(0, project_root)
 
 from scripts.common import fetch_table, prepare_band_data
 from src.jambandnerd.config import (
-    NEXT_SHOW_PREDICTION_RUNS_TABLE,
-    NEXT_SHOW_PREDICTION_SONGS_TABLE,
+    SETLIST_PREDICTION_SONGS_TABLE,
+    SETLIST_PREDICTIONS_TABLE,
 )
-from src.jambandnerd.config.bands import get_repo_supported_bands
 from src.jambandnerd.db.operations import (
-    replace_next_show_prediction_projection,
-    upsert_next_show_prediction_run,
+    replace_setlist_prediction_projection,
+    upsert_setlist_prediction_run,
 )
 from src.jambandnerd.models.registry import (
-    build_predictor,
-    get_model_definition,
-    list_pipeline_models,
-    serialize_model_predictions,
+    build_band_predictor,
+    get_band_metadata,
+    get_band_serializer,
+    list_active_bands,
 )
 from src.jambandnerd.transformations.gaps import generate_model_data
 
@@ -121,16 +120,18 @@ def _resolve_next_show(
 def generate_live_predictions(
     *,
     band: str,
-    model: str,
+    model: str | None = None,
     exclusion_window: int | None = None,
     require_output: bool = False,
     today: date | None = None,
     dry_run: bool = False,
 ) -> bool:
-    """Generate and store one active next-show prediction board."""
+    """Generate and store one active single-model next-show prediction board."""
     band = band.lower()
-    model = model.lower()
-    log_prefix = f"[{band.upper()}/{model.upper()}]"
+    metadata = get_band_metadata(band)
+    model_version = metadata.model_version
+    serializer = get_band_serializer(band)
+    log_prefix = f"[{band.upper()}/{model_version}]"
 
     print(f"{log_prefix} Fetching raw data for live next-show prediction...")
     shows_df = pd.DataFrame(fetch_table(f"{band}_shows_raw"))
@@ -159,11 +160,8 @@ def generate_live_predictions(
         return False
 
     reference_date = datetime.strptime(target["reference_date"], "%Y-%m-%d").date()
-    model_definition = get_model_definition(model)
-    predictor_kwargs: dict[str, Any] = {}
-    if model_definition.supports_training:
-        predictor_kwargs["persist_artifacts"] = False
-    predictor = build_predictor(model, band=band, **predictor_kwargs)
+    predictor_kwargs: dict[str, Any] = {"persist_artifacts": False}
+    predictor = build_band_predictor(band, **predictor_kwargs)
 
     model_data = generate_model_data(
         shows_df,
@@ -172,11 +170,9 @@ def generate_live_predictions(
         exclusion_window=exclusion_window,
         band=band,
     )
-    if model_definition.supports_training:
+    if hasattr(predictor, "train"):
         predictor.train(model_data)
-    output = predictor.predict(
-        model_data=model_data, top_k=model_definition.default_top_k
-    )
+    output = predictor.predict(model_data=model_data, top_k=metadata.default_top_k)
     predictions = output[0] if isinstance(output, tuple) else output
     if not predictions:
         message = f"{log_prefix} No live predictions were generated."
@@ -185,9 +181,7 @@ def generate_live_predictions(
             raise RuntimeError(message)
         return False
 
-    predictions_list = json.loads(
-        json.dumps(serialize_model_predictions(model, predictions), cls=NpEncoder)
-    )
+    predictions_list = json.loads(json.dumps(serializer(predictions), cls=NpEncoder))
     top_song = (
         str(predictions_list[0].get("song_name"))
         if predictions_list and predictions_list[0].get("song_name")
@@ -197,34 +191,29 @@ def generate_live_predictions(
         print(
             f"{log_prefix} Dry run: target_show_date={target['target_show_date']} "
             f"target_show_key={target['target_show_key']} "
-            f"model_version={model_definition.version} top_k={len(predictions_list)} "
+            f"model_version={model_version} top_k={len(predictions_list)} "
             f"top_song={top_song}; no Supabase writes performed."
         )
         return True
 
     generated_at = datetime.now(timezone.utc).isoformat()
-    run_id = upsert_next_show_prediction_run(
+    run_id = upsert_setlist_prediction_run(
         band=band,
-        model_slug=model,
-        model_version=model_definition.version,
+        model_version=model_version,
         target_show_key=target["target_show_key"],
         target_show_date=target["target_show_date"],
         reference_date=target["reference_date"],
         generated_at=generated_at,
         predictions=predictions_list,
-        table_name=NEXT_SHOW_PREDICTION_RUNS_TABLE,
+        table_name=SETLIST_PREDICTIONS_TABLE,
     )
-    replace_next_show_prediction_projection(
+    replace_setlist_prediction_projection(
         band=band,
-        model_slug=model,
-        model_version=model_definition.version,
+        model_version=model_version,
         target_show_key=target["target_show_key"],
-        target_show_date=target["target_show_date"],
-        reference_date=target["reference_date"],
-        generated_at=generated_at,
         predictions=predictions_list,
         prediction_run_id=run_id,
-        table_name=NEXT_SHOW_PREDICTION_SONGS_TABLE,
+        table_name=SETLIST_PREDICTION_SONGS_TABLE,
     )
     print(
         f"{log_prefix} Saved live next-show prediction for {target['target_show_date']}."
@@ -236,12 +225,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="Generate active live next-show predictions."
     )
-    parser.add_argument("--band", required=True, choices=get_repo_supported_bands())
-    parser.add_argument(
-        "--model",
-        required=True,
-        choices=[definition.slug for definition in list_pipeline_models()],
-    )
+    parser.add_argument("--band", required=True, choices=list_active_bands())
     parser.add_argument("--exclusion-window", type=int, default=None)
     parser.add_argument("--require-output", action="store_true")
     parser.add_argument(
@@ -253,7 +237,6 @@ def main() -> None:
 
     generate_live_predictions(
         band=args.band,
-        model=args.model,
         exclusion_window=args.exclusion_window,
         require_output=args.require_output,
         dry_run=args.dry_run,

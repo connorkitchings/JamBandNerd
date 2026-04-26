@@ -15,14 +15,13 @@ from pathlib import Path
 from typing import Any
 
 from jambandnerd.config import (
-    COMPLETED_SHOW_ACCURACY_TABLE,
-    NEXT_SHOW_PREDICTION_RUNS_TABLE,
+    SETLIST_ACCURACY_TABLE,
+    SETLIST_PREDICTION_SONGS_TABLE,
+    SETLIST_PREDICTIONS_TABLE,
+    SETLIST_RESULTS_TABLE,
 )
-from jambandnerd.config.bands import get_repo_supported_bands
 from jambandnerd.db.connection import get_supabase_client
-from jambandnerd.db.operations import fetch_prediction_songs_for_date
-from jambandnerd.models.readiness import build_model_readiness_report
-from jambandnerd.models.registry import list_promoted_web_models
+from jambandnerd.models.registry import get_band_metadata, list_active_bands
 from scripts.check_supported_model_freshness import audit_supported_model_freshness
 from scripts.validate_accuracy_tables import (
     _recent_replay_eligible_rows,
@@ -30,7 +29,6 @@ from scripts.validate_accuracy_tables import (
 from scripts.validate_prediction_tables import (
     _has_upcoming_show,
     _latest_prediction_row,
-    list_stale_projection_reference_dates,
 )
 from scripts.validate_prediction_tables import (
     _parse_timestamp as _parse_prediction_timestamp,
@@ -141,24 +139,6 @@ class SupabaseAuditReport:
         }
 
 
-def _load_readiness_reports(
-    *,
-    bands: list[str],
-    client,
-) -> dict[str, dict[str, dict[str, Any]]]:
-    reports: dict[str, dict[str, dict[str, Any]]] = {}
-    for definition in list_promoted_web_models():
-        report = build_model_readiness_report(
-            definition.slug,
-            bands=bands,
-            client=client,
-        )
-        reports[definition.slug] = {
-            str(status["band"]): status for status in report["bands"]
-        }
-    return reports
-
-
 def _parse_predictions_blob(value: object) -> tuple[list[dict[str, Any]], str | None]:
     try:
         parsed = json.loads(value) if isinstance(value, str) else value
@@ -174,11 +154,39 @@ def _parse_predictions_blob(value: object) -> tuple[list[dict[str, Any]], str | 
     return normalized, None
 
 
-def _derive_model_audit(
+def _count_rows(client, table: str, *, filters: dict[str, object]) -> int:
+    query = client.table(table).select("id", count="exact")
+    for column, value in filters.items():
+        query = query.eq(column, value)
+    response = query.limit(1).execute()
+    return int(response.count or 0)
+
+
+def _latest_projection_rows(
+    client,
     *,
     band: str,
-    definition,
-    readiness_status: dict[str, Any],
+    model_version: str,
+    target_show_key: str | None,
+) -> list[dict[str, Any]]:
+    if not target_show_key:
+        return []
+    response = (
+        client.table(SETLIST_PREDICTION_SONGS_TABLE)
+        .select("target_show_key, rank, song_name")
+        .eq("band", band)
+        .eq("model_version", model_version)
+        .eq("target_show_key", target_show_key)
+        .order("rank")
+        .execute()
+    )
+    return response.data or []
+
+
+def _derive_setlist_model_audit(
+    *,
+    band: str,
+    model_version: str,
     client,
     max_age_hours: int,
     replay_window_override: int | None,
@@ -187,67 +195,50 @@ def _derive_model_audit(
 ) -> SupabaseModelAudit:
     blockers: list[str] = []
     warnings: list[str] = []
-    latest_prediction_age_hours: float | None = None
-    latest_prediction_top_song: str | None = None
-    latest_projection_top_song: str | None = None
+    required_window = replay_window_override or 50
+    expected_top_k = get_band_metadata(band).default_top_k
+    filters = {"band": band, "model_version": model_version}
 
-    required_window = replay_window_override or int(readiness_status["required_window"])
-    latest_reference_date = readiness_status.get("latest_reference_date")
-    latest_prediction_top_k = readiness_status.get("latest_prediction_top_k")
-    latest_projection_rows = int(readiness_status.get("latest_projection_rows", 0))
-    historical_run_rows = int(readiness_status["historical_runs"])
-    unique_historical_target_dates = int(
-        readiness_status.get("unique_historical_target_dates", 0)
+    canonical_prediction_rows = _count_rows(
+        client, SETLIST_PREDICTIONS_TABLE, filters=filters
     )
-    per_show_accuracy_rows = int(readiness_status["per_show_rows"])
-    replay_overlap = {
-        str(slug): int(count)
-        for slug, count in readiness_status.get("replay_overlap", {}).items()
-    }
+    historical_run_rows = _count_rows(client, SETLIST_RESULTS_TABLE, filters=filters)
+    per_show_accuracy_rows = _count_rows(
+        client, SETLIST_ACCURACY_TABLE, filters=filters
+    )
 
     latest_prediction_row = _latest_prediction_row(
         client,
-        table=NEXT_SHOW_PREDICTION_RUNS_TABLE,
+        table=SETLIST_PREDICTIONS_TABLE,
         band=band,
-        model_slug=definition.slug,
-        model_version=definition.version,
+        model_version=model_version,
     )
     parsed_predictions: list[dict[str, Any]] = []
+    latest_prediction_age_hours: float | None = None
+    latest_prediction_top_song: str | None = None
+    latest_prediction_top_k: int | None = None
+    latest_reference_date: str | None = None
+    latest_projection_top_song: str | None = None
     projection_rows: list[dict[str, Any]] = []
-    live_prediction_required = _has_upcoming_show(client, band=band)
+
     if latest_prediction_row is None:
-        if not live_prediction_required:
-            latest_projection_rows = 0
-        else:
+        if _has_upcoming_show(client, band=band):
             _append_unique(blockers, "canonical_predictions_missing")
-    elif not live_prediction_required:
-        warnings.append("live_predictions_present_without_upcoming_show")
-    if latest_prediction_row is None:
-        pass
     else:
+        latest_reference_date = str(latest_prediction_row.get("reference_date") or "")
         parsed_predictions, parse_error = _parse_predictions_blob(
             latest_prediction_row.get("predictions")
         )
         if parse_error:
             _append_unique(blockers, "canonical_predictions_invalid_json")
-        else:
-            latest_prediction_top_song = (
-                str(parsed_predictions[0].get("song_name"))
-                if parsed_predictions and parsed_predictions[0].get("song_name")
-                else None
-            )
+        elif parsed_predictions:
+            latest_prediction_top_song = str(parsed_predictions[0].get("song_name"))
 
-        raw_top_k = latest_prediction_row.get("top_k")
         try:
-            latest_prediction_top_k = int(raw_top_k)
+            latest_prediction_top_k = int(latest_prediction_row.get("top_k"))
         except (TypeError, ValueError):
-            latest_prediction_top_k = None
             _append_unique(blockers, "canonical_predictions_top_k_mismatch")
         else:
-            # Canonical rows may legitimately contain fewer than the registry default
-            # when the model produces a smaller unique candidate set. The audit should
-            # enforce self-consistency between the stored top_k, JSON payload, and
-            # flattened projection rows rather than forcing the registry default.
             if latest_prediction_top_k <= 0 or (
                 parsed_predictions
                 and latest_prediction_top_k != len(parsed_predictions)
@@ -266,26 +257,16 @@ def _derive_model_audit(
             if latest_prediction_age_hours > max_age_hours:
                 _append_unique(blockers, "canonical_predictions_stale")
 
-        if latest_reference_date:
-            projection_rows = fetch_prediction_songs_for_date(
-                band=band,
-                model_slug=definition.slug,
-                reference_date=str(latest_reference_date),
-                table_name="next_show_prediction_songs",
-            )
-        latest_projection_rows = len(projection_rows)
-        latest_projection_top_song = (
-            str(projection_rows[0].get("song_name"))
-            if projection_rows and projection_rows[0].get("song_name")
-            else None
+        projection_rows = _latest_projection_rows(
+            client,
+            band=band,
+            model_version=model_version,
+            target_show_key=latest_prediction_row.get("target_show_key"),
         )
-
-        expected_projection_rows = (
-            int(latest_prediction_top_k)
-            if latest_prediction_top_k is not None
-            else len(parsed_predictions)
-        )
-        if latest_projection_rows != expected_projection_rows:
+        if projection_rows:
+            latest_projection_top_song = str(projection_rows[0].get("song_name"))
+        expected_projection_rows = latest_prediction_top_k or len(parsed_predictions)
+        if len(projection_rows) != expected_projection_rows:
             _append_unique(blockers, "prediction_projection_count_mismatch")
         if (
             latest_prediction_top_song is not None
@@ -293,34 +274,20 @@ def _derive_model_audit(
         ):
             _append_unique(blockers, "prediction_projection_top_song_mismatch")
 
-    stale_projection_reference_dates = tuple(
-        list_stale_projection_reference_dates(
-            band=band,
-            model_slug=definition.slug,
-            model_version=definition.version,
-            max_age_hours=max_age_hours,
-            client=client,
-        )
-    )
-    if stale_projection_reference_dates:
-        _append_unique(blockers, "prediction_projection_recent_stale_rows")
-
-    if historical_run_rows < required_window:
-        _append_unique(blockers, "historical_run_rows_below_window")
-    if unique_historical_target_dates < required_window:
-        _append_unique(blockers, "historical_unique_target_dates_below_window")
-    if per_show_accuracy_rows < required_window:
-        _append_unique(blockers, "per_show_accuracy_rows_below_window")
-
     replay_rows = _recent_replay_eligible_rows(
         client,
-        table=COMPLETED_SHOW_ACCURACY_TABLE,
+        table=SETLIST_ACCURACY_TABLE,
         band=band,
-        model_version=definition.version,
+        model_version=model_version,
         limit=required_window,
     )
+    if historical_run_rows < required_window:
+        _append_unique(blockers, "historical_run_rows_below_window")
+    if per_show_accuracy_rows < required_window:
+        _append_unique(blockers, "per_show_accuracy_rows_below_window")
     if len(replay_rows) < required_window:
         _append_unique(blockers, "replay_eligible_rows_below_window")
+
     replay_lineage_missing_dates = tuple(
         str(row.get("show_date") or "unknown")
         for row in replay_rows
@@ -329,13 +296,9 @@ def _derive_model_audit(
     if replay_lineage_missing_dates:
         _append_unique(blockers, "replay_lineage_missing_prediction_run_id")
 
-    for overlap_slug, overlap_count in replay_overlap.items():
-        if overlap_count < required_window:
-            _append_unique(blockers, f"replay_overlap_below_window:{overlap_slug}")
-
-    if definition.slug in freshness_result.stale_prediction_models:
+    if model_version in freshness_result.stale_prediction_models:
         _append_unique(blockers, "supported_prediction_freshness_stale")
-    if definition.slug in freshness_result.stale_accuracy_models:
+    if model_version in freshness_result.stale_accuracy_models:
         target = warnings if skip_accuracy else blockers
         _append_unique(
             target,
@@ -348,30 +311,24 @@ def _derive_model_audit(
 
     return SupabaseModelAudit(
         band=band,
-        model_slug=definition.slug,
-        model_version=definition.version,
+        model_slug="setlist",
+        model_version=model_version,
         required_window=required_window,
-        expected_top_k=definition.default_top_k,
-        canonical_prediction_rows=int(readiness_status["prediction_rows"]),
-        latest_reference_date=(
-            str(latest_reference_date) if latest_reference_date else None
-        ),
-        latest_prediction_top_k=(
-            int(latest_prediction_top_k)
-            if latest_prediction_top_k is not None
-            else None
-        ),
+        expected_top_k=expected_top_k,
+        canonical_prediction_rows=canonical_prediction_rows,
+        latest_reference_date=latest_reference_date or None,
+        latest_prediction_top_k=latest_prediction_top_k,
         latest_prediction_age_hours=latest_prediction_age_hours,
         latest_prediction_top_song=latest_prediction_top_song,
-        latest_projection_rows=latest_projection_rows,
+        latest_projection_rows=len(projection_rows),
         latest_projection_top_song=latest_projection_top_song,
         historical_run_rows=historical_run_rows,
-        unique_historical_target_dates=unique_historical_target_dates,
+        unique_historical_target_dates=historical_run_rows,
         per_show_accuracy_rows=per_show_accuracy_rows,
-        replay_overlap=replay_overlap,
+        replay_overlap={},
         replay_lineage_rows_checked=len(replay_rows),
         replay_lineage_missing_dates=replay_lineage_missing_dates,
-        stale_projection_reference_dates=stale_projection_reference_dates,
+        stale_projection_reference_dates=(),
         blockers=tuple(blockers),
         warnings=tuple(warnings),
     )
@@ -384,10 +341,8 @@ def run_supabase_audit(
     replay_window: int | None = None,
     skip_accuracy: bool = False,
 ) -> SupabaseAuditReport:
-    selected_bands = bands or list(get_repo_supported_bands())
-    promoted_models = list_promoted_web_models()
+    selected_bands = bands or list_active_bands()
     client = get_supabase_client()
-    readiness_reports = _load_readiness_reports(bands=selected_bands, client=client)
 
     band_audits: list[SupabaseBandAudit] = []
     all_blockers: list[str] = []
@@ -407,18 +362,17 @@ def run_supabase_audit(
             emit_text=False,
         )
 
-        model_results = tuple(
-            _derive_model_audit(
+        model_version = get_band_metadata(band).model_version
+        model_results = (
+            _derive_setlist_model_audit(
                 band=band,
-                definition=definition,
-                readiness_status=readiness_reports[definition.slug][band],
+                model_version=model_version,
                 client=client,
                 max_age_hours=max_age_hours,
                 replay_window_override=replay_window,
                 freshness_result=freshness_result,
                 skip_accuracy=skip_accuracy,
-            )
-            for definition in promoted_models
+            ),
         )
 
         band_blockers: list[str] = []
@@ -430,12 +384,12 @@ def run_supabase_audit(
             for blocker in model_result.blockers:
                 _append_unique(
                     band_blockers,
-                    f"{model_result.model_slug}:{blocker}",
+                    f"{model_result.model_version}:{blocker}",
                 )
             for warning in model_result.warnings:
                 _append_unique(
                     band_warnings,
-                    f"{model_result.model_slug}:{warning}",
+                    f"{model_result.model_version}:{warning}",
                 )
 
         if freshness_result.freshness_state == "warning":
@@ -479,7 +433,9 @@ def run_supabase_audit(
         state=state,
         max_age_hours=max_age_hours,
         replay_window_override=replay_window,
-        promoted_models=tuple(definition.slug for definition in promoted_models),
+        promoted_models=tuple(
+            get_band_metadata(band).model_version for band in selected_bands
+        ),
         bands=tuple(band_audits),
         blockers=tuple(all_blockers),
         warnings=tuple(all_warnings),

@@ -13,7 +13,6 @@ on:
         options:
           - all
           - billy
-          - eggy
           - goose
           - phish
           - um
@@ -43,10 +42,9 @@ jobs:
           if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.band || 'all' }}" != "all" ]]; then
             BANDS_JSON='["${{ github.event.inputs.band }}"]'
           else
-            # Repo-authoritative automation band list. The Supabase `bands` table
-            # remains runtime metadata for website/data consumers, not the source
-            # of truth for which jobs this workflow executes.
-            BANDS_JSON=$(python -m scripts.get_all_bands)
+            # Active single-model bands. Eggy remains collected on legacy paths but
+            # is intentionally out of scope for the first single-model rollout.
+            BANDS_JSON='["goose","phish","wsp","billy","um"]'
           fi
           echo "bands=$BANDS_JSON" >> $GITHUB_OUTPUT
           echo "bands_list=$BANDS_JSON" >> $GITHUB_OUTPUT
@@ -263,14 +261,13 @@ jobs:
             echo "Consider running the collection script manually to fetch missing setlists."
           fi
           
-      - name: Generate Predictions (Notebook & Deal)
+      - name: Generate Predictions
         id: predictions
         if: steps.preflight.outputs.should_run_collection == 'true' && steps.collection.outputs.workflow_state != 'degraded'
         run: |
           echo "::group::Generating live next-show predictions for ${{ matrix.band }}"
 
-          uv run python scripts/generate_live_predictions.py --band ${{ matrix.band }} --model notebook
-          uv run python scripts/generate_live_predictions.py --band ${{ matrix.band }} --model deal
+          uv run python scripts/generate_live_predictions.py --band ${{ matrix.band }}
 
           echo "::endgroup::"
 

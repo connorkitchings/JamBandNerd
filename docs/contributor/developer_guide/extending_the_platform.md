@@ -50,9 +50,8 @@ Adding a new model follows a similar pattern.
    - `scripts/run_backtest.py`
    - `scripts/run_optimized_pipeline.py`
 4. **Create storage**: write live next-show rows to
-   `next_show_prediction_runs`/`next_show_prediction_songs`, and write retained
-   completed-show rows to `completed_show_prediction_runs` plus
-   `completed_show_accuracy`.
+   `setlist_predictions`/`setlist_prediction_songs`, and write retained
+   completed-show rows to `setlist_results` plus `setlist_accuracy`.
 5. **Document versioning**: define the `model_version` contract for the new
    model.
 

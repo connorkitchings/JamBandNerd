@@ -1,12 +1,10 @@
 from __future__ import annotations
 
-from dataclasses import replace
 from datetime import date
 
 import pytest
 
 from scripts import generate_live_predictions as module
-from src.jambandnerd.models.registry import get_model_definition
 
 
 class _Prediction:
@@ -40,35 +38,38 @@ def test_generate_live_predictions_dry_run_skips_writes(monkeypatch, capsys):
     )
     monkeypatch.setattr(module, "generate_model_data", lambda *a, **kw: object())
     monkeypatch.setattr(
-        module, "build_predictor", lambda slug, *, band, **kwargs: _PredictorStub()
+        module, "build_band_predictor", lambda band, **kwargs: _PredictorStub()
     )
     monkeypatch.setattr(
         module,
-        "get_model_definition",
-        lambda slug: replace(get_model_definition("notebook"), default_top_k=2),
+        "get_band_serializer",
+        lambda band: (
+            lambda preds: [
+                {"rank": index + 1, "song_name": pred.song_name}
+                for index, pred in enumerate(preds)
+            ]
+        ),
     )
     monkeypatch.setattr(
         module,
-        "serialize_model_predictions",
-        lambda slug, preds: [
-            {"rank": index + 1, "song_name": pred.song_name}
-            for index, pred in enumerate(preds)
-        ],
+        "get_band_metadata",
+        lambda band: type(
+            "Metadata", (), {"model_version": "goose_baseline_v1", "default_top_k": 2}
+        )(),
     )
     monkeypatch.setattr(
         module,
-        "upsert_next_show_prediction_run",
+        "upsert_setlist_prediction_run",
         lambda **kwargs: pytest.fail("dry run should not upsert live run"),
     )
     monkeypatch.setattr(
         module,
-        "replace_next_show_prediction_projection",
+        "replace_setlist_prediction_projection",
         lambda **kwargs: pytest.fail("dry run should not replace projection"),
     )
 
     result = module.generate_live_predictions(
         band="goose",
-        model="notebook",
         today=date(2026, 4, 24),
         dry_run=True,
     )

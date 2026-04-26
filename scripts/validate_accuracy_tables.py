@@ -7,13 +7,13 @@ from datetime import datetime, timezone
 from typing import Dict, Iterable, List
 
 from jambandnerd.config import (
-    COMPLETED_SHOW_ACCURACY_TABLE,
-    COMPLETED_SHOW_PREDICTION_RUNS_TABLE,
+    SETLIST_ACCURACY_TABLE,
+    SETLIST_RESULTS_TABLE,
 )
-from jambandnerd.config.bands import get_repo_supported_bands
 from jambandnerd.db.connection import get_supabase_client
 from jambandnerd.models.registry import (
-    list_accuracy_validation_models,
+    get_band_metadata,
+    list_active_bands,
 )
 
 
@@ -157,75 +157,67 @@ def validate_accuracy(
 ) -> int:
     client = get_supabase_client()
 
-    band_list = list(bands) or list(get_repo_supported_bands())
+    band_list = list(bands) or list_active_bands()
     failures = 0
 
-    for definition in list_accuracy_validation_models():
-        model_slug = definition.slug
-        model_version = definition.version
-        required_replay_window = replay_window or max(
-            definition.readiness_windows or (50,)
+    per_show_table = SETLIST_ACCURACY_TABLE
+    print(f"\n== Validating {per_show_table} ==")
+    for band in band_list:
+        metadata = get_band_metadata(band)
+        model_version = metadata.model_version
+        required_replay_window = replay_window or 50
+        per_show_row = _latest_row(
+            client,
+            table=per_show_table,
+            band=band,
+            model_version=model_version,
         )
-        per_show_table = COMPLETED_SHOW_ACCURACY_TABLE
-        print(f"\n== Validating {model_slug} accuracy ({model_version}) ==")
+        if skip_freshness:
+            failures += _validate_row_skip_freshness(
+                band=band,
+                label="per-show accuracy",
+                row=per_show_row,
+            )
+        else:
+            failures += _validate_row(
+                band=band,
+                label="per-show accuracy",
+                row=per_show_row,
+                max_age_hours=max_age_hours,
+                required_fields=("show_date",),
+            )
 
-        for band in band_list:
-            per_show_row = _latest_row(
+        if validate_replay:
+            replay_rows = _recent_replay_eligible_rows(
                 client,
                 table=per_show_table,
                 band=band,
                 model_version=model_version,
+                limit=required_replay_window,
             )
-            if skip_freshness:
-                failures += _validate_row_skip_freshness(
-                    band=band,
-                    label="per-show accuracy",
-                    row=per_show_row,
+            if not replay_rows:
+                print(f"[FAIL] {band}: no replay lineage rows found")
+                failures += 1
+            elif len(replay_rows) != required_replay_window:
+                print(
+                    f"[FAIL] {band}: replay lineage has {len(replay_rows)}/{required_replay_window} retained eligible rows"
                 )
+                failures += 1
             else:
-                failures += _validate_row(
-                    band=band,
-                    label="per-show accuracy",
-                    row=per_show_row,
-                    max_age_hours=max_age_hours,
-                    required_fields=("show_date",),
-                )
-
-            if validate_replay:
-                replay_rows = _recent_replay_eligible_rows(
-                    client,
-                    table=per_show_table,
-                    band=band,
-                    model_version=model_version,
-                    limit=required_replay_window,
-                )
-                if not replay_rows:
-                    print(
-                        f"[FAIL] {band}: no replay lineage rows found for {model_slug}"
-                    )
-                    failures += 1
-                elif len(replay_rows) != required_replay_window:
-                    print(
-                        f"[FAIL] {band}: replay lineage has {len(replay_rows)}/{required_replay_window} retained eligible rows for {model_slug}"
-                    )
+                missing_links = [
+                    str(row.get("show_date") or "unknown")
+                    for row in replay_rows
+                    if row.get("prediction_run_id") is None
+                ]
+                if missing_links:
+                    preview = ", ".join(missing_links[:3])
+                    suffix = "..." if len(missing_links) > 3 else ""
+                    print(f"[FAIL] {band}: replay lineage missing on {preview}{suffix}")
                     failures += 1
                 else:
-                    missing_links = [
-                        str(row.get("show_date") or "unknown")
-                        for row in replay_rows
-                        if row.get("prediction_run_id") is None
-                    ]
-                    if missing_links:
-                        preview = ", ".join(missing_links[:3])
-                        suffix = "..." if len(missing_links) > 3 else ""
-                        print(
-                            f"[FAIL] {band}: replay lineage missing for {model_slug} on {preview}{suffix}"
-                        )
-                        failures += 1
-                    else:
-                        print(
-                            f"[OK] {band}: replay lineage ready for {model_slug} across {len(replay_rows)} recent shows via {COMPLETED_SHOW_PREDICTION_RUNS_TABLE}"
-                        )
+                    print(
+                        f"[OK] {band}: replay lineage ready across {len(replay_rows)} recent shows via {SETLIST_RESULTS_TABLE}"
+                    )
 
     return failures
 

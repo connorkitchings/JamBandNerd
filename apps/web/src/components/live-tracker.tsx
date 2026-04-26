@@ -34,7 +34,7 @@ export function LiveTracker({
         {
           event: "*",
           schema: "public",
-          table: "next_show_prediction_songs",
+          table: "prediction_songs",
           filter: `band=eq.${band}`,
         },
         (payload) => {

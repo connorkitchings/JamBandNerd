@@ -416,6 +416,285 @@ def replace_prediction_projection(
     _cleanup_stale_prediction_songs(band=band, model_version=model_version)
 
 
+def _resolve_upserted_id(
+    *,
+    table_name: str,
+    response_data: Sequence[dict[str, Any]],
+    filters: dict[str, Any],
+    missing_message: str,
+) -> int:
+    if response_data and response_data[0].get("id") is not None:
+        return int(response_data[0]["id"])
+
+    client = get_supabase_client()
+    query = client.table(table_name).select("id")
+    for column, value in filters.items():
+        query = query.eq(column, value)
+    rows = query.limit(1).execute().data or []
+    if not rows or rows[0].get("id") is None:
+        raise RuntimeError(missing_message)
+    return int(rows[0]["id"])
+
+
+def upsert_setlist_prediction_run(
+    *,
+    band: str,
+    model_version: str,
+    target_show_key: str,
+    target_show_date: str,
+    reference_date: str,
+    generated_at: str,
+    predictions: Sequence[dict[str, Any]],
+    table_name: str = "setlist_predictions",
+) -> int:
+    """Upsert the active single-model next-show run and return its id."""
+    client = get_supabase_client()
+    row = {
+        "band": band,
+        "target_show_key": target_show_key,
+        "target_show_date": target_show_date,
+        "reference_date": reference_date,
+        "model_version": model_version,
+        "generated_at": generated_at,
+        "top_k": len(predictions),
+        "predictions": list(predictions),
+    }
+    response = (
+        client.table(table_name)
+        .upsert(
+            {str(key): _clean_record_value(value) for key, value in row.items()},
+            on_conflict="band,model_version,target_show_key",
+        )
+        .execute()
+    )
+    run_id = _resolve_upserted_id(
+        table_name=table_name,
+        response_data=response.data or [],
+        filters={
+            "band": band,
+            "model_version": model_version,
+            "target_show_key": target_show_key,
+        },
+        missing_message="Failed to resolve setlist_predictions.id",
+    )
+
+    stale = (
+        client.table(table_name)
+        .select("target_show_key")
+        .eq("band", band)
+        .eq("model_version", model_version)
+        .execute()
+    )
+    for item in stale.data or []:
+        stale_key = item.get("target_show_key")
+        if not stale_key or stale_key == target_show_key:
+            continue
+        (
+            client.table(table_name)
+            .delete()
+            .eq("band", band)
+            .eq("model_version", model_version)
+            .eq("target_show_key", stale_key)
+            .execute()
+        )
+    return run_id
+
+
+def _prediction_score(prediction: dict[str, Any]) -> float | None:
+    for key in ("score", "probability", "predicted_probability"):
+        value = prediction.get(key)
+        if value is None:
+            continue
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return None
+    return None
+
+
+def replace_setlist_prediction_projection(
+    *,
+    band: str,
+    model_version: str,
+    target_show_key: str,
+    predictions: Sequence[dict[str, Any]],
+    prediction_run_id: int | None = None,
+    table_name: str = "setlist_prediction_songs",
+) -> None:
+    """Replace the single-model per-song projection for one active setlist run."""
+    if not predictions:
+        raise RuntimeError(
+            "Refusing to replace setlist prediction projection with no "
+            f"predictions for {band}/{model_version}."
+        )
+
+    client = get_supabase_client()
+    (
+        client.table(table_name)
+        .delete()
+        .eq("band", band)
+        .eq("model_version", model_version)
+        .eq("target_show_key", target_show_key)
+        .execute()
+    )
+    rows = [
+        {
+            "prediction_run_id": prediction_run_id,
+            "band": band,
+            "model_version": model_version,
+            "target_show_key": target_show_key,
+            "rank": prediction["rank"],
+            "song_name": prediction["song_name"],
+            "score": _prediction_score(prediction),
+            "prediction_payload": prediction,
+        }
+        for prediction in predictions
+    ]
+    bulk_insert_dataframe(table_name, pd.DataFrame(rows))
+
+
+def upsert_setlist_result(
+    *,
+    band: str,
+    model_version: str,
+    target_show_key: str,
+    target_show_date: str,
+    reference_date: str,
+    generated_at: str,
+    predictions: Sequence[dict[str, Any]],
+    actual_songs: Sequence[str],
+    table_name: str = "setlist_results",
+) -> int:
+    """Upsert a retained completed-show setlist result and return its id."""
+    client = get_supabase_client()
+    row = {
+        "band": band,
+        "target_show_key": target_show_key,
+        "target_show_date": target_show_date,
+        "reference_date": reference_date,
+        "model_version": model_version,
+        "generated_at": generated_at,
+        "top_k": len(predictions),
+        "predictions": list(predictions),
+        "actual_songs": list(actual_songs),
+        "actual_song_count": len(actual_songs),
+    }
+    response = (
+        client.table(table_name)
+        .upsert(
+            {str(key): _clean_record_value(value) for key, value in row.items()},
+            on_conflict="band,model_version,target_show_key",
+        )
+        .execute()
+    )
+    return _resolve_upserted_id(
+        table_name=table_name,
+        response_data=response.data or [],
+        filters={
+            "band": band,
+            "model_version": model_version,
+            "target_show_key": target_show_key,
+        },
+        missing_message="Failed to resolve setlist_results.id",
+    )
+
+
+def upsert_setlist_accuracy_dataframe(
+    df: pd.DataFrame,
+    *,
+    table_name: str = "setlist_accuracy",
+) -> None:
+    """Upsert single-model per-show accuracy rows."""
+    upsert_dataframe(
+        table_name=table_name,
+        df=df,
+        conflict_columns=["band", "model_version", "target_show_key"],
+    )
+
+
+def prune_setlist_corpus(
+    *,
+    band: str,
+    model_version: str,
+    retained_target_show_keys: Iterable[str],
+    results_table: str = "setlist_results",
+    accuracy_table: str = "setlist_accuracy",
+    allow_empty_retained: bool = False,
+) -> int:
+    """Hard-delete setlist result/accuracy rows outside the retained corpus."""
+    retained = {str(key) for key in retained_target_show_keys}
+    if not retained and not allow_empty_retained:
+        raise RuntimeError(
+            "Refusing to prune setlist corpus with an empty retained key set "
+            f"for {band}/{model_version}."
+        )
+
+    client = get_supabase_client()
+    response = (
+        client.table(results_table)
+        .select("target_show_key")
+        .eq("band", band)
+        .eq("model_version", model_version)
+        .execute()
+    )
+    deleted = 0
+    for row in response.data or []:
+        target_show_key = row.get("target_show_key")
+        if not target_show_key or str(target_show_key) in retained:
+            continue
+        (
+            client.table(accuracy_table)
+            .delete()
+            .eq("band", band)
+            .eq("model_version", model_version)
+            .eq("target_show_key", target_show_key)
+            .execute()
+        )
+        (
+            client.table(results_table)
+            .delete()
+            .eq("band", band)
+            .eq("model_version", model_version)
+            .eq("target_show_key", target_show_key)
+            .execute()
+        )
+        deleted += 1
+    return deleted
+
+
+def fetch_scored_target_show_keys(
+    band: str,
+    model_version: str,
+    *,
+    candidate_target_show_keys: Iterable[str],
+    table_name: str = "setlist_accuracy",
+) -> set[str]:
+    """Return candidate target_show_key values already scored in setlist_accuracy."""
+    unique_keys = list(dict.fromkeys(str(key) for key in candidate_target_show_keys))
+    if not unique_keys:
+        return set()
+
+    client = get_supabase_client()
+    rows: list[dict[str, Any]] = []
+    chunk_size = 200
+    for start in range(0, len(unique_keys), chunk_size):
+        chunk = unique_keys[start : start + chunk_size]
+        response = (
+            client.table(table_name)
+            .select("target_show_key")
+            .eq("band", band)
+            .eq("model_version", model_version)
+            .in_("target_show_key", chunk)
+            .execute()
+        )
+        rows.extend(response.data or [])
+    return {
+        str(row["target_show_key"])
+        for row in rows
+        if row.get("target_show_key") is not None
+    }
+
+
 def upsert_next_show_prediction_run(
     *,
     band: str,

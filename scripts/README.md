@@ -8,13 +8,13 @@ admin/diagnostic/manual utilities.
 These are the canonical scripts used by docs and GitHub Actions:
 
 - `run_optimized_pipeline.py` — local helper runner for one band or `all`; mirrors the daily workflow sequence, but GitHub Actions YAML is the canonical orchestrator. If collection preflight selects verify-only mode, prediction/backtest work is skipped unless `--force` is passed.
-- `generate_live_predictions.py` — generate active live next-show predictions for `--band` and `--model`
+- `generate_live_predictions.py` — generate active live next-show predictions for `--band` using that band's registered model version
 - `sync_retained_prediction_corpus.py` — compute and prune the retained last-50 completed-show prediction/metric corpus
 - `run_backtest.py` — scoring helper used by the retained corpus sync; supports local raw-table snapshots via `--snapshot-root`
 - `verify_data_freshness.py` — CI data-quality check for recent missing setlists
 - `generate_pipeline_summary.py` — GitHub Actions monitoring summary for recent completed-show freshness and prediction coverage
 - `check_supported_model_freshness.py` — audit supported prediction/accuracy freshness for one band and emit GitHub Actions outputs without failing early
-- `validate_prediction_tables.py` — live prediction freshness/JSON integrity check using the latest row by `generated_at`, plus `next_show_prediction_songs` consistency checks
+- `validate_prediction_tables.py` — live prediction freshness/JSON integrity check using the latest row by `generated_at`, plus `setlist_prediction_songs` consistency checks
 - `validate_accuracy_tables.py` — per-show accuracy freshness/presence check, plus replay-lineage validation for recent scored shows
 - `audit_supabase_tables.py` — canonical website-facing Supabase audit that combines live prediction completeness, replay/history coverage, supported-model freshness, and recent raw setlist completeness into one read-only report
 - `collection_preflight.py` — classify collection mode and execution mode before the collector starts

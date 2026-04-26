@@ -239,20 +239,21 @@ def test_compare_models_candidate_notebook_matches_backtest_metrics(monkeypatch)
     captured: dict[str, pd.DataFrame] = {}
     monkeypatch.setattr(
         backtest_module,
-        "upsert_completed_show_prediction_run",
+        "upsert_setlist_result",
         lambda **kwargs: 101,
     )
     monkeypatch.setattr(
         backtest_module,
-        "upsert_dataframe",
-        lambda table_name, df, conflict_columns: captured.update({"df": df.copy()}),
+        "upsert_setlist_accuracy_dataframe",
+        lambda df, table_name: captured.update({"df": df.copy()}),
     )
     monkeypatch.setattr(
         backtest_module, "fetch_scored_show_ids", lambda *a, **kw: set()
     )
     monkeypatch.setattr(
-        backtest_module, "prune_completed_show_corpus", lambda **kwargs: None
+        backtest_module, "fetch_scored_target_show_keys", lambda *a, **kw: set()
     )
+    monkeypatch.setattr(backtest_module, "prune_setlist_corpus", lambda **kwargs: None)
 
     backtest_module.run_backtest(
         band="goose",
@@ -273,7 +274,7 @@ def test_compare_models_candidate_notebook_matches_backtest_metrics(monkeypatch)
         include_candidate_diagnostics=False,
     )
 
-    expected_recall = captured["df"]["k10_recall"].mean()
+    expected_recall = captured["df"]["recall_10"].mean()
     actual_recall = report["windows"]["last_2"]["metrics_by_band"]["goose"]["notebook"][
         "metrics"
     ]["k10"]["recall"]

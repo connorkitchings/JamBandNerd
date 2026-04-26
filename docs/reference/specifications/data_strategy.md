@@ -197,22 +197,21 @@ Any new model must consume the same leakage-safe ordering and cutoff rules.
 
 Prediction storage is split by product intent.
 
-Live next-show predictions use `next_show_prediction_runs` as the canonical run
-table and `next_show_prediction_songs` as the derived per-song projection. These
+Live next-show predictions use `setlist_predictions` as the canonical run
+table and `setlist_prediction_songs` as the derived per-song projection. These
 tables contain only active next-show boards. If no upcoming show is known, the
 pipeline does not write a live prediction row and the website shows no live
 board.
 
-Completed-show history uses `completed_show_prediction_runs` as the canonical
-retained run table and `completed_show_accuracy` as the retained per-show metric
+Completed-show history uses `setlist_results` as the canonical retained run
+table and `setlist_accuracy` as the retained per-show metric
 table. The active corpus is exactly the last 50 eligible completed shows per
-band/model; rows outside that corpus are hard-deleted from the derived
+band model version; rows outside that corpus are hard-deleted from the derived
 prediction/accuracy storage.
 
 The live canonical row includes:
 
 - `band`
-- `model_slug`
 - `target_show_key`
 - `target_show_date`
 - `reference_date`
@@ -226,8 +225,8 @@ The completed-show canonical row additionally includes `actual_songs` and
 
 ### Accuracy storage
 
-- `completed_show_accuracy` is the canonical granular evaluation store.
-- new `completed_show_accuracy` rows link to `completed_show_prediction_runs` through
+- `setlist_accuracy` is the canonical granular evaluation store.
+- new `setlist_accuracy` rows link to `setlist_results` through
   `prediction_run_id`
 - pipeline validation checks that exactly the retained last-50 rows carry
   replay lineage, so replay readiness is part of normal data health.
@@ -276,36 +275,36 @@ New band onboarding workflow:
 
 ## Completed Prediction Runs (Replay Lineage)
 
-The `completed_show_prediction_runs` table preserves exact prediction boards for
+The `setlist_results` table preserves exact prediction boards for
 the retained completed-show corpus, enabling the Replay feature. Each row stores:
 
-- `band`, `model_slug`, `model_version`: prediction context
+- `band`, `model_version`: prediction context
 - `reference_date`: when the prediction was made
 - `target_show_id`, `target_show_date`: the show being predicted
 - `actual_songs`: JSON snapshot of the setlist at scoring time
 - `predictions`: exact ranked JSON payload emitted by the model
 - `run_type`: either 'backtest' or 'live'
 
-The `completed_show_accuracy` table links back to `completed_show_prediction_runs` via
+The `setlist_accuracy` table links back to `setlist_results` via
 `prediction_run_id`, creating full lineage from evaluation back to the original prediction.
 
 The website's `/replay`, `/performance`, `/compare`, and `/last-show` surfaces
-read only this retained completed-show corpus. Notebook and Deal both require
-the same 50-show retained window.
+read only this retained completed-show corpus. Each active band model version
+requires the same 50-show retained window.
 
 ## Per-Song Prediction Projection
 
-`next_show_prediction_songs` is a derived table storing one row per live
+`setlist_prediction_songs` is a derived table storing one row per live
 predicted song for SQL-friendly reads and realtime updates. It is rebuildable
-from `next_show_prediction_runs`.
+from `setlist_predictions`.
 
 Schema:
-- `band`, `model_slug`, `model_version`, `reference_date`: prediction context
+- `band`, `model_version`, `target_show_key`: prediction context
 - `predicted_at`: when the prediction was generated
 - `rank`, `song_name`, `top_k`: song position in the prediction board
 - `prediction_payload`: model-specific JSON object for that ranked song
 
-Unique constraint on `(band, model_slug, model_version, reference_date, rank)`
+Unique constraint on `(band, model_version, target_show_key, rank)`
 ensures deterministic upserts.
 
 ## Files To Treat As Current References

@@ -1,4 +1,4 @@
-"""Read-only rollout checks for split prediction storage tables."""
+"""Read-only rollout checks for single-model setlist prediction tables."""
 
 from __future__ import annotations
 
@@ -14,65 +14,57 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, project_root)
 
 from jambandnerd.config import (
-    COMPLETED_SHOW_ACCURACY_TABLE,
-    COMPLETED_SHOW_PREDICTION_RUNS_TABLE,
-    NEXT_SHOW_PREDICTION_RUNS_TABLE,
-    NEXT_SHOW_PREDICTION_SONGS_TABLE,
+    SETLIST_ACCURACY_TABLE,
+    SETLIST_PREDICTION_SONGS_TABLE,
+    SETLIST_PREDICTIONS_TABLE,
+    SETLIST_RESULTS_TABLE,
 )
-from jambandnerd.config.bands import get_repo_supported_bands
 from jambandnerd.db.connection import get_supabase_client
 from jambandnerd.db.operations import get_table_schema
-from jambandnerd.models.registry import list_promoted_web_models
+from jambandnerd.models.registry import get_band_metadata, list_active_bands
 from scripts.audit_supabase_tables import run_supabase_audit
 
 ExpectedState = Literal["any", "empty", "populated"]
 
 TABLE_REQUIRED_COLUMNS: dict[str, tuple[str, ...]] = {
-    NEXT_SHOW_PREDICTION_RUNS_TABLE: (
+    SETLIST_PREDICTIONS_TABLE: (
         "id",
         "band",
-        "model_slug",
-        "model_version",
         "target_show_key",
         "target_show_date",
         "reference_date",
+        "model_version",
         "generated_at",
         "top_k",
         "predictions",
     ),
-    NEXT_SHOW_PREDICTION_SONGS_TABLE: (
+    SETLIST_PREDICTION_SONGS_TABLE: (
         "id",
         "prediction_run_id",
         "band",
-        "model_slug",
         "model_version",
         "target_show_key",
-        "target_show_date",
-        "reference_date",
-        "generated_at",
         "rank",
         "song_name",
-        "top_k",
+        "score",
         "prediction_payload",
     ),
-    COMPLETED_SHOW_PREDICTION_RUNS_TABLE: (
+    SETLIST_RESULTS_TABLE: (
         "id",
         "band",
-        "model_slug",
-        "model_version",
         "target_show_key",
         "target_show_date",
         "reference_date",
+        "model_version",
         "generated_at",
-        "actual_songs",
-        "actual_song_count",
         "top_k",
         "predictions",
+        "actual_songs",
+        "actual_song_count",
     ),
-    COMPLETED_SHOW_ACCURACY_TABLE: (
+    SETLIST_ACCURACY_TABLE: (
         "id",
         "band",
-        "model_slug",
         "model_version",
         "show_id",
         "target_show_key",
@@ -82,21 +74,13 @@ TABLE_REQUIRED_COLUMNS: dict[str, tuple[str, ...]] = {
         "prediction_run_id",
         "actual_song_count",
         "evaluated_at",
-        "k10_hit",
-        "k10_matches",
-        "k10_precision",
-        "k10_recall",
-        "k10_f1",
-        "k25_hit",
-        "k25_matches",
-        "k25_precision",
-        "k25_recall",
-        "k25_f1",
-        "k50_hit",
-        "k50_matches",
-        "k50_precision",
-        "k50_recall",
-        "k50_f1",
+        "p10",
+        "p25",
+        "p50",
+        "recall_10",
+        "recall_25",
+        "recall_50",
+        "weighted_precision_score",
     ),
 }
 
@@ -114,12 +98,11 @@ class TableRolloutStatus:
 @dataclass(frozen=True)
 class BandModelRolloutStatus:
     band: str
-    model_slug: str
     model_version: str
-    next_show_prediction_runs: int | None
-    next_show_prediction_songs: int | None
-    completed_show_prediction_runs: int | None
-    completed_show_accuracy: int | None
+    setlist_predictions: int | None
+    setlist_prediction_songs: int | None
+    setlist_results: int | None
+    setlist_accuracy: int | None
 
 
 @dataclass(frozen=True)
@@ -127,7 +110,7 @@ class PredictionStorageRolloutReport:
     state: str
     expected_state: ExpectedState
     bands: tuple[str, ...]
-    promoted_models: tuple[str, ...]
+    model_versions: tuple[str, ...]
     tables: tuple[TableRolloutStatus, ...]
     band_models: tuple[BandModelRolloutStatus, ...]
     production_audit_state: str | None
@@ -190,30 +173,23 @@ def _band_model_status(
     client,
     *,
     band: str,
-    model_slug: str,
     model_version: str,
 ) -> BandModelRolloutStatus:
     filters = {
         "band": band,
-        "model_slug": model_slug,
         "model_version": model_version,
     }
     return BandModelRolloutStatus(
         band=band,
-        model_slug=model_slug,
         model_version=model_version,
-        next_show_prediction_runs=_count_rows(
-            client, NEXT_SHOW_PREDICTION_RUNS_TABLE, filters=filters
+        setlist_predictions=_count_rows(
+            client, SETLIST_PREDICTIONS_TABLE, filters=filters
         ),
-        next_show_prediction_songs=_count_rows(
-            client, NEXT_SHOW_PREDICTION_SONGS_TABLE, filters=filters
+        setlist_prediction_songs=_count_rows(
+            client, SETLIST_PREDICTION_SONGS_TABLE, filters=filters
         ),
-        completed_show_prediction_runs=_count_rows(
-            client, COMPLETED_SHOW_PREDICTION_RUNS_TABLE, filters=filters
-        ),
-        completed_show_accuracy=_count_rows(
-            client, COMPLETED_SHOW_ACCURACY_TABLE, filters=filters
-        ),
+        setlist_results=_count_rows(client, SETLIST_RESULTS_TABLE, filters=filters),
+        setlist_accuracy=_count_rows(client, SETLIST_ACCURACY_TABLE, filters=filters),
     )
 
 
@@ -223,8 +199,10 @@ def check_prediction_storage_rollout(
     expected_state: ExpectedState = "any",
     client=None,
 ) -> PredictionStorageRolloutReport:
-    selected_bands = tuple(bands or list(get_repo_supported_bands()))
-    promoted_models = tuple(list_promoted_web_models())
+    selected_bands = tuple(bands or list_active_bands())
+    model_versions = tuple(
+        get_band_metadata(band).model_version for band in selected_bands
+    )
     client = client or get_supabase_client()
     blockers: list[str] = []
     warnings: list[str] = []
@@ -240,15 +218,13 @@ def check_prediction_storage_rollout(
     band_model_statuses: list[BandModelRolloutStatus] = []
     if not blockers:
         for band in selected_bands:
-            for definition in promoted_models:
-                band_model_statuses.append(
-                    _band_model_status(
-                        client,
-                        band=band,
-                        model_slug=definition.slug,
-                        model_version=definition.version,
-                    )
+            band_model_statuses.append(
+                _band_model_status(
+                    client,
+                    band=band,
+                    model_version=get_band_metadata(band).model_version,
                 )
+            )
 
     if expected_state == "empty":
         for status in tables:
@@ -269,7 +245,7 @@ def check_prediction_storage_rollout(
         state=state,
         expected_state=expected_state,
         bands=selected_bands,
-        promoted_models=tuple(definition.slug for definition in promoted_models),
+        model_versions=model_versions,
         tables=tables,
         band_models=tuple(band_model_statuses),
         production_audit_state=production_audit_state,
@@ -292,7 +268,7 @@ def _print_report(report: PredictionStorageRolloutReport) -> None:
         f"Prediction storage rollout state={report.state} "
         f"expected_state={report.expected_state} "
         f"bands={','.join(report.bands)} "
-        f"promoted_models={','.join(report.promoted_models)}"
+        f"model_versions={','.join(report.model_versions)}"
     )
     for table in report.tables:
         schema = "checked" if table.schema_checked else "not checked"
@@ -303,23 +279,23 @@ def _print_report(report: PredictionStorageRolloutReport) -> None:
         )
     for status in report.band_models:
         print(
-            f"- {status.band}/{status.model_slug}: "
-            f"live_runs={status.next_show_prediction_runs} "
-            f"live_songs={status.next_show_prediction_songs} "
-            f"completed_runs={status.completed_show_prediction_runs} "
-            f"accuracy={status.completed_show_accuracy}"
+            f"- {status.band}/{status.model_version}: "
+            f"predictions={status.setlist_predictions} "
+            f"songs={status.setlist_prediction_songs} "
+            f"results={status.setlist_results} "
+            f"accuracy={status.setlist_accuracy}"
         )
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Check split prediction storage rollout readiness."
+        description="Check single-model setlist prediction storage rollout readiness."
     )
     parser.add_argument(
         "--band",
         dest="bands",
         action="append",
-        choices=get_repo_supported_bands(),
+        choices=list_active_bands(),
         help="Band to check (repeat for multiple). Defaults to all supported bands.",
     )
     parser.add_argument(
