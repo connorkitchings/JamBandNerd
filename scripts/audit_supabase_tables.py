@@ -46,7 +46,6 @@ def _append_unique(items: list[str], value: str) -> None:
 @dataclass(frozen=True)
 class SupabaseModelAudit:
     band: str
-    model_slug: str
     model_version: str
     required_window: int
     expected_top_k: int
@@ -70,7 +69,6 @@ class SupabaseModelAudit:
     def as_dict(self) -> dict[str, object]:
         return {
             "band": self.band,
-            "model_slug": self.model_slug,
             "model_version": self.model_version,
             "required_window": self.required_window,
             "expected_top_k": self.expected_top_k,
@@ -311,7 +309,6 @@ def _derive_setlist_model_audit(
 
     return SupabaseModelAudit(
         band=band,
-        model_slug="setlist",
         model_version=model_version,
         required_window=required_window,
         expected_top_k=expected_top_k,
@@ -471,7 +468,7 @@ def _print_report(report: SupabaseAuditReport) -> None:
             )
         for model in band.models:
             print(
-                f"  - {model.model_slug}: predictions={model.canonical_prediction_rows} "
+                f"  - {model.model_version}: predictions={model.canonical_prediction_rows} "
                 f"projection_rows={model.latest_projection_rows} "
                 f"historical_dates={model.unique_historical_target_dates} "
                 f"accuracy_rows={model.per_show_accuracy_rows}"

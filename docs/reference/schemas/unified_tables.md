@@ -1,10 +1,19 @@
 # Unified Table Schemas
 
-This page documents the current shared prediction and accuracy table layouts
-used by the active pipeline. These schemas reflect the current implementation,
-not speculative future storage designs.
+This page documents all prediction and accuracy table layouts used by the
+JamBandNerd pipeline.
 
-## Prediction Tables
+> **Branch note (`feat/single-model-per-band`):** The active backend write
+> boundary on this branch is the `setlist_*` table family (see
+> [Setlist Tables (Phase A)](#setlist-tables-phase-a) below and
+> [ADR 0001](../../contributor/adr/0001-single-model-per-band.md)).
+> Legacy tables listed below remain populated by `main`/`dev` and continue
+> serving the live website until the frontend cutover completes. They are
+> read-only from the perspective of Phase A backend code.
+
+## Legacy Tables (read-only on this branch)
+
+### Prediction Tables
 
 Current prediction tables:
 
@@ -138,11 +147,11 @@ Notes:
 
 ---
 
-## Planned New Tables (feat/single-model-per-band branch)
+## Setlist Tables (Phase A)
 
-> These tables are the target schema for the single-model-per-band architecture.
-> They do not yet exist in production. See
-> `docs/contributor/adr/0001-single-model-per-band.md`.
+> These four tables are the active backend write boundary on
+> `feat/single-model-per-band`. They are created by
+> `supabase/migrations/20260425_create_setlist_tables.sql`.
 
 Key differences from legacy tables:
 
@@ -239,6 +248,7 @@ Notes:
 - `setlist_results` and `setlist_accuracy` replace
   `completed_show_prediction_runs` and `completed_show_accuracy`.
 - `weighted_precision_score` is the secondary metric:
-  `0.2 × p10 + 0.5 × p25 + 0.3 × p50` (weights TBD by Connor).
+  `0.2 × p10 + 0.7 × p25 + 0.1 × p50` (see `WEIGHTED_PRECISION_WEIGHTS` in
+  `src/jambandnerd/config/models.py`).
 - All four tables require RLS with `SELECT` for `anon`/`authenticated`,
   writes restricted to `service_role`.

@@ -4,13 +4,15 @@ on:
   workflow_dispatch:
     inputs:
       band:
-        description: "Band to track (goose or phish)"
+        description: "Band to track"
         required: true
         type: choice
         options:
           - goose
           - phish
           - wsp
+          - billy
+          - um
       date:
         description: "Target show date (YYYY-MM-DD)"
         required: true

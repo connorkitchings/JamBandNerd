@@ -60,6 +60,8 @@ DEAL_RETRAIN_INTERVAL_DAYS: Final[int] = 7
 
 ACTIVE_BANDS: Final[tuple[str, ...]] = ("goose", "phish", "wsp", "billy", "um")
 
+# Eggy is excluded from Phase A rollout; per-band top_n tuning (ADR 0001
+# §"Metric edge case") is deferred until Eggy onboards in a future phase.
 BAND_TOP_N: Final[dict[str, int]] = {band: 25 for band in ACTIVE_BANDS}
 
 WEIGHTED_PRECISION_WEIGHTS: Final[dict[str, float]] = {
@@ -67,3 +69,7 @@ WEIGHTED_PRECISION_WEIGHTS: Final[dict[str, float]] = {
     "p25": 0.7,
     "p50": 0.1,
 }
+
+# Phase B promotion gate (per ADR 0001)
+PHASE_B_MIN_BACKTEST_SHOWS: Final[int] = 50
+PHASE_B_MIN_PRECISION_AT_25_DELTA: Final[float] = 0.03

@@ -39,6 +39,7 @@ jobs:
       - id: set_bands
         run: |
           if [[ "${{ github.event.inputs.band }}" == "all" ]]; then
+            # Eggy excluded from Phase A single-model rollout (see config/models.py ACTIVE_BANDS)
             BANDS_JSON='["goose","phish","wsp","billy","um"]'
             echo "bands=$BANDS_JSON" >> $GITHUB_OUTPUT
           else

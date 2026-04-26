@@ -1,7 +1,9 @@
 # Predictions and Accuracy Schema
 
-This document defines the current storage contract for predictions and
-evaluation data.
+This document defines the storage contract for predictions and evaluation data
+on the `feat/single-model-per-band` branch. The active backend write boundary
+is the `setlist_*` table family; legacy tables remain read-only on this branch
+until the frontend cutover.
 
 ## Current Canonical Tables
 
