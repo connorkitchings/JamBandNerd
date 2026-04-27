@@ -54,9 +54,9 @@ website prediction board and realtime refresh logic. It is derived from
 ## Retained Completed-Show Storage
 
 `setlist_results` stores the exact ranked boards for the active
-last-50 completed-show corpus per band model version. It is the replay source
+last-100 completed-show corpus per band model version. It is the replay source
 of truth.
-Rows outside the retained 50-show corpus are hard-deleted by the retained corpus
+Rows outside the retained 100-show corpus are hard-deleted by the retained corpus
 sync.
 
 ### Notebook payload fields
@@ -142,7 +142,7 @@ the exact ranked board that was scored without overloading the live
 
 The active single-model path uses explicit per-band model version strings such as:
 
-- `goose_baseline_v1`
+- `goose_phase_b_v1`
 - `phish_baseline_v1`
 - `wsp_baseline_v1`
 
@@ -157,13 +157,13 @@ The active product architecture is split by intent:
 
 - live next-show rows in `setlist_predictions` plus
   `setlist_prediction_songs`
-- retained last-50 completed-show rows in `setlist_results` plus
-  `setlist_accuracy`
+- retained last-100 completed-show rows in `setlist_results` plus
+   `setlist_accuracy`
 
 Reasons:
 
 - live prediction reads cannot fall back to completed-show history
-- all model metrics share the same retained 50-show corpus
+- all model metrics share the same retained 100-show corpus
 - replay rows carry exact stored boards and actual setlists
 
 ### Deferred alternative

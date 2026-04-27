@@ -12,31 +12,11 @@ from jambandnerd.config.database import (
     NEXT_SHOW_PREDICTION_RUNS_TABLE,
     NEXT_SHOW_PREDICTION_SONGS_TABLE,
 )
-from jambandnerd.config.models import (
-    PHASE_B_MIN_BACKTEST_SHOWS,
-    PHASE_B_MIN_PRECISION_AT_25_DELTA,
-)
 from jambandnerd.db.connection import get_supabase_client
 from jambandnerd.models.registry import (
     get_model_definition,
     list_promoted_web_models,
 )
-
-
-def is_band_promotion_eligible(
-    p25_new: float,
-    p25_baseline: float,
-    n_shows: int,
-) -> bool:
-    """Return True if a Phase B model meets the ADR 0001 promotion gate.
-
-    Gate: precision@25 improves by >= 3% absolute over the best legacy baseline
-    across >= 50 backtested shows.
-    """
-    return (
-        n_shows >= PHASE_B_MIN_BACKTEST_SHOWS
-        and (p25_new - p25_baseline) >= PHASE_B_MIN_PRECISION_AT_25_DELTA
-    )
 
 
 @dataclass(frozen=True)

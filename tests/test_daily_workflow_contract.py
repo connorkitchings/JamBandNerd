@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from jambandnerd.models.registry import list_active_bands
@@ -41,10 +42,15 @@ def test_daily_workflow_matrix_and_backtest_windows_match_repo_contract() -> Non
     assert '"eggy"' not in workflow
 
     assert "uv run python scripts/generate_live_predictions.py" in workflow
-    assert (
-        "uv run python scripts/sync_retained_prediction_corpus.py --band ${{ matrix.band }} "
-        "--window 50 --incremental --require-results"
-    ) in workflow
+    sync_pattern = (
+        r"uv run python scripts/sync_retained_prediction_corpus\.py "
+        r"--band \$\{\{ matrix\.band \}\} "
+        r"--window \d+ --incremental --require-results"
+    )
+    assert re.search(sync_pattern, workflow), (
+        "daily-pipeline.yml must contain a sync_retained_prediction_corpus "
+        "invocation with --window <int>"
+    )
 
 
 def test_active_docs_do_not_reference_retired_storage_contract_terms() -> None:

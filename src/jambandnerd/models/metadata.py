@@ -31,7 +31,7 @@ class ModelMetadata:
     supports_backtest: bool
     lifecycle_stage: ModelLifecycleStage
     web_visibility: ModelWebVisibility
-    readiness_windows: tuple[int, ...] = (50,)
+    readiness_windows: tuple[int, ...] = (100,)
     readiness_baselines: tuple[str, ...] = ()
     default_top_k: int = 50
     notes: str | None = None
@@ -48,7 +48,7 @@ class BandMetadata:
 
 
 BAND_METADATA: tuple[BandMetadata, ...] = (
-    BandMetadata(band="goose", model_version="goose_baseline_v1"),
+    BandMetadata(band="goose", model_version="goose_phase_b_v1"),
     BandMetadata(band="phish", model_version="phish_baseline_v1"),
     BandMetadata(band="wsp", model_version="wsp_baseline_v1"),
     BandMetadata(band="billy", model_version="billy_baseline_v1"),
@@ -71,7 +71,7 @@ MODEL_METADATA: tuple[ModelMetadata, ...] = (
         supports_backtest=True,
         lifecycle_stage="web_promoted",
         web_visibility="promoted",
-        readiness_windows=(50,),
+        readiness_windows=(100,),
         readiness_baselines=(),
     ),
     ModelMetadata(
@@ -106,7 +106,7 @@ MODEL_METADATA: tuple[ModelMetadata, ...] = (
         supports_backtest=True,
         lifecycle_stage="web_promoted",
         web_visibility="promoted",
-        readiness_windows=(50,),
+        readiness_windows=(100,),
         readiness_baselines=("notebook",),
         notes="Promoted 2026-04-11. Replaces CK+.",
     ),

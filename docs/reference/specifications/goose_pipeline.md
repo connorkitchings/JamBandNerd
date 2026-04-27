@@ -53,18 +53,35 @@ Granular commands:
 ```bash
 uv run python scripts/run_goose_collection.py
 uv run python scripts/generate_live_predictions.py --band goose
-uv run python scripts/sync_retained_prediction_corpus.py --band goose --window 50
+uv run python scripts/sync_retained_prediction_corpus.py --band goose --window 100
 ```
 
 ## Prediction and Storage
 
+- Goose currently uses the Phase B band-owned predictor at
+  `src/jambandnerd/models/goose/model.py`.
+- The active Goose model version is `goose_phase_b_v1`.
 - live next-show predictions are stored in `setlist_predictions` with
   derived rows in `setlist_prediction_songs`
 - retained completed-show boards are stored in `setlist_results`
 - per-show metrics are stored in `setlist_accuracy`
 
-The active metric corpus is the last 50 eligible completed shows for Goose's
+The active metric corpus is the last 100 eligible completed shows for Goose's
 registered model version.
+
+## Local Model Development
+
+Use local raw-table snapshots for Goose model iteration instead of repeatedly
+reading or writing Supabase prediction tables:
+
+```bash
+uv run python scripts/export_backtest_snapshots.py --band goose --snapshot-root .snapshots/goose_phase_b
+uv run python scripts/run_backtest.py --band goose --shows 3 --snapshot-root .snapshots/goose_phase_b --dry-run --no-incremental --require-results
+```
+
+For promotion evidence, run the same backtest path with `--shows 50`. Keep
+`--dry-run --no-incremental` during model iteration to avoid Supabase writes
+and incremental checks.
 
 ## Integrity Expectations
 

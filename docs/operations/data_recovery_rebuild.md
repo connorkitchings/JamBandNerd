@@ -74,7 +74,7 @@ Use dry runs to rehearse the Goose payloads without mutating Supabase:
 
 ```bash
 uv run python scripts/generate_live_predictions.py --band goose --dry-run
-uv run python scripts/sync_retained_prediction_corpus.py --band goose --window 50 --dry-run --no-incremental
+uv run python scripts/sync_retained_prediction_corpus.py --band goose --window 100 --dry-run --no-incremental
 ```
 
 The retained-corpus command emits one progress line per scored show. This is
@@ -87,27 +87,27 @@ Regenerate the active live board for a band:
 uv run python scripts/generate_live_predictions.py --band goose
 ```
 
-Sync the retained last-50 completed-show corpus:
+Sync the retained last-100 completed-show corpus:
 
 ```bash
-uv run python scripts/sync_retained_prediction_corpus.py --band goose --window 50 --no-incremental
+uv run python scripts/sync_retained_prediction_corpus.py --band goose --window 100 --no-incremental
 ```
 
 For a full Phase A rollout, run the active bands one at a time so slow bands are
 observable and independently retryable:
 
 ```bash
-uv run python scripts/sync_retained_prediction_corpus.py --band goose --window 50 --no-incremental
-uv run python scripts/sync_retained_prediction_corpus.py --band phish --window 50 --no-incremental
-uv run python scripts/sync_retained_prediction_corpus.py --band wsp --window 50 --no-incremental
-uv run python scripts/sync_retained_prediction_corpus.py --band billy --window 50 --no-incremental
-uv run python scripts/sync_retained_prediction_corpus.py --band um --window 50 --no-incremental
+uv run python scripts/sync_retained_prediction_corpus.py --band goose --window 100 --no-incremental
+uv run python scripts/sync_retained_prediction_corpus.py --band phish --window 100 --no-incremental
+uv run python scripts/sync_retained_prediction_corpus.py --band wsp --window 100 --no-incremental
+uv run python scripts/sync_retained_prediction_corpus.py --band billy --window 100 --no-incremental
+uv run python scripts/sync_retained_prediction_corpus.py --band um --window 100 --no-incremental
 ```
 
 Sync all supported bands:
 
 ```bash
-uv run python scripts/sync_retained_prediction_corpus.py --band all --window 50 --no-incremental
+uv run python scripts/sync_retained_prediction_corpus.py --band all --window 100 --no-incremental
 ```
 
 ## Validation
@@ -119,7 +119,7 @@ After rebuild:
 - confirm `scripts/validate_prediction_tables.py` passes for rebuilt bands
 - confirm `setlist_prediction_songs` row counts match `top_k` for the latest
   live prediction run per band when an upcoming show exists
-- confirm `setlist_accuracy` has exactly 50 eligible rows per active band
+- confirm `setlist_accuracy` has exactly 100 eligible rows per active band
 - confirm `setlist_results` contains the matching scored board
   for a spot-checked retained completed show
 - spot-check the website performance/history surfaces for a numeric-ID band and

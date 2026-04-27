@@ -52,7 +52,7 @@ For debugging or more granular control, you can run individual pipeline componen
 
 - **Data Collection**: `run_goose_collection.py`, `run_phish_collection.py`, `run_wsp_collection.py`, `run_eggy_collection.py`, `run_billy_collection.py`, `run_um_collection.py`
 - **Live Prediction Generation**: `scripts/generate_live_predictions.py --band <band>`
-- **Retained Completed-Show Corpus**: `scripts/sync_retained_prediction_corpus.py --band <band> --window 50`
+- **Retained Completed-Show Corpus**: `scripts/sync_retained_prediction_corpus.py --band <band> --window 100`
 - **Backtesting & Accuracy internals**: `scripts/run_backtest.py --band <band>`
 
   The backtest script runs in **incremental mode by default**: it checks which shows in the target window are already scored and only computes the new ones. This makes daily reruns near-instant after the initial population.

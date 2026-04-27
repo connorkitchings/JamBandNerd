@@ -71,8 +71,8 @@ While the optimized pipeline is recommended, you can also run individual compone
 # Generate live next-show predictions for a single band
 uv run python scripts/generate_live_predictions.py --band phish
 
-# Sync the retained last-50 completed-show prediction and metric corpus
-uv run python scripts/sync_retained_prediction_corpus.py --band goose --window 50
+# Sync the retained last-100 completed-show prediction and metric corpus
+uv run python scripts/sync_retained_prediction_corpus.py --band goose --window 100
 
 # Backfill Eggy raw tables without validation warnings
 uv run python scripts/run_eggy_collection.py --skip-validation

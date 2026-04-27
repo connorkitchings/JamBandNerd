@@ -55,7 +55,7 @@ class _ClientStub:
 def _repeat_rows(
     *,
     stale_hours: int = 0,
-    count: int = 50,
+    count: int = 100,
     with_lineage: bool = True,
     actual_song_count: int = 12,
 ):
@@ -65,7 +65,7 @@ def _repeat_rows(
         rows.append(
             {
                 "band": "goose",
-                "model_version": "goose_baseline_v1",
+                "model_version": "goose_phase_b_v1",
                 "evaluated_at": now.isoformat(),
                 "show_date": f"2026-03-{index + 1:02d}",
                 "prediction_run_id": 1000 + index if with_lineage else None,

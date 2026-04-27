@@ -71,7 +71,7 @@ graph TD
 - **Primary metric**: precision@25 (top-25 predicted ∩ actual setlist, averaged
   across shows). Secondary: weighted average of precision@10/@25/@50.
 - `setlist_accuracy` is the target canonical evaluation table, keyed
-  `(band, model_version, target_show_key)`, retained to the last 50 eligible
+  `(band, model_version, target_show_key)`, retained to the last 100 eligible
   completed shows per band.
 - Legacy tables (`completed_show_accuracy`, `accuracy_per_show`) remain
   canonical on `main`/`dev` until new tables are fully populated and validated.

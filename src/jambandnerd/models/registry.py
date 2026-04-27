@@ -15,6 +15,7 @@ from jambandnerd.models.deal.model import DealPredictor
 from jambandnerd.models.deal.serialization import (
     serialize_predictions as serialize_deal_predictions,
 )
+from jambandnerd.models.goose.model import GoosePredictor
 from jambandnerd.models.metadata import (
     BAND_METADATA,
     MODEL_METADATA,
@@ -220,6 +221,10 @@ def build_predictor(slug: str, *, band: str, **kwargs: Any) -> PredictionModel:
 
 _BAND_METADATA_MAP: dict[str, BandMetadata] = {m.band: m for m in BAND_METADATA}
 
+_BAND_PREDICTOR_CLASSES: dict[str, type[PredictionModel]] = {
+    "goose": GoosePredictor,
+}
+
 
 def list_active_bands() -> list[str]:
     """Return the in-scope bands for the single-model-per-band architecture."""
@@ -239,9 +244,11 @@ def get_band_model_version(band: str) -> str:
     return get_band_metadata(band).model_version
 
 
-def build_band_predictor(band: str, **kwargs) -> BaselinePredictor:
-    """Instantiate the v1 baseline predictor for a band."""
-    return BaselinePredictor(band=band, **kwargs)
+def build_band_predictor(band: str, **kwargs) -> PredictionModel:
+    """Instantiate the active single-model predictor for a band."""
+    get_band_metadata(band)  # validates the band slug
+    predictor_cls = _BAND_PREDICTOR_CLASSES.get(band, BaselinePredictor)
+    return predictor_cls(band=band, **kwargs)
 
 
 def get_band_serializer(band: str) -> PredictionSerializer:

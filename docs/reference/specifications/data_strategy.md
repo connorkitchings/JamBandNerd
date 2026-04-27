@@ -205,7 +205,7 @@ board.
 
 Completed-show history uses `setlist_results` as the canonical retained run
 table and `setlist_accuracy` as the retained per-show metric
-table. The active corpus is exactly the last 50 eligible completed shows per
+table. The active corpus is exactly the last 100 eligible completed shows per
 band model version; rows outside that corpus are hard-deleted from the derived
 prediction/accuracy storage.
 
@@ -228,7 +228,7 @@ The completed-show canonical row additionally includes `actual_songs` and
 - `setlist_accuracy` is the canonical granular evaluation store.
 - new `setlist_accuracy` rows link to `setlist_results` through
   `prediction_run_id`
-- pipeline validation checks that exactly the retained last-50 rows carry
+- pipeline validation checks that exactly the retained last-100 rows carry
   replay lineage, so replay readiness is part of normal data health.
 
 ## Current Decision: Prediction Storage
@@ -290,7 +290,7 @@ The `setlist_accuracy` table links back to `setlist_results` via
 
 The website's `/performance` and `/last-show` surfaces read this retained
 completed-show corpus. Each active band model version requires the same
-50-show retained window.
+100-show retained window.
 
 ## Per-Song Prediction Projection
 

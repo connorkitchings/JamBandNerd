@@ -68,7 +68,3 @@ WEIGHTED_PRECISION_WEIGHTS: Final[dict[str, float]] = {
     "p25": 0.7,
     "p50": 0.1,
 }
-
-# Phase B promotion gate (per ADR 0001)
-PHASE_B_MIN_BACKTEST_SHOWS: Final[int] = 50
-PHASE_B_MIN_PRECISION_AT_25_DELTA: Final[float] = 0.03

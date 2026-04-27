@@ -193,7 +193,7 @@ def _derive_setlist_model_audit(
 ) -> SupabaseModelAudit:
     blockers: list[str] = []
     warnings: list[str] = []
-    required_window = replay_window_override or 50
+    required_window = replay_window_override or 100
     expected_top_k = get_band_metadata(band).default_top_k
     filters = {"band": band, "model_version": model_version}
 

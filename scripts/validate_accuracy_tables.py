@@ -165,7 +165,7 @@ def validate_accuracy(
     for band in band_list:
         metadata = get_band_metadata(band)
         model_version = metadata.model_version
-        required_replay_window = replay_window or 50
+        required_replay_window = replay_window or 100
         per_show_row = _latest_row(
             client,
             table=per_show_table,

@@ -73,7 +73,7 @@ def _rows(
         "setlist_predictions": [
             {
                 "band": "goose",
-                "model_version": "goose_baseline_v1",
+                "model_version": "goose_phase_b_v1",
                 "target_show_key": "show-1",
                 "target_show_date": "2026-04-25",
                 "reference_date": "2026-04-25",
@@ -87,7 +87,7 @@ def _rows(
         "setlist_prediction_songs": [
             {
                 "band": "goose",
-                "model_version": "goose_baseline_v1",
+                "model_version": "goose_phase_b_v1",
                 "target_show_key": "show-1",
                 "rank": 1,
                 "song_name": projection_song,

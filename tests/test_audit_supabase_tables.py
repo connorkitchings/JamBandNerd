@@ -9,7 +9,7 @@ from scripts.check_supported_model_freshness import SupportedModelFreshnessResul
 from scripts.verify_data_freshness import RecentSetlistCompletenessResult
 
 NOW = datetime.now(timezone.utc)
-MODEL_VERSION = "goose_baseline_v1"
+MODEL_VERSION = "goose_phase_b_v1"
 
 
 def _prediction_row(
@@ -48,7 +48,7 @@ def _projection_rows(
     ]
 
 
-def _replay_rows(*, count: int = 50, missing_lineage: bool = False):
+def _replay_rows(*, count: int = 100, missing_lineage: bool = False):
     return [
         {
             "show_date": f"2026-03-{index + 1:02d}",
@@ -105,8 +105,8 @@ def _install_audit_stubs(
 ) -> None:
     counts = {
         "setlist_predictions": 1,
-        "setlist_results": 50,
-        "setlist_accuracy": 50,
+        "setlist_results": 100,
+        "setlist_accuracy": 100,
     }
     counts.update(count_overrides or {})
 
@@ -249,8 +249,8 @@ def test_run_supabase_audit_fails_when_history_or_accuracy_below_window(monkeypa
     _install_audit_stubs(
         monkeypatch,
         latest_row=_prediction_row(),
-        count_overrides={"setlist_results": 49, "setlist_accuracy": 48},
-        replay_rows=_replay_rows(count=48),
+        count_overrides={"setlist_results": 99, "setlist_accuracy": 98},
+        replay_rows=_replay_rows(count=98),
     )
 
     report = module.run_supabase_audit(bands=["goose"])

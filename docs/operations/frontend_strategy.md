@@ -235,8 +235,8 @@ The frontend reads from these Supabase tables:
 |-------|---------|
 | `setlist_predictions` | Canonical live next-show prediction rows |
 | `setlist_prediction_songs` | Live per-song projection for `/predictions` and realtime refresh |
-| `setlist_results` | Retained last-50 completed-show boards |
-| `setlist_accuracy` | Per-show accuracy metrics keyed by band/version over the retained last-50 corpus |
+| `setlist_results` | Retained last-100 completed-show boards |
+| `setlist_accuracy` | Per-show accuracy metrics keyed by band/version over the retained last-100 corpus |
 
 ### Prediction Row Schema
 

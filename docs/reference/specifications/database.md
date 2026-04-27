@@ -49,7 +49,7 @@ by writing derived tables back to Supabase.
 `(band, model_version, target_show_key)` with a JSON predictions payload.
 `setlist_prediction_songs` stores one derived row per live predicted song for
 SQL-friendly reads and realtime refresh. `setlist_results` preserves exact
-prediction boards for the active last-50 completed-show corpus.
+prediction boards for the active last-100 completed-show corpus.
 
 ### Accuracy tables
 
@@ -57,7 +57,7 @@ prediction boards for the active last-50 completed-show corpus.
 
 `setlist_accuracy` is the canonical granular evaluation store. Rows link
 to `setlist_results` via `prediction_run_id` for Replay lineage.
-Rows outside the retained last-50 completed-show corpus are hard-deleted from
+Rows outside the retained last-100 completed-show corpus are hard-deleted from
 the active metric store.
 
 ## Utility Modules
@@ -135,7 +135,7 @@ server-side contexts.
 - raw writes should preserve enough source information for reprocessing and
   traceability
 - live prediction freshness should be validated using `generated_at`
-- completed-show metrics should be derived only from the retained last-50 corpus
+- completed-show metrics should be derived only from the retained last-100 corpus
 
 ## Related Documents
 

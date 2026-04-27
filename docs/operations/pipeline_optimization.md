@@ -14,7 +14,7 @@ The primary optimization is the consolidation of 14+ scripts into a few core orc
 
 - `scripts/run_optimized_pipeline.py`: The main entry point for running the end-to-end pipeline locally. It orchestrates calls to the other consolidated scripts.
 - `scripts/generate_live_predictions.py`: A single script to generate the active next-show prediction board for any active band.
-- `scripts/sync_retained_prediction_corpus.py`: A corpus sync wrapper that scores each band's registered model version against the retained last-50 eligible completed shows and prunes older derived rows.
+- `scripts/sync_retained_prediction_corpus.py`: A corpus sync wrapper that scores each band's registered model version against the retained last-100 eligible completed shows and prunes older derived rows.
 - `scripts/run_backtest.py`: The lower-level backtest/scoring engine used by the retained corpus sync.
 
 ## GitHub Actions Optimization
@@ -44,7 +44,7 @@ jobs:
 
       - name: Sync Retained Prediction Corpus
         run: |
-          python scripts/sync_retained_prediction_corpus.py --band ${{ matrix.band }} --window 50 --incremental --require-results
+          python scripts/sync_retained_prediction_corpus.py --band ${{ matrix.band }} --window 100 --incremental --require-results
 ```
 
 ## Performance and Efficiency

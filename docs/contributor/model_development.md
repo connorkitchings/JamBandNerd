@@ -112,7 +112,7 @@ uv run python scripts/compare_models.py --candidate-model <slug> --band all --fr
 
 Promotion evidence should include:
 
-- current standard window: `last_50`
+- current standard window: `last_100`
 - metric bundle at `K=10/25/50`: `hit_rate`, `avg_matches`, `precision`, `recall`, `f1`
 - per-band results, cross-band averages, and candidate-minus-baseline deltas
 - explicit promotion-gate outcomes versus CK+

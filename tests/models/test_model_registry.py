@@ -2,8 +2,12 @@ from __future__ import annotations
 
 import pytest
 
+from jambandnerd.models.baseline.predictor import BaselinePredictor
+from jambandnerd.models.goose.model import GoosePredictor
 from src.jambandnerd.models.registry import (
+    build_band_predictor,
     build_predictor,
+    get_band_model_version,
     get_model_definition,
     is_model_promoted_to_web,
     list_accuracy_validation_models,
@@ -54,6 +58,15 @@ def test_build_predictor_constructs_model_for_band() -> None:
     assert predictor is not None
 
 
+def test_band_predictor_dispatches_goose_to_phase_b_model() -> None:
+    goose = build_band_predictor("goose", persist_artifacts=False)
+    phish = build_band_predictor("phish", persist_artifacts=False)
+
+    assert isinstance(goose, GoosePredictor)
+    assert isinstance(phish, BaselinePredictor)
+    assert get_band_model_version("goose") == "goose_phase_b_v1"
+
+
 def test_registry_invariants_for_serializer_and_capabilities() -> None:
     for definition in list_models():
         assert callable(definition.serializer)
@@ -77,6 +90,6 @@ def test_registry_lifecycle_metadata_tracks_staged_rollout() -> None:
     assert notebook.web_visibility == "promoted"
     assert deal.lifecycle_stage == "web_promoted"
     assert deal.web_visibility == "promoted"
-    assert deal.readiness_windows == (50,)
+    assert deal.readiness_windows == (100,)
     assert deal.readiness_baselines == ("notebook",)
     assert ckplus.lifecycle_stage == "retired"

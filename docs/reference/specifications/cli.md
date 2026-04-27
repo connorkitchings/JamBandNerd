@@ -39,7 +39,7 @@ If no upcoming show is discoverable, no live board is written.
 Scores and prunes the active completed-show prediction corpus.
 
 - `--band <repo-supported-band-slug>`: (Required) The band to process.
-- `--window {N}`: (Optional) Retained completed-show window. Defaults to `50`.
+- `--window {N}`: (Optional) Retained completed-show window. Defaults to `100`.
 - `--incremental` / `--no-incremental`: (Optional) Skip already-scored shows when possible.
 
 ### `run_backtest.py`
@@ -62,7 +62,7 @@ historical scoring contract as the backtest flow.
 - `--candidate-model <registered-backtest-model-slug>`: (Required) Candidate model to evaluate.
 - `--band <slug[,slug...]|all>`: (Optional) Bands to include. Defaults to `all`.
 - `--baseline-model <slug>`: (Optional, repeatable) Override baseline models. Defaults to `ckplus` and `notebook`.
-- `--window <N>`: (Optional, repeatable) Comparison windows as positive integer show counts. Defaults to `50`.
+- `--window <N>`: (Optional, repeatable) Comparison windows as positive integer show counts. Defaults to `100`.
 - `--feature-set-label <label>`: (Optional) Human-readable label for the feature set under test.
 - `--fresh-training`: (Optional) Disable persisted artifacts for training-capable candidate models during the comparison run.
 - `--include-candidate-diagnostics`: (Optional) Include model-specific diagnostics when the candidate supports them.
@@ -93,14 +93,14 @@ Usage:
 ```bash
 uv run python scripts/audit_supabase_tables.py
 uv run python scripts/audit_supabase_tables.py --band goose --band phish
-uv run python scripts/audit_supabase_tables.py --max-age-hours 72 --replay-window 50 --output artifacts/supabase_audit.json
+uv run python scripts/audit_supabase_tables.py --max-age-hours 72 --replay-window 100 --output artifacts/supabase_audit.json
 ```
 
 Arguments:
 
 - `--band <slug>`: (Optional, repeatable) Limit the audit to specific repo-supported bands.
 - `--max-age-hours <N>`: (Optional) Freshness threshold for website-facing prediction and accuracy surfaces. Defaults to `72`.
-- `--replay-window <N>`: (Optional) Override the required replay-history window. Defaults to `50`.
+- `--replay-window <N>`: (Optional) Override the required replay-history window. Defaults to `100`.
 - `--output <path>`: (Optional) Write the JSON audit report to disk.
 - `--skip-accuracy`: (Optional) Preserve the existing workflow behavior that degrades stale supported-model accuracy from a hard failure to a warning for runs where accuracy regeneration was intentionally skipped.
 

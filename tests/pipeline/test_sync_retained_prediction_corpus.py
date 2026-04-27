@@ -13,7 +13,7 @@ def test_sync_retained_prediction_corpus_passes_dry_run_to_backtest(monkeypatch)
 
     total = module.sync_retained_prediction_corpus(
         band="goose",
-        window=50,
+        window=100,
         incremental=False,
         dry_run=True,
     )
@@ -25,7 +25,7 @@ def test_sync_retained_prediction_corpus_passes_dry_run_to_backtest(monkeypatch)
             "model": None,
             "start": None,
             "end": None,
-            "shows": 50,
+            "shows": 100,
             "exclusion_window": None,
             "incremental": False,
             "require_results": False,
