@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from src.jambandnerd.models import readiness as module
+from src.jambandnerd.models.readiness import is_band_promotion_eligible
 
 
 class _ResponseStub:
@@ -139,3 +140,26 @@ def test_build_model_readiness_report_surfaces_missing_requirements():
     assert "historical_runs_below_window:8/50" in blockers
     assert "per_show_accuracy_below_window:7/50" in blockers
     assert "replay_overlap_below_window:notebook:7/50" in blockers
+
+
+# ── Phase B promotion gate ────────────────────────────────────────────────────
+
+
+def test_promotion_eligible_meets_both_gates():
+    assert is_band_promotion_eligible(p25_new=0.55, p25_baseline=0.50, n_shows=50)
+
+
+def test_promotion_ineligible_insufficient_shows():
+    assert not is_band_promotion_eligible(p25_new=0.55, p25_baseline=0.50, n_shows=49)
+
+
+def test_promotion_ineligible_delta_too_small():
+    assert not is_band_promotion_eligible(p25_new=0.52, p25_baseline=0.50, n_shows=50)
+
+
+def test_promotion_ineligible_negative_delta():
+    assert not is_band_promotion_eligible(p25_new=0.45, p25_baseline=0.50, n_shows=100)
+
+
+def test_promotion_eligible_exactly_at_threshold():
+    assert is_band_promotion_eligible(p25_new=0.53, p25_baseline=0.50, n_shows=50)

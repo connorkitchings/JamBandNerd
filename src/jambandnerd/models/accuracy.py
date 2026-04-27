@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Dict, Iterable, List
 
+from jambandnerd.config.models import WEIGHTED_PRECISION_WEIGHTS
+
 
 @dataclass
 class TopKMetrics:
@@ -40,6 +42,15 @@ def compute_per_show_metrics(
         "recall": recall,
         "f1": f1,
     }
+
+
+def compute_weighted_precision_score(p10: float, p25: float, p50: float) -> float:
+    """Weighted blend of precision@k values using configured weights."""
+    return (
+        WEIGHTED_PRECISION_WEIGHTS["p10"] * p10
+        + WEIGHTED_PRECISION_WEIGHTS["p25"] * p25
+        + WEIGHTED_PRECISION_WEIGHTS["p50"] * p50
+    )
 
 
 def aggregate_metrics(per_show: List[Dict[str, float]], k: int) -> TopKMetrics:

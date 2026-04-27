@@ -34,7 +34,6 @@ from src.jambandnerd.config import (
     SETLIST_RESULTS_TABLE,
 )
 from src.jambandnerd.config.bands import get_repo_supported_bands
-from src.jambandnerd.config.models import WEIGHTED_PRECISION_WEIGHTS
 from src.jambandnerd.db.operations import (
     fetch_scored_show_ids,
     fetch_scored_target_show_keys,
@@ -44,7 +43,11 @@ from src.jambandnerd.db.operations import (
     upsert_setlist_accuracy_dataframe,
     upsert_setlist_result,
 )
-from src.jambandnerd.models.accuracy import aggregate_metrics, compute_per_show_metrics
+from src.jambandnerd.models.accuracy import (
+    aggregate_metrics,
+    compute_per_show_metrics,
+    compute_weighted_precision_score,
+)
 from src.jambandnerd.models.evaluation import (
     get_evaluation_reference_date,
     list_completed_shows,
@@ -262,10 +265,8 @@ def build_accuracy_results_dataframe(
             precision_by_k[k] = metrics["precision"]
             row[f"p{k}"] = metrics["precision"]
             row[f"recall_{k}"] = metrics["recall"]
-        row["weighted_precision_score"] = (
-            WEIGHTED_PRECISION_WEIGHTS["p10"] * precision_by_k[10]
-            + WEIGHTED_PRECISION_WEIGHTS["p25"] * precision_by_k[25]
-            + WEIGHTED_PRECISION_WEIGHTS["p50"] * precision_by_k[50]
+        row["weighted_precision_score"] = compute_weighted_precision_score(
+            precision_by_k[10], precision_by_k[25], precision_by_k[50]
         )
         rows.append(row)
 

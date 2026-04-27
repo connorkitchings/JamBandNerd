@@ -60,9 +60,8 @@ DEAL_RETRAIN_INTERVAL_DAYS: Final[int] = 7
 
 ACTIVE_BANDS: Final[tuple[str, ...]] = ("goose", "phish", "wsp", "billy", "um")
 
-# Eggy is excluded from Phase A rollout; per-band top_n tuning (ADR 0001
-# §"Metric edge case") is deferred until Eggy onboards in a future phase.
-BAND_TOP_N: Final[dict[str, int]] = {band: 25 for band in ACTIVE_BANDS}
+# Per-band top_n lives on BandMetadata.default_top_k in models/metadata.py.
+# Eggy is excluded from Phase A; onboard with adjusted top_n before Phase B.
 
 WEIGHTED_PRECISION_WEIGHTS: Final[dict[str, float]] = {
     "p10": 0.2,
