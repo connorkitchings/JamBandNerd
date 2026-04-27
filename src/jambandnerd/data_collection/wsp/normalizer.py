@@ -44,6 +44,8 @@ def normalize_songs(raw: Iterable[Dict[str, Any]]) -> pd.DataFrame:
             "first_played": item.get("first_played"),
             "last_played": item.get("last_played"),
             "times_played": item.get("times_played", 0),
+            "is_cover": item.get("is_cover"),
+            "original_artist": item.get("original_artist"),
             "source_hash": compute_source_hash(item),
         }
         normalized.append(record)

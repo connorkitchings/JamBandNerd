@@ -410,7 +410,7 @@ def process_wsp_data(
         validate_and_upsert_dataframe(
             table_name="wsp_songs_raw",
             df=songs_df,
-            conflict_columns=["song_code"],
+            conflict_columns=["song_name"],
         )
         logging.info(f"Upserted {len(songs_df)} songs into wsp_songs_raw.")
     status.songs_collected = len(songs_data)
