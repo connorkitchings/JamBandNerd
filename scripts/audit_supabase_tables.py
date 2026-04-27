@@ -305,12 +305,17 @@ def _derive_model_audit(
     if stale_projection_reference_dates:
         _append_unique(blockers, "prediction_projection_recent_stale_rows")
 
+    accuracy_window_issues = warnings if skip_accuracy else blockers
+
     if historical_run_rows < required_window:
-        _append_unique(blockers, "historical_run_rows_below_window")
+        _append_unique(accuracy_window_issues, "historical_run_rows_below_window")
     if unique_historical_target_dates < required_window:
-        _append_unique(blockers, "historical_unique_target_dates_below_window")
+        _append_unique(
+            accuracy_window_issues,
+            "historical_unique_target_dates_below_window",
+        )
     if per_show_accuracy_rows < required_window:
-        _append_unique(blockers, "per_show_accuracy_rows_below_window")
+        _append_unique(accuracy_window_issues, "per_show_accuracy_rows_below_window")
 
     replay_rows = _recent_replay_eligible_rows(
         client,
@@ -320,18 +325,24 @@ def _derive_model_audit(
         limit=required_window,
     )
     if len(replay_rows) < required_window:
-        _append_unique(blockers, "replay_eligible_rows_below_window")
+        _append_unique(accuracy_window_issues, "replay_eligible_rows_below_window")
     replay_lineage_missing_dates = tuple(
         str(row.get("show_date") or "unknown")
         for row in replay_rows
         if row.get("prediction_run_id") is None
     )
     if replay_lineage_missing_dates:
-        _append_unique(blockers, "replay_lineage_missing_prediction_run_id")
+        _append_unique(
+            accuracy_window_issues,
+            "replay_lineage_missing_prediction_run_id",
+        )
 
     for overlap_slug, overlap_count in replay_overlap.items():
         if overlap_count < required_window:
-            _append_unique(blockers, f"replay_overlap_below_window:{overlap_slug}")
+            _append_unique(
+                accuracy_window_issues,
+                f"replay_overlap_below_window:{overlap_slug}",
+            )
 
     if definition.slug in freshness_result.stale_prediction_models:
         _append_unique(blockers, "supported_prediction_freshness_stale")

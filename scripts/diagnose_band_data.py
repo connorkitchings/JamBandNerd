@@ -93,6 +93,15 @@ def _summarize_missing_setlist_diagnostics(
     return f"{len(diagnostics)} shows without setlist data", None
 
 
+def _required_setlist_columns_for_band(band: str) -> list[str]:
+    """Return the raw setlist columns diagnostics should require for a band."""
+    if band == "um":
+        return ["song_name", "set_sequence", "song_position", "show_position"]
+
+    pos_col = "position" if band == "phish" else "song_position"
+    return ["song_name", "set_number", pos_col]
+
+
 def diagnose_band(band: str, verbose: bool = False) -> dict[str, any]:
     """Run comprehensive diagnostics on band data.
 
@@ -206,10 +215,7 @@ def diagnose_band(band: str, verbose: bool = False) -> dict[str, any]:
         print(f"✅ ID column '{id_col}' found in setlists table")
 
         # Check for required setlist columns
-        required_setlist_cols = ["song_name", "set_number"]
-        pos_col = "position" if band == "phish" else "song_position"
-        required_setlist_cols.append(pos_col)
-
+        required_setlist_cols = _required_setlist_columns_for_band(band)
         missing_cols = [
             c for c in required_setlist_cols if c not in setlists_df.columns
         ]

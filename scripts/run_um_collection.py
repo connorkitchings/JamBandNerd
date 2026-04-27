@@ -1,6 +1,6 @@
 """Runs the Umphrey's McGee data collection pipeline.
 
-This script coordinates the `UmCollector` to scrape songs, venues, shows,
+This script coordinates the `UmCollector` to fetch songs, venues, shows,
 and setlists from allthings.umphreys.com, normalizes the results, and upserts
 them into the Supabase raw tables (`um_*_raw`).
 """
@@ -11,7 +11,7 @@ import argparse
 import os
 import sys
 from datetime import date, datetime, timedelta
-from typing import Any, Dict, Iterable, List, Optional, Sequence
+from typing import Optional, Sequence
 
 import pandas as pd
 
@@ -31,7 +31,6 @@ from src.jambandnerd.data_collection.um.upcoming import (  # noqa: E402
     collect_upcoming_shows,
 )
 from src.jambandnerd.data_collection.utils import CollectionTimer  # noqa: E402
-from src.jambandnerd.db.connection import get_supabase_client  # noqa: E402
 from src.jambandnerd.db.operations import (  # noqa: E402
     dedupe_dataframe_on_conflict,
     fetch_existing_values,
@@ -76,9 +75,33 @@ def _upsert(
     )
 
 
-def _batched(sequence: Sequence[Any], size: int) -> Iterable[Sequence[Any]]:
-    for start in range(0, len(sequence), size):
-        yield sequence[start : start + size]
+def _refresh_upcoming_shows(*, skip_validation: bool) -> None:
+    """Refresh UM upcoming-show support data."""
+    try:
+        upcoming_records = collect_upcoming_shows()
+    except UpcomingShowsError as exc:
+        print(f"Warning: could not fetch upcoming UM shows ({exc}).")
+        return
+
+    if not upcoming_records:
+        print("No upcoming UM shows found from Seated API.")
+        return
+
+    upcoming_df = pd.DataFrame(upcoming_records)
+    upcoming_df = attach_source_hash(upcoming_df)
+    _upsert(
+        "um_upcoming_shows",
+        upcoming_df,
+        conflict_columns=["source_uuid"],
+        skip_validation=skip_validation,
+    )
+    print(f"Upserted {len(upcoming_df)} upcoming shows into um_upcoming_shows.")
+
+
+def _finish_collection(timer: CollectionTimer, *, skip_validation: bool) -> None:
+    _refresh_upcoming_shows(skip_validation=skip_validation)
+    timer.log("um")
+    print("UM collection complete.")
 
 
 def run_um_collection(
@@ -99,17 +122,17 @@ def run_um_collection(
     songs_data = collector.collect_songs()
     if songs_data:
         songs_df = pd.DataFrame(songs_data)
-        songs_df = songs_df.drop_duplicates(subset=["song_name"]).reset_index(drop=True)
+        songs_df = songs_df.drop_duplicates(subset=["song_id"]).reset_index(drop=True)
         songs_df = attach_source_hash(songs_df)
         _upsert(
             "um_songs_raw",
             songs_df,
-            conflict_columns=["song_name"],
+            conflict_columns=["song_id"],
             skip_validation=skip_validation,
         )
         print(f"Upserted {len(songs_df)} songs into um_songs_raw.")
     else:
-        print("No UM songs scraped; skipping um_songs_raw upsert.")
+        print("No UM songs returned by API; skipping um_songs_raw upsert.")
 
     # Venues ----------------------------------------------------------------
     venues_data = collector.collect_venues()
@@ -124,7 +147,7 @@ def run_um_collection(
         )
         print(f"Upserted {len(venues_df)} venues into um_venues_raw.")
     else:
-        print("No UM venues scraped; skipping um_venues_raw upsert.")
+        print("No UM venues returned by API; skipping um_venues_raw upsert.")
 
     # Shows -----------------------------------------------------------------
     start_dt = _parse_date(start_date)
@@ -140,7 +163,8 @@ def run_um_collection(
 
     shows_data = collector.collect_shows(start_date=start_dt, end_date=end_dt)
     if not shows_data:
-        print("No UM shows scraped; skipping show upsert.")
+        print("No UM shows returned by API; skipping show upsert.")
+        _finish_collection(timer, skip_validation=skip_validation)
         return
 
     shows_df = pd.DataFrame(shows_data)
@@ -169,12 +193,14 @@ def run_um_collection(
 
     if not shows_to_process:
         print("All UM setlists already ingested; no additional collection required.")
+        _finish_collection(timer, skip_validation=skip_validation)
         return
 
     print(f"Collecting setlists for {len(shows_to_process)} shows...")
     setlists_data = collector.collect_setlists(shows_to_process)
     if not setlists_data:
         print("No UM setlists collected.")
+        _finish_collection(timer, skip_validation=skip_validation)
         return
 
     setlists_df = normalize_setlists(pd.DataFrame(setlists_data))
@@ -186,32 +212,12 @@ def run_um_collection(
     )
     print(f"Upserted {len(setlists_df)} setlist rows into um_setlists_raw.")
 
-    # Upcoming shows from Seated widget
-    try:
-        upcoming_records = collect_upcoming_shows()
-    except UpcomingShowsError as exc:
-        print(f"Warning: could not fetch upcoming UM shows ({exc}).")
-    else:
-        if upcoming_records:
-            upcoming_df = pd.DataFrame(upcoming_records)
-            upcoming_df = attach_source_hash(upcoming_df)
-            _upsert(
-                "um_upcoming_shows",
-                upcoming_df,
-                conflict_columns=["source_uuid"],
-                skip_validation=skip_validation,
-            )
-            print(f"Upserted {len(upcoming_df)} upcoming shows into um_upcoming_shows.")
-        else:
-            print("No upcoming UM shows found from Seated API.")
-
-    timer.log("um")
-    print("UM collection complete.")
+    _finish_collection(timer, skip_validation=skip_validation)
 
 
 def _build_argument_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Run the Umphrey's McGee web scraping pipeline."
+        description="Run the Umphrey's McGee API pipeline."
     )
     parser.add_argument(
         "--start-date",
@@ -229,7 +235,7 @@ def _build_argument_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--full-backfill",
         action="store_true",
-        help="Re-scrape setlists for all shows regardless of existing rows.",
+        help="Re-fetch setlists for all shows regardless of existing rows.",
     )
     return parser
 

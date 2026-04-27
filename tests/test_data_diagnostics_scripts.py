@@ -4,6 +4,7 @@ from scripts.common import completed_show_window
 from scripts.diagnose_band_data import (
     _completed_show_bounds,
     _fetch_setlist_ids_for_shows,
+    _required_setlist_columns_for_band,
     _summarize_missing_setlist_diagnostics,
 )
 
@@ -72,6 +73,15 @@ def test_fetch_setlist_ids_for_shows_limits_lookup_to_target_ids():
 
     assert result == {"1", "2"}
     assert client.calls == ["um_setlists_raw"]
+
+
+def test_required_setlist_columns_for_um_uses_api_sequence_fields():
+    assert _required_setlist_columns_for_band("um") == [
+        "song_name",
+        "set_sequence",
+        "song_position",
+        "show_position",
+    ]
 
 
 def test_summarize_missing_setlist_diagnostics_treats_wsp_upstream_lag_as_warning():

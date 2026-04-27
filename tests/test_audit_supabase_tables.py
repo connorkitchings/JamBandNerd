@@ -447,6 +447,52 @@ def test_run_supabase_audit_treats_stale_accuracy_as_warning_when_skipped(
     assert "expected immutable freshness drift" in captured
 
 
+def test_run_supabase_audit_treats_accuracy_windows_as_warnings_when_skipped(
+    monkeypatch,
+):
+    _install_audit_stubs(
+        monkeypatch,
+        latest_rows={
+            "notebook": _prediction_row(),
+            "deal": _prediction_row(song_name="Song B"),
+        },
+        projection_rows={
+            "notebook": _projection_rows(),
+            "deal": _projection_rows(top_song="Song B"),
+        },
+        readiness_overrides={
+            "notebook": {
+                "historical_runs": 0,
+                "unique_historical_target_dates": 0,
+                "per_show_rows": 0,
+                "replay_overlap": {"deal": 0},
+            },
+            "deal": {
+                "historical_runs": 0,
+                "unique_historical_target_dates": 0,
+                "per_show_rows": 0,
+                "replay_overlap": {"notebook": 0},
+            },
+        },
+        replay_rows={
+            "notebook_v1": [],
+            "deal_v2": [],
+        },
+    )
+
+    report = module.run_supabase_audit(
+        bands=["goose"],
+        skip_accuracy=True,
+    )
+
+    assert report.state == "warning"
+    assert not report.blockers
+    assert "goose:notebook:historical_run_rows_below_window" in report.warnings
+    assert "goose:notebook:per_show_accuracy_rows_below_window" in report.warnings
+    assert "goose:notebook:replay_eligible_rows_below_window" in report.warnings
+    assert "goose:notebook:replay_overlap_below_window:deal" in report.warnings
+
+
 def test_run_supabase_audit_default_scope_excludes_non_promoted_models(monkeypatch):
     calls: list[str] = []
     _install_audit_stubs(
