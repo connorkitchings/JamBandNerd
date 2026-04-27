@@ -11,36 +11,26 @@ class TestUmCollector:
     def collector(self):
         return UmCollector()
 
-    def test_collect_songs_parses_table(self, collector):
+    def test_collect_songs_uses_api(self, collector):
         # Arrange
-        mock_html = """
-        <table>
-            <thead>
-                <tr>
-                    <th>Song Name</th>
-                    <th>Original Artist</th>
-                    <th>Debut Date</th>
-                    <th>Last Played</th>
-                    <th>Times Played Live</th>
-                    <th>Avg Show Gap</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>In The Kitchen</td>
-                    <td>Umphrey's McGee</td>
-                    <td>1998-01-21</td>
-                    <td>2023-12-31</td>
-                    <td>500</td>
-                    <td>5.5</td>
-                </tr>
-            </tbody>
-        </table>
-        """
+        mock_api_response = {
+            "error": False,
+            "data": [
+                {
+                    "id": 456,
+                    "name": "In The Kitchen",
+                    "slug": "in-the-kitchen",
+                    "isoriginal": 1,
+                    "original_artist": "Umphrey's McGee",
+                    "created_at": "1000-01-01 00:00:00",
+                    "updated_at": "2023-12-31 04:29:59",
+                }
+            ],
+        }
 
         with patch.object(collector.session, "get") as mock_get:
             mock_response = MagicMock()
-            mock_response.text = mock_html
+            mock_response.json.return_value = mock_api_response
             mock_response.status_code = 200
             mock_get.return_value = mock_response
 
@@ -51,7 +41,45 @@ class TestUmCollector:
             assert len(songs) == 1
             assert songs[0]["song_name"] == "In The Kitchen"
             assert songs[0]["original_artist"] == "Umphrey's McGee"
-            assert songs[0]["times_played_live"] == 500
+            assert songs[0]["song_id"] == 456
+            assert songs[0]["song_slug"] == "in-the-kitchen"
+            assert songs[0]["is_original"] is True
+            assert songs[0]["api_updated_at"] == "2023-12-31 04:29:59"
+
+    def test_collect_venues_uses_api(self, collector):
+        # Arrange
+        mock_api_response = {
+            "error": False,
+            "data": [
+                {
+                    "venue_id": 7,
+                    "venuename": "The Tabernacle",
+                    "city": "Atlanta",
+                    "state": "GA",
+                    "country": "USA",
+                    "zip": "30303",
+                    "capacity": 2600,
+                    "slug": "the-tabernacle-atlanta-ga-usa",
+                }
+            ],
+        }
+
+        with patch.object(collector.session, "get") as mock_get:
+            mock_response = MagicMock()
+            mock_response.json.return_value = mock_api_response
+            mock_response.status_code = 200
+            mock_get.return_value = mock_response
+
+            # Act
+            venues = collector.collect_venues()
+
+            # Assert
+            assert len(venues) == 1
+            assert venues[0]["venue_id"] == 7
+            assert venues[0]["venue_name"] == "The Tabernacle"
+            assert venues[0]["venue_zip"] == "30303"
+            assert venues[0]["capacity"] == 2600
+            assert venues[0]["venue_slug"] == "the-tabernacle-atlanta-ga-usa"
 
     def test_collect_shows_uses_api(self, collector):
         # Arrange
@@ -62,13 +90,26 @@ class TestUmCollector:
                     "show_id": 123,
                     "showdate": "2023-12-31",
                     "permalink": "nye-2023.html",
+                    "artist_id": 1,
+                    "artist": "Umphrey's McGee",
                     "venuename": "Riviera Theatre",
                     "city": "Chicago",
                     "state": "IL",
                     "country": "USA",
-                    "tourname": "NYE Run"
-                }
-            ]
+                    "tourname": "NYE Run",
+                },
+                {
+                    "show_id": 999,
+                    "showdate": "2023-12-31",
+                    "permalink": "support-act.html",
+                    "artist_id": 2,
+                    "artist": "Support Act",
+                    "venuename": "Riviera Theatre",
+                    "city": "Chicago",
+                    "state": "IL",
+                    "country": "USA",
+                },
+            ],
         }
 
         with patch.object(collector.session, "get") as mock_get:
@@ -97,14 +138,27 @@ class TestUmCollector:
                     "show_id": 123,
                     "song_id": 456,
                     "songname": "In The Kitchen",
+                    "artist_id": 1,
+                    "artist": "Umphrey's McGee",
                     "settype": "Set 1",
                     "setnumber": "1",
                     "position": 1,
                     "showorder": 1,
                     "transition": "->",
-                    "showdate": "2023-12-31"
-                }
-            ]
+                    "showdate": "2023-12-31",
+                },
+                {
+                    "show_id": 123,
+                    "song_id": 999,
+                    "songname": "Support Song",
+                    "artist_id": 2,
+                    "artist": "Support Act",
+                    "settype": "Set 1",
+                    "setnumber": "1",
+                    "position": 2,
+                    "showdate": "2023-12-31",
+                },
+            ],
         }
 
         with patch.object(collector.session, "get") as mock_get:

@@ -2,38 +2,38 @@
 
 This document captures the structure of the Umphrey's McGee ingestion outputs as fetched from
 the official [allthings.umphreys.com](https://allthings.umphreys.com) JSON API (v2).
-The pipeline transitioned from HTML scraping to this API-driven model on 2026-04-27 to improve
+The pipeline transitioned to this strict API-driven model on 2026-04-27 to improve
 reliability and support future show ingestion.
 
 ## 1. Songs (`um_songs_raw`)
 
-Collected via HTML scraping of `/song/` to preserve rich statistical fields not present in the basic API.
+Collected via `/api/v2/songs.json`.
 
 | Column              | Type    | Description                                     |
 | ------------------- | ------- | ----------------------------------------------- |
-| `song_name`         | string  | Primary song title (Primary Key)                |
-| `song_id`           | bigint  | API song identifier (optional/nullable)         |
+| `song_id`           | bigint  | API song identifier (Primary Key)               |
+| `song_name`         | string  | Primary song title                              |
+| `song_slug`         | string  | API song slug                                   |
 | `original_artist`   | string  | Original artist attribution (nullable)          |
 | `is_original`       | bool    | True if the song is an Umphrey's McGee original |
-| `debut_date`        | date    | First known performance (YYYY-MM-DD)            |
-| `last_played`       | date    | Most recent performance (YYYY-MM-DD)            |
-| `times_played_live` | int     | Total performances counted by allthingsum       |
-| `avg_show_gap`      | float   | Average number of shows between performances    |
+| `api_created_at`    | datetime | API creation timestamp                         |
+| `api_updated_at`    | datetime | API update timestamp                           |
 | `source_hash`       | string  | Deterministic hash of the raw record payload    |
 
 ## 2. Venues (`um_venues_raw`)
 
-Collected by merging API identifiers with statistical data scraped from `/venues/`.
+Collected via `/api/v2/venues.json`.
 
 | Column          | Type   | Description                                         |
 | --------------- | ------ | --------------------------------------------------- |
 | `venue_id`      | bigint | API venue identifier (Primary Key)                  |
 | `venue_name`    | string | Venue name                                          |
+| `venue_slug`    | string | API venue slug                                      |
 | `venue_city`    | string | City                                                |
 | `venue_state`   | string | State/province abbreviation                         |
 | `venue_country` | string | Country                                             |
-| `times_played`  | int    | Total performances at the venue                     |
-| `last_played`   | date   | Most recent performance at the venue                |
+| `venue_zip`     | string | Postal/ZIP code                                     |
+| `capacity`      | int    | Venue capacity when provided by the API             |
 | `source_hash`   | string | Deterministic hash of the raw record payload        |
 
 ## 3. Shows (`um_shows_raw`)

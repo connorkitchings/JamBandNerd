@@ -79,8 +79,10 @@ The normalized setlist contract used by shared code must expose:
 
 - `show_id`
 - `song_name`
-- `set_number`
-- song ordering field such as `song_position` or an equivalent normalized field
+- source set identifier such as `set_number`, `set_sequence`, or an equivalent
+  normalized field
+- song ordering field such as `song_position`, `show_position`, or an
+  equivalent normalized field
 
 ### Songs
 

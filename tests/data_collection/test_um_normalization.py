@@ -35,17 +35,33 @@ class TestUmNormalization:
         assert result["song_position"].dtype.name == "Int64"
         assert "source_hash" in result.columns
 
-    def test_normalize_setlists_adds_set_number_from_set_label(self):
+    def test_normalize_setlists_does_not_add_legacy_set_number(self):
         df = pd.DataFrame(
             [
                 {
                     "song_name": "S",
                     "show_id": "1",
                     "set_label": "Set 1",
+                    "set_sequence": "1",
                     "song_position": "1",
                 }
             ]
         )
         result = normalize_setlists(df)
-        assert "set_number" in result.columns
-        assert result["set_number"].iloc[0] == "Set 1"
+        assert "set_number" not in result.columns
+        assert result["set_sequence"].iloc[0] == 1
+
+    def test_normalize_setlists_handles_missing_optional_set_sequence(self):
+        df = pd.DataFrame(
+            [
+                {
+                    "song_name": "S",
+                    "show_id": "1",
+                    "set_label": "Encore",
+                    "song_position": "1",
+                }
+            ]
+        )
+        result = normalize_setlists(df)
+        assert "set_sequence" not in result.columns
+        assert bool(result["encore"].iloc[0]) is True
