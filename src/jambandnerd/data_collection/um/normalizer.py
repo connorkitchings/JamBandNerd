@@ -26,17 +26,31 @@ def normalize_setlists(df: pd.DataFrame) -> pd.DataFrame:
         "set_sequence": "Int64",
         "song_position": "Int64",
         "show_position": "Int64",
+        "song_id": "Int64",
+        "show_id": "Int64",
     }
+    
+    # Pre-process set_sequence for 'e' (encore) cases
+    if "set_sequence" in df.columns:
+        df["set_sequence"] = df["set_sequence"].replace("e", "99") # Map 'e' to 99 temporarily if needed as integer
+        # Actually, let's keep set_label as the source of truth for 'E' vs '1'
+        # and keep set_sequence as numeric if possible.
+        df["set_sequence"] = pd.to_numeric(df["set_sequence"], errors="coerce")
+
     for column, dtype in numeric_columns.items():
         if column in df.columns:
             df[column] = pd.to_numeric(df[column], errors="coerce").astype(dtype)
+
+    # Derive is_segue and encore from API fields if present
+    if "transition" in df.columns:
+        df["is_segue"] = df["transition"].fillna("").str.contains(">", regex=False)
+    
+    if "set_label" in df.columns:
+        df["encore"] = df["set_label"].fillna("").astype(str).str.contains("Encore", case=False) | (df["set_sequence"] == 99)
 
     bool_columns = ["is_segue", "encore"]
     for column in bool_columns:
         if column in df.columns:
             df[column] = df[column].fillna(False).astype(bool)
-
-    if "set_label" in df.columns and "set_number" not in df.columns:
-        df["set_number"] = df["set_label"].fillna("").astype(str)
 
     return attach_source_hash(df)
