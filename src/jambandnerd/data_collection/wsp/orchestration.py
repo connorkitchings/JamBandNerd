@@ -38,6 +38,7 @@ from .parser_profile import (
     validate_fingerprint,
 )
 from .session import cleanup_playwright, create_enhanced_session, decode_ec_response
+from .song_canonicalizer import build_canonical_lookup_from_db
 from .status import CollectionStatus
 from .tourwrangler import fetch_setlist_from_tourwrangler
 
@@ -409,11 +410,21 @@ def process_wsp_data(
         validate_and_upsert_dataframe(
             table_name="wsp_songs_raw",
             df=songs_df,
-            conflict_columns=["api_song_id"],
+            conflict_columns=["song_code"],
         )
         logging.info(f"Upserted {len(songs_df)} songs into wsp_songs_raw.")
     status.songs_collected = len(songs_data)
     logging.info("--- Finished WSP Song Collection ---")
+
+    # 1b. Build canonical song name lookup from wsp_songs_raw
+    canonical_lookup: dict[str, str] = {}
+    try:
+        canonical_lookup = build_canonical_lookup_from_db(client)
+        logging.info(
+            "Built WSP canonical song lookup (%s entries).", len(canonical_lookup)
+        )
+    except Exception as exc:
+        logging.warning("Could not build canonical lookup from DB: %s", exc)
 
     # 2. Collect and Upsert Shows
     logging.info("--- Starting WSP Show Collection ---")
@@ -533,7 +544,7 @@ def process_wsp_data(
         )
         setlists_data = collector.collect_setlists(records_for_scrape)
         if setlists_data:
-            setlists_df = normalize_setlists(setlists_data)
+            setlists_df = normalize_setlists(setlists_data, canonical_lookup)
             validate_and_upsert_dataframe(
                 table_name="wsp_setlists_raw",
                 df=setlists_df,
@@ -596,7 +607,7 @@ def process_wsp_data(
         logging.warning(f"EC-over-TW promotion step encountered an error: {exc}")
 
     # 7. PanicStream / TourWrangler fallback for missing recent historical setlists
-    fallback_rows, fallback_shows = tourwrangler_fallback(client)
+    fallback_rows, fallback_shows = tourwrangler_fallback(client, canonical_lookup)
     status.fallback_setlists_collected = fallback_rows
     status.fallback_shows_filled = fallback_shows
     status.setlists_collected += fallback_rows
@@ -686,7 +697,9 @@ def process_wsp_data(
     return status
 
 
-def tourwrangler_fallback(client) -> tuple[int, int]:
+def tourwrangler_fallback(
+    client, canonical_lookup: dict[str, str] | None = None
+) -> tuple[int, int]:
     """Fetch missing recent historical WSP setlists from fallback sources.
 
     This function checks for shows in the configured backup window that are missing
@@ -695,6 +708,7 @@ def tourwrangler_fallback(client) -> tuple[int, int]:
 
     Args:
         client: Supabase client instance.
+        canonical_lookup: Optional lowercase->canonical song name mapping.
     """
     try:
         today = date.today()
@@ -770,6 +784,14 @@ def tourwrangler_fallback(client) -> tuple[int, int]:
                         )
 
             if backup_rows:
+                for row in backup_rows:
+                    raw_name = row.get("song_name", "")
+                    if raw_name:
+                        from .song_canonicalizer import canonicalize_song_name
+
+                        row["song_name"] = canonicalize_song_name(
+                            raw_name, canonical_lookup
+                        )
                 backup_df = pd.DataFrame(backup_rows)
                 has_source_col = _setlist_table_has_source_column()
                 if has_source_col:

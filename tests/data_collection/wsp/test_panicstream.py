@@ -49,8 +49,8 @@ def test_parse_show_page_html_strips_track_numbers_and_normalizes_titles():
         "Bust It Big",
         "Greta",
         "Lawyers, Guns, And Money",
-        "Walkin' (For Your Love)",
-        "Bowlegged Woman",
+        "Walkin'",
+        "Bowlegged Woman, Knock Kneed Man",
     ]
     assert rows[1]["is_segue"] is True
     assert rows[2]["is_segue"] is False
