@@ -6,7 +6,7 @@ import type { PredictionRow } from "@/lib/data";
 import { TIER_ORDER, type LikelihoodTier } from "@/lib/config";
 import { TierBadge } from "@/components/tier-badge";
 import { formatMMDDYYYY } from "@/lib/format";
-import { groupPredictionRowsByTier, normalizeSongName } from "@/lib/song-board";
+import { groupPredictionRowsByTier, normalizeSongName } from "@/lib/song-board-core";
 
 type Props = {
   rows: PredictionRow[];

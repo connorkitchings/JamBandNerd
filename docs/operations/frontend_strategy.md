@@ -10,8 +10,8 @@ accessibility standards, and the data contract between Supabase and the frontend
 ## Purpose
 
 JamBandNerd predicts jam band setlists using gap-based and frequency-based models. The
-website is the primary public surface for browsing these predictions, exploring historical
-data, and tracking model accuracy.
+website is the primary public surface for browsing one prediction board per band, exploring
+recent outcomes, and tracking model accuracy.
 
 The core challenge: **predictions are probabilistic signals, not certain outcomes.** The
 frontend must communicate this honestly while remaining engaging and useful.
@@ -27,7 +27,7 @@ every level:
 
 - **In-UI disclaimers** appear alongside predictions, not just in the FAQ.
 - **Tier labels** are descriptive but not definitive.
-- **Accuracy metrics** are shown with context (comparison to baselines).
+- **Accuracy metrics** are shown with context from recent completed shows.
 - **Show Outlook** labels are clearly heuristic — fun, but fallible.
 
 ### Mobile First
@@ -53,7 +53,6 @@ Minimize client JavaScript. Leverage Supabase server-side reads for fast initial
 Combine algorithmic output with plain-language context.
 
 - **Show Outlook** labels summarize the prediction board's character.
-- **Model Agreement** breakdown shows how confidently models agree.
 - **Accuracy page** contextualizes recall with baseline comparisons.
 - Explanatory copy helps users understand what they're looking at.
 
@@ -74,22 +73,22 @@ Show summary context first. Allow users to drill into details.
 
 | Route | Purpose | Primary Uncertainty Element |
 |-------|---------|---------------------------|
-| `/` | Next-show predictions dashboard | Show Outlook, Model Agreement, Track Record |
-| `/replay` | Historical prediction replay | Shared show context, both model boards, Predicted vs Actual overlay |
-| `/compare` | Model comparison side-by-side | Tier alignment, agreement breakdown |
+| `/` | Band overview and product entry | Show Outlook, Track Record |
+| `/predictions` | Live prediction board | Per-song tier, gap, recent-play, and probability data |
 | `/performance` | Accuracy tracking | Recall percentages, trend deltas, baseline comparisons |
 | `/last-show` | Most recent completed show | Predicted vs Actual, accuracy for that show |
 | `/about` | Education and explanation | FAQ, model explainers, pipeline overview |
-| `/predictions` | Raw prediction table view | Per-song tier and gap data |
+| `/contact` | Feedback and corrections | Data correction context |
+| `/data-use` | Data and attribution policy | Source and usage explanation |
 
 ### Navigation
 
-- **Compatibility**: `/explorer` redirects to `/replay`; it is not a primary product surface.
-- **Mobile**: Fixed bottom nav with 5 items (Home, Compare, Performance, Replay, Predict)
+- **Compatibility**: `/?band=...` redirects to `/predictions?band=...`.
+- **Mobile**: Fixed bottom nav with core product routes.
 - **Desktop**: Side navigation with full labels
-- **State**: URL-driven via search params (`?band=goose&model=ckplus`)
+- **State**: URL-driven via band search params (`?band=goose`)
 - **Search**: Global search in header; song-specific search on song board
-- **Analysis routes**: Replay and Compare share the same navigation grouping
+- **Analysis routes**: Performance and last-show share the retained completed-show corpus
 
 ---
 
@@ -101,10 +100,9 @@ Predictions are communicated through stacked layers, each reinforcing uncertaint
 
 | Layer | What it shows | How uncertainty is communicated |
 |-------|---------------|-------------------------------|
-| **Hero summary** | Show Outlook label | Narrative label signals model consensus; tooltip explains logic |
+| **Hero summary** | Show Outlook label | Narrative label signals board character; tooltip explains logic |
 | **Tier badges** | Expected / Hot / Likely / Possible | Tooltip: "Based on rank position, not probability" |
 | **Song board** | Ranked songs with gap | Footer disclaimer: "Ranks reflect relative likelihood" |
-| **Model Agreement** | % match across models | Tiered breakdown (top-10/25/50) with weighted composite |
 | **Track Record** | Historical recall | "X% top-10 recall across Y scored shows" |
 
 ### Tier System
@@ -115,7 +113,7 @@ likelihood within the ranked list.
 | Tier | Rank Range | Display | Tooltip text |
 |------|-----------|---------|--------------|
 | Expected | 1–5 | Yellow badge | "Strongest rotation signal — high recent activity and model confidence" |
-| Hot | 6–15 | Blue badge | "Solid candidate — one or both models rank this song highly" |
+| Hot | 6–15 | Blue badge | "Solid candidate — strong rotation or gap signal" |
 | Likely | 16–30 | Gray badge | "In the pool with a moderate signal" |
 | Possible | 31+ | Gold badge | "Lower recent activity — could still appear" |
 
@@ -138,28 +136,6 @@ based on the top-10 predictions. It is intended to be fun and informative, not p
 
 The label is computed client-side in `getOutlookLabel()` (`prediction-hero.tsx`).
 
-### Model Agreement
-
-When a secondary model is available, agreement is shown as:
-
-- **Badge**: Weighted composite percentage (e.g., "71% Match")
-- **Breakdown**: Match counts for top-10, top-25, and top-50
-
-The composite score weights top-10 matches 2× and others 1×. The formula:
-
-```
-composite = (top10_matches × 2 + top25_matches + top50_matches) / (10×2 + 25 + 50)
-```
-
-Implementation in `calculateModelAgreement()` (`apps/web/src/lib/data.ts`).
-
-### Model Agreement Icons
-
-On the song board, songs predicted by both models show a **both-models icon**. This
-provides at-a-glance consensus signal without exposing raw probabilities.
-
----
-
 ## Component Conventions
 
 ### Shared Components
@@ -168,17 +144,17 @@ provides at-a-glance consensus signal without exposing raw probabilities.
 |-----------|---------|-----------|
 | `SectionCard` | Bounded content section with title/eyebrow | `title`, `eyebrow`, `children` |
 | `TierBadge` | Colored badge for tier labels | `tier`, `showDescription` |
-| `SongBoard` | Ranked prediction table | `rows`, `highlightSongs`, `secondarySongs`, `compact` |
-| `TierSection` | Collapsible tier group in SongBoard | `tier`, `rows`, `highlightSongs`, `secondarySongs` |
+| `SongBoard` | Ranked prediction table | `rows`, `highlightSongs`, `compact` |
+| `TierSection` | Collapsible tier group in SongBoard | `tier`, `rows`, `highlightSongs` |
 | `AccuracyTable` | Per-show recall metrics | `rows` |
 | `RecallChart` | SVG line chart of recall over time | `rows` |
 | `SetlistTable` | Song list with set/position | `songs`, `highlightSongs` |
-| `PredictionHero` | Hero section with venue, date, stats | Venue, date, model, agreement, outlook |
+| `PredictionHero` | Hero section with venue, date, stats | Venue, date, outlook |
 | `SongSearch` | Song-specific search within board | `songs` |
-| `FilterLinks` | Band/model filter navigation | `pathname`, `band`, `model`, `bands` |
+| `FilterLinks` | Band filter navigation | `pathname`, `band`, `bands` |
 | `DataState` | Empty/error/missing-env states | `title`, `body` |
 | `SectionCard` | Bounded content section | `title`, `eyebrow`, `children` |
-| `DashboardSideNav` | Desktop side navigation | `band`, `model`, `bands` |
+| `DashboardSideNav` | Desktop side navigation | `band`, `bands` |
 | `MobileBottomNav` | Mobile bottom navigation | — |
 
 ### Visual Design Tokens
@@ -190,7 +166,7 @@ Defined in `globals.css`:
 | Primary | `#b0c6ff` | Accent elements, links, active states |
 | Primary container | `#0058cb` | Gradient backgrounds |
 | Secondary container | `#334d58` | Eyebrow badges |
-| Tertiary | `#e9c400` | Model agreement icons |
+| Tertiary | `#e9c400` | Secondary accents |
 | Background/Surface | `#111316` | Page background |
 | Surface container low | `#1a1c1f` | Card backgrounds |
 | On surface | `#e2e2e6` | Primary text |
@@ -257,10 +233,10 @@ The frontend reads from these Supabase tables:
 
 | Table | Purpose |
 |-------|---------|
-| `next_show_prediction_runs` | Canonical live next-show prediction rows |
-| `next_show_prediction_songs` | Live per-song projection for `/predictions` and realtime refresh |
-| `completed_show_prediction_runs` | Retained last-50 completed-show boards for Replay |
-| `completed_show_accuracy` | Per-show accuracy metrics keyed by band/model/version over the retained last-50 corpus |
+| `setlist_predictions` | Canonical live next-show prediction rows |
+| `setlist_prediction_songs` | Live per-song projection for `/predictions` and realtime refresh |
+| `setlist_results` | Retained last-50 completed-show boards |
+| `setlist_accuracy` | Per-show accuracy metrics keyed by band/version over the retained last-50 corpus |
 
 ### Prediction Row Schema
 
@@ -277,7 +253,6 @@ Each prediction row in the frontend (`PredictionRow` type) contains:
 | `recentAvgGap` | `recent_avg_gap` | Average gap over last 25 plays |
 | `gapRatio` | `gap_ratio` | `current_gap / avg_gap` |
 | `gapZScore` | `gap_z_score` | Z-score of current gap vs history |
-| `ckplusScore` | `ckplus_score` | CK+ model composite score |
 | `probability` | `probability` | Model probability (future; currently null) |
 | `tier` | computed | `expected` / `hot` / `likely` / `possible` |
 
@@ -289,9 +264,9 @@ Each accuracy row (`AccuracyRow` type):
 |-------|--------|-------------|
 | `showDate` | `show_date` | ISO date of the scored show |
 | `venueName` | `venue_name` | Venue of the scored show |
-| `k10Recall` | `k10_recall` | Fraction of top-10 predictions that appeared |
-| `k25Recall` | `k25_recall` | Fraction of top-25 predictions that appeared |
-| `k50Recall` | `k50_recall` | Fraction of top-50 predictions that appeared |
+| `recall10` | `recall_10` | Fraction of actual songs captured by top-10 predictions |
+| `recall25` | `recall_25` | Fraction of actual songs captured by top-25 predictions |
+| `recall50` | `recall_50` | Fraction of actual songs captured by top-50 predictions |
 
 ---
 

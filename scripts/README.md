@@ -18,7 +18,7 @@ These are the canonical scripts used by docs and GitHub Actions:
 - `validate_accuracy_tables.py` — per-show accuracy freshness/presence check, plus replay-lineage validation for recent scored shows
 - `audit_supabase_tables.py` — canonical website-facing Supabase audit that combines live prediction completeness, replay/history coverage, supported-model freshness, and recent raw setlist completeness into one read-only report
 - `collection_preflight.py` — classify collection mode and execution mode before the collector starts
-- `get_prediction_dates.py` — list available prediction reference dates for a band/model
+- `get_prediction_dates.py` — legacy helper to list available multi-model prediction reference dates
 - `get_last_completed_show_date.py` — resolve the most recent completed show date for a band
 
 Band collection scripts (kept at top-level so GitHub Actions and local tooling can address them directly):
@@ -33,25 +33,25 @@ Prediction entry points (band-specific wrappers):
 
 ## Integrations
 
-- `play_fantasy_goose.py` — auto-play Fantasy Goose using notebook predictions
+- `play_fantasy_goose.py` — auto-play Fantasy Goose using the active Goose prediction board
 - `run_live_tracker.py` — poll for live setlist updates during a show
 
 ## Recovery and rebuild
 
 - `export_backtest_snapshots.py` — export raw show/setlist tables into local JSON snapshots for offline historical scoring
 - `rebuild_prediction_songs.py` — legacy projection rebuild for the old `prediction_songs` table
-- `rebuild_derived_data.py` — rebuild predictions, `prediction_songs`, and/or accuracy tables band by band with per-model phase logging and just-in-time clearing
+- `rebuild_derived_data.py` — legacy multi-model rebuild helper for rollback paths
 - `backfill_predictions.py` — legacy prediction backfill helper; prefer `sync_retained_prediction_corpus.py` for active website data
 - `recover_deal_last50_local.py` — local-first recovery for missing Deal `last_50` historical rows using exported raw snapshots, local scored-run bundles, and per-band Supabase upload/verification
-- `wipe_band_data.py` — clear derived outputs per band/model
+- `wipe_band_data.py` — legacy multi-model destructive cleanup helper
 
 ## Diagnostics (stable)
 
 - `diagnose_band_data.py` — diagnose raw table completeness/consistency for a band
 - `audit_raw_data.py` — run the raw-data audit across one band or all supported bands
 - `audit_shared_model_inputs.py` — audit normalized shared model-input field availability across bands before adding cross-band features
-- `check_recent_avg_gap.py` — check recent average gap for a band/model (requires `--band` and `--model`)
-- `compare_models.py` — compare any backtestable candidate model against Notebook/CK+ baselines over the current standard `last_50` window; supports `--deal-overrides` JSON for hyperparameter/feature-subset ablations
+- `check_recent_avg_gap.py` — legacy diagnostic for band/model gap checks
+- `compare_models.py` — legacy baseline comparison helper; use it only for offline Phase B evidence against Notebook/Deal-era results
 - `evaluate_deal_model.py` — compatibility wrapper that runs the generic comparison workflow for Deal
 - `model_readiness.py` — canonical staged readiness workflow for future model promotion: comparison evidence, local snapshot export, historical publish, and backend validation
 - `analyze_ablations.py` — rank ablation JSON reports against the canonical Deal baseline and Notebook anchor, then print Batch 2 eligibility and suggested combo experiments

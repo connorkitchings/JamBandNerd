@@ -426,6 +426,101 @@ def test_fetch_prediction_songs_for_date_returns_exact_reference_date(monkeypatc
     assert [row["song_name"] for row in matched] == ["Song One", "Song Two"]
 
 
+def test_fetch_setlist_prediction_songs_for_date_uses_matching_run(monkeypatch):
+    class _ResponseStub:
+        def __init__(self, data):
+            self.data = data
+
+    class _QueryStub:
+        def __init__(self, rows):
+            self._rows = rows
+            self._filters = []
+            self._orders = []
+            self._limit = None
+
+        def select(self, *_args, **_kwargs):
+            return self
+
+        def eq(self, column, value):
+            self._filters.append((column, value))
+            return self
+
+        def order(self, column, desc=False):
+            self._orders.append((column, desc))
+            return self
+
+        def limit(self, value):
+            self._limit = value
+            return self
+
+        def execute(self):
+            rows = list(self._rows)
+            for column, value in self._filters:
+                rows = [row for row in rows if row.get(column) == value]
+            for column, desc in reversed(self._orders):
+                rows.sort(key=lambda row: row.get(column), reverse=desc)
+            if self._limit is not None:
+                rows = rows[: self._limit]
+            return _ResponseStub(rows)
+
+    class _ClientStub:
+        def __init__(self, tables):
+            self._tables = tables
+
+        def table(self, name: str):
+            return _QueryStub(self._tables[name])
+
+    tables = {
+        "setlist_predictions": [
+            {
+                "band": "goose",
+                "model_version": "goose_v1",
+                "reference_date": "2026-03-20",
+                "target_show_key": "show-1",
+                "generated_at": "2026-03-20T12:00:00+00:00",
+            },
+            {
+                "band": "goose",
+                "model_version": "goose_v1",
+                "reference_date": "2026-03-21",
+                "target_show_key": "show-2",
+                "generated_at": "2026-03-21T12:00:00+00:00",
+            },
+        ],
+        "setlist_prediction_songs": [
+            {
+                "band": "goose",
+                "model_version": "goose_v1",
+                "target_show_key": "show-1",
+                "rank": 2,
+                "song_name": "Song Two",
+            },
+            {
+                "band": "goose",
+                "model_version": "goose_v1",
+                "target_show_key": "show-1",
+                "rank": 1,
+                "song_name": "Song One",
+            },
+            {
+                "band": "goose",
+                "model_version": "goose_v1",
+                "target_show_key": "show-2",
+                "rank": 1,
+                "song_name": "Wrong Date",
+            },
+        ],
+    }
+    monkeypatch.setattr(operations, "get_supabase_client", lambda: _ClientStub(tables))
+
+    matched = operations.fetch_setlist_prediction_songs_for_date(
+        band="goose",
+        reference_date="2026-03-20",
+    )
+
+    assert [row["song_name"] for row in matched] == ["Song One", "Song Two"]
+
+
 def test_replace_next_show_prediction_projection_rejects_empty_predictions(monkeypatch):
     client = MagicMock()
     monkeypatch.setattr(operations, "get_supabase_client", lambda: client)

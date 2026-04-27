@@ -53,5 +53,5 @@ jobs:
   per-show metrics to `setlist_accuracy` and validates replay lineage
   from `setlist_results`. Aggregate summary tables are no longer
   part of the active write path.
-- **Data Reuse**: The local `run_optimized_pipeline.py` script was the inspiration for the new design, and it still provides an efficient way to run the entire process locally by loading data once and reusing it for multiple models.
+- **Data Reuse**: The local `run_optimized_pipeline.py` script still provides an efficient way to run the active single-model process locally for one band or all active bands.
 - **Robust Error Handling**: The GitHub Actions workflow is configured with `fail-fast: false`, so a failure in one band's pipeline will not cancel the others.

@@ -1084,6 +1084,50 @@ def fetch_prediction_songs_for_date(
     return response.data or []
 
 
+def fetch_setlist_prediction_songs_for_date(
+    *,
+    band: str,
+    reference_date: str,
+    model_version: str | None = None,
+    predictions_table: str = "setlist_predictions",
+    songs_table: str = "setlist_prediction_songs",
+    limit: int | None = None,
+) -> list[dict[str, Any]]:
+    """Fetch single-model projected songs for an exact band/reference_date."""
+    client = get_supabase_client()
+    run_query = (
+        client.table(predictions_table)
+        .select(
+            "id, band, model_version, target_show_key, reference_date, generated_at"
+        )
+        .eq("band", band)
+        .eq("reference_date", reference_date)
+        .order("generated_at", desc=True)
+        .limit(1)
+    )
+    if model_version is not None:
+        run_query = run_query.eq("model_version", model_version)
+
+    run_response = run_query.execute()
+    run_rows = run_response.data or []
+    if not run_rows:
+        return []
+
+    run = run_rows[0]
+    query = (
+        client.table(songs_table)
+        .select("*")
+        .eq("band", band)
+        .eq("model_version", run["model_version"])
+        .eq("target_show_key", run["target_show_key"])
+        .order("rank")
+    )
+    if limit is not None:
+        query = query.limit(limit)
+    response = query.execute()
+    return response.data or []
+
+
 def get_table_schema(
     table_name: str, *, use_cache: bool = True
 ) -> List[Dict[str, Any]]:

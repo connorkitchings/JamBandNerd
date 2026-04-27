@@ -273,10 +273,10 @@ New band onboarding workflow:
 3. Insert a row into the `bands` table
 4. The website automatically discovers and surfaces the new band
 
-## Completed Prediction Runs (Replay Lineage)
+## Completed Prediction Runs
 
 The `setlist_results` table preserves exact prediction boards for
-the retained completed-show corpus, enabling the Replay feature. Each row stores:
+the retained completed-show corpus. Each row stores:
 
 - `band`, `model_version`: prediction context
 - `reference_date`: when the prediction was made
@@ -288,9 +288,9 @@ the retained completed-show corpus, enabling the Replay feature. Each row stores
 The `setlist_accuracy` table links back to `setlist_results` via
 `prediction_run_id`, creating full lineage from evaluation back to the original prediction.
 
-The website's `/replay`, `/performance`, `/compare`, and `/last-show` surfaces
-read only this retained completed-show corpus. Each active band model version
-requires the same 50-show retained window.
+The website's `/performance` and `/last-show` surfaces read this retained
+completed-show corpus. Each active band model version requires the same
+50-show retained window.
 
 ## Per-Song Prediction Projection
 

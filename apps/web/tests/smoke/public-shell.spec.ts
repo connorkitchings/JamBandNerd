@@ -26,7 +26,9 @@ async function expectPrimaryHeadingOrMissingEnv(page: Page) {
   await expect(
     page
       .locator("main h1")
-      .or(page.getByRole("heading", { name: "Supabase environment required" })),
+      .or(page.getByRole("heading", { name: "Supabase environment required" }))
+      .or(page.locator("main h2"))
+      .first(),
   ).toBeVisible();
 }
 
@@ -57,6 +59,9 @@ test("desktop routes render the public shell", async ({ page }, testInfo) => {
   await page.goto("/data-use");
   await expect(page.getByRole("heading", { name: "Data Use" })).toBeVisible();
 
+  await page.goto("/contact");
+  await expect(page.getByRole("heading", { name: "Contact JamBandNerd" })).toBeVisible();
+
   await page.goto("/admin/setlist");
   await expect(
     page
@@ -64,6 +69,17 @@ test("desktop routes render the public shell", async ({ page }, testInfo) => {
       .or(page.getByRole("heading", { name: "Admin Unavailable" }))
       .or(page.getByRole("heading", { name: "Add Setlist" })),
   ).toBeVisible();
+});
+
+test("removed multi-model routes are unavailable", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop-chromium", "desktop-only route check");
+
+  await bootstrapHostedPreviewBypass(page);
+
+  for (const route of ["/compare", "/replay", "/explorer"]) {
+    const response = await page.goto(route);
+    expect(response?.status()).toBe(404);
+  }
 });
 
 test("mobile navigation uses thumb-first ordering", async ({ page }, testInfo) => {

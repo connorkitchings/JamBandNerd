@@ -3,6 +3,10 @@
 This guide explains how to add or remove backend prediction models using the
 registry-based model platform.
 
+> **Branch note (`feat/single-model-per-band`)**: New public model work should
+> happen as Phase B per-band model iteration. The public website exposes one
+> prediction board per band, not a selectable list of model slugs.
+
 ## Canonical Source of Truth
 
 Backend model registration is defined in:
@@ -11,24 +15,25 @@ Backend model registration is defined in:
 
 The registry controls:
 
-- model slug and display name
+- per-band model version and display metadata
 - predictor class instantiation
 - model version and canonical prediction storage metadata
 - pipeline/backfill/validation/web inclusion flags
 - lifecycle stage, readiness windows, and web visibility state
 - prediction serialization function
 
-Website config in `apps/web/src/lib/config.ts` is presentation metadata only.
-It is not backend model registration.
+Website config in `apps/web/src/lib/config.ts` contains band and presentation
+helpers only. It is not backend model registration, and it does not expose a
+model picker.
 
 `src/jambandnerd/config/models.py` and `src/jambandnerd/config/database.py`
 remain compatibility shims for legacy callers and are derived from registry
 metadata.
 
-## Add a New Backend Model
+## Add or Update a Per-Band Model
 
-1. Create a model package:
-`src/jambandnerd/models/<slug>/model.py`.
+1. Create or update a band model package:
+`src/jambandnerd/models/<band>/model.py`.
 
 2. Implement a predictor class that inherits `PredictionModel` and consumes
 `ModelData`.
@@ -37,8 +42,8 @@ metadata.
 `src/jambandnerd/models/<slug>/serialization.py` with
 `serialize_predictions(predictions) -> list[dict]`.
 
-4. Add one `ModelDefinition` entry in
-`src/jambandnerd/models/registry.py`.
+4. Update that band's registry entry in
+`src/jambandnerd/models/registry.py` with a new `model_version`.
 
 5. Add registry lifecycle metadata for staged rollout:
    - `lifecycle_stage`
@@ -46,9 +51,8 @@ metadata.
    - `readiness_windows`
    - `readiness_baselines`
 
-6. Optionally add website presentation metadata in
-`apps/web/src/lib/config.ts`. Keep new models hidden there until the final
-promotion step.
+6. Do not add frontend model-picker metadata; the website reads the registered
+band model output from `setlist_*` tables.
 
 ## Remove or Disable a Model
 
@@ -128,10 +132,10 @@ Backend readiness and public site exposure are intentionally separate.
 
 After readiness is verified:
 
-1. keep the model hidden in `apps/web/src/lib/config.ts`
-2. confirm `/performance`, `/compare`, and `/replay` can read the model with
-   the current promoted set
-3. flip the web visibility metadata in a focused promotion change
+1. keep the new model version scoped to its band registry entry
+2. confirm `/predictions`, `/performance`, and `/last-show` read the new
+   `setlist_*` rows
+3. promote the registry metadata in a focused change
 
 This makes it possible to fully backfill and validate a model in Supabase
 before users can select it on the site.

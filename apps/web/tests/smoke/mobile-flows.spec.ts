@@ -26,7 +26,9 @@ async function expectMainHeadingOrDataFallback(page: import("@playwright/test").
   await expect(
     page
       .locator("main h1")
-      .or(page.getByRole("heading", { name: "Supabase environment required" })),
+      .or(page.getByRole("heading", { name: "Supabase environment required" }))
+      .or(page.locator("main h2"))
+      .first(),
   ).toBeVisible();
 }
 
@@ -84,7 +86,7 @@ test.describe("mobile flows", () => {
 
     await bootstrapHostedPreviewBypass(page);
     
-    const routes = ["/", "/predictions", "/performance"];
+    const routes = ["/", "/predictions", "/performance", "/last-show", "/about", "/contact", "/data-use"];
     for (const route of routes) {
       await page.goto(route);
       await page.waitForLoadState("networkidle");

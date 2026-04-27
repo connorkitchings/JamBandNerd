@@ -45,7 +45,7 @@ export function DashboardAnalysis({
           Recent Accuracy Analysis
         </h4>
         <p className="mt-2 text-sm text-on-surface-variant">
-          Last completed shows for the selected band/model, using Top 10 accuracy as the signal.
+          Last completed shows for the selected band, using Top 10 accuracy as the signal.
         </p>
         <div className="mt-8 flex h-64 items-end justify-between gap-2 border-b border-outline-variant/30 pb-2">
           {chartRows.map((row, index) => (

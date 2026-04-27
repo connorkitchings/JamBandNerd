@@ -40,9 +40,10 @@ This repository cannot enforce those remote GitHub settings from code alone, so 
 - `/`
 - `/predictions`
 - `/performance`
-- `/compare`
-- `/replay`
 - `/last-show`
+- `/about`
+- `/contact`
+- `/data-use`
 
 Run:
 

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { groupPredictionRowsByTier, normalizeSongName } from "../../src/lib/song-board.ts";
+import { groupPredictionRowsByTier, normalizeSongName } from "../../src/lib/song-board-core.ts";
 import type { PredictionRow } from "../../src/lib/data.ts";
 
 function buildRow(songName: string, tier: PredictionRow["tier"], rank: number): PredictionRow {
