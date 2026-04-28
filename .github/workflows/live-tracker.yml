@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       band:
-        description: "Band to track (goose or phish)"
+        description: "Band to track (goose, phish, or wsp)"
         required: true
         type: choice
         options:

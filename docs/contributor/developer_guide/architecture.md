@@ -42,8 +42,7 @@ graph TD
   `{band}_songs_raw`.
 - Supporting tables such as venues or upcoming shows are allowed when the
   source requires them.
-- WSP remains a special-case collector because CI reliability can require
-  browser automation.
+- WSP remains a special-case collector because CI reliability can require browser automation. A centralized song name canonicalizer (`src/jambandnerd/data_collection/wsp/song_canonicalizer.py`) normalizes song names from all WSP sources (EC, PanicStream, TourWrangler) to EC catalog forms using a hybrid static-alias + dynamic-lookup approach.
 
 ### Normalization and Transformations
 
@@ -72,7 +71,7 @@ graph TD
 - The website in `apps/web` is the current public surface.
 - Supabase remains the shared storage and read layer for predictions and
   accuracy data.
-- `apps/web/src/lib/data.ts` remains the compatibility import surface while domain ownership is split across `apps/web/src/lib/data/{bands,predictions,accuracy,replay,shows,venues}.ts`.
+- `apps/web/src/lib/data.ts` remains the compatibility import surface while domain ownership is split across `apps/web/src/lib/data/{bands,predictions,accuracy,replay,shows}.ts` with shared types in `types.ts` and parsing helpers in `parsers.ts`.
 - Route files should compose server-side results rather than reimplement query logic.
 - Client components are reserved for interactive islands, navigation hooks, and live subscriptions.
 
@@ -115,9 +114,9 @@ Three models are registered:
 
 | Model | Slug | Status | Canonical Storage |
 |-------|------|--------|-------------------|
-| Notebook | `notebook` | Web promoted | `predictions` + `model_slug=notebook` |
-| CK+ | `ckplus` | Retired baseline | Historical rows retained in `predictions` + `prediction_songs` |
-| Deal | `deal` | Web promoted | `predictions` + `model_slug=deal` |
+| Notebook | `notebook` | Web promoted | `next_show_prediction_runs` (live) + `completed_show_prediction_runs` (retained) |
+| CK+ | `ckplus` | Retired baseline | Historical rows retained in legacy `predictions` + `prediction_songs` |
+| Deal | `deal` | Web promoted | `next_show_prediction_runs` (live) + `completed_show_prediction_runs` (retained) |
 
 New prediction models are added through the registry workflow (see
 `docs/contributor/model_development.md`):

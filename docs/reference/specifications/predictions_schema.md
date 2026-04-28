@@ -165,11 +165,16 @@ Reasons:
 ### Deferred alternative
 
 The legacy `predictions`, `prediction_songs`, `historical_prediction_runs`, and
-`accuracy_per_show` tables may remain temporarily for compatibility and
-migration safety, but they are not the active website-facing source of truth.
+`accuracy_per_show` tables remain in the database during the migration period.
+The Python pipeline still writes to these legacy tables alongside the new split
+tables. The website reads exclusively from the new split tables.
 
-That alternative is not the current system and should not be documented as if
-it already exists.
+Per-model prediction and accuracy tables (e.g., band-scoped prediction/accuracy
+tables) were dropped by migration `20260415_drop_legacy_prediction_tables.sql`.
+
+The legacy tables should not be used as a data source for new features. They
+will be removed once the Python pipeline is fully migrated to write only to the
+split tables.
 
 ## Related Documents
 

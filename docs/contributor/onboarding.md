@@ -32,7 +32,19 @@ Please follow the installation instructions in the [README.md](https://github.co
 
 ### Environment Variables
 
-Before you can run the project, create a `.env` file in the project root and fill in the required values for your Supabase project.
+Before you can run the project, create a `.env` file in the project root with:
+
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `PHISH_API_KEY` (optional, for Phish data only)
+
+For the website, copy the example env file:
+
+```bash
+cp apps/web/.env.local.example apps/web/.env.local
+```
+
+Then fill in `SUPABASE_URL` and `SUPABASE_ANON_KEY` in `apps/web/.env.local`.
 
 ## 3. Development Workflow
 

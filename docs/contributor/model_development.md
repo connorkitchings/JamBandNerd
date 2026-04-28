@@ -94,7 +94,7 @@ This workflow is responsible for:
 - comparison evidence generation
 - local snapshot export for offline historical scoring
 - historical canonical prediction + replay lineage publishing
-- per-show accuracy publication through `accuracy_per_show`
+- per-show accuracy publication through `completed_show_accuracy`
 - backend readiness validation
 
 Use `--phase report-only` to inspect the current state without publishing.

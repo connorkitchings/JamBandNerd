@@ -31,6 +31,10 @@ BAND_FILTERED_TABLES = [
     "accuracy_per_show",
     "historical_prediction_runs",
     "collection_runs",
+    "next_show_prediction_runs",
+    "next_show_prediction_songs",
+    "completed_show_prediction_runs",
+    "completed_show_accuracy",
 ]
 
 
