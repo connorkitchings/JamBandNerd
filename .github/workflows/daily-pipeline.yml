@@ -267,36 +267,10 @@ jobs:
         id: predictions
         if: steps.preflight.outputs.should_run_collection == 'true' && steps.collection.outputs.workflow_state != 'degraded'
         run: |
-          echo "::group::Generating predictions for ${{ matrix.band }}"
+          echo "::group::Generating live next-show predictions for ${{ matrix.band }}"
 
-          # Resolve the last completed show date once, then batch both reference dates
-          # (upcoming + last completed) into a single invocation per model.  For
-          # training-capable models (Deal) this avoids a second full training pass when
-          # the two dates share nearly identical training data.
-          echo "Finding last completed show date..."
-          LAST_COMPLETED_DATE=$(uv run python scripts/get_last_completed_show_date.py --band ${{ matrix.band }})
-
-          if [[ -n "$LAST_COMPLETED_DATE" ]]; then
-            echo "Last completed show date is $LAST_COMPLETED_DATE. Batching upcoming and completed predictions."
-            uv run python scripts/generate_predictions.py --band ${{ matrix.band }} --model notebook --date default --date $LAST_COMPLETED_DATE --require-output
-            uv run python scripts/generate_predictions.py --band ${{ matrix.band }} --model deal --date default --date $LAST_COMPLETED_DATE --require-output
-          else
-            echo "Could not determine last completed show date. Generating for upcoming show only."
-            uv run python scripts/generate_predictions.py --band ${{ matrix.band }} --model notebook --require-output
-            uv run python scripts/generate_predictions.py --band ${{ matrix.band }} --model deal --require-output
-          fi
-
-          echo "::endgroup::"
-
-      - name: Rebuild Prediction Projection Window
-        if: steps.preflight.outputs.should_run_collection == 'true' && steps.collection.outputs.workflow_state != 'degraded'
-        run: |
-          echo "::group::Rebuilding prediction_songs window for ${{ matrix.band }}"
-
-          uv run python scripts/rebuild_prediction_songs.py \
-            --band ${{ matrix.band }} \
-            --reference-date-from "${{ steps.preflight.outputs.recent_window_start }}" \
-            --reference-date-to "${{ steps.preflight.outputs.lookahead_end }}"
+          uv run python scripts/generate_live_predictions.py --band ${{ matrix.band }} --model notebook
+          uv run python scripts/generate_live_predictions.py --band ${{ matrix.band }} --model deal
 
           echo "::endgroup::"
 
@@ -319,11 +293,9 @@ jobs:
           # correct AND semantics when two models run sequentially (last-write-wins).
           echo "backtest_incremental_all_scored=true" >> "$GITHUB_OUTPUT"
 
-          # Incremental mode (default) skips already-scored shows so only new shows are computed.
-          # Both models use the same 50-show window that the website queries.
-          # Use --no-incremental on a manual dispatch to force a full recompute (e.g. after a data correction).
-          uv run python scripts/run_backtest.py --band ${{ matrix.band }} --model notebook --shows 50 --incremental --require-results
-          uv run python scripts/run_backtest.py --band ${{ matrix.band }} --model deal --shows 50 --incremental --require-results
+          # Incremental mode skips already-scored shows, then prunes completed-show
+          # prediction and accuracy rows outside the retained last-50 corpus.
+          uv run python scripts/sync_retained_prediction_corpus.py --band ${{ matrix.band }} --window 50 --incremental --require-results
 
           echo "::endgroup::"
 

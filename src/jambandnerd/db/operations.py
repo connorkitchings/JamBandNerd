@@ -416,6 +416,247 @@ def replace_prediction_projection(
     _cleanup_stale_prediction_songs(band=band, model_version=model_version)
 
 
+def upsert_next_show_prediction_run(
+    *,
+    band: str,
+    model_slug: str,
+    model_version: str,
+    target_show_key: str,
+    target_show_date: str,
+    reference_date: str,
+    generated_at: str,
+    predictions: Sequence[dict[str, Any]],
+    table_name: str = "next_show_prediction_runs",
+) -> int:
+    """Upsert the active live next-show prediction run and return its id."""
+    client = get_supabase_client()
+    row = {
+        "band": band,
+        "model_slug": model_slug,
+        "model_version": model_version,
+        "target_show_key": target_show_key,
+        "target_show_date": target_show_date,
+        "reference_date": reference_date,
+        "generated_at": generated_at,
+        "top_k": len(predictions),
+        "predictions": list(predictions),
+    }
+    cleaned_row = {str(key): _clean_record_value(value) for key, value in row.items()}
+
+    response = (
+        client.table(table_name)
+        .upsert(
+            cleaned_row,
+            on_conflict="band,model_slug,model_version,target_show_key",
+        )
+        .execute()
+    )
+    data = response.data or []
+    if data and data[0].get("id") is not None:
+        run_id = int(data[0]["id"])
+    else:
+        existing = (
+            client.table(table_name)
+            .select("id")
+            .eq("band", band)
+            .eq("model_slug", model_slug)
+            .eq("model_version", model_version)
+            .eq("target_show_key", target_show_key)
+            .limit(1)
+            .execute()
+        )
+        rows = existing.data or []
+        if not rows or rows[0].get("id") is None:
+            raise RuntimeError("Failed to resolve next_show_prediction_runs.id")
+        run_id = int(rows[0]["id"])
+
+    stale = (
+        client.table(table_name)
+        .select("target_show_key")
+        .eq("band", band)
+        .eq("model_slug", model_slug)
+        .eq("model_version", model_version)
+        .execute()
+    )
+    for item in stale.data or []:
+        stale_key = item.get("target_show_key")
+        if not stale_key or stale_key == target_show_key:
+            continue
+        (
+            client.table(table_name)
+            .delete()
+            .eq("band", band)
+            .eq("model_slug", model_slug)
+            .eq("model_version", model_version)
+            .eq("target_show_key", stale_key)
+            .execute()
+        )
+
+    return run_id
+
+
+def replace_next_show_prediction_projection(
+    *,
+    band: str,
+    model_slug: str,
+    model_version: str,
+    target_show_key: str,
+    target_show_date: str,
+    reference_date: str,
+    generated_at: str,
+    predictions: Sequence[dict[str, Any]],
+    prediction_run_id: int | None = None,
+    table_name: str = "next_show_prediction_songs",
+) -> None:
+    """Replace the active per-song live projection for a next-show run."""
+    if not predictions:
+        raise RuntimeError(
+            "Refusing to replace next-show prediction projection with no "
+            f"predictions for {band}/{model_slug}/{model_version}."
+        )
+
+    client = get_supabase_client()
+    (
+        client.table(table_name)
+        .delete()
+        .eq("band", band)
+        .eq("model_slug", model_slug)
+        .eq("model_version", model_version)
+        .execute()
+    )
+
+    rows = [
+        {
+            "prediction_run_id": prediction_run_id,
+            "band": band,
+            "model_slug": model_slug,
+            "model_version": model_version,
+            "target_show_key": target_show_key,
+            "target_show_date": target_show_date,
+            "reference_date": reference_date,
+            "generated_at": generated_at,
+            "rank": prediction["rank"],
+            "song_name": prediction["song_name"],
+            "top_k": len(predictions),
+            "prediction_payload": prediction,
+        }
+        for prediction in predictions
+    ]
+    bulk_insert_dataframe(table_name, pd.DataFrame(rows))
+
+
+def upsert_completed_show_prediction_run(
+    *,
+    band: str,
+    model_slug: str,
+    model_version: str,
+    target_show_key: str,
+    target_show_date: str,
+    reference_date: str,
+    generated_at: str,
+    predictions: Sequence[dict[str, Any]],
+    actual_songs: Sequence[str],
+    table_name: str = "completed_show_prediction_runs",
+) -> int:
+    """Upsert a retained completed-show prediction run and return its id."""
+    client = get_supabase_client()
+    row = {
+        "band": band,
+        "model_slug": model_slug,
+        "model_version": model_version,
+        "target_show_key": target_show_key,
+        "target_show_date": target_show_date,
+        "reference_date": reference_date,
+        "generated_at": generated_at,
+        "predictions": list(predictions),
+        "top_k": len(predictions),
+        "actual_songs": list(actual_songs),
+        "actual_song_count": len(actual_songs),
+    }
+    cleaned_row = {str(key): _clean_record_value(value) for key, value in row.items()}
+
+    response = (
+        client.table(table_name)
+        .upsert(
+            cleaned_row,
+            on_conflict="band,model_slug,model_version,target_show_key",
+        )
+        .execute()
+    )
+    data = response.data or []
+    if data and data[0].get("id") is not None:
+        return int(data[0]["id"])
+
+    existing = (
+        client.table(table_name)
+        .select("id")
+        .eq("band", band)
+        .eq("model_slug", model_slug)
+        .eq("model_version", model_version)
+        .eq("target_show_key", target_show_key)
+        .limit(1)
+        .execute()
+    )
+    rows = existing.data or []
+    if not rows or rows[0].get("id") is None:
+        raise RuntimeError("Failed to resolve completed_show_prediction_runs.id")
+    return int(rows[0]["id"])
+
+
+def prune_completed_show_corpus(
+    *,
+    band: str,
+    model_slug: str,
+    model_version: str,
+    retained_target_show_keys: Iterable[str],
+    runs_table: str = "completed_show_prediction_runs",
+    accuracy_table: str = "completed_show_accuracy",
+    allow_empty_retained: bool = False,
+) -> int:
+    """Hard-delete completed-show rows outside the retained active corpus."""
+    retained = {str(key) for key in retained_target_show_keys}
+    if not retained and not allow_empty_retained:
+        raise RuntimeError(
+            "Refusing to prune completed-show corpus with an empty retained key set "
+            f"for {band}/{model_slug}/{model_version}."
+        )
+
+    client = get_supabase_client()
+    response = (
+        client.table(runs_table)
+        .select("target_show_key")
+        .eq("band", band)
+        .eq("model_slug", model_slug)
+        .eq("model_version", model_version)
+        .execute()
+    )
+    deleted = 0
+    for row in response.data or []:
+        target_show_key = row.get("target_show_key")
+        if not target_show_key or str(target_show_key) in retained:
+            continue
+        (
+            client.table(accuracy_table)
+            .delete()
+            .eq("band", band)
+            .eq("model_slug", model_slug)
+            .eq("model_version", model_version)
+            .eq("target_show_key", target_show_key)
+            .execute()
+        )
+        (
+            client.table(runs_table)
+            .delete()
+            .eq("band", band)
+            .eq("model_slug", model_slug)
+            .eq("model_version", model_version)
+            .eq("target_show_key", target_show_key)
+            .execute()
+        )
+        deleted += 1
+    return deleted
+
+
 def upsert_historical_prediction_run(
     *,
     band: str,

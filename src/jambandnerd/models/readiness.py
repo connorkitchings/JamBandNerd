@@ -6,6 +6,12 @@ from dataclasses import asdict, dataclass
 from typing import Any
 
 from jambandnerd.config.bands import get_repo_supported_bands
+from jambandnerd.config.database import (
+    COMPLETED_SHOW_ACCURACY_TABLE,
+    COMPLETED_SHOW_PREDICTION_RUNS_TABLE,
+    NEXT_SHOW_PREDICTION_RUNS_TABLE,
+    NEXT_SHOW_PREDICTION_SONGS_TABLE,
+)
 from jambandnerd.db.connection import get_supabase_client
 from jambandnerd.models.registry import (
     get_model_definition,
@@ -50,11 +56,11 @@ def _latest_prediction_row(
 ) -> dict[str, Any] | None:
     response = (
         client.table(table)
-        .select("reference_date, top_k, predicted_at")
+        .select("reference_date, top_k, generated_at")
         .eq("band", band)
         .eq("model_slug", model_slug)
         .eq("model_version", model_version)
-        .order("predicted_at", desc=True)
+        .order("generated_at", desc=True)
         .order("reference_date", desc=True)
         .limit(1)
         .execute()
@@ -75,7 +81,7 @@ def _projection_row_count_for_reference_date(
         return 0
 
     response = (
-        client.table("prediction_songs")
+        client.table(NEXT_SHOW_PREDICTION_SONGS_TABLE)
         .select("id", count="exact")
         .eq("band", band)
         .eq("model_slug", model_slug)
@@ -95,7 +101,7 @@ def _recent_unique_target_dates(
     limit: int,
 ) -> list[str]:
     response = (
-        client.table("historical_prediction_runs")
+        client.table(COMPLETED_SHOW_PREDICTION_RUNS_TABLE)
         .select("target_show_date")
         .eq("band", band)
         .eq("model_slug", model_slug)
@@ -146,7 +152,7 @@ def build_model_readiness_report(
     for band in selected_bands:
         latest_prediction_row = _latest_prediction_row(
             client,
-            table=definition.prediction_table,
+            table=NEXT_SHOW_PREDICTION_RUNS_TABLE,
             band=band,
             model_slug=definition.slug,
             model_version=definition.version,
@@ -162,13 +168,13 @@ def build_model_readiness_report(
             else None
         )
         prediction_rows = _row_count(
-            client.table(definition.prediction_table)
+            client.table(NEXT_SHOW_PREDICTION_RUNS_TABLE)
             .select("reference_date", count="exact")
             .eq("band", band)
             .eq("model_version", definition.version)
         )
         projection_rows = _row_count(
-            client.table("prediction_songs")
+            client.table(NEXT_SHOW_PREDICTION_SONGS_TABLE)
             .select("reference_date", count="exact")
             .eq("band", band)
             .eq("model_slug", definition.slug)
@@ -182,16 +188,17 @@ def build_model_readiness_report(
             reference_date=latest_reference_date,
         )
         historical_runs = _row_count(
-            client.table("historical_prediction_runs")
+            client.table(COMPLETED_SHOW_PREDICTION_RUNS_TABLE)
             .select("id", count="exact")
             .eq("band", band)
             .eq("model_slug", definition.slug)
             .eq("model_version", definition.version)
         )
         per_show_rows = _row_count(
-            client.table("accuracy_per_show")
+            client.table(COMPLETED_SHOW_ACCURACY_TABLE)
             .select("show_id", count="exact")
             .eq("band", band)
+            .eq("model_slug", definition.slug)
             .eq("model_version", definition.version)
         )
 

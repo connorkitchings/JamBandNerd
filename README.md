@@ -70,11 +70,11 @@ uv run python scripts/run_optimized_pipeline.py --band all --skip-accuracy
 While the optimized pipeline is recommended, you can also run individual components for debugging or granular control. The main scripts accept `--band` and `--model` arguments.
 
 ```bash
-# Generate predictions for a single band and model
-uv run python scripts/generate_predictions.py --band phish --model deal
+# Generate live next-show predictions for a single band and model
+uv run python scripts/generate_live_predictions.py --band phish --model deal
 
-# Run a backtest to calculate per-show accuracy
-uv run python scripts/run_backtest.py --band goose --model notebook --shows 50
+# Sync the retained last-50 completed-show prediction and metric corpus
+uv run python scripts/sync_retained_prediction_corpus.py --band goose --window 50
 
 # Backfill Eggy raw tables without validation warnings
 uv run python scripts/run_eggy_collection.py --skip-validation

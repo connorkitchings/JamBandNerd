@@ -14,6 +14,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from jambandnerd.config import (
+    COMPLETED_SHOW_ACCURACY_TABLE,
+    NEXT_SHOW_PREDICTION_RUNS_TABLE,
+)
 from jambandnerd.config.bands import get_repo_supported_bands
 from jambandnerd.db.connection import get_supabase_client
 from jambandnerd.db.operations import fetch_prediction_songs_for_date
@@ -24,6 +28,7 @@ from scripts.validate_accuracy_tables import (
     _recent_replay_eligible_rows,
 )
 from scripts.validate_prediction_tables import (
+    _has_upcoming_show,
     _latest_prediction_row,
     list_stale_projection_reference_dates,
 )
@@ -202,15 +207,23 @@ def _derive_model_audit(
 
     latest_prediction_row = _latest_prediction_row(
         client,
-        table=definition.prediction_table,
+        table=NEXT_SHOW_PREDICTION_RUNS_TABLE,
         band=band,
         model_slug=definition.slug,
         model_version=definition.version,
     )
     parsed_predictions: list[dict[str, Any]] = []
     projection_rows: list[dict[str, Any]] = []
+    live_prediction_required = _has_upcoming_show(client, band=band)
     if latest_prediction_row is None:
-        _append_unique(blockers, "canonical_predictions_missing")
+        if not live_prediction_required:
+            latest_projection_rows = 0
+        else:
+            _append_unique(blockers, "canonical_predictions_missing")
+    elif not live_prediction_required:
+        warnings.append("live_predictions_present_without_upcoming_show")
+    if latest_prediction_row is None:
+        pass
     else:
         parsed_predictions, parse_error = _parse_predictions_blob(
             latest_prediction_row.get("predictions")
@@ -241,14 +254,14 @@ def _derive_model_audit(
             ):
                 _append_unique(blockers, "canonical_predictions_top_k_mismatch")
 
-        predicted_at = _parse_prediction_timestamp(
-            latest_prediction_row.get("predicted_at")
+        generated_at = _parse_prediction_timestamp(
+            latest_prediction_row.get("generated_at")
         )
-        if predicted_at is None:
-            _append_unique(blockers, "canonical_predictions_missing_predicted_at")
+        if generated_at is None:
+            _append_unique(blockers, "canonical_predictions_missing_generated_at")
         else:
             latest_prediction_age_hours = (
-                datetime.now(timezone.utc) - predicted_at
+                datetime.now(timezone.utc) - generated_at
             ).total_seconds() / 3600
             if latest_prediction_age_hours > max_age_hours:
                 _append_unique(blockers, "canonical_predictions_stale")
@@ -258,6 +271,7 @@ def _derive_model_audit(
                 band=band,
                 model_slug=definition.slug,
                 reference_date=str(latest_reference_date),
+                table_name="next_show_prediction_songs",
             )
         latest_projection_rows = len(projection_rows)
         latest_projection_top_song = (
@@ -291,33 +305,44 @@ def _derive_model_audit(
     if stale_projection_reference_dates:
         _append_unique(blockers, "prediction_projection_recent_stale_rows")
 
+    accuracy_window_issues = warnings if skip_accuracy else blockers
+
     if historical_run_rows < required_window:
-        _append_unique(blockers, "historical_run_rows_below_window")
+        _append_unique(accuracy_window_issues, "historical_run_rows_below_window")
     if unique_historical_target_dates < required_window:
-        _append_unique(blockers, "historical_unique_target_dates_below_window")
+        _append_unique(
+            accuracy_window_issues,
+            "historical_unique_target_dates_below_window",
+        )
     if per_show_accuracy_rows < required_window:
-        _append_unique(blockers, "per_show_accuracy_rows_below_window")
+        _append_unique(accuracy_window_issues, "per_show_accuracy_rows_below_window")
 
     replay_rows = _recent_replay_eligible_rows(
         client,
-        table="accuracy_per_show",
+        table=COMPLETED_SHOW_ACCURACY_TABLE,
         band=band,
         model_version=definition.version,
         limit=required_window,
     )
     if len(replay_rows) < required_window:
-        _append_unique(blockers, "replay_eligible_rows_below_window")
+        _append_unique(accuracy_window_issues, "replay_eligible_rows_below_window")
     replay_lineage_missing_dates = tuple(
         str(row.get("show_date") or "unknown")
         for row in replay_rows
         if row.get("prediction_run_id") is None
     )
     if replay_lineage_missing_dates:
-        _append_unique(blockers, "replay_lineage_missing_prediction_run_id")
+        _append_unique(
+            accuracy_window_issues,
+            "replay_lineage_missing_prediction_run_id",
+        )
 
     for overlap_slug, overlap_count in replay_overlap.items():
         if overlap_count < required_window:
-            _append_unique(blockers, f"replay_overlap_below_window:{overlap_slug}")
+            _append_unique(
+                accuracy_window_issues,
+                f"replay_overlap_below_window:{overlap_slug}",
+            )
 
     if definition.slug in freshness_result.stale_prediction_models:
         _append_unique(blockers, "supported_prediction_freshness_stale")

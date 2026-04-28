@@ -7,7 +7,8 @@ from datetime import datetime, timezone
 from typing import Dict, Iterable, List
 
 from jambandnerd.config import (
-    HISTORICAL_PREDICTION_RUNS_TABLE,
+    COMPLETED_SHOW_ACCURACY_TABLE,
+    COMPLETED_SHOW_PREDICTION_RUNS_TABLE,
 )
 from jambandnerd.config.bands import get_repo_supported_bands
 from jambandnerd.db.connection import get_supabase_client
@@ -165,7 +166,7 @@ def validate_accuracy(
         required_replay_window = replay_window or max(
             definition.readiness_windows or (50,)
         )
-        per_show_table = "accuracy_per_show"
+        per_show_table = COMPLETED_SHOW_ACCURACY_TABLE
         print(f"\n== Validating {model_slug} accuracy ({model_version}) ==")
 
         for band in band_list:
@@ -203,6 +204,11 @@ def validate_accuracy(
                         f"[FAIL] {band}: no replay lineage rows found for {model_slug}"
                     )
                     failures += 1
+                elif len(replay_rows) != required_replay_window:
+                    print(
+                        f"[FAIL] {band}: replay lineage has {len(replay_rows)}/{required_replay_window} retained eligible rows for {model_slug}"
+                    )
+                    failures += 1
                 else:
                     missing_links = [
                         str(row.get("show_date") or "unknown")
@@ -218,7 +224,7 @@ def validate_accuracy(
                         failures += 1
                     else:
                         print(
-                            f"[OK] {band}: replay lineage ready for {model_slug} across {len(replay_rows)} recent shows via {HISTORICAL_PREDICTION_RUNS_TABLE}"
+                            f"[OK] {band}: replay lineage ready for {model_slug} across {len(replay_rows)} recent shows via {COMPLETED_SHOW_PREDICTION_RUNS_TABLE}"
                         )
 
     return failures

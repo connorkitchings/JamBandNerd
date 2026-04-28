@@ -26,20 +26,28 @@ uv run python scripts/run_optimized_pipeline.py --band all --skip-accuracy
 
 While the optimized pipeline is recommended for end-to-end runs, the core logic is housed in a few consolidated, parameterized scripts. These can be run individually for granular control or debugging.
 
-### `generate_predictions.py`
+### `generate_live_predictions.py`
 
-Generates and saves predictions for a given band and model.
+Generates and saves active next-show predictions for a given band and model.
+If no upcoming show is discoverable, no live board is written.
 
 - `--band <repo-supported-band-slug>`: (Required) The band to process. The script accepts any repo-supported band from `src/jambandnerd/config/bands.py`.
 - `--model <registered-model-slug>`: (Required) The model to use.
-- `--date {YYYY-MM-DD}`: (Optional) The reference date for predictions. Defaults to the next upcoming show.
 - `--exclusion-window {N}`: (Optional) For the Notebook model, the number of recent shows to exclude songs from. Defaults to 3.
+
+### `sync_retained_prediction_corpus.py`
+
+Scores and prunes the active completed-show prediction corpus.
+
+- `--band <repo-supported-band-slug>`: (Required) The band to process.
+- `--window {N}`: (Optional) Retained completed-show window. Defaults to `50`.
+- `--incremental` / `--no-incremental`: (Optional) Skip already-scored shows when possible.
 
 ### `run_backtest.py`
 
 Runs a historical backtest, storing the scored ranked board in
-`historical_prediction_runs`, and saving linked per-show accuracy metrics to the
-`accuracy_per_show` table. Replay readiness is validated from those linked
+`completed_show_prediction_runs`, and saving linked per-show accuracy metrics to the
+`completed_show_accuracy` table. Replay readiness is validated from those linked
 `prediction_run_id` rows through `validate_accuracy_tables.py`.
 
 - `--band <repo-supported-band-slug>`: (Required) The band to process. The script accepts any repo-supported band from `src/jambandnerd/config/bands.py`.
@@ -76,9 +84,9 @@ Runs the canonical read-only Supabase audit for the public website surfaces.
 By default it targets the repo-authoritative automation bands plus the currently promoted website models,
 then checks:
 
-- live prediction completeness in `predictions` and `prediction_songs`
-- replay/history coverage in `historical_prediction_runs`
-- per-show accuracy coverage in `accuracy_per_show`
+- live prediction completeness in `next_show_prediction_runs` and `next_show_prediction_songs`
+- replay/history coverage in `completed_show_prediction_runs`
+- per-show accuracy coverage in `completed_show_accuracy`
 - replay overlap across promoted models
 - supported-model freshness using the existing freshness policy
 - recent completed-show setlist completeness as supporting evidence
@@ -107,8 +115,8 @@ Exit behavior:
 
 Replay completeness is measured against the required window for each promoted
 model. A healthy surface must retain at least that many recent unique
-`target_show_date` rows in `historical_prediction_runs`, at least that many
-`accuracy_per_show` rows, and at least that much overlap between promoted
+`target_show_date` rows in `completed_show_prediction_runs`, at least that many
+`completed_show_accuracy` rows, and at least that much overlap between promoted
 models so `/replay` can compare boards for the same nights.
 
 ### Future Considerations: `jbn` CLI

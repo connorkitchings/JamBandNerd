@@ -426,6 +426,40 @@ def test_fetch_prediction_songs_for_date_returns_exact_reference_date(monkeypatc
     assert [row["song_name"] for row in matched] == ["Song One", "Song Two"]
 
 
+def test_replace_next_show_prediction_projection_rejects_empty_predictions(monkeypatch):
+    client = MagicMock()
+    monkeypatch.setattr(operations, "get_supabase_client", lambda: client)
+
+    with pytest.raises(RuntimeError, match="Refusing to replace"):
+        operations.replace_next_show_prediction_projection(
+            band="goose",
+            model_slug="notebook",
+            model_version="notebook_v1",
+            target_show_key="show-1",
+            target_show_date="2026-04-25",
+            reference_date="2026-04-25",
+            generated_at="2026-04-24T12:00:00+00:00",
+            predictions=[],
+        )
+
+    client.table.assert_not_called()
+
+
+def test_prune_completed_show_corpus_rejects_empty_retained_keys(monkeypatch):
+    client = MagicMock()
+    monkeypatch.setattr(operations, "get_supabase_client", lambda: client)
+
+    with pytest.raises(RuntimeError, match="empty retained key set"):
+        operations.prune_completed_show_corpus(
+            band="goose",
+            model_slug="notebook",
+            model_version="notebook_v1",
+            retained_target_show_keys=[],
+        )
+
+    client.table.assert_not_called()
+
+
 def test_upsert_historical_prediction_run_returns_inserted_id(monkeypatch):
     class _ResponseStub:
         def __init__(self, data):

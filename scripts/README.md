@@ -8,12 +8,13 @@ admin/diagnostic/manual utilities.
 These are the canonical scripts used by docs and GitHub Actions:
 
 - `run_optimized_pipeline.py` — local helper runner for one band or `all`; mirrors the daily workflow sequence, but GitHub Actions YAML is the canonical orchestrator. If collection preflight selects verify-only mode, prediction/backtest work is skipped unless `--force` is passed.
-- `generate_predictions.py` — generate predictions for `--band` and `--model`
-- `run_backtest.py` — compute per-show accuracy history and persist historical scored-run lineage; supports local raw-table snapshots via `--snapshot-root`
+- `generate_live_predictions.py` — generate active live next-show predictions for `--band` and `--model`
+- `sync_retained_prediction_corpus.py` — compute and prune the retained last-50 completed-show prediction/metric corpus
+- `run_backtest.py` — scoring helper used by the retained corpus sync; supports local raw-table snapshots via `--snapshot-root`
 - `verify_data_freshness.py` — CI data-quality check for recent missing setlists
 - `generate_pipeline_summary.py` — GitHub Actions monitoring summary for recent completed-show freshness and prediction coverage
 - `check_supported_model_freshness.py` — audit supported prediction/accuracy freshness for one band and emit GitHub Actions outputs without failing early
-- `validate_prediction_tables.py` — prediction freshness/JSON integrity check using the latest row by `predicted_at`, plus `prediction_songs` consistency checks
+- `validate_prediction_tables.py` — live prediction freshness/JSON integrity check using the latest row by `generated_at`, plus `next_show_prediction_songs` consistency checks
 - `validate_accuracy_tables.py` — per-show accuracy freshness/presence check, plus replay-lineage validation for recent scored shows
 - `audit_supabase_tables.py` — canonical website-facing Supabase audit that combines live prediction completeness, replay/history coverage, supported-model freshness, and recent raw setlist completeness into one read-only report
 - `collection_preflight.py` — classify collection mode and execution mode before the collector starts
@@ -38,9 +39,9 @@ Prediction entry points (band-specific wrappers):
 ## Recovery and rebuild
 
 - `export_backtest_snapshots.py` — export raw show/setlist tables into local JSON snapshots for offline historical scoring
-- `rebuild_prediction_songs.py` — rebuild the `prediction_songs` projection from canonical prediction tables; supports bounded `--reference-date-from/--reference-date-to` window reconciliation
+- `rebuild_prediction_songs.py` — legacy projection rebuild for the old `prediction_songs` table
 - `rebuild_derived_data.py` — rebuild predictions, `prediction_songs`, and/or accuracy tables band by band with per-model phase logging and just-in-time clearing
-- `backfill_predictions.py` — regenerate historical predictions for one or more band/model combinations; supports `--snapshot-root` to load raw show/setlist data from local JSON snapshots instead of re-fetching from Supabase per prediction
+- `backfill_predictions.py` — legacy prediction backfill helper; prefer `sync_retained_prediction_corpus.py` for active website data
 - `recover_deal_last50_local.py` — local-first recovery for missing Deal `last_50` historical rows using exported raw snapshots, local scored-run bundles, and per-band Supabase upload/verification
 - `wipe_band_data.py` — clear derived outputs per band/model
 

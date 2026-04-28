@@ -30,10 +30,9 @@ The primary production workflow. Collects raw data, generates predictions, runs 
   1. Compute collection preflight via `scripts/collection_preflight.py`
   2. Run data collection via `scripts/run_{band}_collection.py` (with retry logic)
   3. Verify data freshness via `scripts/verify_data_freshness.py`
-  4. Generate predictions for Notebook and Deal models via `scripts/generate_predictions.py`
-  5. Rebuild the bounded `prediction_songs` projection window via `scripts/rebuild_prediction_songs.py --reference-date-from ... --reference-date-to ...`
-  6. Validate prediction tables via `scripts/validate_prediction_tables.py`
-  7. Run backtests and save per-show accuracy (skippable via `skip_accuracy`; Notebook uses `--shows 50`, Deal uses `--shows 50`; emits `backtest_incremental_all_scored` output)
+  4. Generate live next-show predictions for Notebook and Deal via `scripts/generate_live_predictions.py`
+  5. Validate live prediction tables via `scripts/validate_prediction_tables.py`
+  6. Sync the retained completed-show corpus via `scripts/sync_retained_prediction_corpus.py --window 50` (skippable via `skip_accuracy`; both models use the same last-50 window; emits `backtest_incremental_all_scored` output through the underlying scorer)
   8. Validate accuracy tables via `scripts/validate_accuracy_tables.py` (passes `--skip-freshness` when all shows already scored)
   9. Audit supported-model freshness via `scripts/check_supported_model_freshness.py`
   10. Audit website Supabase tables via `scripts/audit_supabase_tables.py` (passes `--skip-accuracy` when all shows already scored)
@@ -216,5 +215,6 @@ For manual recovery or migration workflows:
 - `scripts/audit_raw_data.py` — inspect raw data before targeted re-ingestion
 - `scripts/check_supported_model_freshness.py` — audit supported prediction and accuracy freshness without failing before status artifacts are written
 - `scripts/rebuild_derived_data.py` — rebuild predictions and accuracy after schema changes
-- `scripts/rebuild_prediction_songs.py` — rebuild the `prediction_songs` projection from canonical tables
+- `scripts/generate_live_predictions.py` — write active next-show predictions into `next_show_prediction_runs` and `next_show_prediction_songs`
+- `scripts/sync_retained_prediction_corpus.py` — write and prune the active last-50 completed-show corpus in `completed_show_prediction_runs` and `completed_show_accuracy`
 - `scripts/wipe_band_data.py` — clear derived outputs per band/model

@@ -69,15 +69,24 @@ def ensure_source_reachable(band: str, *, timeout: int = 15) -> None:
             headers={"User-Agent": config.user_agent},
         )
         status = response.status_code
-        # Treat any network-level errors or 5xx responses as fatal. 4xx responses imply the host is reachable.
+        # Treat network-level errors or 5xx responses as fatal for most.
+        # Some APIs (like UM) might return 500 on the root but work fine on subpaths.
+        if status >= 500:
+            if band == "um":
+                import logging as _logging
+
+                _logging.getLogger(__name__).warning(
+                    f"Received {status} from {url} — proceeding anyway for UM "
+                    "as its API root is known to be unstable while subpaths work."
+                )
+                return
+            raise RuntimeError(f"Received status {status} from {url}")
         if status == 403:
             import logging as _logging
 
             _logging.getLogger(__name__).warning(
                 f"Received 403 from {url} — upstream API may be blocking requests"
             )
-        elif status >= 500:
-            raise RuntimeError(f"Received status {status} from {url}")
     except requests.RequestException as exc:
         raise RuntimeError(f"Failed to contact {url}: {exc}") from exc
 

@@ -28,11 +28,8 @@ sys.path.insert(0, project_root)
 
 # Import the functions from the refactored scripts
 from scripts.audit_supabase_tables import run_supabase_audit
-from scripts.collection_preflight import CollectionPreflight, compute_band_preflight
-from scripts.generate_predictions import generate_predictions_batched
-from scripts.get_last_completed_show_date import get_last_completed_show_date
-from scripts.rebuild_prediction_songs import rebuild_prediction_songs
-from scripts.run_backtest import run_backtest
+from scripts.collection_preflight import compute_band_preflight
+from scripts.generate_live_predictions import generate_live_predictions
 from scripts.run_billy_collection import run_billy_collection
 from scripts.run_eggy_collection import run_eggy_collection
 from scripts.run_goose_collection import run_goose_collection
@@ -42,7 +39,7 @@ from scripts.run_wsp_collection import run_wsp_collection
 from scripts.validate_accuracy_tables import validate_accuracy
 from scripts.validate_prediction_tables import validate_predictions
 from src.jambandnerd.config.bands import get_repo_supported_bands
-from src.jambandnerd.models.registry import list_backfill_models, list_pipeline_models
+from src.jambandnerd.models.registry import list_pipeline_models
 
 logging.basicConfig(
     level=logging.INFO,
@@ -50,13 +47,6 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 logger = logging.getLogger(__name__)
-
-try:
-    from scripts.backfill_predictions import backfill_band
-
-    HAS_BACKFILL = True
-except ImportError:
-    HAS_BACKFILL = False
 
 # Suppress noisy httpx logs
 logging.getLogger("httpx").setLevel(logging.WARNING)
@@ -137,44 +127,17 @@ def _audit_band_supabase(
         )
 
 
-def _rebuild_band_prediction_projection(
-    *,
-    band: str,
-    preflight: CollectionPreflight | None,
-) -> None:
-    reference_date_from = None
-    reference_date_to = None
-    if preflight is not None:
-        reference_date_from = preflight.recent_window_start
-        reference_date_to = preflight.lookahead_end
-
-    rebuild_prediction_songs(
-        band=band,
-        model=None,
-        reference_date_from=reference_date_from,
-        reference_date_to=reference_date_to,
-    )
-
-
-def _prediction_dates_for_band(band: str) -> list[str | None]:
-    dates: list[str | None] = [None]
-    last_completed_date = get_last_completed_show_date(band)
-    if last_completed_date:
-        dates.append(last_completed_date)
-    return dates
-
-
 def _generate_band_predictions(*, band: str, model: str) -> None:
-    generate_predictions_batched(
+    generate_live_predictions(
         band=band,
         model=model,
-        date_strs=_prediction_dates_for_band(band),
         exclusion_window=None,
-        require_output=True,
     )
 
 
 def _run_band_backtest(*, band: str, model: str) -> int:
+    from scripts.run_backtest import run_backtest
+
     return run_backtest(
         band=band,
         model=model,
@@ -288,30 +251,6 @@ def run_band_pipeline(
 
     if skip_accuracy:
         log_with_timestamp(f"{log_prefix} Skipping accuracy calculations.")
-
-    # Step 3: Backfill stale predictions
-    if HAS_BACKFILL:
-        backfill_models = [definition.slug for definition in list_backfill_models()]
-        for model in backfill_models:
-            log_with_timestamp(f"[{band.upper()}] Starting: {model.title()} Backfill")
-            try:
-                result = backfill_band(band, model, dry_run=False)
-                log_with_timestamp(
-                    f"[{band.upper()}] Finished: {model.title()} Backfill "
-                    f"({result['regenerated']} regenerated)"
-                )
-            except Exception as e:
-                log_with_timestamp(
-                    f"[{band.upper()}] WARNING: {model.title()} Backfill failed: {e}"
-                )
-
-    if not run_step(
-        _rebuild_band_prediction_projection,
-        band,
-        "Prediction Projection Rebuild",
-        preflight=preflight,
-    ):
-        return False
 
     if not run_step(
         _validate_band_predictions, band, "Prediction Validation", max_age_hours=72

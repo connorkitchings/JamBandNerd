@@ -13,10 +13,9 @@ Previously, the pipeline relied on numerous individual scripts for each band and
 The primary optimization is the consolidation of 14+ scripts into a few core orchestrators and runners. This follows the **Don't Repeat Yourself (DRY)** principle, making the codebase easier to manage and extend.
 
 - `scripts/run_optimized_pipeline.py`: The main entry point for running the end-to-end pipeline locally. It orchestrates calls to the other consolidated scripts.
-- `scripts/generate_predictions.py`: A single script to generate predictions for any band/model combination.
-- `scripts/run_backtest.py`: A single script to run historical backtests and populate per-show accuracy data.
-- `scripts/rebuild_prediction_songs.py`: A projection rebuild tool for regenerating
-  `prediction_songs` from canonical prediction rows.
+- `scripts/generate_live_predictions.py`: A single script to generate the active next-show prediction board for any band/model combination.
+- `scripts/sync_retained_prediction_corpus.py`: A corpus sync wrapper that scores promoted models against the shared last-50 eligible completed shows and prunes older derived rows.
+- `scripts/run_backtest.py`: The lower-level backtest/scoring engine used by the retained corpus sync.
 
 ## GitHub Actions Optimization
 
@@ -41,20 +40,19 @@ jobs:
 
       - name: Generate Predictions (Notebook & Deal)
         run: |
-          python scripts/generate_predictions.py --band ${{ matrix.band }} --model notebook
-          python scripts/generate_predictions.py --band ${{ matrix.band }} --model deal
+          python scripts/generate_live_predictions.py --band ${{ matrix.band }} --model notebook
+          python scripts/generate_live_predictions.py --band ${{ matrix.band }} --model deal
 
-      - name: Run Backtest
+      - name: Sync Retained Prediction Corpus
         run: |
-          python scripts/run_backtest.py --band ${{ matrix.band }} --model notebook --shows 100
-          # ... and so on
+          python scripts/sync_retained_prediction_corpus.py --band ${{ matrix.band }} --window 50 --incremental --require-results
 ```
 
 ## Performance and Efficiency
 
 - **Simplified Accuracy Contract**: The active pipeline writes canonical
-  per-show metrics to `accuracy_per_show` and validates replay lineage from
-  `historical_prediction_runs`. Aggregate summary tables are no longer part of
-  the active write path.
+  per-show metrics to `completed_show_accuracy` and validates replay lineage
+  from `completed_show_prediction_runs`. Aggregate summary tables are no longer
+  part of the active write path.
 - **Data Reuse**: The local `run_optimized_pipeline.py` script was the inspiration for the new design, and it still provides an efficient way to run the entire process locally by loading data once and reusing it for multiple models.
 - **Robust Error Handling**: The GitHub Actions workflow is configured with `fail-fast: false`, so a failure in one band's pipeline will not cancel the others.

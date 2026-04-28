@@ -21,7 +21,6 @@ COLLECTION_RUNNERS = {
 
 @pytest.fixture
 def preflight_stub(monkeypatch):
-    monkeypatch.setattr(run_optimized_pipeline, "HAS_BACKFILL", False)
     monkeypatch.setattr(
         run_optimized_pipeline,
         "compute_band_preflight",
@@ -62,21 +61,13 @@ def pipeline_recorder(monkeypatch, preflight_stub):
 
     monkeypatch.setattr(
         run_optimized_pipeline,
-        "get_last_completed_show_date",
-        lambda band: "2026-03-15",
+        "_generate_band_predictions",
+        record("generate_live_predictions"),
     )
     monkeypatch.setattr(
         run_optimized_pipeline,
-        "generate_predictions_batched",
-        record("generate_predictions"),
-    )
-    monkeypatch.setattr(
-        run_optimized_pipeline, "run_backtest", record("run_backtest", return_value=1)
-    )
-    monkeypatch.setattr(
-        run_optimized_pipeline,
-        "rebuild_prediction_songs",
-        record("rebuild_prediction_songs"),
+        "_run_band_backtest",
+        record("run_backtest", return_value=1),
     )
     monkeypatch.setattr(
         run_optimized_pipeline,
@@ -109,11 +100,10 @@ def test_run_band_pipeline_executes_full_orchestrator_path(band, pipeline_record
     assert success is True
     assert [event[0] for event in pipeline_recorder] == [
         f"{band}:collect",
-        "generate_predictions",
+        "generate_live_predictions",
         "run_backtest",
-        "generate_predictions",
+        "generate_live_predictions",
         "run_backtest",
-        "rebuild_prediction_songs",
         "validate_predictions",
         "validate_accuracy",
         "audit_supabase",
@@ -127,46 +117,22 @@ def test_run_band_pipeline_executes_full_orchestrator_path(band, pipeline_record
     assert notebook_prediction == {
         "band": band,
         "model": "notebook",
-        "date_strs": [None, "2026-03-15"],
-        "exclusion_window": None,
-        "require_output": True,
     }
     assert deal_prediction == {
         "band": band,
         "model": "deal",
-        "date_strs": [None, "2026-03-15"],
-        "exclusion_window": None,
-        "require_output": True,
     }
     assert notebook_backtest == {
         "band": band,
         "model": "notebook",
-        "start": None,
-        "end": None,
-        "shows": 50,
-        "exclusion_window": None,
-        "incremental": True,
-        "require_results": True,
     }
     assert deal_backtest == {
         "band": band,
         "model": "deal",
-        "start": None,
-        "end": None,
-        "shows": 50,
-        "exclusion_window": None,
-        "incremental": True,
-        "require_results": True,
     }
-    assert pipeline_recorder[5][1]["kwargs"] == {
-        "band": band,
-        "model": None,
-        "reference_date_from": "2026-03-10",
-        "reference_date_to": "2026-03-31",
-    }
+    assert pipeline_recorder[5][1]["kwargs"] == {"band": band, "max_age_hours": 72}
     assert pipeline_recorder[6][1]["kwargs"] == {"band": band, "max_age_hours": 72}
-    assert pipeline_recorder[7][1]["kwargs"] == {"band": band, "max_age_hours": 72}
-    assert pipeline_recorder[8][1]["kwargs"] == {
+    assert pipeline_recorder[7][1]["kwargs"] == {
         "band": band,
         "max_age_hours": 72,
         "skip_accuracy": False,
@@ -180,16 +146,15 @@ def test_run_band_pipeline_skip_accuracy_preserves_predictions_and_validation(
     def fail_if_called(*_args, **_kwargs):
         raise AssertionError("accuracy step should be skipped")
 
-    monkeypatch.setattr(run_optimized_pipeline, "run_backtest", fail_if_called)
+    monkeypatch.setattr(run_optimized_pipeline, "_run_band_backtest", fail_if_called)
 
     success = run_optimized_pipeline.run_band_pipeline(band, skip_accuracy=True)
 
     assert success is True
     assert [event[0] for event in pipeline_recorder] == [
         f"{band}:collect",
-        "generate_predictions",
-        "generate_predictions",
-        "rebuild_prediction_songs",
+        "generate_live_predictions",
+        "generate_live_predictions",
         "validate_predictions",
         "audit_supabase",
     ]
@@ -260,11 +225,10 @@ def test_run_band_pipeline_force_overrides_verify_only_preflight(
 
     assert success is True
     assert [event[0] for event in pipeline_recorder] == [
-        "generate_predictions",
+        "generate_live_predictions",
         "run_backtest",
-        "generate_predictions",
+        "generate_live_predictions",
         "run_backtest",
-        "rebuild_prediction_songs",
         "validate_predictions",
         "validate_accuracy",
         "audit_supabase",
@@ -277,7 +241,7 @@ def test_run_band_pipeline_all_scored_skips_accuracy_freshness(
     band = "goose"
     monkeypatch.setattr(
         run_optimized_pipeline,
-        "run_backtest",
+        "_run_band_backtest",
         lambda *args, **kwargs: (
             pipeline_recorder.append(("run_backtest", {"args": args, "kwargs": kwargs}))
             or 0
@@ -314,7 +278,7 @@ def test_run_band_pipeline_stops_after_collection_failure(
     )
     monkeypatch.setattr(
         run_optimized_pipeline,
-        "generate_predictions_batched",
+        "_generate_band_predictions",
         lambda *args, **kwargs: events.append("generate"),
     )
 
@@ -336,12 +300,6 @@ def test_run_band_pipeline_stops_after_prediction_failure(
         lambda: events.append(("collect", band)),
     )
 
-    monkeypatch.setattr(
-        run_optimized_pipeline,
-        "get_last_completed_show_date",
-        lambda band: "2026-03-15",
-    )
-
     def fail_generate(*_args, **kwargs):
         model = kwargs["model"]
         events.append(("generate", model))
@@ -349,11 +307,13 @@ def test_run_band_pipeline_stops_after_prediction_failure(
             raise RuntimeError("prediction failed")
 
     monkeypatch.setattr(
-        run_optimized_pipeline, "generate_predictions_batched", fail_generate
+        run_optimized_pipeline,
+        "_generate_band_predictions",
+        fail_generate,
     )
     monkeypatch.setattr(
         run_optimized_pipeline,
-        "run_backtest",
+        "_run_band_backtest",
         lambda *args, **kwargs: events.append(("backtest", kwargs["model"])),
     )
     monkeypatch.setattr(

@@ -87,7 +87,7 @@ MODEL_METADATA: tuple[ModelMetadata, ...] = (
         supports_backtest=True,
         lifecycle_stage="web_promoted",
         web_visibility="promoted",
-        readiness_windows=(10,),
+        readiness_windows=(50,),
         readiness_baselines=("notebook",),
         notes="Promoted 2026-04-11. Replaces CK+.",
     ),

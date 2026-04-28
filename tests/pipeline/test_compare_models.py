@@ -239,7 +239,7 @@ def test_compare_models_candidate_notebook_matches_backtest_metrics(monkeypatch)
     captured: dict[str, pd.DataFrame] = {}
     monkeypatch.setattr(
         backtest_module,
-        "upsert_historical_prediction_run",
+        "upsert_completed_show_prediction_run",
         lambda **kwargs: 101,
     )
     monkeypatch.setattr(
@@ -249,6 +249,9 @@ def test_compare_models_candidate_notebook_matches_backtest_metrics(monkeypatch)
     )
     monkeypatch.setattr(
         backtest_module, "fetch_scored_show_ids", lambda *a, **kw: set()
+    )
+    monkeypatch.setattr(
+        backtest_module, "prune_completed_show_corpus", lambda **kwargs: None
     )
 
     backtest_module.run_backtest(

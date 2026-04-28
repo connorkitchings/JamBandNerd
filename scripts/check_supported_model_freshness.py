@@ -14,11 +14,16 @@ import os
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 
+from jambandnerd.config import (
+    COMPLETED_SHOW_ACCURACY_TABLE,
+    NEXT_SHOW_PREDICTION_RUNS_TABLE,
+)
 from jambandnerd.db.connection import get_supabase_client
 from jambandnerd.models.registry import (
     list_accuracy_validation_models,
     list_models,
 )
+from scripts.validate_prediction_tables import _has_upcoming_show
 
 
 @dataclass(frozen=True)
@@ -144,24 +149,36 @@ def audit_supported_model_freshness(
     prediction_ages: list[float] = []
     accuracy_ages: list[float] = []
     surface_lines: list[str] = []
+    live_prediction_required = _has_upcoming_show(client, band=band)
 
     for slug in sorted(prediction_models):
         definition = prediction_models[slug]
+        if not live_prediction_required:
+            surface_lines.append(
+                _render_surface_line(
+                    slug=slug,
+                    surface="predictions",
+                    age_hours=None,
+                    is_stale=False,
+                    fallback_reason="no upcoming show; live prediction not required",
+                )
+            )
+            continue
         row = _latest_timestamp_row(
             client,
-            table=definition.prediction_table,
+            table=NEXT_SHOW_PREDICTION_RUNS_TABLE,
             band=band,
             model_version=definition.version,
-            timestamp_field="predicted_at",
+            timestamp_field="generated_at",
             model_slug=definition.slug,
         )
         is_stale, age_hours, reason = _evaluate_timestamp_row(
             row=row,
-            timestamp_field="predicted_at",
+            timestamp_field="generated_at",
             max_age_hours=max_age_hours,
             now=now,
             missing_reason=f"{slug} predictions missing",
-            invalid_reason=f"{slug} predictions missing valid predicted_at",
+            invalid_reason=f"{slug} predictions missing valid generated_at",
             stale_reason_prefix=f"{slug} predictions stale",
         )
         if age_hours is not None:
@@ -185,7 +202,7 @@ def audit_supported_model_freshness(
 
         per_show_row = _latest_timestamp_row(
             client,
-            table="accuracy_per_show",
+            table=COMPLETED_SHOW_ACCURACY_TABLE,
             band=band,
             model_version=definition.version,
             timestamp_field="evaluated_at",

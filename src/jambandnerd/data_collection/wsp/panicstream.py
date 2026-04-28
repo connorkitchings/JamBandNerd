@@ -102,18 +102,6 @@ def _strip_track_number(text: str) -> str:
 
 def _normalize_song_name(song_name: str) -> str:
     cleaned = song_name.strip()
-    lowered = cleaned.lower()
-
-    if lowered == "walkin'":
-        return "Walkin' (For Your Love)"
-
-    if lowered in {
-        "bowlegged woman knock kneed man",
-        "bowlegged woman, knock kneed man",
-        "knock kneed man",
-    }:
-        return "Bowlegged Woman"
-
     return cleaned
 
 

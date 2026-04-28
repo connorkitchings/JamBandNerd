@@ -19,17 +19,21 @@ import sys
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, project_root)
 
+from src.jambandnerd.config import COMPLETED_SHOW_PREDICTION_RUNS_TABLE
 from src.jambandnerd.db.connection import get_supabase_client
 from src.jambandnerd.models.registry import list_model_slugs
 
 
-def _fetch_dates(client, table_name: str, band: str, limit: int) -> set[str]:
+def _fetch_dates(
+    client, table_name: str, band: str, model: str, limit: int
+) -> set[str]:
     """Fetch unique reference_date values for a band from a prediction table."""
     try:
         resp = (
             client.table(table_name)
             .select("reference_date")
             .eq("band", band)
+            .eq("model_slug", model)
             .order("reference_date", desc=True)
             .limit(limit)
             .execute()
@@ -55,15 +59,17 @@ def get_prediction_dates(
     are NOT present in the missing_from model's table (dates needing backfill).
     """
     client = get_supabase_client()
-    source_table = f"predictions_{model}"
+    source_table = COMPLETED_SHOW_PREDICTION_RUNS_TABLE
 
-    source_dates = _fetch_dates(client, source_table, band, limit)
+    source_dates = _fetch_dates(client, source_table, band, model, limit)
     if not source_dates:
         return []
 
     if missing_from:
-        target_table = f"predictions_{missing_from}"
-        existing_dates = _fetch_dates(client, target_table, band, limit * 10)
+        target_table = COMPLETED_SHOW_PREDICTION_RUNS_TABLE
+        existing_dates = _fetch_dates(
+            client, target_table, band, missing_from, limit * 10
+        )
         source_dates -= existing_dates
 
     return sorted(source_dates, reverse=True)

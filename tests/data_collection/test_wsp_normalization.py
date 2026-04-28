@@ -6,19 +6,23 @@ from src.jambandnerd.data_collection.wsp.normalizer import (
     normalize_songs,
 )
 
-# Mock raw data for songs
+# Mock raw data for songs (EC collector format)
 mock_raw_songs = [
     {
-        "id": 1,
-        "name": "Travelin' Light",
-        "created_at": "2023-01-01T12:00:00Z",
-        "updated_at": "2023-01-01T12:00:00Z",
+        "code": "TLIGHT",
+        "song_name": "Travelin' Light",
+        "first_played": "1986-04-17",
+        "last_played": "2026-03-22",
+        "times_played": 1047,
+        "aka": None,
     },
     {
-        "id": 2,
-        "name": "Ain't Life Grand",
-        "created_at": "2023-01-02T12:00:00Z",
-        "updated_at": "2023-01-02T12:00:00Z",
+        "code": "GRAND",
+        "song_name": "Ain't Life Grand",
+        "first_played": "1993-07-26",
+        "last_played": "2026-03-21",
+        "times_played": 661,
+        "aka": None,
     },
 ]
 
@@ -106,10 +110,11 @@ class TestWSPNormalization:
         df = normalize_songs(mock_raw_songs)
         assert isinstance(df, pd.DataFrame)
         assert not df.empty
-        assert "api_song_id" in df.columns
+        assert "song_code" in df.columns
         assert "song_name" in df.columns
         assert len(df) == len(mock_raw_songs)
         assert df["song_name"].iloc[0] == "Travelin' Light"
+        assert df["song_code"].iloc[0] == "TLIGHT"
 
     def test_normalize_shows(self):
         mock_show = {
@@ -168,3 +173,77 @@ class TestWSPNormalization:
         assert len(df) == 1
         assert df["song_position"].iloc[0] == 1
         assert df["song_name"].iloc[0] == "Valid Song"
+
+    def test_normalize_setlists_canonicalizes_c_brown(self):
+        raw = [
+            {
+                "show_id": 101,
+                "set_number": 1,
+                "song_position": 1,
+                "song_name": "C Brown",
+            },
+            {
+                "show_id": 101,
+                "set_number": 1,
+                "song_position": 2,
+                "song_name": "C.Brown",
+            },
+        ]
+        df = normalize_setlists(raw)
+        assert all(df["song_name"] == "C. Brown")
+
+    def test_normalize_setlists_canonicalizes_mr_soul(self):
+        raw = [
+            {
+                "show_id": 101,
+                "set_number": "E",
+                "song_position": 1,
+                "song_name": "Mr Soul",
+            },
+        ]
+        df = normalize_setlists(raw)
+        assert df["song_name"].iloc[0] == "Mr. Soul"
+
+    def test_normalize_setlists_canonicalizes_with_dynamic_lookup(self):
+        raw = [
+            {
+                "show_id": 101,
+                "set_number": 1,
+                "song_position": 1,
+                "song_name": "Coconut Image",
+            },
+        ]
+        lookup = {"coconut image": "Coconut"}
+        df = normalize_setlists(raw, canonical_lookup=lookup)
+        assert df["song_name"].iloc[0] == "Coconut"
+
+    def test_normalize_setlists_canonicalizes_panicstream_output(self):
+        raw = [
+            {
+                "show_id": 101,
+                "set_number": 1,
+                "song_position": 1,
+                "song_name": "Walkin'",
+            },
+            {
+                "show_id": 101,
+                "set_number": 1,
+                "song_position": 2,
+                "song_name": "Bowlegged Woman, Knock Kneed Man",
+            },
+        ]
+        df = normalize_setlists(raw)
+        assert df["song_name"].iloc[0] == "Walkin' (For Your Love)"
+        assert df["song_name"].iloc[1] == "Bowlegged Woman"
+
+    def test_normalize_setlists_preserves_unknown_songs(self):
+        raw = [
+            {
+                "show_id": 101,
+                "set_number": 1,
+                "song_position": 1,
+                "song_name": "New Unreleased Song",
+            },
+        ]
+        df = normalize_setlists(raw)
+        assert df["song_name"].iloc[0] == "New Unreleased Song"
