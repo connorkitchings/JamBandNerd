@@ -179,6 +179,7 @@ def build_scored_run_records(
                 prediction_date,
                 exclusion_window=exclusion_window,
                 band=band,
+                target_show_context=show_row,
             )
 
             if supports_training:

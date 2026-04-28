@@ -1,34 +1,39 @@
 """Goose-specific feature engineering for Phase B setlist prediction.
 
-Tier A — computed from show_date and song_name only (always available).
-Tier B — computed from set_number, song_position, encore (requires gaps.py
-          to have those columns plumbed through historical_plays).
-
 All aggregations operate strictly on historical_plays that are already
-filtered to shows before the prediction reference_date.  The only
-forward-looking input is target_show_date, which is used purely as a
-label for day-of-week and calendar-month lookups — no data from that
-date enters any aggregate.
+filtered to shows before the prediction reference_date. The only
+forward-looking inputs are target_show_date and target show venue context,
+which are labels for calendar and same-venue-run lookups. No data from the
+target setlist enters any aggregate.
 """
 
 from __future__ import annotations
 
 from datetime import date, timedelta
-from typing import List
+from typing import Any, List
 
 import pandas as pd
 
+from jambandnerd.transformations.run_context import (
+    normalize_target_show_context,
+    normalized_venue_key,
+    same_venue_run_show_indices,
+)
+
 GOOSE_EXTRA_FEATURES: list[str] = [
-    # Tier A
     "dow_play_rate",
     "month_play_rate",
     "show_position_in_run",
     "tour_position",
-    # Tier B (fall back to 0.0 if set columns absent)
-    "set1_play_rate",
-    "set2_play_rate",
-    "encore_rate",
-    "mean_song_position",
+    "plays_past_10",
+    "plays_past_25",
+    "pct_shows_10",
+    "pct_shows_25",
+    "diff_25_to_50",
+    "same_venue_run_prior_played",
+    "same_venue_run_prior_play_count",
+    "same_venue_run_prior_play_share",
+    "same_venue_run_position",
 ]
 
 
@@ -70,6 +75,7 @@ def compute_goose_song_features(
     historical_plays: pd.DataFrame,
     *,
     target_show_date: date,
+    target_show_context: dict[str, Any] | pd.Series | None = None,
 ) -> pd.DataFrame:
     """Compute Goose-specific per-song features from pre-filtered historical plays.
 
@@ -82,10 +88,11 @@ def compute_goose_song_features(
     plays = historical_plays.copy()
     plays["show_date"] = pd.to_datetime(plays["show_date"], errors="coerce").dt.date
 
-    # --- Show-level features (constant across all songs) ---
     show_dates: List[date] = sorted(plays["show_date"].dropna().unique().tolist())
     show_pos = _run_position(show_dates, target_show_date, gap_days=1)
     tour_pos = _tour_position(show_dates, target_show_date, tour_gap_days=14)
+    reference_index = int(plays["show_index"].max()) + 1
+    historical_show_indices = set(plays["show_index"].dropna().astype(int).unique())
 
     target_dow = target_show_date.weekday()
     target_month = target_show_date.month
@@ -93,7 +100,6 @@ def compute_goose_song_features(
     plays["_dow"] = pd.to_datetime(plays["show_date"].astype(str)).dt.dayofweek
     plays["_month"] = pd.to_datetime(plays["show_date"].astype(str)).dt.month
 
-    # --- Song-level Tier A aggregates ---
     total_plays = plays.groupby("song_name")["show_index"].nunique().rename("_total")
     dow_plays = (
         plays[plays["_dow"] == target_dow]
@@ -119,56 +125,93 @@ def compute_goose_song_features(
     feats["show_position_in_run"] = float(show_pos)
     feats["tour_position"] = float(tour_pos)
 
-    # --- Tier B: set-position aggregates ---
-    has_set_cols = "set_number" in plays.columns and "encore" in plays.columns
-    if has_set_cols:
-        set1_plays = (
-            plays[plays["set_number"] == 1]
+    for window in (10, 25, 50):
+        window_start = reference_index - window
+        window_show_count = max(
+            1,
+            sum(
+                show_index >= window_start and show_index < reference_index
+                for show_index in historical_show_indices
+            ),
+        )
+        window_plays = (
+            plays[plays["show_index"] >= window_start]
             .groupby("song_name")["show_index"]
             .nunique()
-            .rename("_set1")
+            .rename(f"_plays_past_{window}")
         )
-        set2_plays = (
-            plays[plays["set_number"] == 2]
-            .groupby("song_name")["show_index"]
-            .nunique()
-            .rename("_set2")
+        feats = feats.join(window_plays, how="left").fillna(0)
+        feats[f"plays_past_{window}"] = feats[f"_plays_past_{window}"]
+        feats[f"pct_shows_{window}"] = (
+            feats[f"_plays_past_{window}"] / window_show_count
         )
-        encore_plays = (
-            plays[plays["encore"].fillna(False).astype(bool)]
-            .groupby("song_name")["show_index"]
-            .nunique()
-            .rename("_encore")
-        )
-        feats = (
-            feats.join(set1_plays, how="left")
-            .join(set2_plays, how="left")
-            .join(encore_plays, how="left")
-        )
-        feats = feats.fillna(0)
-        feats["set1_play_rate"] = feats["_set1"] / feats["_total"].clip(lower=1)
-        feats["set2_play_rate"] = feats["_set2"] / feats["_total"].clip(lower=1)
-        feats["encore_rate"] = feats["_encore"] / feats["_total"].clip(lower=1)
-    else:
-        feats["set1_play_rate"] = 0.0
-        feats["set2_play_rate"] = 0.0
-        feats["encore_rate"] = 0.0
 
-    has_pos_col = "song_position" in plays.columns
-    if has_pos_col:
-        mean_pos = (
-            plays.groupby("song_name")["song_position"]
-            .mean()
-            .rename("mean_song_position")
-        )
-        feats = feats.join(mean_pos, how="left")
-        feats["mean_song_position"] = feats["mean_song_position"].fillna(0.0)
+    feats["diff_25_to_50"] = feats["pct_shows_25"] - feats["pct_shows_50"]
+
+    normalized_target_context = normalize_target_show_context(target_show_context)
+    if normalized_venue_key(normalized_target_context):
+        same_run_indices = same_venue_run_show_indices(plays, normalized_target_context)
     else:
-        feats["mean_song_position"] = 0.0
+        same_run_indices = []
+
+    if same_run_indices:
+        same_run_plays = (
+            plays[plays["show_index"].isin(same_run_indices)]
+            .groupby("song_name")["show_index"]
+            .nunique()
+            .rename("_same_run_prior_play_count")
+        )
+        feats = feats.join(same_run_plays, how="left").fillna(0)
+        feats["same_venue_run_prior_play_count"] = feats["_same_run_prior_play_count"]
+        feats["same_venue_run_prior_played"] = (
+            feats["same_venue_run_prior_play_count"] > 0
+        ).astype(float)
+        feats["same_venue_run_prior_play_share"] = feats[
+            "same_venue_run_prior_play_count"
+        ] / len(same_run_indices)
+        feats["same_venue_run_position"] = float(len(same_run_indices) + 1)
+    else:
+        feats["same_venue_run_prior_played"] = 0.0
+        feats["same_venue_run_prior_play_count"] = 0.0
+        feats["same_venue_run_prior_play_share"] = 0.0
+        feats["same_venue_run_position"] = (
+            1.0 if normalized_venue_key(normalized_target_context) else 0.0
+        )
 
     result = feats[GOOSE_EXTRA_FEATURES].reset_index()
     result.columns = ["song_name"] + GOOSE_EXTRA_FEATURES
     return result
+
+
+def _target_context_from_training_group(
+    historical_plays: pd.DataFrame,
+    group: pd.DataFrame,
+) -> dict[str, Any]:
+    """Build target show context for a training row group without song labels."""
+    if historical_plays.empty or group.empty:
+        return {}
+
+    target_rows = pd.DataFrame()
+    target_show_index = group["target_show_index"].iloc[0]
+    if pd.notna(target_show_index):
+        target_rows = historical_plays[
+            historical_plays["show_index"].astype(int) == int(target_show_index)
+        ]
+
+    if target_rows.empty:
+        target_show_date = pd.to_datetime(
+            group["target_show_date"].iloc[0], errors="coerce"
+        )
+        if pd.notna(target_show_date):
+            target_rows = historical_plays[
+                pd.to_datetime(historical_plays["show_date"], errors="coerce").dt.date
+                == target_show_date.date()
+            ]
+
+    if target_rows.empty:
+        return {}
+
+    return normalize_target_show_context(target_rows.iloc[0])
 
 
 def augment_training_frame(
@@ -190,13 +233,20 @@ def augment_training_frame(
     plays["show_date"] = pd.to_datetime(plays["show_date"], errors="coerce")
 
     goose_rows: list[pd.DataFrame] = []
-    for target_show_date_str, group in training_frame.groupby("target_show_date"):
+    for (target_show_index, target_show_date_str), group in training_frame.groupby(
+        ["target_show_index", "target_show_date"],
+        dropna=False,
+    ):
         target_date = pd.Timestamp(target_show_date_str).date()
         prediction_date = target_date - timedelta(days=1)
         sub_plays = plays[plays["show_date"].dt.date <= prediction_date].copy()
+        target_context = _target_context_from_training_group(plays, group)
         goose_feats = compute_goose_song_features(
-            sub_plays, target_show_date=target_date
+            sub_plays,
+            target_show_date=target_date,
+            target_show_context=target_context,
         )
+        goose_feats["target_show_index"] = target_show_index
         goose_feats["target_show_date"] = target_show_date_str
         goose_rows.append(goose_feats)
 
@@ -207,7 +257,9 @@ def augment_training_frame(
 
     all_goose = pd.concat(goose_rows, ignore_index=True)
     augmented = training_frame.merge(
-        all_goose, on=["target_show_date", "song_name"], how="left"
+        all_goose,
+        on=["target_show_index", "target_show_date", "song_name"],
+        how="left",
     )
     for col in GOOSE_EXTRA_FEATURES:
         if col in augmented.columns:

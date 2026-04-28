@@ -15,6 +15,7 @@ from typing import Any, Dict, List, Tuple
 import pandas as pd
 
 from .normalization import sort_normalized_shows
+from .run_context import normalize_target_show_context
 
 logger = logging.getLogger(__name__)
 
@@ -69,6 +70,9 @@ class ModelData:
 
     # Diagnostic metadata.
     diagnostics: Dict[str, Any]
+
+    # Optional target show metadata used by band-specific feature engineering.
+    target_show_context: Dict[str, Any] | None = None
 
 
 def _compute_base_features(
@@ -182,6 +186,7 @@ def generate_model_data(
     debug: bool = False,
     exclusion_window: int | None = None,
     band: str | None = None,
+    target_show_context: pd.Series | dict[str, Any] | None = None,
 ) -> ModelData:
     """
     Orchestrates the full feature generation pipeline.
@@ -226,6 +231,11 @@ def generate_model_data(
         "total_songs_in_history": len(master_features),
         "recently_played_count": len(recent_songs),
     }
+    normalized_target_context = normalize_target_show_context(target_show_context)
+    if normalized_target_context:
+        diagnostics["target_show_context"] = {
+            key: str(value) for key, value in normalized_target_context.items()
+        }
 
     return ModelData(
         historical_plays=historical_plays,
@@ -234,4 +244,5 @@ def generate_model_data(
         reference_index=ref_index,
         recently_played_songs=recent_songs,
         diagnostics=diagnostics,
+        target_show_context=normalized_target_context or None,
     )

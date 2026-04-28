@@ -38,6 +38,16 @@ GOOSE_FEATURE_COLUMNS: list[str] = [
 
 GOOSE_V2_FEATURE_COLUMNS: list[str] = GOOSE_FEATURE_COLUMNS + GOOSE_EXTRA_FEATURES
 
+GOOSE_UNUSED_DEAL_FEATURE_COLUMNS: list[str] = [
+    "recent_plays_50",
+    "pct_shows_all_time",
+    "diff_1yr_to_alltime",
+]
+
+GOOSE_TOP10_FEATURE_COLUMNS: list[str] = (
+    GOOSE_FEATURE_COLUMNS + GOOSE_UNUSED_DEAL_FEATURE_COLUMNS + GOOSE_EXTRA_FEATURES
+)
+
 
 class GoosePredictor(DealPredictor):
     """Goose Phase B v1 precision model built on the Deal ranking core.
@@ -112,7 +122,9 @@ class GooseLogisticV2Predictor(GoosePredictor):
             return candidates
         target_show_date = model_data.reference_date
         goose_feats = compute_goose_song_features(
-            model_data.historical_plays, target_show_date=target_show_date
+            model_data.historical_plays,
+            target_show_date=target_show_date,
+            target_show_context=model_data.target_show_context,
         )
         return candidates.merge(goose_feats, on="song_name", how="left").fillna(
             {col: 0.0 for col in GOOSE_EXTRA_FEATURES}
@@ -167,7 +179,61 @@ class GooseGbmV2Predictor(BandGbmPredictor):
             return candidates
         target_show_date = model_data.reference_date
         goose_feats = compute_goose_song_features(
-            model_data.historical_plays, target_show_date=target_show_date
+            model_data.historical_plays,
+            target_show_date=target_show_date,
+            target_show_context=model_data.target_show_context,
+        )
+        return candidates.merge(goose_feats, on="song_name", how="left").fillna(
+            {col: 0.0 for col in GOOSE_EXTRA_FEATURES}
+        )
+
+
+class GooseGbmTop10V3Predictor(BandGbmPredictor):
+    """Exploratory Goose GBM candidate optimized for top-10 ranking evidence."""
+
+    MODEL_DIR = Path("models/goose/gbm")
+    MODEL_VERSION = "goose_phase_b_v3_gbm_top10"
+
+    def __init__(self, band: str = "goose", **kwargs: Any):
+        if band != "goose":
+            raise ValueError("GooseGbmTop10V3Predictor only supports band='goose'.")
+        defaults: dict[str, Any] = {
+            "feature_columns": list(GOOSE_TOP10_FEATURE_COLUMNS),
+            "min_plays_threshold": 3,
+            "retired_gap_threshold": 90,
+            "training_window_shows": 60,
+            "min_training_shows": 20,
+        }
+        defaults.update(kwargs)
+        super().__init__(band=band, **defaults)
+
+    def _build_training_frame(self, data: ModelData):
+        frame, summary = build_training_frame(
+            data,
+            band=self.band,
+            min_plays_threshold=self.min_plays_threshold,
+            retired_gap_threshold=self.retired_gap_threshold,
+            min_training_shows=self.min_training_shows,
+            training_window_shows=self.training_window_shows,
+        )
+        if not frame.empty:
+            frame = augment_training_frame(frame, data.historical_plays)
+        return frame, summary
+
+    def _get_candidate_features(self, model_data: ModelData) -> pd.DataFrame:
+        from jambandnerd.models.deal.features import get_candidate_features
+
+        candidates = get_candidate_features(
+            model_data,
+            min_plays_threshold=self.min_plays_threshold,
+            retired_gap_threshold=self.retired_gap_threshold,
+        )
+        if candidates.empty:
+            return candidates
+        goose_feats = compute_goose_song_features(
+            model_data.historical_plays,
+            target_show_date=model_data.reference_date,
+            target_show_context=model_data.target_show_context,
         )
         return candidates.merge(goose_feats, on="song_name", how="left").fillna(
             {col: 0.0 for col in GOOSE_EXTRA_FEATURES}

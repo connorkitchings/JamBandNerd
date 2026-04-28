@@ -128,7 +128,11 @@ def run_phase_b_backtest(
 
         try:
             model_data = generate_model_data(
-                shows_df, sets_df, prediction_date, band=band
+                shows_df,
+                sets_df,
+                prediction_date,
+                band=band,
+                target_show_context=show_row,
             )
             predictor.train(model_data)
             predictions = predictor.predict(model_data, top_k=50)

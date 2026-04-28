@@ -31,6 +31,7 @@ from src.jambandnerd.models.registry import (
     list_active_bands,
 )
 from src.jambandnerd.transformations.gaps import generate_model_data
+from src.jambandnerd.transformations.run_context import normalize_target_show_context
 
 
 class NpEncoder(json.JSONEncoder):
@@ -62,7 +63,7 @@ def _resolve_next_show(
     *,
     upcoming_df: pd.DataFrame | None = None,
     today: date | None = None,
-) -> dict[str, str] | None:
+) -> dict[str, Any] | None:
     """Return the next show target, or None when no future show is known."""
     today = today or date.today()
     shows = shows_df.copy()
@@ -74,11 +75,13 @@ def _resolve_next_show(
         row = future.iloc[0]
         show_date = row["_show_date_dt"]
         if isinstance(show_date, date):
-            return {
+            target = {
                 "target_show_key": str(row["show_id"]),
                 "target_show_date": show_date.isoformat(),
                 "reference_date": show_date.isoformat(),
             }
+            target.update(normalize_target_show_context(row))
+            return target
 
     if band == "um" and upcoming_df is not None and not upcoming_df.empty:
         upcoming = upcoming_df.copy()
@@ -108,11 +111,13 @@ def _resolve_next_show(
                     "starts_at_local",
                 ),
             )
-            return {
+            target = {
                 "target_show_key": target_key or f"um:{show_date.isoformat()}",
                 "target_show_date": show_date.isoformat(),
                 "reference_date": show_date.isoformat(),
             }
+            target.update(normalize_target_show_context(row))
+            return target
 
     return None
 
@@ -169,6 +174,7 @@ def generate_live_predictions(
         reference_date,
         exclusion_window=exclusion_window,
         band=band,
+        target_show_context=target,
     )
     if hasattr(predictor, "train"):
         predictor.train(model_data)

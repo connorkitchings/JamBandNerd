@@ -1,4 +1,4 @@
-"""Tests for goose/features.py — Tier A + Tier B feature engineering."""
+"""Tests for goose/features.py feature engineering."""
 
 from __future__ import annotations
 
@@ -44,7 +44,9 @@ def _plays_with_set_cols() -> pd.DataFrame:
                     "song_position": pos,
                     "encore": enc,
                     "venue_name": "Capitol",
+                    "city": "Port Chester",
                     "state": "NY",
+                    "country": "USA",
                 }
             )
     # Stand-alone show in February
@@ -61,7 +63,9 @@ def _plays_with_set_cols() -> pd.DataFrame:
                 "song_position": pos,
                 "encore": enc,
                 "venue_name": "Agora",
+                "city": "Cleveland",
                 "state": "OH",
+                "country": "USA",
             }
         )
 
@@ -174,55 +178,112 @@ def test_tour_position_continuation() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Tier B: set-position rates
+# Short-window heat
 # ---------------------------------------------------------------------------
 
 
-def test_tier_b_rates_present_with_set_cols() -> None:
+def test_short_window_heat_features() -> None:
     df = compute_goose_song_features(
         _plays_with_set_cols(), target_show_date=date(2024, 2, 6)
     )
+    alpha_row = df[df["song_name"] == "Alpha"].iloc[0]
+
+    assert alpha_row["plays_past_10"] == 3
+    assert alpha_row["plays_past_25"] == 3
+    assert alpha_row["pct_shows_10"] == pytest.approx(0.75)
+    assert alpha_row["pct_shows_25"] == pytest.approx(0.75)
+    assert alpha_row["diff_25_to_50"] == pytest.approx(0.0)
+
+
+def test_slot_role_features_are_not_part_of_goose_extra_features() -> None:
     for col in [
         "set1_play_rate",
         "set2_play_rate",
         "encore_rate",
         "mean_song_position",
     ]:
-        assert col in df.columns
-        assert (df[col] >= 0.0).all()
+        assert col not in GOOSE_EXTRA_FEATURES
 
 
-def test_encore_rate_for_encore_song() -> None:
+# ---------------------------------------------------------------------------
+# Same-venue run context
+# ---------------------------------------------------------------------------
+
+
+def test_same_venue_run_prior_play_features_for_consecutive_show() -> None:
+    df = compute_goose_song_features(
+        _plays_with_set_cols(),
+        target_show_date=date(2024, 2, 6),
+        target_show_context={
+            "venue_name": "Agora",
+            "city": "Cleveland",
+            "state": "OH",
+            "country": "USA",
+        },
+    )
+    alpha_row = df[df["song_name"] == "Alpha"].iloc[0]
+    beta_row = df[df["song_name"] == "Beta"].iloc[0]
+
+    assert alpha_row["same_venue_run_position"] == pytest.approx(2.0)
+    assert alpha_row["same_venue_run_prior_played"] == pytest.approx(1.0)
+    assert alpha_row["same_venue_run_prior_play_count"] == pytest.approx(1.0)
+    assert alpha_row["same_venue_run_prior_play_share"] == pytest.approx(1.0)
+    assert beta_row["same_venue_run_prior_played"] == pytest.approx(0.0)
+
+
+def test_same_venue_run_allows_one_intervening_show() -> None:
+    plays = pd.DataFrame(
+        [
+            {
+                "show_id": "a-1",
+                "show_date": "2024-01-01",
+                "show_index": 1,
+                "song_name": "Alpha",
+                "venue_name": "Venue A",
+                "city": "Austin",
+                "state": "TX",
+                "country": "USA",
+            },
+            {
+                "show_id": "b-1",
+                "show_date": "2024-01-02",
+                "show_index": 2,
+                "song_name": "Beta",
+                "venue_name": "Venue B",
+                "city": "Dallas",
+                "state": "TX",
+                "country": "USA",
+            },
+        ]
+    )
+
+    df = compute_goose_song_features(
+        plays,
+        target_show_date=date(2024, 1, 3),
+        target_show_context={
+            "venue_name": "Venue A",
+            "city": "Austin",
+            "state": "TX",
+            "country": "USA",
+        },
+    )
+
+    alpha_row = df[df["song_name"] == "Alpha"].iloc[0]
+    beta_row = df[df["song_name"] == "Beta"].iloc[0]
+    assert alpha_row["same_venue_run_position"] == pytest.approx(2.0)
+    assert alpha_row["same_venue_run_prior_played"] == pytest.approx(1.0)
+    assert beta_row["same_venue_run_prior_played"] == pytest.approx(0.0)
+
+
+def test_same_venue_run_defaults_neutral_without_target_venue() -> None:
     df = compute_goose_song_features(
         _plays_with_set_cols(), target_show_date=date(2024, 2, 6)
     )
-    gamma_row = df[df["song_name"] == "Gamma"]
-    assert not gamma_row.empty
-    # Gamma was played twice, both times as encore
-    assert gamma_row["encore_rate"].iloc[0] == pytest.approx(1.0)
 
-
-def test_encore_rate_zero_for_non_encore_song() -> None:
-    df = compute_goose_song_features(
-        _plays_with_set_cols(), target_show_date=date(2024, 2, 6)
-    )
-    alpha_row = df[df["song_name"] == "Alpha"]
-    assert alpha_row["encore_rate"].iloc[0] == pytest.approx(0.0)
-
-
-def test_tier_b_defaults_to_zero_without_set_cols() -> None:
-    df = compute_goose_song_features(
-        _plays_without_set_cols(), target_show_date=date(2024, 1, 12)
-    )
-    for col in [
-        "set1_play_rate",
-        "set2_play_rate",
-        "encore_rate",
-        "mean_song_position",
-    ]:
-        assert (
-            df[col] == 0.0
-        ).all(), f"{col} should default to 0.0 when set cols absent"
+    assert (df["same_venue_run_prior_played"] == 0.0).all()
+    assert (df["same_venue_run_prior_play_count"] == 0.0).all()
+    assert (df["same_venue_run_prior_play_share"] == 0.0).all()
+    assert (df["same_venue_run_position"] == 0.0).all()
 
 
 # ---------------------------------------------------------------------------
