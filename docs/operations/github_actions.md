@@ -8,11 +8,11 @@ This repository uses 9 GitHub Actions workflows for pipeline automation, CI qual
 |----------|------|----------|--------|---------|-------|
 | Daily Data Pipeline | `daily-pipeline.yml` | 19:00 UTC daily | Yes | -- | All 6 |
 | Fantasy Goose | `fantasy-goose.yml` | After daily pipeline | Yes | -- | goose |
-| Backfill Predictions | `backfill-predictions.yml` | -- | Yes | -- | All 6 |
+| Sync Retained Corpus | `backfill-predictions.yml` | -- | Yes | -- | All 6 |
 | Live Show Tracker | `live-tracker.yml` | -- | Yes | -- | goose, phish, wsp |
 | Repo Quality | `repo-quality.yml` | -- | -- | PR + push main | -- |
 | Website Quality | `web-quality.yml` | -- | -- | PR + push main | -- |
-| Hosted Website Smoke | `hosted-web-smoke.yml` | 20:30 UTC daily | Yes | -- | -- |
+| Hosted Website Smoke | `hosted-web-smoke.yml` | 22:00 UTC daily | Yes | -- | -- |
 | Dependency Audit | `dependency-audit.yml` | Mon 14:00 UTC | Yes | -- | -- |
 | Test Secrets | `test_secrets.yml` | -- | Yes | -- | -- |
 
@@ -107,16 +107,17 @@ Automatically plays Fantasy Goose using JamBandNerd notebook predictions for Goo
 
 ---
 
-## Backfill Predictions
+## Sync Retained Prediction Corpus
 
-Regenerates historical predictions for one or more band/model combinations.
+Regenerates the retained last-50 completed-show prediction and accuracy corpus for one or more bands. This is the canonical way to backfill website-facing prediction and accuracy data.
 
 - **Triggers**: `workflow_dispatch` only
-- **Inputs**: `band` (all or specific), `model` (all, notebook, deal), `dry_run` (boolean)
+- **Inputs**: `band` (all or specific), `dry_run` (boolean)
 - **Flow**:
-  1. Setup job builds a band/model matrix
-  2. Per-combination backfill job fetches prediction dates via `scripts/get_prediction_dates.py`, regenerates each via `scripts/generate_predictions.py`, validates via `scripts/validate_prediction_tables.py`
-  3. Summary job writes results
+  1. Setup job resolves the band list from `scripts/get_all_bands.py` (or uses the selected band)
+  2. Per-band job runs `scripts/sync_retained_prediction_corpus.py --band <band> --window 50 --no-incremental` to recompute and prune the retained corpus across all pipeline-enabled models
+  3. Per-band validation runs `scripts/validate_accuracy_tables.py --band <band> --skip-freshness`
+  4. Summary job writes results
 - **Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
 
 ---
@@ -166,7 +167,7 @@ CI quality gate for the `apps/web` Next.js website.
 Daily smoke test against the live deployed website.
 
 - **Triggers**:
-  - `schedule`: `30 20 * * *` (daily at 20:30 UTC)
+  - `schedule`: `0 22 * * *` (daily at 22:00 UTC)
   - `workflow_dispatch` with input: `base_url` (default `https://jambandnerd.com`)
 - **Steps**: Runs `npm run test:web:smoke:hosted` with Playwright Chromium
 - Browser binaries are cached in `~/.cache/ms-playwright`; OS dependencies are installed per run.

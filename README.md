@@ -202,7 +202,7 @@ follow the collector script pattern, update the repo band config, add a
 
 ### Widespread Panic Data & Fallback
 
-The WSP data collector scrapes `everydaycompanion.com`. This process is enhanced with browser automation (Playwright) to ensure high reliability even against sophisticated bot detection. If a recent historical setlist is missing from EC, the pipeline attempts a backup read from `TourWrangler.com` using a cleaned parser. When EC later publishes the setlist, the EC data will automatically replace the TourWrangler data, ensuring the highest quality data is used.
+The WSP data collector scrapes `everydaycompanion.com`. This process is enhanced with browser automation (Playwright) to ensure high reliability even against sophisticated bot detection. If a recent historical setlist is missing from EC, the pipeline attempts fallback sources in order: first PanicStream, then TourWrangler. A centralized song name canonicalizer normalizes all WSP source song names to EC catalog forms. When EC later publishes the setlist, the EC data will automatically replace the fallback data, ensuring the highest quality data is used.
 
 ### Automation
 

@@ -99,6 +99,8 @@ resolution, for example:
 
 - `{band}_venues_raw`
 - `um_upcoming_shows`
+- `wsp_shows_upcoming`
+- `collection_runs` (operational tracking of collection execution metadata)
 
 These remain optional support tables, not mandatory predictive inputs.
 
@@ -129,6 +131,11 @@ transformation layer:
 
 - `scripts/common.py`
 - `src/jambandnerd/transformations/gaps.py`
+
+Band-specific normalization layers also exist where source quirks require them:
+
+- `src/jambandnerd/data_collection/wsp/song_canonicalizer.py` — normalizes WSP
+  song names from all sources (EC, PanicStream, TourWrangler) to EC catalog forms
 
 Normalization is responsible for:
 
@@ -234,11 +241,35 @@ The completed-show canonical row additionally includes `actual_songs` and
 - pipeline validation checks that exactly the retained last-50 rows carry
   replay lineage, so replay readiness is part of normal data health.
 
+`completed_show_accuracy` full column manifest:
+
+- `id`, `created_at` — identity
+- `band`, `model_slug`, `model_version` — prediction context
+- `show_id` — normalized show identifier
+- `target_show_key` — unique show key matching the prediction run
+- `show_date`, `target_show_date` — show date fields
+- `reference_date` — when the prediction was made
+- `prediction_run_id` — foreign key to `completed_show_prediction_runs`
+- `actual_song_count` — number of songs in the actual setlist
+- `evaluated_at` — when the accuracy row was computed
+- `k10_hit`, `k10_matches`, `k10_precision`, `k10_recall`, `k10_f1`
+- `k25_hit`, `k25_matches`, `k25_precision`, `k25_recall`, `k25_f1`
+- `k50_hit`, `k50_matches`, `k50_precision`, `k50_recall`, `k50_f1`
+
+Uniqueness: `(band, model_slug, model_version, target_show_key)`
+
 ## Current Decision: Prediction Storage
 
 The active architecture uses canonical JSON run rows plus derived projections
 where the website needs song-level reads. Live and completed history are
 separate so next-show reads never fall back to retained historical rows.
+
+### Dual-Write State
+
+The Python pipeline currently writes to both the new split tables and the
+legacy tables (`predictions`, `prediction_songs`, `historical_prediction_runs`,
+`accuracy_per_show`). The website reads exclusively from the new split tables.
+Legacy table writes will be removed once the Python migration is complete.
 
 ## Band Registry
 
@@ -307,7 +338,7 @@ Schema:
 - `rank`, `song_name`, `top_k`: song position in the prediction board
 - `prediction_payload`: model-specific JSON object for that ranked song
 
-Unique constraint on `(band, model_slug, model_version, reference_date, rank)`
+Unique constraint on `(band, model_slug, model_version, target_show_key, rank)`
 ensures deterministic upserts.
 
 ## Files To Treat As Current References
@@ -316,4 +347,4 @@ ensures deterministic upserts.
 - `docs/contributor/developer_guide/architecture.md`
 - `docs/reference/specifications/database.md`
 - `docs/reference/specifications/predictions_schema.md`
-- `docs/reference/schemas/unified_tables.md`
+- `docs/reference/schemas/unified_tables.md` (documents current split tables; includes legacy table reference for migration context)

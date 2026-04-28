@@ -29,7 +29,6 @@ Band collection scripts (kept at top-level so GitHub Actions and local tooling c
 Prediction entry points (band-specific wrappers):
 
 - `generate_billy_predictions.py` — Billy Strings wrapper for `generate_predictions.py`
-- `generate_billy_ckplus_predictions.py` — Billy Strings CK+ wrapper
 
 ## Integrations
 

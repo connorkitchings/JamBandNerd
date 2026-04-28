@@ -57,6 +57,7 @@ def _accuracy_rows(*, stale_hours: int = 0):
         "model_version": "notebook_v1",
         "evaluated_at": iso,
         "show_date": "2026-03-20",
+        "target_show_key": "show_nb_20",
         "prediction_run_id": 101,
         "actual_song_count": 12,
     }
@@ -66,6 +67,7 @@ def _accuracy_rows(*, stale_hours: int = 0):
         "model_version": "deal_v2",
         "evaluated_at": iso,
         "show_date": "2026-03-20",
+        "target_show_key": "show_deal_20",
         "prediction_run_id": 201,
         "actual_song_count": 12,
     }
@@ -77,9 +79,11 @@ def _accuracy_rows(*, stale_hours: int = 0):
 
 def _repeat_rows(row: dict[str, object], *, count: int, with_lineage: bool = True):
     rows = []
+    slug = row.get("model_slug", "model")
     for index in range(count):
         payload = dict(row)
         payload["show_date"] = f"2026-03-{index + 1:02d}"
+        payload["target_show_key"] = f"show_{slug}_{index + 1:02d}"
         payload["prediction_run_id"] = 1000 + index if with_lineage else None
         rows.append(payload)
     return rows
@@ -130,6 +134,7 @@ def test_validate_accuracy_ignores_sparse_recent_rows_for_replay_lineage(monkeyp
             "model_version": "notebook_v1",
             "evaluated_at": rows["completed_show_accuracy"][0]["evaluated_at"],
             "show_date": "2026-03-21",
+            "target_show_key": "sparse_nb_1",
             "prediction_run_id": None,
             "actual_song_count": 1,
         },
@@ -143,6 +148,7 @@ def test_validate_accuracy_ignores_sparse_recent_rows_for_replay_lineage(monkeyp
             "model_version": "deal_v2",
             "evaluated_at": rows["completed_show_accuracy"][2]["evaluated_at"],
             "show_date": "2026-03-21",
+            "target_show_key": "sparse_deal_1",
             "prediction_run_id": None,
             "actual_song_count": 1,
         },
@@ -167,6 +173,7 @@ def test_validate_accuracy_prefers_lineaged_duplicate_show_date(monkeypatch):
             "model_version": "notebook_v1",
             "evaluated_at": iso,
             "show_date": "2026-03-19",
+            "target_show_key": "dup_nb_no_lineage",
             "prediction_run_id": None,
             "actual_song_count": 10,
         },
@@ -176,8 +183,45 @@ def test_validate_accuracy_prefers_lineaged_duplicate_show_date(monkeypatch):
             "model_version": "notebook_v1",
             "evaluated_at": iso,
             "show_date": "2026-03-19",
+            "target_show_key": "dup_nb_with_lineage",
             "prediction_run_id": 101,
             "actual_song_count": 10,
+        },
+        *rows["completed_show_accuracy"],
+    ]
+    monkeypatch.setattr(
+        "scripts.validate_accuracy_tables.get_supabase_client",
+        lambda: _ClientStub(rows),
+    )
+
+    failures = validate_accuracy(bands=["goose"], max_age_hours=72)
+
+    assert failures == 1
+
+
+def test_validate_accuracy_keeps_both_same_date_distinct_shows(monkeypatch):
+    rows = _accuracy_rows()
+    iso = rows["completed_show_accuracy"][0]["evaluated_at"]
+    rows["completed_show_accuracy"] = [
+        {
+            "band": "goose",
+            "model_slug": "notebook",
+            "model_version": "notebook_v1",
+            "evaluated_at": iso,
+            "show_date": "2026-03-19",
+            "target_show_key": "matinee",
+            "prediction_run_id": 101,
+            "actual_song_count": 10,
+        },
+        {
+            "band": "goose",
+            "model_slug": "notebook",
+            "model_version": "notebook_v1",
+            "evaluated_at": iso,
+            "show_date": "2026-03-19",
+            "target_show_key": "evening",
+            "prediction_run_id": 102,
+            "actual_song_count": 12,
         },
         *rows["completed_show_accuracy"],
     ]
