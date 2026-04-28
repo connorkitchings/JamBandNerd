@@ -27,8 +27,8 @@ from pathlib import Path
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, project_root)
 
-from src.jambandnerd.models.accuracy import BacktestSummary
-from src.jambandnerd.models.readiness import is_band_promotion_eligible
+from jambandnerd.models.accuracy import BacktestSummary
+from jambandnerd.models.readiness import is_band_promotion_eligible
 
 
 def _load_summary(path: str) -> BacktestSummary:

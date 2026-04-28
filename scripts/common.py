@@ -301,6 +301,7 @@ def export_tables_to_snapshot(
     *,
     snapshot_root: str,
     chunk_size: int = 10000,
+    snapshot_format: str = "json",
 ) -> dict[str, Any]:
     """Export one or more Supabase tables into a local snapshot directory."""
 
@@ -320,14 +321,18 @@ def export_tables_to_snapshot(
         "source": {
             "supabase_url": os.environ.get("SUPABASE_URL"),
         },
+        "format": snapshot_format,
         "tables": dict(existing_manifest.get("tables", {})),
     }
 
     for table_name in table_names:
         rows = fetch_table(table_name, chunk_size=chunk_size)
-        path = write_table_snapshot(table_name, rows, root)
+        path = write_table_snapshot(
+            table_name, rows, root, snapshot_format=snapshot_format
+        )
         manifest["tables"][table_name] = {
             "path": path.name,
+            "format": snapshot_format,
             "row_count": len(rows),
         }
 

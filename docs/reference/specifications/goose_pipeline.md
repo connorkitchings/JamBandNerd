@@ -79,6 +79,12 @@ uv run python scripts/export_backtest_snapshots.py --band goose --snapshot-root 
 uv run python scripts/run_backtest.py --band goose --shows 3 --snapshot-root .snapshots/goose_phase_b --dry-run --no-incremental --require-results
 ```
 
+For larger local datasets, prefer Parquet snapshots:
+
+```bash
+uv run python scripts/export_backtest_snapshots.py --band goose --snapshot-root .snapshots/goose_phase_b --format parquet
+```
+
 For promotion evidence, run the same backtest path with `--shows 50`. Keep
 `--dry-run --no-incremental` during model iteration to avoid Supabase writes
 and incremental checks.

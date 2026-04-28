@@ -38,7 +38,7 @@ Prediction entry points (band-specific wrappers):
 
 ## Recovery and rebuild
 
-- `export_backtest_snapshots.py` — export raw show/setlist tables into local JSON snapshots for offline historical scoring
+- `export_backtest_snapshots.py` — export raw show/setlist tables into local JSON or Parquet snapshots for offline historical scoring
 - `rebuild_prediction_songs.py` — legacy projection rebuild for the old `prediction_songs` table
 - `rebuild_derived_data.py` — legacy multi-model rebuild helper for rollback paths
 - `backfill_predictions.py` — legacy prediction backfill helper; prefer `sync_retained_prediction_corpus.py` for active website data

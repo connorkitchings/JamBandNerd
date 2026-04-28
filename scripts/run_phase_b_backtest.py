@@ -31,21 +31,21 @@ import pandas as pd
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, project_root)
 
-from scripts.common import fetch_table, prepare_band_data
-from src.jambandnerd.models.accuracy import (
+from jambandnerd.models.accuracy import (
     BacktestSummary,
     aggregate_metrics,
     compute_per_show_metrics,
     compute_weighted_precision_score,
     dual_objective_score_for_band,
 )
-from src.jambandnerd.models.base import PredictionModel
-from src.jambandnerd.models.evaluation import (
+from jambandnerd.models.base import PredictionModel
+from jambandnerd.models.evaluation import (
     get_evaluation_reference_date,
     list_completed_shows,
     select_target_shows,
 )
-from src.jambandnerd.transformations.gaps import generate_model_data
+from jambandnerd.transformations.gaps import generate_model_data
+from scripts.common import fetch_table, prepare_band_data
 
 
 def _load_predictor_class(dotted_path: str) -> Type[PredictionModel]:

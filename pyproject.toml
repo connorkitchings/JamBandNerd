@@ -15,6 +15,7 @@ license = { text = "MIT" }
 
 dependencies = [
     "pandas",
+    "pyarrow",
     "requests",
     "python-dotenv",
     "lxml==6.1.0",
