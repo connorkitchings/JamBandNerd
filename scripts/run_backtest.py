@@ -47,6 +47,7 @@ from src.jambandnerd.models.accuracy import (
     aggregate_metrics,
     compute_per_show_metrics,
     compute_weighted_precision_score,
+    dual_objective_score_for_band,
 )
 from src.jambandnerd.models.evaluation import (
     get_evaluation_reference_date,
@@ -552,6 +553,17 @@ def run_backtest(
                 f"{log_prefix} K={k}: hit_rate={agg_metrics_k['hit_rate']:.3f} avg_matches={agg_metrics_k['avg_matches']:.3f} "
                 f"precision={agg_metrics_k['precision']:.3f} recall={agg_metrics_k['recall']:.3f} f1={agg_metrics_k['f1']:.3f}"
             )
+        p10 = summary[10]["precision"]
+        r50 = summary[50]["recall"]
+        weighted = compute_weighted_precision_score(
+            summary[10]["precision"], summary[25]["precision"], summary[50]["precision"]
+        )
+        dual = dual_objective_score_for_band(p10, r50, band)
+        print(
+            f"\n{log_prefix} DUAL OBJECTIVE | {band} | "
+            f"p@10={p10:.3f} | r@50={r50:.3f} | "
+            f"dual={dual:.3f} | weighted_p={weighted:.3f} | n={len(scored_run_records)}"
+        )
         return len(scored_run_records)
     else:
         message = f"{log_prefix} No results generated from backtest."

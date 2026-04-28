@@ -3,7 +3,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Dict, Iterable, List
 
-from jambandnerd.config.models import WEIGHTED_PRECISION_WEIGHTS
+from jambandnerd.config.models import (
+    BAND_DUAL_OBJECTIVE_ALPHA,
+    DUAL_OBJECTIVE_ALPHA,
+    WEIGHTED_PRECISION_WEIGHTS,
+)
 
 
 @dataclass
@@ -51,6 +55,35 @@ def compute_weighted_precision_score(p10: float, p25: float, p50: float) -> floa
         + WEIGHTED_PRECISION_WEIGHTS["p25"] * p25
         + WEIGHTED_PRECISION_WEIGHTS["p50"] * p50
     )
+
+
+@dataclass(frozen=True)
+class BacktestSummary:
+    """Aggregated metrics from a walk-forward backtest on a fixed show window."""
+
+    band: str
+    model_version: str
+    n_shows: int
+    p10: float
+    p25: float
+    p50: float
+    r10: float
+    r25: float
+    r50: float
+    weighted_score: float
+    dual_score: float
+
+
+def dual_objective_score(p10: float, r50: float, alpha: float | None = None) -> float:
+    """Blend p@10 and r@50 into a single scalar: α·p10 + (1−α)·r50."""
+    a = DUAL_OBJECTIVE_ALPHA if alpha is None else alpha
+    return a * p10 + (1.0 - a) * r50
+
+
+def dual_objective_score_for_band(p10: float, r50: float, band: str) -> float:
+    """dual_objective_score using the per-band alpha override when available."""
+    alpha = BAND_DUAL_OBJECTIVE_ALPHA.get(band, DUAL_OBJECTIVE_ALPHA)
+    return dual_objective_score(p10, r50, alpha=alpha)
 
 
 def aggregate_metrics(per_show: List[Dict[str, float]], k: int) -> TopKMetrics:

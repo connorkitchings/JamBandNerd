@@ -169,6 +169,25 @@ class DealPredictor(PredictionModel):
     def _save_model(self, model_path: Path, artifact: DealModelArtifact) -> None:
         model_path.write_text(json.dumps(asdict(artifact), indent=2, sort_keys=True))
 
+    def _build_training_frame(
+        self, data: ModelData
+    ) -> tuple[pd.DataFrame, DealTrainingSummary]:
+        return build_training_frame(
+            data,
+            band=self.band,
+            min_plays_threshold=self.min_plays_threshold,
+            retired_gap_threshold=self.retired_gap_threshold,
+            min_training_shows=self.min_training_shows,
+            training_window_shows=self.training_window_shows,
+        )
+
+    def _get_candidate_features(self, model_data: ModelData) -> pd.DataFrame:
+        return get_candidate_features(
+            model_data,
+            min_plays_threshold=self.min_plays_threshold,
+            retired_gap_threshold=self.retired_gap_threshold,
+        )
+
     def train(self, data: ModelData) -> None:
         model_path = self._get_model_path(self.band)
         self.MODEL_DIR.mkdir(parents=True, exist_ok=True)
@@ -178,14 +197,7 @@ class DealPredictor(PredictionModel):
             self.model_path = model_path
             return
 
-        training_frame, training_summary = build_training_frame(
-            data,
-            band=self.band,
-            min_plays_threshold=self.min_plays_threshold,
-            retired_gap_threshold=self.retired_gap_threshold,
-            min_training_shows=self.min_training_shows,
-            training_window_shows=self.training_window_shows,
-        )
+        training_frame, training_summary = self._build_training_frame(data)
         self.latest_training_summary = training_summary
 
         if training_frame.empty or training_summary.positive_rows == 0:
@@ -279,11 +291,7 @@ class DealPredictor(PredictionModel):
         if self.model is None:
             return []
 
-        candidate_features = get_candidate_features(
-            model_data,
-            min_plays_threshold=self.min_plays_threshold,
-            retired_gap_threshold=self.retired_gap_threshold,
-        )
+        candidate_features = self._get_candidate_features(model_data)
         if candidate_features.empty:
             return []
 

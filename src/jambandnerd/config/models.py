@@ -68,3 +68,9 @@ WEIGHTED_PRECISION_WEIGHTS: Final[dict[str, float]] = {
     "p25": 0.7,
     "p50": 0.1,
 }
+
+# Dual-objective scoring: α·p@10 + (1−α)·r@50.  Default 0.5 (equal weight).
+DUAL_OBJECTIVE_ALPHA: Final[float] = 0.5
+
+# Per-band overrides for DUAL_OBJECTIVE_ALPHA (bands not listed use the default).
+BAND_DUAL_OBJECTIVE_ALPHA: Final[dict[str, float]] = {}

@@ -109,8 +109,22 @@ def _compute_base_features(
     if debug:
         logger.debug("Computed reference_index: %s", reference_index)
 
-    # 3. Merge plays
-    plays = setlists_df[["show_id", "song_name"]].copy()
+    # 3. Merge plays — carry optional set-position columns when present
+    setlist_cols = ["show_id", "song_name"]
+    for _opt in ["set_number", "song_position", "encore"]:
+        if _opt in setlists_df.columns:
+            setlist_cols.append(_opt)
+    plays = setlists_df[setlist_cols].copy()
+    if "set_number" in plays.columns:
+        plays["set_number"] = pd.to_numeric(
+            plays["set_number"], errors="coerce"
+        ).astype("Int64")
+    if "song_position" in plays.columns:
+        plays["song_position"] = pd.to_numeric(
+            plays["song_position"], errors="coerce"
+        ).astype("Int64")
+    if "encore" in plays.columns:
+        plays["encore"] = plays["encore"].fillna(False).astype(bool)
     plays["show_id"] = plays["show_id"].astype(str).str.strip()
     map_keys = set(historical_shows["show_id"].unique())
 
