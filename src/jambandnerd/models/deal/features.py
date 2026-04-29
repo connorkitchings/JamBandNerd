@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections import Counter
+from collections.abc import Callable
 from dataclasses import asdict, dataclass
 from datetime import timedelta
 from typing import Any, Dict, List, Tuple
@@ -13,6 +14,7 @@ import pandas as pd
 from jambandnerd.config import BAND_EXCLUSION_WINDOWS, EXCLUSION_WINDOW_DEFAULT
 from jambandnerd.models.evaluation import get_evaluation_reference_date
 from jambandnerd.transformations.gaps import ModelData
+from jambandnerd.transformations.run_context import normalize_target_show_context
 
 DEAL_FEATURE_COLUMNS: list[str] = [
     "current_gap",
@@ -240,6 +242,7 @@ def build_training_frame(
     retired_gap_threshold: int,
     min_training_shows: int,
     training_window_shows: int,
+    candidate_builder: Callable[[ModelData], pd.DataFrame] | None = None,
 ) -> Tuple[pd.DataFrame, DealTrainingSummary]:
     plays = _clean_plays(model_data.historical_plays)
     empty_summary = DealTrainingSummary(0, 0, 0, 0, 0.0, 0, 0)
@@ -276,6 +279,7 @@ def build_training_frame(
             continue
 
         reference_index = int(history["show_index"].max()) + 1
+        target_show_context = normalize_target_show_context(target_rows.iloc[0])
         recent_window_start = max(1, reference_index - exclusion_window)
         recently_played = sorted(
             set(
@@ -298,13 +302,17 @@ def build_training_frame(
                 "reference_index": reference_index,
                 "target_show_date": target_show_date.date().isoformat(),
             },
+            target_show_context=target_show_context or None,
         )
 
-        candidates = get_candidate_features(
-            sub_model_data,
-            min_plays_threshold=min_plays_threshold,
-            retired_gap_threshold=retired_gap_threshold,
-        )
+        if candidate_builder is None:
+            candidates = get_candidate_features(
+                sub_model_data,
+                min_plays_threshold=min_plays_threshold,
+                retired_gap_threshold=retired_gap_threshold,
+            )
+        else:
+            candidates = candidate_builder(sub_model_data)
         if candidates.empty:
             continue
 

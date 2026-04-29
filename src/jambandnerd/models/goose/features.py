@@ -21,14 +21,11 @@ from jambandnerd.transformations.run_context import (
 )
 
 GOOSE_EXTRA_FEATURES: list[str] = [
-    "dow_play_rate",
     "month_play_rate",
     "show_position_in_run",
     "tour_position",
     "plays_past_10",
     "plays_past_25",
-    "pct_shows_10",
-    "pct_shows_25",
     "diff_25_to_50",
     "same_venue_run_prior_played",
     "same_venue_run_prior_play_count",
@@ -94,19 +91,11 @@ def compute_goose_song_features(
     reference_index = int(plays["show_index"].max()) + 1
     historical_show_indices = set(plays["show_index"].dropna().astype(int).unique())
 
-    target_dow = target_show_date.weekday()
     target_month = target_show_date.month
 
-    plays["_dow"] = pd.to_datetime(plays["show_date"].astype(str)).dt.dayofweek
     plays["_month"] = pd.to_datetime(plays["show_date"].astype(str)).dt.month
 
     total_plays = plays.groupby("song_name")["show_index"].nunique().rename("_total")
-    dow_plays = (
-        plays[plays["_dow"] == target_dow]
-        .groupby("song_name")["show_index"]
-        .nunique()
-        .rename("_dow_plays")
-    )
     month_plays = (
         plays[plays["_month"] == target_month]
         .groupby("song_name")["show_index"]
@@ -114,13 +103,8 @@ def compute_goose_song_features(
         .rename("_month_plays")
     )
 
-    feats = (
-        pd.DataFrame(total_plays)
-        .join(dow_plays, how="left")
-        .join(month_plays, how="left")
-    )
+    feats = pd.DataFrame(total_plays).join(month_plays, how="left")
     feats = feats.fillna(0)
-    feats["dow_play_rate"] = feats["_dow_plays"] / feats["_total"].clip(lower=1)
     feats["month_play_rate"] = feats["_month_plays"] / feats["_total"].clip(lower=1)
     feats["show_position_in_run"] = float(show_pos)
     feats["tour_position"] = float(tour_pos)
@@ -141,12 +125,13 @@ def compute_goose_song_features(
             .rename(f"_plays_past_{window}")
         )
         feats = feats.join(window_plays, how="left").fillna(0)
-        feats[f"plays_past_{window}"] = feats[f"_plays_past_{window}"]
-        feats[f"pct_shows_{window}"] = (
+        if window in (10, 25):
+            feats[f"plays_past_{window}"] = feats[f"_plays_past_{window}"]
+        feats[f"_pct_shows_{window}"] = (
             feats[f"_plays_past_{window}"] / window_show_count
         )
 
-    feats["diff_25_to_50"] = feats["pct_shows_25"] - feats["pct_shows_50"]
+    feats["diff_25_to_50"] = feats["_pct_shows_25"] - feats["_pct_shows_50"]
 
     normalized_target_context = normalize_target_show_context(target_show_context)
     if normalized_venue_key(normalized_target_context):

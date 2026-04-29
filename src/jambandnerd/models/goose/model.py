@@ -7,10 +7,15 @@ from typing import Any
 
 import pandas as pd
 
-from jambandnerd.models.deal.features import DealTrainingSummary, build_training_frame
+from jambandnerd.models.deal.features import (
+    DealTrainingSummary,
+    build_training_frame,
+    generate_deal_features,
+)
 from jambandnerd.models.deal.model import DealPredictor
 from jambandnerd.models.gbm.predictor import BandGbmPredictor
 from jambandnerd.transformations.gaps import ModelData
+from jambandnerd.transformations.run_context import same_venue_run_show_indices
 
 from .features import (
     GOOSE_EXTRA_FEATURES,
@@ -47,6 +52,44 @@ GOOSE_UNUSED_DEAL_FEATURE_COLUMNS: list[str] = [
 GOOSE_TOP10_FEATURE_COLUMNS: list[str] = (
     GOOSE_FEATURE_COLUMNS + GOOSE_UNUSED_DEAL_FEATURE_COLUMNS + GOOSE_EXTRA_FEATURES
 )
+
+
+def _goose_v3_candidate_features(
+    model_data: ModelData,
+    *,
+    min_plays_threshold: int,
+    retired_gap_threshold: int,
+) -> pd.DataFrame:
+    features = generate_deal_features(model_data, min_plays_threshold)
+    if features.empty:
+        return features
+
+    same_run_songs: set[str] = set()
+    same_run_indices = same_venue_run_show_indices(
+        model_data.historical_plays,
+        model_data.target_show_context,
+    )
+    if same_run_indices:
+        same_run_songs = set(
+            model_data.historical_plays.loc[
+                model_data.historical_plays["show_index"].isin(same_run_indices),
+                "song_name",
+            ]
+            .dropna()
+            .astype(str)
+        )
+
+    recently_played = set(model_data.recently_played_songs)
+    song_names = features["song_name"].astype(str)
+    within_retirement = features["current_gap"] <= retired_gap_threshold
+    standard_candidates = (
+        ~song_names.isin(recently_played)
+        & within_retirement
+        & (features["current_gap"] > 0)
+    )
+    same_run_candidates = song_names.isin(same_run_songs) & within_retirement
+
+    return features[standard_candidates | same_run_candidates].reset_index(drop=True)
 
 
 class GoosePredictor(DealPredictor):
@@ -215,15 +258,18 @@ class GooseGbmTop10V3Predictor(BandGbmPredictor):
             retired_gap_threshold=self.retired_gap_threshold,
             min_training_shows=self.min_training_shows,
             training_window_shows=self.training_window_shows,
+            candidate_builder=lambda sub_model_data: _goose_v3_candidate_features(
+                sub_model_data,
+                min_plays_threshold=self.min_plays_threshold,
+                retired_gap_threshold=self.retired_gap_threshold,
+            ),
         )
         if not frame.empty:
             frame = augment_training_frame(frame, data.historical_plays)
         return frame, summary
 
     def _get_candidate_features(self, model_data: ModelData) -> pd.DataFrame:
-        from jambandnerd.models.deal.features import get_candidate_features
-
-        candidates = get_candidate_features(
+        candidates = _goose_v3_candidate_features(
             model_data,
             min_plays_threshold=self.min_plays_threshold,
             retired_gap_threshold=self.retired_gap_threshold,

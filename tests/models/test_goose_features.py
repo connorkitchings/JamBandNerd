@@ -128,14 +128,6 @@ def test_empty_plays_returns_empty_frame() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_dow_play_rate_in_range() -> None:
-    df = compute_goose_song_features(
-        _plays_with_set_cols(), target_show_date=date(2024, 2, 6)
-    )
-    assert (df["dow_play_rate"] >= 0.0).all()
-    assert (df["dow_play_rate"] <= 1.0).all()
-
-
 def test_month_play_rate_in_range() -> None:
     df = compute_goose_song_features(
         _plays_with_set_cols(), target_show_date=date(2024, 2, 6)
@@ -190,8 +182,6 @@ def test_short_window_heat_features() -> None:
 
     assert alpha_row["plays_past_10"] == 3
     assert alpha_row["plays_past_25"] == 3
-    assert alpha_row["pct_shows_10"] == pytest.approx(0.75)
-    assert alpha_row["pct_shows_25"] == pytest.approx(0.75)
     assert alpha_row["diff_25_to_50"] == pytest.approx(0.0)
 
 
