@@ -33,6 +33,14 @@ from jambandnerd.models.readiness import is_band_promotion_eligible
 
 def _load_summary(path: str) -> BacktestSummary:
     data = json.loads(Path(path).read_text())
+    defaults = {
+        "f1_10": 0.0,
+        "f1_25": 0.0,
+        "f1_50": 0.0,
+        "dual_f1_score": 0.0,
+    }
+    for key, default in defaults.items():
+        data.setdefault(key, default)
     return BacktestSummary(**data)
 
 

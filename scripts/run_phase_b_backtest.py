@@ -36,6 +36,7 @@ from jambandnerd.models.accuracy import (
     aggregate_metrics,
     compute_per_show_metrics,
     compute_weighted_precision_score,
+    dual_f1_objective_score_for_band,
     dual_objective_score_for_band,
 )
 from jambandnerd.models.base import PredictionModel
@@ -181,8 +182,12 @@ def run_phase_b_backtest(
     r10 = agg[10].recall
     r25 = agg[25].recall
     r50 = agg[50].recall
+    f1_10 = agg[10].f1
+    f1_25 = agg[25].f1
+    f1_50 = agg[50].f1
     weighted = compute_weighted_precision_score(p10, p25, p50)
     dual = dual_objective_score_for_band(p10, r50, band)
+    dual_f1 = dual_f1_objective_score_for_band(f1_10, f1_50, band)
 
     summary = BacktestSummary(
         band=band,
@@ -194,8 +199,12 @@ def run_phase_b_backtest(
         r10=r10,
         r25=r25,
         r50=r50,
+        f1_10=f1_10,
+        f1_25=f1_25,
+        f1_50=f1_50,
         weighted_score=weighted,
         dual_score=dual,
+        dual_f1_score=dual_f1,
     )
 
     # Write BacktestSummary JSON
@@ -215,6 +224,10 @@ def run_phase_b_backtest(
     print(
         f"\n  DUAL OBJECTIVE | {band} | p@10={p10:.3f} | r@50={r50:.3f} | "
         f"dual={dual:.3f} | weighted_p={weighted:.3f} | n={n}"
+    )
+    print(
+        f"  DUAL F1         | {band} | F1@10={f1_10:.3f} | F1@25={f1_25:.3f} | "
+        f"F1@50={f1_50:.3f} | dual_f1={dual_f1:.3f} | n={n}"
     )
     print(f"\n  Summary written to: {summary_path}")
     print(f"  Per-show metrics:   {per_show_path}")

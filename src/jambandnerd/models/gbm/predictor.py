@@ -136,8 +136,9 @@ class BandGbmPredictor(PredictionModel):
 
         train_set = lgb.Dataset(X, label=y, group=groups, free_raw_data=False)
         params: dict[str, Any] = {
-            "objective": "lambdarank",
+            "objective": "rank_xendcg",
             "metric": "ndcg",
+            "eval_at": [10, 25],
             "num_leaves": self.num_leaves,
             "learning_rate": self.learning_rate,
             "min_data_in_leaf": self.min_data_in_leaf,

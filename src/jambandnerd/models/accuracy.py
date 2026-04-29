@@ -70,8 +70,12 @@ class BacktestSummary:
     r10: float
     r25: float
     r50: float
+    f1_10: float
+    f1_25: float
+    f1_50: float
     weighted_score: float
     dual_score: float
+    dual_f1_score: float
 
 
 def dual_objective_score(p10: float, r50: float, alpha: float | None = None) -> float:
@@ -84,6 +88,20 @@ def dual_objective_score_for_band(p10: float, r50: float, band: str) -> float:
     """dual_objective_score using the per-band alpha override when available."""
     alpha = BAND_DUAL_OBJECTIVE_ALPHA.get(band, DUAL_OBJECTIVE_ALPHA)
     return dual_objective_score(p10, r50, alpha=alpha)
+
+
+def dual_f1_objective_score(
+    f1_10: float, f1_50: float, alpha: float | None = None
+) -> float:
+    """Blend F1@10 and F1@50 into a single scalar: α·F1@10 + (1−α)·F1@50."""
+    a = DUAL_OBJECTIVE_ALPHA if alpha is None else alpha
+    return a * f1_10 + (1.0 - a) * f1_50
+
+
+def dual_f1_objective_score_for_band(f1_10: float, f1_50: float, band: str) -> float:
+    """dual_f1_objective_score using the per-band alpha override when available."""
+    alpha = BAND_DUAL_OBJECTIVE_ALPHA.get(band, DUAL_OBJECTIVE_ALPHA)
+    return dual_f1_objective_score(f1_10, f1_50, alpha=alpha)
 
 
 def aggregate_metrics(per_show: List[Dict[str, float]], k: int) -> TopKMetrics:

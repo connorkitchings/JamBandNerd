@@ -16,8 +16,14 @@ from jambandnerd.models.deal.features import (
 )
 from jambandnerd.models.deal.model import DealPrediction, DealPredictor
 from jambandnerd.models.gbm.predictor import BandGbmPredictor
+from jambandnerd.transformations.cooccurrence import (
+    COOCCURRENCE_FEATURES as _COOCCURRENCE_FEATURES,
+)
 from jambandnerd.transformations.gaps import ModelData
 from jambandnerd.transformations.run_context import same_venue_run_show_indices
+from jambandnerd.transformations.set_position import (
+    SET_POSITION_FEATURES as _SET_POSITION_FEATURES,
+)
 
 from .features import (
     GOOSE_EXTRA_FEATURES,
@@ -41,6 +47,8 @@ GOOSE_FEATURE_COLUMNS: list[str] = [
     "debut_age_shows",
     "career_play_pct",
     "novelty_rank",
+    *_SET_POSITION_FEATURES,
+    *_COOCCURRENCE_FEATURES,
 ]
 
 GOOSE_V2_FEATURE_COLUMNS: list[str] = GOOSE_FEATURE_COLUMNS + GOOSE_EXTRA_FEATURES

@@ -13,8 +13,20 @@ import pandas as pd
 
 from jambandnerd.config import BAND_EXCLUSION_WINDOWS, EXCLUSION_WINDOW_DEFAULT
 from jambandnerd.models.evaluation import get_evaluation_reference_date
+from jambandnerd.transformations.cooccurrence import (
+    COOCCURRENCE_FEATURES as _COOCCURRENCE_FEATURES,
+)
+from jambandnerd.transformations.cooccurrence import (
+    compute_cooccurrence_features as _compute_cooccurrence_features,
+)
 from jambandnerd.transformations.gaps import ModelData
 from jambandnerd.transformations.run_context import normalize_target_show_context
+from jambandnerd.transformations.set_position import (
+    SET_POSITION_FEATURES as _SET_POSITION_FEATURES,
+)
+from jambandnerd.transformations.set_position import (
+    compute_set_position_features as _compute_set_position_features,
+)
 
 DEAL_FEATURE_COLUMNS: list[str] = [
     "current_gap",
@@ -34,6 +46,8 @@ DEAL_FEATURE_COLUMNS: list[str] = [
     "debut_age_shows",
     "career_play_pct",
     "novelty_rank",
+    *_SET_POSITION_FEATURES,
+    *_COOCCURRENCE_FEATURES,
 ]
 
 
@@ -214,6 +228,28 @@ def generate_deal_features(
         overtaken_mask = total_broadcast < totals
         result["novelty_rank"] = (newer_mask & overtaken_mask).sum(axis=1)
         result = result.drop(columns=["_debut_show_index"])
+
+        position_features = _compute_set_position_features(plays)
+        if not position_features.empty:
+            result = result.merge(position_features, on="song_name", how="left")
+        for col in _SET_POSITION_FEATURES:
+            if col in result.columns:
+                result[col] = result[col].fillna(0.0)
+            else:
+                result[col] = 0.0
+
+        cooc_features = _compute_cooccurrence_features(
+            plays,
+            recently_played_songs=list(model_data.recently_played_songs),
+            candidate_song_names=result["song_name"].astype(str).tolist(),
+        )
+        if not cooc_features.empty:
+            result = result.merge(cooc_features, on="song_name", how="left")
+        for col in _COOCCURRENCE_FEATURES:
+            if col in result.columns:
+                result[col] = result[col].fillna(0.0)
+            else:
+                result[col] = 0.0
 
     return result
 
