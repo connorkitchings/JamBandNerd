@@ -99,9 +99,11 @@ def _projection_rows(
 def _replay_rows(*, count: int = 50, missing_lineage: bool = False):
     rows = []
     for index in range(count):
+        month = (index // 28) + 3
+        day = (index % 28) + 1
         rows.append(
             {
-                "show_date": f"2026-03-{index + 1:02d}",
+                "show_date": f"2026-{month:02d}-{day:02d}",
                 "prediction_run_id": (
                     None if missing_lineage and index == 0 else 100 + index
                 ),
@@ -327,7 +329,9 @@ def test_run_supabase_audit_fails_on_projection_row_count_mismatch(monkeypatch):
     assert "goose:notebook:prediction_projection_count_mismatch" in report.blockers
 
 
-def test_run_supabase_audit_fails_when_historical_runs_below_window(monkeypatch):
+def test_run_supabase_audit_warns_when_historical_runs_below_window_intact_lineage(
+    monkeypatch,
+):
     _install_audit_stubs(
         monkeypatch,
         latest_rows={
@@ -345,13 +349,17 @@ def test_run_supabase_audit_fails_when_historical_runs_below_window(monkeypatch)
 
     report = module.run_supabase_audit(bands=["goose"])
 
-    assert "goose:notebook:historical_run_rows_below_window" in report.blockers
+    assert report.state == "warning"
+    assert "goose:notebook:historical_run_rows_below_window" in report.warnings
+    assert "goose:notebook:historical_run_rows_below_window" not in report.blockers
     assert (
-        "goose:notebook:historical_unique_target_dates_below_window" in report.blockers
+        "goose:notebook:historical_unique_target_dates_below_window" in report.warnings
     )
 
 
-def test_run_supabase_audit_fails_when_accuracy_rows_below_window(monkeypatch):
+def test_run_supabase_audit_warns_when_accuracy_rows_below_window_intact_lineage(
+    monkeypatch,
+):
     _install_audit_stubs(
         monkeypatch,
         latest_rows={
@@ -367,10 +375,14 @@ def test_run_supabase_audit_fails_when_accuracy_rows_below_window(monkeypatch):
 
     report = module.run_supabase_audit(bands=["goose"])
 
-    assert "goose:notebook:per_show_accuracy_rows_below_window" in report.blockers
+    assert report.state == "warning"
+    assert "goose:notebook:per_show_accuracy_rows_below_window" in report.warnings
+    assert "goose:notebook:per_show_accuracy_rows_below_window" not in report.blockers
 
 
-def test_run_supabase_audit_fails_when_replay_overlap_below_window(monkeypatch):
+def test_run_supabase_audit_warns_when_replay_overlap_below_window_intact_lineage(
+    monkeypatch,
+):
     _install_audit_stubs(
         monkeypatch,
         latest_rows={
@@ -389,8 +401,10 @@ def test_run_supabase_audit_fails_when_replay_overlap_below_window(monkeypatch):
 
     report = module.run_supabase_audit(bands=["goose"])
 
-    assert "goose:notebook:replay_overlap_below_window:deal" in report.blockers
-    assert "goose:deal:replay_overlap_below_window:notebook" in report.blockers
+    assert report.state == "warning"
+    assert "goose:notebook:replay_overlap_below_window:deal" in report.warnings
+    assert "goose:notebook:replay_overlap_below_window:deal" not in report.blockers
+    assert "goose:deal:replay_overlap_below_window:notebook" in report.warnings
 
 
 def test_run_supabase_audit_fails_when_replay_lineage_missing(monkeypatch):
@@ -541,3 +555,104 @@ def test_run_supabase_audit_warns_on_recent_missing_setlists(monkeypatch):
 
     assert report.state == "warning"
     assert "goose:recent_completed_shows_missing_setlists" in report.warnings
+
+
+def test_audit_warns_below_window_with_intact_lineage(monkeypatch):
+    """48/50 rows with no broken links → warnings only, workflow passes."""
+    _install_audit_stubs(
+        monkeypatch,
+        latest_rows={
+            "notebook": _prediction_row(),
+            "deal": _prediction_row(song_name="Song B"),
+        },
+        projection_rows={
+            "notebook": _projection_rows(),
+            "deal": _projection_rows(top_song="Song B"),
+        },
+        readiness_overrides={
+            "notebook": {
+                "historical_runs": 48,
+                "unique_historical_target_dates": 48,
+                "per_show_rows": 48,
+                "replay_overlap": {"deal": 48},
+            },
+            "deal": {
+                "historical_runs": 48,
+                "unique_historical_target_dates": 48,
+                "per_show_rows": 48,
+                "replay_overlap": {"notebook": 48},
+            },
+        },
+        replay_rows={
+            "notebook_v1": _replay_rows(count=48),
+            "deal_v2": _replay_rows(count=48),
+        },
+    )
+
+    report = module.run_supabase_audit(bands=["goose"])
+
+    assert report.state == "warning"
+    assert not report.blockers
+    assert "goose:notebook:historical_run_rows_below_window" in report.warnings
+    assert "goose:notebook:per_show_accuracy_rows_below_window" in report.warnings
+    assert "goose:notebook:replay_eligible_rows_below_window" in report.warnings
+    assert "goose:notebook:replay_overlap_below_window:deal" in report.warnings
+    assert "goose:deal:replay_overlap_below_window:notebook" in report.warnings
+
+
+def test_audit_blocks_below_window_with_broken_lineage(monkeypatch):
+    """48/50 rows where 1 has a missing prediction_run_id → blockers."""
+    _install_audit_stubs(
+        monkeypatch,
+        latest_rows={
+            "notebook": _prediction_row(),
+            "deal": _prediction_row(song_name="Song B"),
+        },
+        projection_rows={
+            "notebook": _projection_rows(),
+            "deal": _projection_rows(top_song="Song B"),
+        },
+        readiness_overrides={
+            "notebook": {
+                "historical_runs": 48,
+                "unique_historical_target_dates": 48,
+                "per_show_rows": 48,
+                "replay_overlap": {"deal": 48},
+            },
+        },
+        replay_rows={
+            "notebook_v1": _replay_rows(count=48, missing_lineage=True),
+        },
+    )
+
+    report = module.run_supabase_audit(bands=["goose"])
+
+    assert report.state == "failed"
+    assert "goose:notebook:replay_lineage_missing_prediction_run_id" in report.blockers
+    assert "goose:notebook:historical_run_rows_below_window" in report.blockers
+    assert "goose:notebook:replay_eligible_rows_below_window" in report.blockers
+
+
+def test_audit_blocks_empty_replay_corpus(monkeypatch):
+    """0 replay rows is treated as broken corpus → blockers even with intact readiness counts."""
+    _install_audit_stubs(
+        monkeypatch,
+        latest_rows={
+            "notebook": _prediction_row(),
+            "deal": _prediction_row(song_name="Song B"),
+        },
+        projection_rows={
+            "notebook": _projection_rows(),
+            "deal": _projection_rows(top_song="Song B"),
+        },
+        replay_rows={
+            "notebook_v1": [],
+            "deal_v2": [],
+        },
+    )
+
+    report = module.run_supabase_audit(bands=["goose"])
+
+    assert report.state == "failed"
+    assert "goose:notebook:replay_eligible_rows_below_window" in report.blockers
+    assert "goose:deal:replay_eligible_rows_below_window" in report.blockers
