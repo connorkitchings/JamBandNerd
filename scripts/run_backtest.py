@@ -174,9 +174,19 @@ def build_scored_run_records(
             pred_songs = [
                 prediction["song_name"] for prediction in serialized_predictions
             ]
-        except (ValueError, AttributeError, KeyError, TypeError):
+        except (ValueError, AttributeError, KeyError, TypeError) as exc:
+            print(
+                f"  WARNING: show {show_id} ({ref_date}) skipped: "
+                f"{type(exc).__name__}: {exc}",
+                flush=True,
+            )
             continue
-        except Exception:
+        except Exception as exc:
+            print(
+                f"  WARNING: show {show_id} ({ref_date}) skipped unexpectedly: "
+                f"{type(exc).__name__}: {exc}",
+                flush=True,
+            )
             continue
 
         metrics_by_k: dict[str, dict[str, float]] = {}
@@ -427,6 +437,8 @@ def run_backtest(
     # 3. Score target shows and persist results
     definition = get_model_definition(model)
 
+    full_window_show_ids = target_shows["show_id"].astype(str).tolist()
+
     # 2b. Incremental filter: skip shows already present in completed_show_accuracy.
     # This is applied after the window is selected and the empty-window check,
     # so data-loading failures still raise under --require-results.
@@ -483,7 +495,7 @@ def run_backtest(
                 accuracy_table=COMPLETED_SHOW_ACCURACY_TABLE,
             )
         if prune_to_window and not dry_run:
-            retained_keys = target_shows["show_id"].astype(str).tolist()
+            retained_keys = full_window_show_ids
             deleted = prune_completed_show_corpus(
                 band=band,
                 model_slug=model,

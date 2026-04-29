@@ -323,7 +323,81 @@ def test_skip_freshness_fails_invalid_timestamp(monkeypatch):
     assert failures == 2
 
 
-def test_skip_freshness_still_checks_replay_lineage(monkeypatch):
+def test_validate_accuracy_passes_when_eligible_rows_below_window_but_all_linked(
+    monkeypatch,
+):
+    base_rows = _accuracy_rows()
+    notebook_row = base_rows["completed_show_accuracy"][0]
+    deal_row = base_rows["completed_show_accuracy"][50]
+    rows = {
+        "completed_show_accuracy": _repeat_rows(notebook_row, count=48)
+        + _repeat_rows(deal_row, count=48)
+    }
+    monkeypatch.setattr(
+        "scripts.validate_accuracy_tables.get_supabase_client",
+        lambda: _ClientStub(rows),
+    )
+
+    failures = validate_accuracy(bands=["goose"], max_age_hours=72)
+
+    assert failures == 0
+
+
+def test_validate_accuracy_fails_when_eligible_rows_below_window_with_missing_links(
+    monkeypatch,
+):
+    base_rows = _accuracy_rows()
+    notebook_row = base_rows["completed_show_accuracy"][0]
+    deal_row = base_rows["completed_show_accuracy"][50]
+    rows = {
+        "completed_show_accuracy": _repeat_rows(
+            notebook_row, count=48, with_lineage=False
+        )
+        + _repeat_rows(deal_row, count=48, with_lineage=False)
+    }
+    monkeypatch.setattr(
+        "scripts.validate_accuracy_tables.get_supabase_client",
+        lambda: _ClientStub(rows),
+    )
+
+    failures = validate_accuracy(bands=["goose"], max_age_hours=72)
+
+    assert failures == 2
+
+
+def test_validate_accuracy_fails_when_no_eligible_rows(monkeypatch):
+    rows = {
+        "completed_show_accuracy": [
+            {
+                "band": "goose",
+                "model_slug": "notebook",
+                "model_version": "notebook_v1",
+                "evaluated_at": datetime.now(timezone.utc).isoformat(),
+                "show_date": "2026-03-20",
+                "target_show_key": "short_1",
+                "prediction_run_id": 1,
+                "actual_song_count": 1,
+            },
+            {
+                "band": "goose",
+                "model_slug": "deal",
+                "model_version": "deal_v2",
+                "evaluated_at": datetime.now(timezone.utc).isoformat(),
+                "show_date": "2026-03-20",
+                "target_show_key": "short_2",
+                "prediction_run_id": 2,
+                "actual_song_count": 2,
+            },
+        ]
+    }
+    monkeypatch.setattr(
+        "scripts.validate_accuracy_tables.get_supabase_client",
+        lambda: _ClientStub(rows),
+    )
+
+    failures = validate_accuracy(bands=["goose"], max_age_hours=72)
+
+    assert failures == 2
     rows = _accuracy_rows()
     for row in rows["completed_show_accuracy"]:
         row["prediction_run_id"] = None
