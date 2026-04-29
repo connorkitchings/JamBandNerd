@@ -68,8 +68,10 @@ graph TD
   predictor class lives under `src/jambandnerd/models/{band}/` and implements
   the `PredictionModel` ABC. Architectures may differ across bands.
 - All models respect the `reference_date` anti-leakage rule.
-- **Primary metric**: precision@25 (top-25 predicted ∩ actual setlist, averaged
-  across shows). Secondary: weighted average of precision@10/@25/@50.
+- **Phase B promotion metric**: F1@25 is the primary offline promotion signal
+  because precision@25 is capped by actual setlist size. Precision@25 remains
+  the product-facing board accuracy metric and a non-regression guardrail.
+  Legacy p@10/r@50 checks remain active during the metric transition.
 - `setlist_accuracy` is the target canonical evaluation table, keyed
   `(band, model_version, target_show_key)`, retained to the last 100 eligible
   completed shows per band.
@@ -130,7 +132,7 @@ Per-band predictor classes live under `src/jambandnerd/models/{band}/` and
 implement `PredictionModel` from `src/jambandnerd/models/base.py`. Legacy
 multi-model classes (Notebook, Deal, CK+) are retained in
 `src/jambandnerd/models/legacy/` for offline backtest comparison until
-per-band models exceed their precision@25 over ≥50 historical shows.
+per-band models clear the active Phase B promotion gate.
 
 Adding or updating a per-band model:
 1. Implement `PredictionModel` in `src/jambandnerd/models/{band}/model.py`.

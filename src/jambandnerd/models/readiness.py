@@ -316,6 +316,7 @@ class PromotionDecision:
     incumbent_version: str
     n_shows: int
     p10_delta: float
+    p25_delta: float
     r50_delta: float
     f1_25_delta: float
     blockers: list[str]
@@ -370,6 +371,7 @@ def is_band_promotion_eligible(
         incumbent_version=incumbent.model_version,
         n_shows=candidate.n_shows,
         p10_delta=p10_delta,
+        p25_delta=p25_delta,
         r50_delta=r50_delta,
         f1_25_delta=f1_25_delta,
         blockers=blockers,

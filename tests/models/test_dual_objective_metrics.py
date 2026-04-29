@@ -116,6 +116,7 @@ def test_promotion_eligible_when_both_metrics_improve() -> None:
     assert decision.eligible
     assert decision.blockers == []
     assert abs(decision.p10_delta - 0.05) < 1e-9
+    assert abs(decision.p25_delta - 0.03) < 1e-9
     assert abs(decision.r50_delta - 0.05) < 1e-9
 
 

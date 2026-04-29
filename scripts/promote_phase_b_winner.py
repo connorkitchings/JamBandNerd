@@ -71,6 +71,18 @@ def main() -> None:
         help="Minimum absolute r@50 improvement required (default: 0.02).",
     )
     parser.add_argument(
+        "--min-f1-25-delta",
+        type=float,
+        default=0.02,
+        help="Minimum absolute F1@25 improvement required (default: 0.02).",
+    )
+    parser.add_argument(
+        "--max-p25-regression",
+        type=float,
+        default=0.01,
+        help="Maximum allowed p@25 regression (default: 0.01).",
+    )
+    parser.add_argument(
         "--min-shows",
         type=int,
         default=100,
@@ -86,6 +98,8 @@ def main() -> None:
         incumbent=incumbent,
         min_p10_delta=args.min_p10_delta,
         min_r50_delta=args.min_r50_delta,
+        min_f1_25_delta=args.min_f1_25_delta,
+        max_p25_regression=args.max_p25_regression,
         min_shows=args.min_shows,
     )
 
@@ -97,11 +111,24 @@ def main() -> None:
         f"  Δp@10:             {decision.p10_delta:+.4f}  (threshold: +{args.min_p10_delta:.4f})"
     )
     print(
+        f"  Δp@25:             {decision.p25_delta:+.4f}  "
+        f"(guardrail: >= -{args.max_p25_regression:.4f})"
+    )
+    print(
+        f"  ΔF1@25:            {decision.f1_25_delta:+.4f}  "
+        f"(threshold: +{args.min_f1_25_delta:.4f})"
+    )
+    print(
         f"  Δr@50:             {decision.r50_delta:+.4f}  (threshold: +{args.min_r50_delta:.4f})"
     )
     print(f"  Incumbent dual:    {incumbent.dual_score:.4f}")
     print(f"  Candidate dual:    {candidate.dual_score:.4f}")
     print(f"  Δdual:             {candidate.dual_score - incumbent.dual_score:+.4f}")
+    print(f"  Incumbent dual F1: {incumbent.dual_f1_score:.4f}")
+    print(f"  Candidate dual F1: {candidate.dual_f1_score:.4f}")
+    print(
+        f"  Δdual F1:          {candidate.dual_f1_score - incumbent.dual_f1_score:+.4f}"
+    )
 
     if decision.eligible:
         print("\n  ✓ ELIGIBLE — candidate clears the promotion gate.")

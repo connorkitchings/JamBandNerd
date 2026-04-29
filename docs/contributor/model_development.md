@@ -115,7 +115,10 @@ Promotion evidence should include:
 - current standard window: `last_100`
 - metric bundle at `K=10/25/50`: `hit_rate`, `avg_matches`, `precision`, `recall`, `f1`
 - per-band results, cross-band averages, and candidate-minus-baseline deltas
-- explicit promotion-gate outcomes versus CK+
+- explicit promotion-gate outcomes versus the incumbent
+- for Phase B per-band candidates, F1@25 improvement is the primary offline
+  promotion signal; p@25 remains a user-facing board accuracy metric and a
+  non-regression guardrail
 
 Experimental feature work should also start with a shared-input audit:
 

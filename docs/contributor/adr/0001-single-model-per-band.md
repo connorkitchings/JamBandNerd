@@ -36,11 +36,12 @@ Three problems drove this decision:
 **One purpose-built prediction model per band.**
 
 - Each band has exactly one promoted prediction model in the registry.
-- Each model is designed to maximize **precision@25**: the fraction of the
-  top-25 predicted songs that actually appear in the setlist, averaged across
-  shows.
-- A secondary metric — weighted average of precision@10, @25, and @50 — is
-  tracked alongside but not used as the primary training objective.
+- During Phase B, each model is evaluated for promotion primarily on
+  **F1@25** because fixed-board precision@25 is capped by actual setlist size.
+  Precision@25 remains the user-facing board accuracy metric and must not
+  materially regress.
+- Legacy p@10/r@50 and weighted precision metrics are tracked alongside during
+  the metric transition.
 - Per-band predictor classes are allowed under
   `src/jambandnerd/models/{band}/`. Different bands may use different model
   architectures if their data characteristics warrant it.
@@ -58,8 +59,8 @@ Three problems drove this decision:
   architecture without requiring six new models simultaneously.
 - Phase B: Iterate per band. Goose first. For each band, evaluate whether the
   baseline v1 is sufficient or whether a bespoke v2 warrants new architecture.
-  Gate promotion on precision@25 beating the best legacy baseline
-  (Notebook/Deal) over ≥50 backtested shows.
+  Gate promotion on F1@25 improvement with p@25 non-regression, while legacy
+  p@10/r@50 checks remain active over the required backtest window.
 
 **Parallel operation during development:**
 
