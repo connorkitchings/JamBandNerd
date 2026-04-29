@@ -26,6 +26,7 @@ dependencies = [
     "tqdm",
     "playwright>=1.40.0",
     "lightgbm>=4.0.0",
+    "duckdb>=1.0.0",
 ]
 
 [project.optional-dependencies]

@@ -459,6 +459,7 @@ def test_compare_models_resume_skips_completed_bands(monkeypatch, tmp_path):
                                     "precision": 0.1,
                                     "recall": 0.1,
                                     "f1": 0.1,
+                                    "ndcg": 0.0,
                                 },
                                 "k25": {
                                     "hit_rate": 0.5,
@@ -466,6 +467,7 @@ def test_compare_models_resume_skips_completed_bands(monkeypatch, tmp_path):
                                     "precision": 0.1,
                                     "recall": 0.1,
                                     "f1": 0.1,
+                                    "ndcg": 0.0,
                                 },
                                 "k50": {
                                     "hit_rate": 0.5,
@@ -473,6 +475,7 @@ def test_compare_models_resume_skips_completed_bands(monkeypatch, tmp_path):
                                     "precision": 0.1,
                                     "recall": 0.1,
                                     "f1": 0.1,
+                                    "ndcg": 0.0,
                                 },
                             },
                         },
@@ -485,6 +488,7 @@ def test_compare_models_resume_skips_completed_bands(monkeypatch, tmp_path):
                                     "precision": 0.1,
                                     "recall": 0.2,
                                     "f1": 0.1,
+                                    "ndcg": 0.0,
                                 },
                                 "k25": {
                                     "hit_rate": 0.6,
@@ -492,6 +496,7 @@ def test_compare_models_resume_skips_completed_bands(monkeypatch, tmp_path):
                                     "precision": 0.1,
                                     "recall": 0.2,
                                     "f1": 0.1,
+                                    "ndcg": 0.0,
                                 },
                                 "k50": {
                                     "hit_rate": 0.6,
@@ -499,6 +504,7 @@ def test_compare_models_resume_skips_completed_bands(monkeypatch, tmp_path):
                                     "precision": 0.1,
                                     "recall": 0.2,
                                     "f1": 0.1,
+                                    "ndcg": 0.0,
                                 },
                             },
                         },

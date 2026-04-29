@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Dict, Iterable, List
 
+import numpy as np
+
 from jambandnerd.config.models import (
     BAND_DUAL_OBJECTIVE_ALPHA,
     DUAL_OBJECTIVE_ALPHA,
@@ -18,10 +20,26 @@ class TopKMetrics:
     precision: float
     recall: float
     f1: float
+    ndcg: float
 
 
 def _safe_div(n: float, d: float) -> float:
     return n / d if d else 0.0
+
+
+def _dcg_at_k(relevances: List[float], k: int) -> float:
+    return sum(rel / np.log2(i + 2) for i, rel in enumerate(relevances[:k]))
+
+
+def _ndcg_at_k(pred_songs: List[str], actual_songs: Iterable[str], k: int) -> float:
+    actual_set = set(actual_songs)
+    if not actual_set:
+        return 0.0
+    relevances = [1.0 if song in actual_set else 0.0 for song in pred_songs[:k]]
+    dcg = _dcg_at_k(relevances, k)
+    ideal_relevances = [1.0] * min(len(actual_set), k)
+    idcg = _dcg_at_k(ideal_relevances, k)
+    return _safe_div(dcg, idcg)
 
 
 def compute_per_show_metrics(
@@ -39,12 +57,14 @@ def compute_per_show_metrics(
         if (precision + recall)
         else 0.0
     )
+    ndcg = _ndcg_at_k(pred_songs, actual_set, k)
     return {
         "hit": hit,
         "matches": float(matches),
         "precision": precision,
         "recall": recall,
         "f1": f1,
+        "ndcg": ndcg,
     }
 
 
@@ -73,6 +93,9 @@ class BacktestSummary:
     f1_10: float
     f1_25: float
     f1_50: float
+    ndcg_10: float
+    ndcg_25: float
+    ndcg_50: float
     weighted_score: float
     dual_score: float
     dual_f1_score: float
@@ -111,6 +134,7 @@ def aggregate_metrics(per_show: List[Dict[str, float]], k: int) -> TopKMetrics:
     precision = sum(m["precision"] for m in per_show) / n
     recall = sum(m["recall"] for m in per_show) / n
     f1 = sum(m["f1"] for m in per_show) / n
+    ndcg = sum(m["ndcg"] for m in per_show) / n
     return TopKMetrics(
         k=k,
         hit_rate=hit_rate,
@@ -118,4 +142,5 @@ def aggregate_metrics(per_show: List[Dict[str, float]], k: int) -> TopKMetrics:
         precision=precision,
         recall=recall,
         f1=f1,
+        ndcg=ndcg,
     )

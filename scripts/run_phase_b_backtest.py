@@ -185,6 +185,9 @@ def run_phase_b_backtest(
     f1_10 = agg[10].f1
     f1_25 = agg[25].f1
     f1_50 = agg[50].f1
+    ndcg_10 = agg[10].ndcg
+    ndcg_25 = agg[25].ndcg
+    ndcg_50 = agg[50].ndcg
     weighted = compute_weighted_precision_score(p10, p25, p50)
     dual = dual_objective_score_for_band(p10, r50, band)
     dual_f1 = dual_f1_objective_score_for_band(f1_10, f1_50, band)
@@ -202,6 +205,9 @@ def run_phase_b_backtest(
         f1_10=f1_10,
         f1_25=f1_25,
         f1_50=f1_50,
+        ndcg_10=ndcg_10,
+        ndcg_25=ndcg_25,
+        ndcg_50=ndcg_50,
         weighted_score=weighted,
         dual_score=dual,
         dual_f1_score=dual_f1,

@@ -17,7 +17,7 @@ from jambandnerd.models.registry import (
 )
 from jambandnerd.transformations.gaps import generate_model_data
 
-PRIMARY_BASELINE_SLUG = "ckplus"
+PRIMARY_BASELINE_SLUG = "notebook"
 PRIMARY_PROMOTION_METRIC = "recall"
 
 
@@ -256,6 +256,7 @@ def summarize_scored_rows(
             "precision": aggregate.precision,
             "recall": aggregate.recall,
             "f1": aggregate.f1,
+            "ndcg": aggregate.ndcg,
         }
 
     return {
@@ -290,6 +291,7 @@ def build_cross_band_summary(
                 "precision",
                 "recall",
                 "f1",
+                "ndcg",
             ):
                 metrics[k_key][metric_name] = sum(
                     band_summary["metrics"][k_key][metric_name]
@@ -335,6 +337,7 @@ def build_delta_summary(
                     "precision",
                     "recall",
                     "f1",
+                    "ndcg",
                 )
             }
 
@@ -354,6 +357,7 @@ def build_delta_summary(
                     "precision",
                     "recall",
                     "f1",
+                    "ndcg",
                 )
             }
 
@@ -414,8 +418,8 @@ def build_promotion_gate(
     required_band_wins = min(4, bands_evaluated)
 
     checks = {
-        "avg_recall_k10_beats_ckplus": candidate_k10_recall > baseline_k10_recall,
-        "avg_recall_k25_beats_ckplus": candidate_k25_recall > baseline_k25_recall,
+        "avg_recall_k10_beats_baseline": candidate_k10_recall > baseline_k10_recall,
+        "avg_recall_k25_beats_baseline": candidate_k25_recall > baseline_k25_recall,
         "wins_at_least_required_bands_on_recall_k10": (
             recall_k10_wins >= required_band_wins
         ),

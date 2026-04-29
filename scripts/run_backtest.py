@@ -377,6 +377,7 @@ def summarize_scored_run_records(
             "precision": agg_metrics_k.precision,
             "recall": agg_metrics_k.recall,
             "f1": agg_metrics_k.f1,
+            "ndcg": agg_metrics_k.ndcg,
         }
     return summaries
 

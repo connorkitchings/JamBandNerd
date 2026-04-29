@@ -16,6 +16,7 @@ from jambandnerd.config.models import (
     DEAL_TRAINING_WINDOW_SHOWS,
 )
 from jambandnerd.models.base import PredictionModel
+from jambandnerd.models.calibration import PlattScaler
 from jambandnerd.models.deal.features import (
     DEAL_FEATURE_COLUMNS,
     build_training_frame,
@@ -85,6 +86,7 @@ class BandGbmPredictor(PredictionModel):
             else list(DEAL_FEATURE_COLUMNS)
         )
         self._booster: Optional[lgb.Booster] = None
+        self._calibrator: Optional[PlattScaler] = None
 
     def _get_model_path(self) -> Path:
         return self.MODEL_DIR / f"{self.band}_{self.MODEL_VERSION}.txt"
@@ -115,26 +117,41 @@ class BandGbmPredictor(PredictionModel):
 
         if training_frame.empty or summary.positive_rows == 0:
             self._booster = None
+            self._calibrator = None
             return
 
         missing = [c for c in self.feature_columns if c not in training_frame.columns]
         if missing:
             raise ValueError(f"feature_columns not in training frame: {missing}")
 
-        # Sort by show so groups are contiguous
         training_frame = training_frame.sort_values("target_show_index").reset_index(
             drop=True
         )
+
+        unique_shows = training_frame["target_show_index"].unique()
+        split_point = int(len(unique_shows) * 0.8)
+        if split_point < 1:
+            split_point = 1
+        train_shows = set(unique_shows[:split_point])
+        calib_shows = set(unique_shows[split_point:])
+
+        train_frame = training_frame[
+            training_frame["target_show_index"].isin(train_shows)
+        ]
+        calib_frame = training_frame[
+            training_frame["target_show_index"].isin(calib_shows)
+        ]
+
         groups = (
-            training_frame.groupby("target_show_index", sort=False)
-            .size()
-            .values.tolist()
+            train_frame.groupby("target_show_index", sort=False).size().values.tolist()
         )
 
-        X = training_frame[self.feature_columns].fillna(0.0).to_numpy(dtype=float)
-        y = training_frame["label"].to_numpy(dtype=int)
+        X_train = train_frame[self.feature_columns].fillna(0.0).to_numpy(dtype=float)
+        y_train = train_frame["label"].to_numpy(dtype=int)
 
-        train_set = lgb.Dataset(X, label=y, group=groups, free_raw_data=False)
+        train_set = lgb.Dataset(
+            X_train, label=y_train, group=groups, free_raw_data=False
+        )
         params: dict[str, Any] = {
             "objective": "rank_xendcg",
             "metric": "ndcg",
@@ -149,6 +166,16 @@ class BandGbmPredictor(PredictionModel):
             train_set,
             num_boost_round=self.n_estimators,
         )
+
+        if not calib_frame.empty:
+            X_calib = (
+                calib_frame[self.feature_columns].fillna(0.0).to_numpy(dtype=float)
+            )
+            y_calib = calib_frame["label"].to_numpy(dtype=float)
+            raw_scores = self._booster.predict(X_calib)
+            self._calibrator = PlattScaler().fit(raw_scores, y_calib)
+        else:
+            self._calibrator = None
 
         if self.persist_artifacts:
             model_path = self._get_model_path()
@@ -177,6 +204,7 @@ class BandGbmPredictor(PredictionModel):
         meta = json.loads(meta_path.read_text())
         self.feature_columns = meta.get("feature_columns", self.feature_columns)
         self._booster = lgb.Booster(model_file=str(model_path))
+        self._calibrator = None
         return True
 
     def predict(self, model_data: ModelData, top_k: int = 50) -> List[DealPrediction]:
@@ -203,10 +231,15 @@ class BandGbmPredictor(PredictionModel):
             return []
 
         X = candidates[self.feature_columns].fillna(0.0).to_numpy(dtype=float)
-        scores = self._booster.predict(X)
+        raw_scores = self._booster.predict(X)
+
+        if self._calibrator is not None:
+            calibrated = self._calibrator.transform(raw_scores)
+        else:
+            calibrated = raw_scores
 
         candidates = candidates.copy()
-        candidates["probability"] = scores
+        candidates["probability"] = calibrated
 
         ranked = candidates.sort_values("probability", ascending=False).head(top_k)
 
