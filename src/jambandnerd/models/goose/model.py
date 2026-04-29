@@ -2,17 +2,19 @@
 
 from __future__ import annotations
 
+from datetime import timedelta
 from pathlib import Path
 from typing import Any
 
 import pandas as pd
 
+from jambandnerd.config.bands import get_excluded_songs
 from jambandnerd.models.deal.features import (
     DealTrainingSummary,
     build_training_frame,
     generate_deal_features,
 )
-from jambandnerd.models.deal.model import DealPredictor
+from jambandnerd.models.deal.model import DealPrediction, DealPredictor
 from jambandnerd.models.gbm.predictor import BandGbmPredictor
 from jambandnerd.transformations.gaps import ModelData
 from jambandnerd.transformations.run_context import same_venue_run_show_indices
@@ -52,6 +54,87 @@ GOOSE_UNUSED_DEAL_FEATURE_COLUMNS: list[str] = [
 GOOSE_TOP10_FEATURE_COLUMNS: list[str] = (
     GOOSE_FEATURE_COLUMNS + GOOSE_UNUSED_DEAL_FEATURE_COLUMNS + GOOSE_EXTRA_FEATURES
 )
+
+
+def _rank_scores(song_names: list[str]) -> dict[str, float]:
+    """Map an ordered song list to normalized rank scores."""
+    ordered = list(dict.fromkeys(str(name) for name in song_names))
+    if not ordered:
+        return {}
+    if len(ordered) == 1:
+        return {ordered[0]: 1.0}
+    denominator = len(ordered) - 1
+    return {
+        song_name: 1.0 - (rank / denominator) for rank, song_name in enumerate(ordered)
+    }
+
+
+def _notebook_ranked_songs(model_data: ModelData, *, band: str) -> list[str]:
+    """Return Notebook-style ranking for the supplied reference-date history."""
+    features = model_data.master_feature_set
+    plays = model_data.historical_plays
+    if features.empty or plays.empty:
+        return []
+
+    features = features.copy()
+    plays = plays.copy()
+    features["last_played_date"] = pd.to_datetime(
+        features["last_played_date"], errors="coerce"
+    )
+    plays["show_date"] = pd.to_datetime(plays["show_date"], errors="coerce")
+
+    last_completed_show_date = features["last_played_date"].max()
+    if pd.isna(last_completed_show_date):
+        return []
+
+    window_start = last_completed_show_date - timedelta(days=365)
+    plays_in_window = plays[plays["show_date"] >= window_start]
+    plays_past_year_count = (
+        plays_in_window.groupby("song_name")["show_index"]
+        .nunique()
+        .rename("plays_past_year")
+    )
+
+    candidates = features.merge(plays_past_year_count, on="song_name", how="inner")
+    if candidates.empty:
+        return []
+
+    candidates["current_gap"] = (
+        model_data.reference_index - candidates["last_played_index"] - 1
+    ).clip(lower=0)
+    candidates = candidates[
+        ~candidates["song_name"].isin(set(model_data.recently_played_songs))
+    ]
+
+    excluded = get_excluded_songs(band)
+    if excluded:
+        candidates = candidates[
+            ~candidates["song_name"].str.lower().str.strip().isin(excluded)
+        ]
+    if candidates.empty:
+        return []
+
+    ranked = candidates.sort_values(
+        by=["plays_past_year", "current_gap", "song_name"],
+        ascending=[False, False, True],
+    )
+    return ranked["song_name"].astype(str).tolist()
+
+
+def _rank_blended_candidate_features(
+    candidates: pd.DataFrame,
+    *,
+    alpha: float,
+) -> pd.DataFrame:
+    """Sort scored candidates by GBM/Notebook rank blend."""
+    ranked = candidates.copy()
+    ranked["probability"] = (
+        alpha * ranked["gbm_rank_score"] + (1.0 - alpha) * ranked["notebook_rank_score"]
+    )
+    return ranked.sort_values(
+        by=["probability", "gbm_rank_score", "notebook_rank_score", "song_name"],
+        ascending=[False, False, False, True],
+    )
 
 
 def _goose_v3_candidate_features(
@@ -284,3 +367,92 @@ class GooseGbmTop10V3Predictor(BandGbmPredictor):
         return candidates.merge(goose_feats, on="song_name", how="left").fillna(
             {col: 0.0 for col in GOOSE_EXTRA_FEATURES}
         )
+
+
+class GooseGbmNotebookBlendPredictor(GooseGbmV2Predictor):
+    """Goose Phase B V2 GBM blended with Notebook rank evidence.
+
+    The blend uses normalized rank scores rather than mixing raw GBM scores with
+    Notebook counts. The default alpha keeps 60% weight on the V2 GBM ranking
+    and 40% on the Notebook ranking, matching the best 50-show offline evidence.
+    """
+
+    MODEL_VERSION = "goose_phase_b_v4_gbm_notebook_blend"
+
+    def __init__(
+        self,
+        band: str = "goose",
+        notebook_blend_alpha: float = 0.60,
+        **kwargs: Any,
+    ):
+        if not 0.0 <= notebook_blend_alpha <= 1.0:
+            raise ValueError("notebook_blend_alpha must be between 0.0 and 1.0.")
+        self.notebook_blend_alpha = notebook_blend_alpha
+        super().__init__(band=band, **kwargs)
+
+    def _score_candidates(self, model_data: ModelData) -> pd.DataFrame:
+        if self._booster is None:
+            if self.persist_artifacts and self._load_persisted():
+                pass
+            else:
+                self.train(model_data)
+
+        if self._booster is None:
+            return pd.DataFrame()
+
+        candidates = self._get_candidate_features(model_data)
+        if candidates.empty:
+            return candidates
+
+        candidates = candidates.copy()
+        excluded = get_excluded_songs(self.band)
+        if excluded:
+            candidates = candidates[
+                ~candidates["song_name"].str.lower().str.strip().isin(excluded)
+            ]
+        if candidates.empty:
+            return candidates
+
+        X = candidates[self.feature_columns].fillna(0.0).to_numpy(dtype=float)
+        candidates["gbm_raw_score"] = self._booster.predict(X)
+        gbm_ranked = candidates.sort_values(
+            by=["gbm_raw_score", "song_name"],
+            ascending=[False, True],
+        )
+        candidates["gbm_rank_score"] = (
+            candidates["song_name"]
+            .astype(str)
+            .map(_rank_scores(gbm_ranked["song_name"].astype(str).tolist()))
+        ).fillna(0.0)
+
+        notebook_scores = _rank_scores(
+            _notebook_ranked_songs(model_data, band=self.band)
+        )
+        candidates["notebook_rank_score"] = (
+            candidates["song_name"].astype(str).map(notebook_scores)
+        ).fillna(0.0)
+        return _rank_blended_candidate_features(
+            candidates,
+            alpha=self.notebook_blend_alpha,
+        )
+
+    def predict(self, model_data: ModelData, top_k: int = 50) -> list[DealPrediction]:
+        ranked = self._score_candidates(model_data)
+        if ranked.empty:
+            return []
+
+        return [
+            DealPrediction(
+                song_name=str(row["song_name"]),
+                probability=float(row["probability"]),
+                current_gap=int(row["current_gap"]),
+                plays_past_year=int(row["plays_past_year"]),
+                recent_plays_50=int(row["recent_plays_50"]),
+                LTP=(
+                    row["last_played_date"].isoformat()
+                    if pd.notna(row["last_played_date"])
+                    else None
+                ),
+            )
+            for _, row in ranked.head(top_k).iterrows()
+        ]

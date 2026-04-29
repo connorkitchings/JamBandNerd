@@ -9,8 +9,10 @@ from jambandnerd.models.deal.features import DEAL_FEATURE_COLUMNS
 from jambandnerd.models.goose.model import (
     GOOSE_FEATURE_COLUMNS,
     GOOSE_TOP10_FEATURE_COLUMNS,
+    GooseGbmNotebookBlendPredictor,
     GooseGbmTop10V3Predictor,
     GoosePredictor,
+    _rank_blended_candidate_features,
 )
 from jambandnerd.transformations.gaps import generate_model_data
 
@@ -142,6 +144,85 @@ def test_goose_top10_gbm_trains_and_predicts_without_artifacts() -> None:
     assert predictions
     assert 0 < len(predictions) <= 10
     assert len({prediction.song_name for prediction in predictions}) == len(predictions)
+
+
+def test_goose_notebook_blend_defaults_to_evidence_alpha() -> None:
+    predictor = GooseGbmNotebookBlendPredictor(persist_artifacts=False)
+
+    assert predictor.MODEL_VERSION == "goose_phase_b_v4_gbm_notebook_blend"
+    assert predictor.notebook_blend_alpha == pytest.approx(0.60)
+
+
+def test_goose_notebook_blend_rejects_invalid_alpha() -> None:
+    with pytest.raises(ValueError, match="notebook_blend_alpha"):
+        GooseGbmNotebookBlendPredictor(
+            persist_artifacts=False,
+            notebook_blend_alpha=1.1,
+        )
+
+
+def test_goose_notebook_blend_ranking_combines_rank_scores() -> None:
+    candidates = pd.DataFrame(
+        [
+            {
+                "song_name": "GBM Lead",
+                "gbm_rank_score": 1.0,
+                "notebook_rank_score": 0.0,
+            },
+            {
+                "song_name": "Notebook Lead",
+                "gbm_rank_score": 0.0,
+                "notebook_rank_score": 1.0,
+            },
+            {
+                "song_name": "Consensus",
+                "gbm_rank_score": 0.7,
+                "notebook_rank_score": 0.8,
+            },
+        ]
+    )
+
+    ranked = _rank_blended_candidate_features(candidates, alpha=0.60)
+
+    assert ranked["song_name"].tolist() == [
+        "Consensus",
+        "GBM Lead",
+        "Notebook Lead",
+    ]
+    assert ranked.iloc[0]["probability"] == pytest.approx(0.74)
+
+
+def test_goose_notebook_blend_trains_and_predicts_without_artifacts() -> None:
+    shows_df, setlists_df = _goose_fixture()
+    target_show = {
+        "show_id": "future-goose",
+        "show_date": "2024-05-20",
+        "venue_name": "Capitol Theatre",
+        "city": "Port Chester",
+        "state": "NY",
+        "country": "USA",
+    }
+    model_data = generate_model_data(
+        shows_df,
+        setlists_df,
+        date(2024, 5, 20),
+        band="goose",
+        target_show_context=target_show,
+    )
+
+    predictor = GooseGbmNotebookBlendPredictor(
+        persist_artifacts=False,
+        min_training_shows=10,
+        training_window_shows=25,
+        n_estimators=5,
+    )
+    predictor.train(model_data)
+    predictions = predictor.predict(model_data, top_k=10)
+
+    assert predictions
+    assert 0 < len(predictions) <= 10
+    assert len({prediction.song_name for prediction in predictions}) == len(predictions)
+    assert all(0.0 <= prediction.probability <= 1.0 for prediction in predictions)
 
 
 def test_same_run_songs_outside_recent_window_remain_candidates() -> None:
