@@ -1,4 +1,8 @@
-"""Canonical Supabase audit for website-facing prediction and replay surfaces."""
+"""Canonical Supabase audit for website-facing prediction and replay surfaces.
+
+Lineage-shortfall policy must stay in sync with validate_accuracy_tables.py:
+count < window with intact lineage → warning; broken links or empty corpus → blocker.
+"""
 
 from __future__ import annotations
 
@@ -305,18 +309,6 @@ def _derive_model_audit(
     if stale_projection_reference_dates:
         _append_unique(blockers, "prediction_projection_recent_stale_rows")
 
-    accuracy_window_issues = warnings if skip_accuracy else blockers
-
-    if historical_run_rows < required_window:
-        _append_unique(accuracy_window_issues, "historical_run_rows_below_window")
-    if unique_historical_target_dates < required_window:
-        _append_unique(
-            accuracy_window_issues,
-            "historical_unique_target_dates_below_window",
-        )
-    if per_show_accuracy_rows < required_window:
-        _append_unique(accuracy_window_issues, "per_show_accuracy_rows_below_window")
-
     replay_rows = _recent_replay_eligible_rows(
         client,
         table=COMPLETED_SHOW_ACCURACY_TABLE,
@@ -324,23 +316,46 @@ def _derive_model_audit(
         model_version=definition.version,
         limit=required_window,
     )
-    if len(replay_rows) < required_window:
-        _append_unique(accuracy_window_issues, "replay_eligible_rows_below_window")
     replay_lineage_missing_dates = tuple(
         str(row.get("show_date") or "unknown")
         for row in replay_rows
         if row.get("prediction_run_id") is None
     )
+
+    # Parity with validate_accuracy_tables.py: count shortfalls are benign when
+    # lineage is intact (all found rows have valid prediction_run_id links). Broken
+    # links or an empty corpus indicate real data integrity issues and stay blockers.
+    lineage_intact = bool(replay_rows) and not replay_lineage_missing_dates
+    if skip_accuracy:
+        shortfall_target = warnings
+    elif lineage_intact:
+        shortfall_target = warnings
+    else:
+        shortfall_target = blockers
+
+    if historical_run_rows < required_window:
+        _append_unique(shortfall_target, "historical_run_rows_below_window")
+    if unique_historical_target_dates < required_window:
+        _append_unique(
+            shortfall_target,
+            "historical_unique_target_dates_below_window",
+        )
+    if per_show_accuracy_rows < required_window:
+        _append_unique(shortfall_target, "per_show_accuracy_rows_below_window")
+
+    if len(replay_rows) < required_window:
+        _append_unique(shortfall_target, "replay_eligible_rows_below_window")
+
     if replay_lineage_missing_dates:
         _append_unique(
-            accuracy_window_issues,
+            blockers if not skip_accuracy else warnings,
             "replay_lineage_missing_prediction_run_id",
         )
 
     for overlap_slug, overlap_count in replay_overlap.items():
         if overlap_count < required_window:
             _append_unique(
-                accuracy_window_issues,
+                shortfall_target,
                 f"replay_overlap_below_window:{overlap_slug}",
             )
 

@@ -1,4 +1,8 @@
-"""Validate accuracy table freshness and aggregate-presence expectations."""
+"""Validate accuracy table freshness and aggregate-presence expectations.
+
+Lineage-shortfall policy must stay in sync with audit_supabase_tables.py:
+count < window with intact lineage → OK; broken links or empty corpus → failure.
+"""
 
 from __future__ import annotations
 
