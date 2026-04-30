@@ -198,12 +198,12 @@ def test_build_prediction_coverage_lines_uses_latest_completed_show_with_setlist
                 {"show_id": "played", "song_name": "Song B"},
                 {"show_id": "today", "song_name": "Ignore Me"},
             ],
-            "predictions": [
+            "completed_show_prediction_runs": [
                 {
                     "band": "goose",
                     "model_slug": "notebook",
-                    "reference_date": "2026-03-15",
-                    "predicted_at": "2026-03-15T12:00:00+00:00",
+                    "target_show_date": "2026-03-15",
+                    "generated_at": "2026-03-15T12:00:00+00:00",
                     "predictions": json.dumps(
                         [
                             {"song_name": "Song A"},
@@ -224,17 +224,45 @@ def test_build_prediction_coverage_lines_uses_latest_completed_show_with_setlist
     assert "| GOOSE | 1/2 | 2 | 2026-03-15 |" in lines
 
 
+def test_build_prediction_coverage_lines_uses_completed_show_prediction_runs_without_legacy_table():
+    client = _ClientStub(
+        {
+            "goose_shows_raw": [{"show_id": "played", "show_date": "2026-03-16"}],
+            "goose_setlists_raw": [{"show_id": "played", "song_name": "Song A"}],
+            "completed_show_prediction_runs": [
+                {
+                    "band": "goose",
+                    "model_slug": "notebook",
+                    "target_show_date": "2026-03-16",
+                    "generated_at": "2026-03-16T12:00:00+00:00",
+                    "predictions": [{"song_name": "Song A"}],
+                }
+            ],
+        }
+    )
+
+    lines = build_prediction_coverage_lines(
+        client,
+        bands=["goose"],
+        today=date(2026, 3, 17),
+    )
+
+    assert "| GOOSE | 1/1 | 1 | 2026-03-16 |" in lines
+    assert "predictions" not in client.query_counts
+    assert client.query_counts["completed_show_prediction_runs"] == 1
+
+
 def test_render_summary_reports_per_band_errors_without_crashing():
     client = _ClientStub(
         {
             "goose_shows_raw": [{"show_id": "played", "show_date": "2026-03-16"}],
             "goose_setlists_raw": [{"show_id": "played", "song_name": "Song A"}],
-            "predictions": [
+            "completed_show_prediction_runs": [
                 {
                     "band": "goose",
                     "model_slug": "notebook",
-                    "reference_date": "2026-03-16",
-                    "predicted_at": "2026-03-16T12:00:00+00:00",
+                    "target_show_date": "2026-03-16",
+                    "generated_at": "2026-03-16T12:00:00+00:00",
                     "predictions": json.dumps([{"song_name": "Song A"}]),
                 }
             ],
@@ -263,12 +291,12 @@ def test_render_summary_includes_band_health_states():
         {
             "goose_shows_raw": [{"show_id": "played", "show_date": "2026-03-16"}],
             "goose_setlists_raw": [{"show_id": "played", "song_name": "Song A"}],
-            "predictions": [
+            "completed_show_prediction_runs": [
                 {
                     "band": "goose",
                     "model_slug": "notebook",
-                    "reference_date": "2026-03-16",
-                    "predicted_at": "2026-03-16T12:00:00+00:00",
+                    "target_show_date": "2026-03-16",
+                    "generated_at": "2026-03-16T12:00:00+00:00",
                     "predictions": json.dumps([{"song_name": "Song A"}]),
                 }
             ],
@@ -310,6 +338,36 @@ def test_render_summary_includes_band_health_states():
     assert (
         "| WSP | degraded | degraded_upstream_blocked | bounded_refresh | 0 | reused_existing | "
         "fallback shows filled=2 |" in summary
+    )
+
+
+def test_render_summary_includes_missing_setlists_skipped_prediction_action():
+    client = _ClientStub(
+        {
+            "billy_shows_raw": [],
+            "billy_setlists_raw": [],
+        }
+    )
+
+    summary = render_summary(
+        client,
+        bands=["billy"],
+        band_statuses=[
+            {
+                "band": "billy",
+                "workflow_state": "degraded",
+                "outcome_code": "degraded_missing_recent_setlists",
+                "execution_mode": "bounded_refresh",
+                "missing_count": 4,
+                "prediction_action": "skipped_missing_setlists",
+            },
+        ],
+        today=date(2026, 3, 17),
+    )
+
+    assert (
+        "| BILLY | degraded | degraded_missing_recent_setlists | bounded_refresh | 4 | "
+        "skipped_missing_setlists | n/a |" in summary
     )
 
 

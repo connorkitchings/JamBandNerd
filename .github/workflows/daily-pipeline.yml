@@ -260,12 +260,12 @@ jobs:
           else
             echo "::error::Critical: ${COUNT} recent ${{ matrix.band }} shows are missing setlist data!"
             echo "This may cause predictions to include songs that were recently played."
-            echo "Consider running the collection script manually to fetch missing setlists."
+            echo "Skipping prediction generation for this band. Existing predictions will be reused only if they pass freshness enforcement."
           fi
           
       - name: Generate Predictions (Notebook & Deal)
         id: predictions
-        if: steps.preflight.outputs.should_run_collection == 'true' && steps.collection.outputs.workflow_state != 'degraded'
+        if: steps.preflight.outputs.should_run_collection == 'true' && steps.collection.outputs.workflow_state != 'degraded' && steps.data_check.outputs.missing_data != 'true'
         run: |
           echo "::group::Generating live next-show predictions for ${{ matrix.band }}"
 
@@ -276,7 +276,7 @@ jobs:
 
       - name: Validate Prediction Tables
         id: prediction_validation
-        if: steps.preflight.outputs.should_run_collection == 'true' && steps.collection.outputs.workflow_state != 'degraded'
+        if: steps.preflight.outputs.should_run_collection == 'true' && steps.collection.outputs.workflow_state != 'degraded' && steps.data_check.outputs.missing_data != 'true'
         run: |
           echo "::group::Validating prediction table freshness for ${{ matrix.band }}"
           uv run python scripts/validate_prediction_tables.py --band ${{ matrix.band }} --max-age-hours 72
@@ -284,7 +284,7 @@ jobs:
 
       - name: Run Backtest and Save Per-Show Accuracy
         id: accuracy_calc
-        if: github.event.inputs.skip_accuracy != 'true' && steps.preflight.outputs.should_run_collection == 'true' && steps.collection.outputs.workflow_state != 'degraded'
+        if: github.event.inputs.skip_accuracy != 'true' && steps.preflight.outputs.should_run_collection == 'true' && steps.collection.outputs.workflow_state != 'degraded' && steps.data_check.outputs.missing_data != 'true'
         run: |
           echo "::group::Running backtest for ${{ matrix.band }}"
           
@@ -301,7 +301,7 @@ jobs:
 
       - name: Validate Accuracy Tables
         id: accuracy_validation
-        if: github.event.inputs.skip_accuracy != 'true' && steps.preflight.outputs.should_run_collection == 'true' && steps.collection.outputs.workflow_state != 'degraded'
+        if: github.event.inputs.skip_accuracy != 'true' && steps.preflight.outputs.should_run_collection == 'true' && steps.collection.outputs.workflow_state != 'degraded' && steps.data_check.outputs.missing_data != 'true'
         env:
           BACKTEST_INCREMENTAL_ALL_SCORED: ${{ steps.accuracy_calc.outputs.backtest_incremental_all_scored }}
         run: |
@@ -390,6 +390,7 @@ jobs:
           FAILURE_REASON: ${{ steps.collection.outputs.failure_reason || '' }}
           MISSING_DATA: ${{ steps.data_check.outputs.missing_data || 'false' }}
           MISSING_COUNT: ${{ steps.data_check.outputs.missing_count || '0' }}
+          PREDICTION_ACTION: ${{ steps.collection.outputs.prediction_action || steps.collection_idle.outputs.prediction_action || '' }}
           PREDICTIONS_OUTCOME: ${{ steps.predictions.outcome || '' }}
           ACCURACY_SKIPPED: ${{ github.event.inputs.skip_accuracy == 'true' }}
           COLLECTION_MODE: ${{ steps.preflight.outputs.collection_mode || 'unknown' }}
@@ -417,15 +418,26 @@ jobs:
           workflow_state = os.environ.get("WORKFLOW_STATE", "failed")
           missing_data = os.environ.get("MISSING_DATA", "false") == "true"
           recent_data_usable = os.environ.get("RECENT_DATA_USABLE", "false") == "true"
+          explicit_prediction_action = os.environ.get("PREDICTION_ACTION", "").strip()
 
-          if workflow_state == "degraded":
+          if missing_data:
+              workflow_state = "degraded"
+              outcome_code = "degraded_missing_recent_setlists"
+          else:
+              outcome_code = os.environ.get("OUTCOME_CODE", "failed_internal")
+
+          if missing_data:
+              prediction_action = "skipped_missing_setlists"
+          elif workflow_state == "degraded":
               prediction_action = "reused_existing" if recent_data_usable and not missing_data else "skipped"
           elif os.environ.get("PREDICTIONS_OUTCOME") == "success":
               prediction_action = "generated"
           elif os.environ.get("WORKFLOW_STATE") == "failed":
               prediction_action = "skipped"
+          elif explicit_prediction_action:
+              prediction_action = explicit_prediction_action
           else:
-              prediction_action = os.environ.get("prediction_action", "pending")
+              prediction_action = "pending"
 
           def parse_model_list(value: str | None) -> list[str]:
               if not value:
@@ -443,7 +455,7 @@ jobs:
           payload = {
               "band": os.environ["BAND"],
               "workflow_state": workflow_state,
-              "outcome_code": os.environ.get("OUTCOME_CODE", "failed_internal"),
+              "outcome_code": outcome_code,
               "recent_data_usable": recent_data_usable,
               "missing_data": missing_data,
               "missing_count": int(os.environ.get("MISSING_COUNT", "0") or 0),
