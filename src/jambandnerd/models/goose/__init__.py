@@ -4,6 +4,7 @@ from .model import (
     GooseGbmNotebookBlendPredictor,
     GooseGbmTop10V3Predictor,
     GoosePredictor,
+    GooseThreeStagePredictor,
 )
 
 __all__ = [
@@ -12,4 +13,5 @@ __all__ = [
     "GooseGbmNotebookBlendPredictor",
     "GooseGbmTop10V3Predictor",
     "GoosePredictor",
+    "GooseThreeStagePredictor",
 ]

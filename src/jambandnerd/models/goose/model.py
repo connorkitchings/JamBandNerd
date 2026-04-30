@@ -16,6 +16,7 @@ from jambandnerd.models.deal.features import (
 )
 from jambandnerd.models.deal.model import DealPrediction, DealPredictor
 from jambandnerd.models.gbm.predictor import BandGbmPredictor
+from jambandnerd.models.three_stage.predictor import ThreeStagePredictor
 from jambandnerd.transformations.cooccurrence import (
     COOCCURRENCE_FEATURES as _COOCCURRENCE_FEATURES,
 )
@@ -375,6 +376,22 @@ class GooseGbmTop10V3Predictor(BandGbmPredictor):
         return candidates.merge(goose_feats, on="song_name", how="left").fillna(
             {col: 0.0 for col in GOOSE_EXTRA_FEATURES}
         )
+
+
+class GooseThreeStagePredictor(ThreeStagePredictor):
+    """Goose-specific three-stage predictor.
+
+    Uses GooseGbmV2Predictor as Stage 1 so the full Goose V2 feature set
+    drives availability scoring before transition re-ranking.
+    """
+
+    MODEL_VERSION = "goose_three_stage_v1"
+
+    def __init__(self, band: str = "goose", **kwargs: Any):
+        if band != "goose":
+            raise ValueError("GooseThreeStagePredictor only supports band='goose'.")
+        kwargs.setdefault("gbm_class", GooseGbmV2Predictor)
+        super().__init__(band=band, **kwargs)
 
 
 class GooseGbmNotebookBlendPredictor(GooseGbmV2Predictor):

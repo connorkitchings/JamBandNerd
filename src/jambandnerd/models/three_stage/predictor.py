@@ -7,7 +7,7 @@ Stage 3: Beam search sequence optimizer (final ranking).
 
 from __future__ import annotations
 
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Type
 
 import pandas as pd
 
@@ -40,6 +40,7 @@ class ThreeStagePredictor(PredictionModel):
     def __init__(
         self,
         band: str,
+        gbm_class: Type[BandGbmPredictor] = BandGbmPredictor,
         beam_width: int = _DEFAULT_BEAM_WIDTH,
         setlist_window: int = _AVG_SETLIST_WINDOW,
         persist_artifacts: bool = False,
@@ -49,7 +50,7 @@ class ThreeStagePredictor(PredictionModel):
         self.beam_width = beam_width
         self.setlist_window = setlist_window
         self.persist_artifacts = persist_artifacts
-        self._gbm = BandGbmPredictor(
+        self._gbm = gbm_class(
             band=band,
             persist_artifacts=persist_artifacts,
             **gbm_kwargs,
