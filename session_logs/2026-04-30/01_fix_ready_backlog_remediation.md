@@ -21,6 +21,8 @@ uv run black tests/test_daily_workflow_contract.py
 npm run verify:python
 npm run verify:docs
 npm run verify:web
+gh workflow run daily-pipeline.yml --ref dev -f band=all -f skip_accuracy=false
+gh run view 25171483735 --json status,conclusion,createdAt,updatedAt,headBranch,event,displayTitle,jobs
 ```
 
 ## Files Changed
@@ -43,7 +45,9 @@ npm run verify:web
 - `npm run verify:python`: 394 passed, 6 skipped.
 - `npm run verify:docs`: passed.
 - `npm run verify:web`: not run to completion locally because Node workspace dependencies are not installed; failed at `playwright: command not found`.
+- GitHub Actions `Daily Data Pipeline` on `dev`, run `25171483735`: success.
+- The Billy matrix job exercised the new missing-setlist path: `Alert on Data Issues` ran, prediction generation, prediction validation, backtest, and accuracy validation were skipped, then freshness/audit/status/summary steps completed successfully.
 
 ## Next Step
 
-Install local Node dependencies (`npm install` plus Playwright browser setup) or rely on CI's green website gate, then run `npm run verify:web` before merge.
+Open the PR from `dev` to `main` and watch Repo Quality / Website Quality checks.
