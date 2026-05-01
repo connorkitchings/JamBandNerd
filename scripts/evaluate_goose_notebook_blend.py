@@ -8,7 +8,7 @@ from the same pre-target history, and grid-searches rank blends.
 Usage:
     uv run python scripts/evaluate_goose_notebook_blend.py \\
         --band goose \\
-        --base-predictor jambandnerd.models.goose.model.GooseGbmTop10V3Predictor \\
+        --base-predictor jambandnerd.models.goose.model.GooseGbmV2Predictor \\
         --shows 50 \\
         --snapshot-root .snapshots/goose_phase_b \\
         --out-dir .snapshots/goose_phase_b/blends
@@ -1171,7 +1171,7 @@ def main() -> None:
     parser.add_argument("--band", default="goose")
     parser.add_argument(
         "--base-predictor",
-        default="jambandnerd.models.goose.model.GooseGbmTop10V3Predictor",
+        default="jambandnerd.models.goose.model.GooseGbmV2Predictor",
         help="Dotted path to a BandGbmPredictor subclass.",
     )
     parser.add_argument("--shows", type=int, default=50)

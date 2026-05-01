@@ -15,7 +15,7 @@ Output is a markdown report under ``--out-dir`` (defaults to a
 Usage:
     uv run python scripts/diagnose_goose_features.py \\
         --band goose \\
-        --predictor jambandnerd.models.goose.model.GooseGbmTop10V3Predictor \\
+        --predictor jambandnerd.models.goose.model.GooseGbmV2Predictor \\
         --shows 50 \\
         --snapshot-root .snapshots/goose_phase_b
 """
@@ -439,7 +439,7 @@ def main() -> None:
     parser.add_argument("--band", default="goose")
     parser.add_argument(
         "--predictor",
-        default="jambandnerd.models.goose.model.GooseGbmTop10V3Predictor",
+        default="jambandnerd.models.goose.model.GooseGbmV2Predictor",
         help="Dotted path to a PredictionModel subclass.",
     )
     parser.add_argument("--shows", type=int, default=50)
