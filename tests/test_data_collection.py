@@ -109,13 +109,3 @@ class TestMockBandCollector:
         assert len(venues) == 1
         assert venues[0]["venue_id"] == "test_venue_1"
         assert venues[0]["name"] == "Test Venue"
-
-        venues = collector.collect_venues()
-
-        assert len(venues) == 1
-        assert venues[0]["venue_id"] == "test_venue_1"
-        assert venues[0]["name"] == "Test Venue"
-
-        assert len(venues) == 1
-        assert venues[0]["venue_id"] == "test_venue_1"
-        assert venues[0]["name"] == "Test Venue"

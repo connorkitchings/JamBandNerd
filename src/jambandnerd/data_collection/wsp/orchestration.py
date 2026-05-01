@@ -209,8 +209,21 @@ def _resolve_recent_wsp_fallback(
             lookup_errors.append(
                 f"{_format_fallback_source(source_name)} lookup failed: {exc}"
             )
+            logging.warning(
+                "Fallback source %s raised for show %s (%s): %s",
+                source_name,
+                show_id,
+                show_date,
+                exc,
+            )
             continue
         if not rows:
+            logging.info(
+                "Fallback source %s returned no rows for show %s (%s)",
+                source_name,
+                show_id,
+                show_date,
+            )
             continue
 
         normalized_rows: list[dict[str, object]] = []

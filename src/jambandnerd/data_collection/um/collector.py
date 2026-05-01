@@ -16,10 +16,10 @@ logger = logging.getLogger(__name__)
 
 
 class UmCollector(BandCollector):
-    """Collect Umphrey's McGee data from allthings.umphreys.com API."""
+    """Collector for Umphrey's McGee data from allthings.umphreys.com."""
 
+    ARTIST_ID = 1  # Umphrey's McGee artist ID
     ARTIST_NAME = "Umphrey's McGee"
-    ARTIST_ID = 1
     BASE_URL = "https://allthings.umphreys.com"
     EARLIEST_YEAR = 1998
 
@@ -143,7 +143,7 @@ class UmCollector(BandCollector):
                     continue
 
                 for show in data.get("data", []):
-                    if not _is_um_artist(show, artist_id=self.ARTIST_ID):
+                    if not self._is_target_artist(show, artist_id=self.ARTIST_ID):
                         continue
 
                     show_date_str = show.get("showdate")
@@ -220,7 +220,7 @@ class UmCollector(BandCollector):
                 # Group by show_id to calculate song_position
                 show_data = {}
                 for row in data.get("data", []):
-                    if not _is_um_artist(row, artist_id=self.ARTIST_ID):
+                    if not self._is_target_artist(row, artist_id=self.ARTIST_ID):
                         continue
 
                     show_id = str(row.get("show_id"))
@@ -282,16 +282,3 @@ def _coerce_api_bool(value: Any) -> bool | None:
         if normalized in {"0", "false", "f", "no", "n", ""}:
             return False
     return bool(value)
-
-
-def _is_um_artist(payload: Dict[str, Any], *, artist_id: int) -> bool:
-    """Return whether an API row belongs to Umphrey's McGee."""
-    payload_artist_id = payload.get("artist_id")
-    if payload_artist_id is not None:
-        try:
-            return int(payload_artist_id) == artist_id
-        except (TypeError, ValueError):
-            return False
-
-    artist_name = str(payload.get("artist") or "").strip().casefold()
-    return artist_name == UmCollector.ARTIST_NAME.casefold()

@@ -18,6 +18,14 @@ updates:
           - "supabase-auth"
           - "supabase-functions"
 
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:30"
+      timezone: "America/New_York"
+
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:

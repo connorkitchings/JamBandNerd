@@ -31,6 +31,8 @@ site/
 
 # Pytest cache
 .pytest_cache/
+.coverage
+htmlcov/
 
 # Ruff cache
 .ruff_cache/
@@ -40,6 +42,10 @@ tw_test_backups/
 docs/reports/model_baselines/cache/
 artifacts/model_readiness/
 .snapshots/
+
+# GitHub Actions CI artifacts
+.github/workflow-status/
+.github/workflow-audits/
 
 # Node / Next.js
 node_modules/

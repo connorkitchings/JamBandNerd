@@ -4,13 +4,58 @@ from __future__ import annotations
 
 import logging
 import os
+import time
+from collections.abc import Callable, Sequence
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 import pandas as pd
 
+from src.jambandnerd.db.operations import validate_and_upsert_dataframe
+
 logger = logging.getLogger(__name__)
+
+
+def upsert_table(
+    table_name: str,
+    collector_func: Callable[[], Any],
+    normalizer_func: Callable[..., pd.DataFrame],
+    conflict_cols: Sequence[str],
+    *,
+    skip_validation: bool = False,
+    required_columns: Sequence[str] | None = None,
+    log: Callable[..., None] = print,
+) -> None:
+    """Collect, normalize, and upsert data to a Supabase raw table.
+
+    The collector is invoked to fetch raw data, the normalizer converts it
+    into a DataFrame matching the target table schema, and the result is
+    upserted against the given conflict columns.
+    """
+    log(f"Collecting {table_name}...")
+    try:
+        raw_data = collector_func()
+    except Exception as e:
+        log(f"Error collecting {table_name}: {e}")
+        return
+    df = normalizer_func(raw_data)
+    log(f"Prepared {len(df)} records for {table_name}.")
+    if df.empty:
+        log(f"No data for {table_name}; skipping upsert.")
+        return
+
+    try:
+        validate_and_upsert_dataframe(
+            table_name=table_name,
+            df=df,
+            conflict_columns=list(conflict_cols),
+            required_columns=list(required_columns) if required_columns else None,
+            skip_validation=skip_validation,
+        )
+        log(f"Upserted data into {table_name}.")
+    except Exception as e:
+        log(f"Error upserting to {table_name}: {e}")
 
 
 def completed_show_window(
@@ -45,6 +90,20 @@ def batched_values(values: Iterable[Any], batch_size: int = 50) -> List[List[Any
     return [items[idx : idx + batch_size] for idx in range(0, len(items), batch_size)]
 
 
+_TRANSIENT_STATUSES = frozenset({429, 500, 502, 503, 504})
+
+
+def _is_transient_error(exc: Exception) -> bool:
+    """Return True for transient network errors worth retrying."""
+    import requests
+
+    if isinstance(exc, (ConnectionError, TimeoutError, requests.Timeout)):
+        return True
+    if isinstance(exc, requests.HTTPError) and exc.response is not None:
+        return exc.response.status_code in _TRANSIENT_STATUSES
+    return False
+
+
 def ensure_source_reachable(band: str, *, timeout: int = 15) -> None:
     """Perform a shallow health check for a band's data source.
 
@@ -61,34 +120,68 @@ def ensure_source_reachable(band: str, *, timeout: int = 15) -> None:
 
     config = get_collector_config(band)
     url = config.base_url
-    try:
-        response = requests.get(
-            url,
-            timeout=timeout,
-            allow_redirects=True,
-            headers={"User-Agent": config.user_agent},
-        )
-        status = response.status_code
-        # Treat network-level errors or 5xx responses as fatal for most.
-        # Some APIs (like UM) might return 500 on the root but work fine on subpaths.
-        if status >= 500:
-            if band == "um":
+    last_exc: Exception | None = None
+    for attempt in range(1, 4):
+        try:
+            response = requests.get(
+                url,
+                timeout=timeout,
+                allow_redirects=True,
+                headers={"User-Agent": config.user_agent},
+            )
+            status = response.status_code
+            if status in _TRANSIENT_STATUSES:
+                if attempt < 3:
+                    logger.warning(
+                        "Transient %s from %s — retrying (attempt %d/3)",
+                        status,
+                        url,
+                        attempt,
+                    )
+                    time.sleep(2**attempt)
+                    continue
+            # Treat 5xx responses as fatal for most.
+            if status >= 500:
+                if band == "um":
+                    import logging as _logging
+
+                    _logging.getLogger(__name__).warning(
+                        f"Received {status} from {url} — proceeding anyway for UM "
+                        "as its API root is known to be unstable while subpaths work."
+                    )
+                    return
+                raise RuntimeError(f"Received status {status} from {url}")
+            if status == 403:
                 import logging as _logging
 
                 _logging.getLogger(__name__).warning(
-                    f"Received {status} from {url} — proceeding anyway for UM "
-                    "as its API root is known to be unstable while subpaths work."
+                    f"Received 403 from {url} — upstream API may be blocking requests"
                 )
-                return
-            raise RuntimeError(f"Received status {status} from {url}")
-        if status == 403:
-            import logging as _logging
-
-            _logging.getLogger(__name__).warning(
-                f"Received 403 from {url} — upstream API may be blocking requests"
-            )
-    except requests.RequestException as exc:
-        raise RuntimeError(f"Failed to contact {url}: {exc}") from exc
+            return  # success — no further attempts needed
+        except requests.ConnectionError as exc:
+            last_exc = exc
+            if attempt < 3:
+                logger.warning(
+                    "Connection error contacting %s — retrying (attempt %d/3): %s",
+                    url,
+                    attempt,
+                    exc,
+                )
+                time.sleep(2**attempt)
+        except requests.Timeout as exc:
+            last_exc = exc
+            if attempt < 3:
+                logger.warning(
+                    "Timeout contacting %s — retrying (attempt %d/3)",
+                    url,
+                    attempt,
+                )
+                time.sleep(2**attempt)
+        except requests.RequestException as exc:
+            raise RuntimeError(f"Failed to contact {url}: {exc}") from exc
+    raise RuntimeError(
+        f"Failed to contact {url} after 3 attempts: {last_exc}"
+    ) from last_exc
 
 
 def assert_required_columns(

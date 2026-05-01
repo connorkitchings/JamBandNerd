@@ -1,27 +1,14 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime
 from typing import Any, Dict, Iterable, List, Optional
 
 import pandas as pd
 
-from jambandnerd.data_collection.utils import compute_source_hash
+from jambandnerd.data_collection.utils import compute_source_hash, parse_date
 from jambandnerd.data_collection.wsp.song_canonicalizer import canonicalize_song_name
 
 logger = logging.getLogger(__name__)
-
-
-def _parse_date(value: Optional[str]) -> Optional[str]:
-    """Parse a date-like string to ISO date (YYYY-MM-DD) or return None."""
-    if not value:
-        return None
-    for fmt in ("%Y-%m-%d", "%Y/%m/%d", "%m/%d/%Y", "%d-%m-%Y"):
-        try:
-            return datetime.strptime(str(value), fmt).date().isoformat()
-        except (ValueError, TypeError):
-            continue
-    return None
 
 
 def normalize_songs(raw: Iterable[Dict[str, Any]]) -> pd.DataFrame:
@@ -74,7 +61,7 @@ def normalize_shows(raw: Iterable[Dict[str, Any]]) -> pd.DataFrame:
         record = {
             "show_id": str(show_id),
             "show_date": (
-                _parse_date(show_date_raw)
+                parse_date(show_date_raw)
                 if show_date_raw and not show_date_raw.count("-") == 2
                 else show_date_raw
             ),

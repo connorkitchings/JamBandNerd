@@ -70,6 +70,13 @@ class CollectionStatus:
             return "failed_internal"
 
         if self.request_blocked_missing_setlists > 0:
+            # When the EC page itself is unreachable and fallback sources
+            # also come up empty for a very recent show, the collector
+            # still produced usable data.  Degrade instead of hard-failing
+            # — the pipeline reuses prior prediction data until the next
+            # collection window when the upstreams have caught up.
+            if self.shows_collected > 0 or self.songs_collected > 0:
+                return "degraded_upstream_stale"
             return "failed_upstream_stale"
 
         if (

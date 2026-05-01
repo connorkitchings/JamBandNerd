@@ -53,9 +53,14 @@ def run_wsp_collection(
             logging.info("✅ WSP collection completed successfully")
         return status
     except RuntimeError as e:
-        logging.error(f"❌ WSP collection failed: {e}")
+        logging.error(f"\u274c WSP collection failed: {e}")
         _write_failure_github_outputs(str(e))
-        sys.exit(1)
+        raise
+    except Exception as e:
+        logging.error(f"\u274c Unexpected error during WSP collection: {e}")
+        logging.exception("Full traceback:")
+        _write_failure_github_outputs(str(e))
+        raise RuntimeError(str(e)) from e
     except Exception as e:
         logging.error(f"❌ Unexpected error during WSP collection: {e}")
         logging.exception("Full traceback:")
@@ -118,9 +123,12 @@ if __name__ == "__main__":
     # uv run python scripts/run_wsp_collection.py                    # Default: last year + this year
     # uv run python scripts/run_wsp_collection.py --year_start 2023 --year_end 2023  # Specific year
     # uv run python scripts/run_wsp_collection.py --full_backfill   # All historical data
-    run_wsp_collection(
-        skip_existing_setlists=args.skip_existing_setlists,
-        year_start=args.year_start,
-        year_end=args.year_end,
-        full_backfill=args.full_backfill,
-    )
+    try:
+        run_wsp_collection(
+            skip_existing_setlists=args.skip_existing_setlists,
+            year_start=args.year_start,
+            year_end=args.year_end,
+            full_backfill=args.full_backfill,
+        )
+    except RuntimeError:
+        sys.exit(1)

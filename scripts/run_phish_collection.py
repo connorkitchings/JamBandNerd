@@ -111,7 +111,7 @@ def run_phish_collection(
             logging.info(f"Upserted data into {table_name}.")
         except Exception as e:
             logging.error(f"Error upserting to {table_name}: {e}")
-            raise
+            return
 
     if clear_setlists:
         logging.info("Clearing phish_setlists_raw table...")

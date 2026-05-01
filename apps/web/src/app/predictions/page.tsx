@@ -23,19 +23,11 @@ import {
   formatPercent,
   formatTimestampLabel,
 } from "@/lib/format";
+import { average } from "@/lib/math";
 import { formatTop10Text } from "@/lib/format-predictions-text";
 import { getPredictionStatusLabel, isShowTonight } from "@/lib/show-status";
 
 export const dynamic = "force-dynamic";
-
-function average(values: Array<number | null>) {
-  const filtered = values.filter((value): value is number => value !== null);
-  if (filtered.length === 0) {
-    return null;
-  }
-
-  return filtered.reduce((sum, value) => sum + value, 0) / filtered.length;
-}
 
 type Props = {
   searchParams: Promise<{

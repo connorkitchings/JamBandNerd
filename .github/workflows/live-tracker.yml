@@ -40,7 +40,7 @@ jobs:
   run-tracker:
     name: "Live Tracker: ${{ github.event.inputs.band }} on ${{ github.event.inputs.date }}"
     runs-on: ubuntu-latest
-    
+
     # GitHub Actions limit is 6 hours; set timeout slightly below to allow graceful fail
     timeout-minutes: 360
 
@@ -48,14 +48,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Install uv
+      - name: Install uv and Python
         uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
-
-      - name: Setup Python 3.12
-        uses: actions/setup-python@v6
-        with:
           python-version: "3.12"
 
       - name: Validate required secrets

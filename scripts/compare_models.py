@@ -34,7 +34,7 @@ from src.jambandnerd.models.registry import (
     list_backtest_models,
 )
 
-DEFAULT_BASELINES = ("ckplus", "notebook")
+DEFAULT_BASELINES = ("deal", "notebook")
 DEFAULT_WINDOWS = ("50",)
 
 
@@ -340,6 +340,7 @@ def _refresh_window_reports(
             metrics_by_band=metrics_by_band,
             cross_band_summary=cross_band_summary,
             candidate_slug=candidate_model,
+            baseline_slug=baseline_models[0] if baseline_models else None,
         )
         if diagnostics_by_band:
             window_report["candidate_diagnostics"] = dict(diagnostics_by_band)

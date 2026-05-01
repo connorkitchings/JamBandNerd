@@ -26,6 +26,7 @@ import {
   formatPercent,
   formatTimestampLabel,
 } from "@/lib/format";
+import { normalizeSongName } from "@/lib/song-board";
 
 export const dynamic = "force-dynamic";
 
@@ -50,10 +51,6 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
     title: `${bandName} Replay${dateStr} | JamBandNerd`,
     description: `Review two retained model boards against the actual setlist for a completed ${bandName} show.`,
   };
-}
-
-function normalizeSongName(value: string) {
-  return value.trim().toLowerCase();
 }
 
 function computeTopKRecall(

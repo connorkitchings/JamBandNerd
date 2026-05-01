@@ -45,9 +45,14 @@ def run_live_tracker(
     client = None
 
     if band == "phish":
-        from scripts.run_phish_collection import _normalize_setlists, _normalize_shows
         from src.jambandnerd.data_collection.phish.collector import (
             PhishCollector as Collector,
+        )
+        from src.jambandnerd.data_collection.phish.normalizer import (
+            normalize_setlists as _normalize_setlists,
+        )
+        from src.jambandnerd.data_collection.phish.normalizer import (
+            normalize_shows as _normalize_shows,
         )
 
         table_name = "phish_setlists_raw"
@@ -55,9 +60,14 @@ def run_live_tracker(
         required_cols = ["set_number", "position"]
         collector = Collector()
     elif band == "goose":
-        from scripts.run_goose_collection import _normalize_setlists, _normalize_shows
         from src.jambandnerd.data_collection.goose.collector import (
             GooseCollector as Collector,
+        )
+        from src.jambandnerd.data_collection.goose.normalizer import (
+            normalize_setlists as _normalize_setlists,
+        )
+        from src.jambandnerd.data_collection.goose.normalizer import (
+            normalize_shows as _normalize_shows,
         )
 
         table_name = "goose_setlists_raw"

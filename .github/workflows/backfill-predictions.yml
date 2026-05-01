@@ -76,14 +76,10 @@ jobs:
           fi
           echo "✅ All required secrets are configured"
 
-      - name: Install uv
+      - name: Install uv and Python
         uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
-
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
           python-version: "3.12"
 
       - name: Install dependencies

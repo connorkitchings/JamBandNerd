@@ -27,28 +27,26 @@ class GooseCollector(BandCollector):
     ) -> List[Dict[str, Any]]:
         """Collects show data, filtering to Goose-only artists."""
         records = self._fetch_from_endpoint("v2/shows.json")
-        artist_lower = self.ARTIST_NAME.lower()
         filtered = [
             r
             for r in records
-            if str(r.get("artist", "")).strip().lower() == artist_lower
+            if self._is_target_artist(r, artist_name=self.ARTIST_NAME)
         ]
-        logger.info(f"✅ {self.ARTIST_NAME}: Collected {len(filtered)} shows.")
+        logger.info(f"\u2705 {self.ARTIST_NAME}: Collected {len(filtered)} shows.")
         return filtered
 
     def collect_setlists(
-        self, show_ids: Optional[List[str]] = None
+        self, shows_to_process: Optional[List[Dict[str, Any]]] = None
     ) -> List[Dict[str, Any]]:
         """Collects setlist data, filtering to Goose-only artists."""
         records = self._fetch_from_endpoint("v1/setlists.json")
-        artist_lower = self.ARTIST_NAME.lower()
         filtered = [
             r
             for r in records
-            if str(r.get("artist", "")).strip().lower() == artist_lower
+            if self._is_target_artist(r, artist_name=self.ARTIST_NAME)
         ]
         logger.info(
-            f"✅ {self.ARTIST_NAME}: Collected {len(filtered)} setlist records."
+            f"\u2705 {self.ARTIST_NAME}: Collected {len(filtered)} setlist records."
         )
         return filtered
 

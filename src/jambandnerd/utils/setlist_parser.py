@@ -99,9 +99,8 @@ def ensure_show(
         "venue_name": venue_name,
         "city": city,
         "state": state,
+        "source_hash": None,
     }
-    if band == "wsp":
-        row["source_hash"] = None
 
     client.table(shows_tbl).upsert(row, on_conflict="show_id").execute()
     return show_id

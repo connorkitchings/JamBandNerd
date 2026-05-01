@@ -16,6 +16,7 @@ import {
   resolveBandSelection,
 } from "@/lib/data";
 import { buildLocationLabel, formatDateLabel } from "@/lib/format";
+import { normalizeSongName } from "@/lib/song-board";
 
 export const dynamic = "force-dynamic";
 
@@ -36,10 +37,6 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
     title: `${bandName} Last Show Setlist | JamBandNerd`,
     description: `View the setlist from the most recent ${bandName} show and compare it to the Notebook prediction snapshot.`,
   };
-}
-
-function normalizeSongName(value: string) {
-  return value.trim().toLowerCase();
 }
 
 export default async function LastShowPage({ searchParams }: Props) {
