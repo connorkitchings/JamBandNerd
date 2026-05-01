@@ -137,3 +137,9 @@ May 1 daily pipeline failed for WSP and Phish. Both had shows the night before.
 
 ## Next Step
 Commit to `dev`, push, and open PR against `main`. Manual trigger WSP + Phish collection tomorrow via `workflow_dispatch` to verify the operational fixes. Monitor CI logs for the new PanicStream diagnostic output to identify root cause of 4/30 fallback failure.
+
+## Post-Commit Dev Fixes
+
+- **Teaser band ordering**: Fixed to Phish, WSP, Billy, Goose (not alphabetical). Added shorthand labels (WSP for Widespread Panic, Billy for Billy Strings) via `TEASER_LABELS` mapping.
+- **Supabase dev-mode anon key bypass**: `server.ts` `hasSupabaseEnv()` and `getSupabaseServerClient()` now skip `looksLikeSecretKey()` check in development mode. Required because this Supabase project only exposes keys prefixed with `sb_secret_`.
+- **Deal mobile layout**: Experimented with stacked vertical layout, reverted to original single-line format per user preference.

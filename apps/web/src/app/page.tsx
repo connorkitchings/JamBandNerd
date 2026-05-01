@@ -64,7 +64,14 @@ export default async function HomePage({ searchParams }: Props) {
   const bandsResult = await getBands();
   const bands = bandsResult.status === "ready" ? bandsResult.bands : [];
   const requestedTeaser = params.teaser?.trim().toLowerCase();
-  const teaserBands = bands.slice(0, 4);
+  const TEASER_ORDER = ["phish", "wsp", "billy", "goose"];
+  const TEASER_LABELS: Record<string, string> = {
+    wsp: "WSP",
+    billy: "Billy",
+  };
+  const teaserBands = TEASER_ORDER
+    .map((slug) => bands.find((b) => b.slug === slug))
+    .filter((b): b is NonNullable<typeof b> => b != null);
   const teaserBandSlug =
     teaserBands.find((b) => b.slug === requestedTeaser)?.slug ??
     teaserBands[0]?.slug ??
@@ -136,7 +143,7 @@ export default async function HomePage({ searchParams }: Props) {
                         : "border-transparent bg-surface-container-low text-on-surface-variant hover:bg-outline-variant/20 hover:text-on-surface"
                     }`}
                   >
-                    {band.displayName}
+                    {TEASER_LABELS[band.slug] ?? band.displayName}
                   </Link>
                 );
               })}

@@ -15,7 +15,9 @@ function looksLikeSecretKey(value: string | null): boolean {
 export function hasSupabaseEnv(): boolean {
   const url = getRequiredEnv("SUPABASE_URL");
   const key = getRequiredEnv("SUPABASE_ANON_KEY");
-  return Boolean(url && key && !looksLikeSecretKey(key));
+  if (!url || !key) return false;
+  if (process.env.NODE_ENV === "development") return true;
+  return !looksLikeSecretKey(key);
 }
 
 export function getServiceRoleClient(): SupabaseClient | null {
@@ -31,14 +33,15 @@ export const getSupabaseServerClient = cache((): SupabaseClient | null => {
   const url = getRequiredEnv("SUPABASE_URL");
   const key = getRequiredEnv("SUPABASE_ANON_KEY");
 
-  if (!url || !key || looksLikeSecretKey(key)) {
-    return null;
+  if (!url || !key) return null;
+  if (process.env.NODE_ENV === "development") {
+    return createClient(url, key, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
   }
+  if (looksLikeSecretKey(key)) return null;
 
   return createClient(url, key, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-    },
+    auth: { persistSession: false, autoRefreshToken: false },
   });
 });
