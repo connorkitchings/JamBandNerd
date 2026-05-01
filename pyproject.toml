@@ -27,6 +27,7 @@ dependencies = [
     "playwright>=1.40.0",
     "lightgbm>=4.0.0",
     "duckdb>=1.0.0",
+    "scikit-learn>=1.8.0",
 ]
 
 [project.optional-dependencies]
