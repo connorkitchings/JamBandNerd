@@ -221,6 +221,8 @@ class BillyFastPredictor(PredictionModel):
 
     MODEL_VERSION = "billy_fast_gbm_v1"
     _FEATURE_COLS: list[str] = BILLY_FAST_FEATURE_COLS
+    _LGB_PARAMS: dict[str, Any] = _LGB_PARAMS
+    _LGB_ROUNDS: int = _LGB_ROUNDS
 
     def __init__(
         self,
@@ -561,9 +563,9 @@ class BillyFastPredictor(PredictionModel):
             free_raw_data=False,
         )
         self._model = lgb.train(
-            _LGB_PARAMS,
+            self._LGB_PARAMS,
             train_data,
-            num_boost_round=_LGB_ROUNDS,
+            num_boost_round=self._LGB_ROUNDS,
         )
 
     # ── Prediction ────────────────────────────────────────────────────────────
@@ -855,3 +857,26 @@ class BillyFastPredictorV3(BillyFastPredictorV2):
             "avg_ltp_recent": avg_ltp,
             "ltp_diff_recent": gap_e.values - avg_ltp,
         }
+
+
+# ── BillyFastPredictorV4 ──────────────────────────────────────────────────────
+
+_BILLY_FAST_V4_LGB_PARAMS: dict[str, Any] = {
+    **_LGB_PARAMS,
+    "num_leaves": 63,
+    "reg_lambda": 0.1,
+}
+_BILLY_FAST_V4_LGB_ROUNDS: int = 400
+
+
+class BillyFastPredictorV4(BillyFastPredictorV3):
+    """BillyFast v4 — LightGBM HP tuning on top of V3 features.
+
+    Same 16-feature set as V3. Doubles num_leaves (31→63) and num_boost_round
+    (200→400) while adding L2 regularization (reg_lambda=0.1).
+    """
+
+    MODEL_VERSION = "billy_fast_gbm_v4"
+    _FEATURE_COLS: list[str] = BILLY_FAST_V3_FEATURE_COLS
+    _LGB_PARAMS: dict[str, Any] = _BILLY_FAST_V4_LGB_PARAMS
+    _LGB_ROUNDS: int = _BILLY_FAST_V4_LGB_ROUNDS

@@ -13,6 +13,7 @@ from jambandnerd.models.billy.fast_predictor import (
     BillyFastPredictor,
     BillyFastPredictorV2,
     BillyFastPredictorV3,
+    BillyFastPredictorV4,
 )
 from jambandnerd.models.billy.model import (
     BILLY_FEATURE_COLUMNS,
@@ -407,3 +408,33 @@ def test_billy_fast_v3_trains_without_venue_context() -> None:
 
     assert predictor._model is not None
     assert len(predictions) > 0
+
+
+def test_billy_fast_v4_trains_and_predicts() -> None:
+    shows_df, setlists_df = _billy_fixture()
+    target_show = {
+        "show_id": "future-billy",
+        "show_date": "2024-05-20",
+        "venue_name": "Ryman Auditorium",
+        "city": "Nashville",
+        "state": "TN",
+        "country": "USA",
+    }
+    model_data = generate_model_data(
+        shows_df,
+        setlists_df,
+        date(2024, 5, 20),
+        band="billy",
+        target_show_context=target_show,
+    )
+
+    predictor = BillyFastPredictorV4(songs_df=_SONGS_DF, persist_artifacts=False)
+    predictor.train(model_data)
+    predictions = predictor.predict(model_data, top_k=10)
+
+    assert predictor.MODEL_VERSION == "billy_fast_gbm_v4"
+    assert predictor._model is not None
+    assert predictor._LGB_PARAMS["num_leaves"] == 63
+    assert predictor._LGB_ROUNDS == 400
+    assert 0 < len(predictions) <= 10
+    assert len({p.song_name for p in predictions}) == len(predictions)
