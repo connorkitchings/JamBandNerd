@@ -71,6 +71,15 @@ BILLY_FAST_V2_FEATURE_COLS: list[str] = [
     "same_venue_run_position",
 ]
 
+BILLY_FAST_V3_FEATURE_COLS: list[str] = [
+    *BILLY_FAST_V2_FEATURE_COLS,
+    "plays_past_3",
+    "plays_past_5",
+    "overdue_ratio",
+    "avg_ltp_recent",
+    "ltp_diff_recent",
+]
+
 _LGB_PARAMS: dict[str, Any] = {
     "objective": "rank_xendcg",
     "metric": "ndcg",
@@ -426,6 +435,8 @@ class BillyFastPredictor(PredictionModel):
         eligible_songs: pd.Index,
         j: int,
         target_date: Any,
+        gap_e: pd.Series,
+        career_pct: pd.Series,
         p25: pd.Series,
         p50: pd.Series,
         cache: dict,
@@ -440,10 +451,13 @@ class BillyFastPredictor(PredictionModel):
         eligible_songs: pd.Index,
         n_shows: int,
         ref_date: pd.Timestamp,
+        gap_e: pd.Series,
+        career_pct: pd.Series,
         p25: pd.Series,
         p50: pd.Series,
         cache: dict,
         plays: pd.DataFrame,
+        target_show_context: Any,
     ) -> dict:
         return {}
 
@@ -508,6 +522,8 @@ class BillyFastPredictor(PredictionModel):
                 eligible_songs=eligible_songs,
                 j=j,
                 target_date=target_date,
+                gap_e=gap_e,
+                career_pct=career_pct,
                 p25=p25,
                 p50=p50,
                 cache=cache,
@@ -605,10 +621,13 @@ class BillyFastPredictor(PredictionModel):
             eligible_songs=eligible_songs,
             n_shows=n_shows,
             ref_date=ref_date,
+            gap_e=gap_e,
+            career_pct=career_pct,
             p25=p25,
             p50=p50,
             cache=cache,
             plays=plays,
+            target_show_context=model_data.target_show_context,
         )
 
         X = pd.DataFrame(
@@ -659,6 +678,8 @@ class BillyFastPredictorV2(BillyFastPredictor):
         eligible_songs: pd.Index,
         j: int,
         target_date: Any,
+        gap_e: pd.Series,
+        career_pct: pd.Series,
         p25: pd.Series,
         p50: pd.Series,
         cache: dict,
@@ -707,10 +728,13 @@ class BillyFastPredictorV2(BillyFastPredictor):
         eligible_songs: pd.Index,
         n_shows: int,
         ref_date: pd.Timestamp,
+        gap_e: pd.Series,
+        career_pct: pd.Series,
         p25: pd.Series,
         p50: pd.Series,
         cache: dict,
         plays: pd.DataFrame,
+        target_show_context: Any,
     ) -> dict:
         col_dates = cache["col_dates"]
         prior_dates = [d for d in col_dates if d is not None]
@@ -726,4 +750,108 @@ class BillyFastPredictorV2(BillyFastPredictor):
             "diff_25_to_50": diff,
             "show_position_in_run": run_pos,
             "same_venue_run_position": 0.0,
+        }
+
+
+# ── BillyFastPredictorV3 ──────────────────────────────────────────────────────
+
+
+class BillyFastPredictorV3(BillyFastPredictorV2):
+    """BillyFast v3 — adds rotation analytics and short-window recency features.
+
+    Inspired by Widespread Panic model methodology: avg_ltp_recent (expected gap
+    from recent frequency), ltp_diff_recent (overdue shows vs. expectation),
+    overdue_ratio (gap × career rate), plays_past_3/5 (hot-song windows).
+    Also fixes same_venue_run_position at predict time to use target_show_context.
+    """
+
+    MODEL_VERSION = "billy_fast_gbm_v3"
+    _FEATURE_COLS: list[str] = BILLY_FAST_V3_FEATURE_COLS
+
+    def _extra_training_row_features(
+        self,
+        *,
+        eligible_songs: pd.Index,
+        j: int,
+        target_date: Any,
+        gap_e: pd.Series,
+        career_pct: pd.Series,
+        p25: pd.Series,
+        p50: pd.Series,
+        cache: dict,
+        plays: pd.DataFrame,
+        target_show_index: int,
+    ) -> dict:
+        v2 = super()._extra_training_row_features(
+            eligible_songs=eligible_songs,
+            j=j,
+            target_date=target_date,
+            gap_e=gap_e,
+            career_pct=career_pct,
+            p25=p25,
+            p50=p50,
+            cache=cache,
+            plays=plays,
+            target_show_index=target_show_index,
+        )
+        cum = cache["cum"]
+        p3 = _window_plays(cum, j, 3).loc[eligible_songs]
+        p5 = _window_plays(cum, j, 5).loc[eligible_songs]
+        window = max(1, min(25, j))
+        avg_ltp = window / p25.clip(lower=1).values
+        return {
+            **v2,
+            "plays_past_3": p3.values,
+            "plays_past_5": p5.values,
+            "overdue_ratio": (gap_e * career_pct).values,
+            "avg_ltp_recent": avg_ltp,
+            "ltp_diff_recent": gap_e.values - avg_ltp,
+        }
+
+    def _extra_predict_features(
+        self,
+        *,
+        eligible_songs: pd.Index,
+        n_shows: int,
+        ref_date: pd.Timestamp,
+        gap_e: pd.Series,
+        career_pct: pd.Series,
+        p25: pd.Series,
+        p50: pd.Series,
+        cache: dict,
+        plays: pd.DataFrame,
+        target_show_context: Any,
+    ) -> dict:
+        col_dates = cache["col_dates"]
+        prior_dates = [d for d in col_dates if d is not None]
+        tour_pos = float(_tour_position(prior_dates, ref_date.date(), tour_gap_days=14))
+        run_pos = float(_run_position(prior_dates, ref_date.date(), gap_days=1))
+
+        pct25 = p25 / max(1, min(25, n_shows))
+        pct50 = p50 / max(1, min(50, n_shows))
+        diff = (pct25 - pct50).values
+
+        normalized_ctx = normalize_target_show_context(target_show_context or {})
+        if normalized_venue_key(normalized_ctx):
+            same_run_indices = same_venue_run_show_indices(plays, normalized_ctx)
+            same_run_position = float(len(same_run_indices) + 1)
+        else:
+            same_run_position = 0.0
+
+        cum = cache["cum"]
+        p3 = _window_plays(cum, n_shows, 3).loc[eligible_songs]
+        p5 = _window_plays(cum, n_shows, 5).loc[eligible_songs]
+        window = max(1, min(25, n_shows))
+        avg_ltp = window / p25.clip(lower=1).values
+
+        return {
+            "tour_position": tour_pos,
+            "diff_25_to_50": diff,
+            "show_position_in_run": run_pos,
+            "same_venue_run_position": same_run_position,
+            "plays_past_3": p3.values,
+            "plays_past_5": p5.values,
+            "overdue_ratio": (gap_e * career_pct).values,
+            "avg_ltp_recent": avg_ltp,
+            "ltp_diff_recent": gap_e.values - avg_ltp,
         }

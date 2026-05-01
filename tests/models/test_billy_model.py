@@ -9,8 +9,10 @@ from jambandnerd.models.billy.fast_predictor import (
     BILLY_FAST_CANDIDATE_CONTEXT_COLS,
     BILLY_FAST_FEATURE_COLS,
     BILLY_FAST_V2_FEATURE_COLS,
+    BILLY_FAST_V3_FEATURE_COLS,
     BillyFastPredictor,
     BillyFastPredictorV2,
+    BillyFastPredictorV3,
 )
 from jambandnerd.models.billy.model import (
     BILLY_FEATURE_COLUMNS,
@@ -185,8 +187,8 @@ def test_registry_returns_billy_fast_predictor() -> None:
     predictor = build_band_predictor(
         "billy", songs_df=_SONGS_DF, persist_artifacts=False
     )
-    assert isinstance(predictor, BillyFastPredictorV2)
-    assert predictor.MODEL_VERSION == "billy_fast_gbm_v2"
+    assert isinstance(predictor, BillyFastPredictorV3)
+    assert predictor.MODEL_VERSION == "billy_fast_gbm_v3"
 
 
 def test_billy_fast_diagnostic_frame_includes_active_and_candidate_features() -> None:
@@ -341,6 +343,65 @@ def test_billy_fast_v2_trains_without_venue_context() -> None:
     )
 
     predictor = BillyFastPredictorV2(songs_df=_SONGS_DF, persist_artifacts=False)
+    predictor.train(model_data)
+    predictions = predictor.predict(model_data, top_k=10)
+
+    assert predictor._model is not None
+    assert len(predictions) > 0
+
+
+def test_billy_fast_v3_has_14_feature_cols() -> None:
+    assert len(BILLY_FAST_V3_FEATURE_COLS) == 16
+    assert set(BILLY_FAST_V2_FEATURE_COLS).issubset(set(BILLY_FAST_V3_FEATURE_COLS))
+    for col in (
+        "plays_past_3",
+        "plays_past_5",
+        "overdue_ratio",
+        "avg_ltp_recent",
+        "ltp_diff_recent",
+    ):
+        assert col in BILLY_FAST_V3_FEATURE_COLS
+
+
+def test_billy_fast_v3_trains_and_predicts() -> None:
+    shows_df, setlists_df = _billy_fixture()
+    target_show = {
+        "show_id": "future-billy",
+        "show_date": "2024-05-20",
+        "venue_name": "Ryman Auditorium",
+        "city": "Nashville",
+        "state": "TN",
+        "country": "USA",
+    }
+    model_data = generate_model_data(
+        shows_df,
+        setlists_df,
+        date(2024, 5, 20),
+        band="billy",
+        target_show_context=target_show,
+    )
+
+    predictor = BillyFastPredictorV3(songs_df=_SONGS_DF, persist_artifacts=False)
+    predictor.train(model_data)
+    predictions = predictor.predict(model_data, top_k=10)
+
+    assert predictor.MODEL_VERSION == "billy_fast_gbm_v3"
+    assert predictor._model is not None
+    assert 0 < len(predictions) <= 10
+    assert len({p.song_name for p in predictions}) == len(predictions)
+
+
+def test_billy_fast_v3_trains_without_venue_context() -> None:
+    shows_df, setlists_df = _billy_fixture()
+    shows_df = shows_df.drop(columns=["venue_name", "city", "state", "country"])
+    model_data = generate_model_data(
+        shows_df,
+        setlists_df,
+        date(2024, 5, 20),
+        band="billy",
+    )
+
+    predictor = BillyFastPredictorV3(songs_df=_SONGS_DF, persist_artifacts=False)
     predictor.train(model_data)
     predictions = predictor.predict(model_data, top_k=10)
 
