@@ -6,6 +6,14 @@ import pandas as pd
 import pytest
 
 from jambandnerd.models.deal.features import DEAL_FEATURE_COLUMNS
+from jambandnerd.models.goose.fast_predictor import (
+    GOOSE_FAST_FEATURE_COLS,
+    GOOSE_MATRIX_FEATURE_COLS,
+    GOOSE_MATRIX_V2_FEATURE_COLS,
+    GooseFastPredictor,
+    GooseMatrixPredictor,
+    GooseMatrixPredictorV2,
+)
 from jambandnerd.models.goose.model import (
     GOOSE_FEATURE_COLUMNS,
     GooseGbmNotebookBlendPredictor,
@@ -101,6 +109,246 @@ def test_goose_predictor_trains_and_predicts_without_artifacts() -> None:
     assert predictor.model is not None
     assert 0 < len(predictions) <= 10
     assert len({prediction.song_name for prediction in predictions}) == len(predictions)
+
+
+def test_goose_fast_predictor_owns_experiment_defaults() -> None:
+    predictor = GooseFastPredictor(persist_artifacts=False)
+
+    assert predictor.band == "goose"
+    assert predictor.MODEL_VERSION == "goose_fast_gbm_v1"
+    assert predictor.min_plays_threshold == 3
+    assert predictor.retired_gap_threshold == 90
+    assert predictor.training_window_shows == 60
+    assert predictor.exclusion_window == 3
+    assert predictor._FEATURE_COLS == GOOSE_FAST_FEATURE_COLS
+
+
+def test_goose_fast_predictor_rejects_other_bands() -> None:
+    with pytest.raises(ValueError, match="only supports band='goose'"):
+        GooseFastPredictor(band="phish")
+
+
+def test_goose_fast_predictor_trains_and_predicts_without_artifacts() -> None:
+    shows_df, setlists_df = _goose_fixture()
+    target_show = {
+        "show_id": "future-goose",
+        "show_date": "2024-05-20",
+        "venue_name": "Capitol Theatre",
+        "city": "Port Chester",
+        "state": "NY",
+        "country": "USA",
+    }
+    model_data = generate_model_data(
+        shows_df,
+        setlists_df,
+        date(2024, 5, 20),
+        band="goose",
+        target_show_context=target_show,
+    )
+
+    predictor = GooseFastPredictor(persist_artifacts=False)
+    frame = predictor.build_diagnostic_training_frame(model_data)
+    predictor.train(model_data)
+    predictions = predictor.predict(model_data, top_k=10)
+
+    assert predictor._model is not None
+    assert not frame.empty
+    assert set(GOOSE_FAST_FEATURE_COLS).issubset(frame.columns)
+    assert frame[GOOSE_FAST_FEATURE_COLS].notna().all().all()
+    assert 0 < len(predictions) <= 10
+    assert len({prediction.song_name for prediction in predictions}) == len(predictions)
+
+
+def test_goose_fast_predictor_excludes_recent_songs() -> None:
+    shows_df, setlists_df = _goose_fixture()
+    model_data = generate_model_data(
+        shows_df,
+        setlists_df,
+        date(2024, 5, 20),
+        band="goose",
+    )
+
+    predictor = GooseFastPredictor(persist_artifacts=False)
+    predictor.train(model_data)
+    predictions = predictor.predict(model_data, top_k=20)
+
+    predicted = {prediction.song_name for prediction in predictions}
+    assert predicted.isdisjoint(set(model_data.recently_played_songs))
+
+
+def test_goose_fast_predictor_trains_without_venue_context() -> None:
+    shows_df, setlists_df = _goose_fixture()
+    shows_df = shows_df.drop(columns=["venue_name", "city", "state", "country"])
+    model_data = generate_model_data(
+        shows_df,
+        setlists_df,
+        date(2024, 5, 20),
+        band="goose",
+    )
+
+    predictor = GooseFastPredictor(persist_artifacts=False)
+    predictor.train(model_data)
+    predictions = predictor.predict(model_data, top_k=10)
+
+    assert predictor._model is not None
+    assert predictions
+
+
+def test_goose_matrix_predictor_owns_experiment_defaults() -> None:
+    predictor = GooseMatrixPredictor(persist_artifacts=False)
+
+    assert predictor.band == "goose"
+    assert predictor.MODEL_VERSION == "goose_matrix_gbm_v1"
+    assert predictor._FEATURE_COLS == GOOSE_MATRIX_FEATURE_COLS
+    assert set(GOOSE_FAST_FEATURE_COLS).issubset(GOOSE_MATRIX_FEATURE_COLS)
+    for column in (
+        "avg_ltp",
+        "recent_avg_ltp",
+        "gap_z_score",
+        "pct_shows_1yr",
+        "pct_shows_all_time",
+        "diff_1yr_to_alltime",
+        "pct_set_1",
+        "pct_set_2",
+        "pct_encore",
+        "typical_position_pct",
+        "position_consistency",
+        "set_affinity",
+    ):
+        assert column in GOOSE_MATRIX_FEATURE_COLS
+
+
+def test_goose_matrix_predictor_trains_and_predicts_without_artifacts() -> None:
+    shows_df, setlists_df = _goose_fixture()
+    target_show = {
+        "show_id": "future-goose",
+        "show_date": "2024-05-20",
+        "venue_name": "Capitol Theatre",
+        "city": "Port Chester",
+        "state": "NY",
+        "country": "USA",
+    }
+    model_data = generate_model_data(
+        shows_df,
+        setlists_df,
+        date(2024, 5, 20),
+        band="goose",
+        target_show_context=target_show,
+    )
+
+    predictor = GooseMatrixPredictor(persist_artifacts=False)
+    frame = predictor.build_diagnostic_training_frame(model_data)
+    predictor.train(model_data)
+    predictions = predictor.predict(model_data, top_k=10)
+
+    assert predictor._model is not None
+    assert not frame.empty
+    assert set(GOOSE_MATRIX_FEATURE_COLS).issubset(frame.columns)
+    assert frame[GOOSE_MATRIX_FEATURE_COLS].notna().all().all()
+    assert 0 < len(predictions) <= 10
+    assert len({prediction.song_name for prediction in predictions}) == len(predictions)
+
+
+def test_goose_matrix_predictor_trains_without_venue_or_set_context() -> None:
+    shows_df, setlists_df = _goose_fixture()
+    shows_df = shows_df.drop(columns=["venue_name", "city", "state", "country"])
+    setlists_df = setlists_df.drop(columns=["song_position"])
+    model_data = generate_model_data(
+        shows_df,
+        setlists_df,
+        date(2024, 5, 20),
+        band="goose",
+    )
+
+    predictor = GooseMatrixPredictor(persist_artifacts=False)
+    frame = predictor.build_diagnostic_training_frame(model_data)
+    predictor.train(model_data)
+    predictions = predictor.predict(model_data, top_k=10)
+
+    assert predictor._model is not None
+    assert frame["pct_set_1"].eq(0.0).all()
+    assert frame["typical_position_pct"].eq(0.0).all()
+    assert predictions
+
+
+def test_goose_matrix_v2_predictor_owns_experiment_defaults() -> None:
+    predictor = GooseMatrixPredictorV2(persist_artifacts=False)
+
+    assert predictor.band == "goose"
+    assert predictor.MODEL_VERSION == "goose_matrix_gbm_v2"
+    assert predictor._FEATURE_COLS == GOOSE_MATRIX_V2_FEATURE_COLS
+    assert set(GOOSE_MATRIX_FEATURE_COLS).issubset(GOOSE_MATRIX_V2_FEATURE_COLS)
+    for column in (
+        "plays_past_year",
+        "plays_past_2yr",
+        "pct_shows_6mo",
+        "diff_6mo_to_1yr",
+        "n_shows_same_venue",
+        "n_shows_same_state",
+        "debut_age_shows",
+        "novelty_rank",
+        "recent_anchor_cooc_mean",
+        "recent_anchor_cooc_max",
+        "last_show_cooc_mean",
+        "last_show_cooc_max",
+    ):
+        assert column in GOOSE_MATRIX_V2_FEATURE_COLS
+
+
+def test_goose_matrix_v2_predictor_trains_and_predicts_without_artifacts() -> None:
+    shows_df, setlists_df = _goose_fixture()
+    target_show = {
+        "show_id": "future-goose",
+        "show_date": "2024-05-20",
+        "venue_name": "Capitol Theatre",
+        "city": "Port Chester",
+        "state": "NY",
+        "country": "USA",
+    }
+    model_data = generate_model_data(
+        shows_df,
+        setlists_df,
+        date(2024, 5, 20),
+        band="goose",
+        target_show_context=target_show,
+    )
+
+    predictor = GooseMatrixPredictorV2(persist_artifacts=False)
+    frame = predictor.build_diagnostic_training_frame(model_data)
+    predictor.train(model_data)
+    predictions = predictor.predict(model_data, top_k=10)
+
+    assert predictor._model is not None
+    assert not frame.empty
+    assert set(GOOSE_MATRIX_V2_FEATURE_COLS).issubset(frame.columns)
+    assert frame[GOOSE_MATRIX_V2_FEATURE_COLS].notna().all().all()
+    assert frame["plays_past_year"].ge(0.0).all()
+    assert frame["recent_anchor_cooc_max"].between(0.0, 1.0).all()
+    assert frame["last_show_cooc_max"].between(0.0, 1.0).all()
+    assert 0 < len(predictions) <= 10
+    assert len({prediction.song_name for prediction in predictions}) == len(predictions)
+
+
+def test_goose_matrix_v2_predictor_keeps_fast_fallbacks() -> None:
+    shows_df, setlists_df = _goose_fixture()
+    shows_df = shows_df.drop(columns=["venue_name", "city", "state", "country"])
+    setlists_df = setlists_df.drop(columns=["song_position"])
+    model_data = generate_model_data(
+        shows_df,
+        setlists_df,
+        date(2024, 5, 20),
+        band="goose",
+    )
+
+    predictor = GooseMatrixPredictorV2(persist_artifacts=False)
+    frame = predictor.build_diagnostic_training_frame(model_data)
+
+    assert not frame.empty
+    assert frame["n_shows_same_venue"].eq(0.0).all()
+    assert frame["n_shows_same_state"].eq(0.0).all()
+    assert frame["pct_set_1"].eq(0.0).all()
+    assert frame["recent_anchor_cooc_mean"].notna().all()
+    assert frame["recent_anchor_cooc_max"].notna().all()
 
 
 def test_goose_notebook_blend_defaults_to_evidence_alpha() -> None:

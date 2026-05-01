@@ -291,6 +291,8 @@ class BillyFastPredictor(PredictionModel):
     _FEATURE_COLS: list[str] = BILLY_FAST_FEATURE_COLS
     _LGB_PARAMS: dict[str, Any] = _LGB_PARAMS
     _LGB_ROUNDS: int = _LGB_ROUNDS
+    _EARLY_STOPPING_ROUNDS: int | None = None
+    _VALIDATION_FRACTION: float = 0.2
 
     def __init__(
         self,
@@ -307,6 +309,7 @@ class BillyFastPredictor(PredictionModel):
         )
         self._songs_lookup: dict[str, float] = _build_is_cover_lookup(songs_df_resolved)
         self._model: lgb.Booster | None = None
+        self.best_iteration: int | None = None
         # Cached from train() for reuse in predict()
         self._cache: dict | None = None
         self.diagnostic_feature_columns = list(BILLY_FAST_DIAGNOSTIC_FEATURE_COLS)
@@ -637,17 +640,73 @@ class BillyFastPredictor(PredictionModel):
 
         X_all = pd.concat(rows, ignore_index=True)
         y = X_all.pop("label")
+        X_features = X_all[self._FEATURE_COLS]
+
+        if self._EARLY_STOPPING_ROUNDS is None or len(group_sizes) < 2:
+            train_data = lgb.Dataset(
+                X_features,
+                label=y,
+                group=group_sizes,
+                free_raw_data=False,
+            )
+            self._model = lgb.train(
+                self._LGB_PARAMS,
+                train_data,
+                num_boost_round=self._LGB_ROUNDS,
+            )
+            self.best_iteration = int(self._model.current_iteration())
+            return
+
+        val_group_count = max(
+            1,
+            int(round(len(group_sizes) * self._VALIDATION_FRACTION)),
+        )
+        val_group_count = min(val_group_count, len(group_sizes) - 1)
+        train_group_count = len(group_sizes) - val_group_count
+        train_row_count = sum(group_sizes[:train_group_count])
 
         train_data = lgb.Dataset(
-            X_all[self._FEATURE_COLS],
+            X_features.iloc[:train_row_count],
+            label=y.iloc[:train_row_count],
+            group=group_sizes[:train_group_count],
+            free_raw_data=False,
+        )
+        valid_data = lgb.Dataset(
+            X_features.iloc[train_row_count:],
+            label=y.iloc[train_row_count:],
+            group=group_sizes[train_group_count:],
+            reference=train_data,
+            free_raw_data=False,
+        )
+        stopping_model = lgb.train(
+            self._LGB_PARAMS,
+            train_data,
+            num_boost_round=self._LGB_ROUNDS,
+            valid_sets=[valid_data],
+            valid_names=["valid"],
+            callbacks=[
+                lgb.early_stopping(
+                    self._EARLY_STOPPING_ROUNDS,
+                    first_metric_only=False,
+                    verbose=False,
+                    min_delta=0.0,
+                )
+            ],
+        )
+        self.best_iteration = int(
+            stopping_model.best_iteration or stopping_model.current_iteration()
+        )
+
+        full_train_data = lgb.Dataset(
+            X_features,
             label=y,
             group=group_sizes,
             free_raw_data=False,
         )
         self._model = lgb.train(
             self._LGB_PARAMS,
-            train_data,
-            num_boost_round=self._LGB_ROUNDS,
+            full_train_data,
+            num_boost_round=self.best_iteration,
         )
 
     # ── Prediction ────────────────────────────────────────────────────────────
@@ -1162,3 +1221,20 @@ class BillyFastPredictorV5(BillyFastPredictorV3):
             "pct_encore": pct_encore,
             "set_affinity": set_affinity,
         }
+
+
+# ── BillyFastPredictorV6 ──────────────────────────────────────────────────────
+
+
+class BillyFastPredictorV6(BillyFastPredictorV3):
+    """BillyFast v6 — V3 features with per-show LightGBM early stopping."""
+
+    MODEL_VERSION = "billy_fast_gbm_v6_early_stop"
+    _FEATURE_COLS: list[str] = BILLY_FAST_V3_FEATURE_COLS
+    _LGB_ROUNDS: int = 500
+    _EARLY_STOPPING_ROUNDS: int | None = 25
+
+
+# Accepted Billy baseline. Historical experiment class names remain importable so
+# prior backtest artifacts and diagnostic commands keep their original meaning.
+BillyFastBaselinePredictor = BillyFastPredictorV3

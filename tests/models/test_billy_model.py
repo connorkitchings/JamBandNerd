@@ -16,6 +16,7 @@ from jambandnerd.models.billy.fast_predictor import (
     BillyFastPredictorV3,
     BillyFastPredictorV4,
     BillyFastPredictorV5,
+    BillyFastPredictorV6,
 )
 from jambandnerd.models.billy.model import (
     BILLY_FEATURE_COLUMNS,
@@ -77,6 +78,41 @@ def _billy_fixture() -> tuple[pd.DataFrame, pd.DataFrame]:
         songs = [rotation[(show_index + offset) % len(rotation)] for offset in range(6)]
         if show_index % 4 == 0:
             songs.append("Thunder")
+        for position, song_name in enumerate(songs, start=1):
+            setlists.append(
+                {
+                    "show_id": show_id,
+                    "song_name": song_name,
+                    "song_position": position,
+                }
+            )
+
+    return pd.DataFrame(shows), pd.DataFrame(setlists)
+
+
+def _tiny_billy_fixture() -> tuple[pd.DataFrame, pd.DataFrame]:
+    shows: list[dict] = []
+    setlists: list[dict] = []
+    start = date(2024, 1, 1)
+    songs_by_show = [
+        ["Dust in a Baggie", "Away From the Mire", "Taking Water", "Midnight Rider"],
+        ["Dust in a Baggie", "Away From the Mire", "Taking Water", "Midnight Rider"],
+        ["Dust in a Baggie", "Away From the Mire", "Taking Water", "Midnight Rider"],
+        ["Dust in a Baggie", "Away From the Mire", "Taking Water"],
+    ]
+
+    for show_index, songs in enumerate(songs_by_show):
+        show_id = f"tiny-billy-{show_index}"
+        shows.append(
+            {
+                "show_id": show_id,
+                "show_date": (start + timedelta(days=show_index)).isoformat(),
+                "venue_name": "Ryman Auditorium",
+                "city": "Nashville",
+                "state": "TN",
+                "country": "USA",
+            }
+        )
         for position, song_name in enumerate(songs, start=1):
             setlists.append(
                 {
@@ -502,4 +538,61 @@ def test_billy_fast_v5_trains_without_venue_or_set_context() -> None:
     predictions = predictor.predict(model_data, top_k=10)
 
     assert predictor._model is not None
+    assert len(predictions) > 0
+
+
+def test_billy_fast_v6_uses_v3_features_with_early_stopping() -> None:
+    predictor = BillyFastPredictorV6(songs_df=_SONGS_DF, persist_artifacts=False)
+
+    assert predictor.MODEL_VERSION == "billy_fast_gbm_v6_early_stop"
+    assert predictor._FEATURE_COLS == BILLY_FAST_V3_FEATURE_COLS
+    assert predictor._LGB_ROUNDS == 500
+    assert predictor._EARLY_STOPPING_ROUNDS == 25
+
+
+def test_billy_fast_v6_trains_and_predicts() -> None:
+    shows_df, setlists_df = _billy_fixture()
+    target_show = {
+        "show_id": "future-billy",
+        "show_date": "2024-05-20",
+        "venue_name": "Ryman Auditorium",
+        "city": "Nashville",
+        "state": "TN",
+        "country": "USA",
+    }
+    model_data = generate_model_data(
+        shows_df,
+        setlists_df,
+        date(2024, 5, 20),
+        band="billy",
+        target_show_context=target_show,
+    )
+
+    predictor = BillyFastPredictorV6(songs_df=_SONGS_DF, persist_artifacts=False)
+    predictor.train(model_data)
+    predictions = predictor.predict(model_data, top_k=10)
+
+    assert predictor._model is not None
+    assert predictor.best_iteration is not None
+    assert 0 < predictor.best_iteration <= predictor._LGB_ROUNDS
+    assert 0 < len(predictions) <= 10
+    assert len({p.song_name for p in predictions}) == len(predictions)
+
+
+def test_billy_fast_v6_falls_back_when_validation_split_is_too_small() -> None:
+    shows_df, setlists_df = _tiny_billy_fixture()
+    model_data = generate_model_data(
+        shows_df,
+        setlists_df,
+        date(2024, 1, 5),
+        band="billy",
+    )
+
+    predictor = BillyFastPredictorV6(songs_df=_SONGS_DF, persist_artifacts=False)
+    predictor.train(model_data)
+    predictions = predictor.predict(model_data, top_k=10)
+
+    assert predictor._model is not None
+    assert predictor.best_iteration is not None
+    assert 0 < predictor.best_iteration <= predictor._LGB_ROUNDS
     assert len(predictions) > 0

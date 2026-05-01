@@ -12,7 +12,7 @@ from jambandnerd.models.deal.features import (
     build_training_frame,
     get_candidate_features,
 )
-from jambandnerd.models.deal.model import DealPrediction, DealPredictor
+from jambandnerd.models.deal.model import DealPredictor
 from jambandnerd.models.gbm.predictor import BandGbmPredictor
 from jambandnerd.transformations.cooccurrence import (
     COOCCURRENCE_FEATURES as _COOCCURRENCE_FEATURES,
@@ -73,9 +73,7 @@ def _fetch_songs_from_supabase() -> pd.DataFrame:
 
     client = get_supabase_client()
     response = (
-        client.table("billy_songs_raw")
-        .select("song_name, original_artist")
-        .execute()
+        client.table("billy_songs_raw").select("song_name, original_artist").execute()
     )
     return pd.DataFrame(response.data)
 

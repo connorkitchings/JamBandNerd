@@ -7,7 +7,7 @@ from typing import Any, Callable, Sequence
 
 from jambandnerd.models.base import PredictionModel
 from jambandnerd.models.baseline.predictor import BaselinePredictor
-from jambandnerd.models.billy.fast_predictor import BillyFastPredictorV3
+from jambandnerd.models.billy.fast_predictor import BillyFastBaselinePredictor
 from jambandnerd.models.ckplus.model import CKPlusPredictor
 from jambandnerd.models.ckplus.serialization import (
     serialize_predictions as serialize_ckplus_predictions,
@@ -223,7 +223,7 @@ def build_predictor(slug: str, *, band: str, **kwargs: Any) -> PredictionModel:
 _BAND_METADATA_MAP: dict[str, BandMetadata] = {m.band: m for m in BAND_METADATA}
 
 _BAND_PREDICTOR_CLASSES: dict[str, type[PredictionModel]] = {
-    "billy": BillyFastPredictorV3,
+    "billy": BillyFastBaselinePredictor,
     "goose": GoosePredictor,
 }
 

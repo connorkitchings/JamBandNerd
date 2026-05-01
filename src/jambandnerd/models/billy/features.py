@@ -10,7 +10,7 @@ prediction reference_date. No data from the target setlist enters any aggregate.
 
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import date
 from typing import Any, List
 
 import numpy as np
@@ -124,10 +124,7 @@ def compute_billy_song_features(
         window_start = reference_index - window
         window_show_count = max(
             1,
-            sum(
-                window_start <= si < reference_index
-                for si in historical_show_indices
-            ),
+            sum(window_start <= si < reference_index for si in historical_show_indices),
         )
         # Use searchsorted for O(log n) window slice instead of boolean mask.
         w_cutoff = int(np.searchsorted(show_idx_arr, window_start, side="left"))
@@ -140,7 +137,9 @@ def compute_billy_song_features(
         feats = feats.join(window_plays, how="left").fillna(0)
         if window in (10, 25):
             feats[f"plays_past_{window}"] = feats[f"_plays_past_{window}"]
-        feats[f"_pct_shows_{window}"] = feats[f"_plays_past_{window}"] / window_show_count
+        feats[f"_pct_shows_{window}"] = (
+            feats[f"_plays_past_{window}"] / window_show_count
+        )
 
     feats["diff_25_to_50"] = feats["_pct_shows_25"] - feats["_pct_shows_50"]
 
@@ -162,9 +161,9 @@ def compute_billy_song_features(
         feats["same_venue_run_prior_played"] = (
             feats["same_venue_run_prior_play_count"] > 0
         ).astype(float)
-        feats["same_venue_run_prior_play_share"] = (
-            feats["same_venue_run_prior_play_count"] / len(same_run_indices)
-        )
+        feats["same_venue_run_prior_play_share"] = feats[
+            "same_venue_run_prior_play_count"
+        ] / len(same_run_indices)
         feats["same_venue_run_position"] = float(len(same_run_indices) + 1)
     else:
         feats["same_venue_run_prior_played"] = 0.0
@@ -179,9 +178,7 @@ def compute_billy_song_features(
     result.columns = ["song_name"] + non_cover_cols
 
     result["is_cover"] = (
-        result["song_name"].map(songs_lookup).fillna(0.0)
-        if songs_lookup
-        else 0.0
+        result["song_name"].map(songs_lookup).fillna(0.0) if songs_lookup else 0.0
     )
 
     return result
@@ -252,7 +249,7 @@ def augment_training_frame(
         .astype(float)
     )
     all_songs: pd.Index = presence.index
-    show_cols_idx: pd.Index = presence.columns          # pandas Index (for reindex)
+    show_cols_idx: pd.Index = presence.columns  # pandas Index (for reindex)
     show_cols: np.ndarray = show_cols_idx.to_numpy(dtype=np.int64)  # for searchsorted
     cum_total: pd.DataFrame = presence.cumsum(axis=1)
 
@@ -356,20 +353,22 @@ def augment_training_frame(
             else 0.0
         )
 
-        df = pd.DataFrame({
-            "song_name": all_songs.to_numpy(),
-            "month_play_rate": (month_before / total_before.clip(lower=1)).values,
-            "show_position_in_run": float(show_pos),
-            "tour_position": float(tour_pos),
-            "plays_past_10": w10.values,
-            "plays_past_25": w25.values,
-            "diff_25_to_50": (pct25 - pct50).values,
-            "same_venue_run_prior_played": svrp_played.values,
-            "same_venue_run_prior_play_count": svrp_count.values,
-            "same_venue_run_prior_play_share": svrp_share.values,
-            "same_venue_run_position": svrp_position,
-            "is_cover": is_cover_vals,
-        })
+        df = pd.DataFrame(
+            {
+                "song_name": all_songs.to_numpy(),
+                "month_play_rate": (month_before / total_before.clip(lower=1)).values,
+                "show_position_in_run": float(show_pos),
+                "tour_position": float(tour_pos),
+                "plays_past_10": w10.values,
+                "plays_past_25": w25.values,
+                "diff_25_to_50": (pct25 - pct50).values,
+                "same_venue_run_prior_played": svrp_played.values,
+                "same_venue_run_prior_play_count": svrp_count.values,
+                "same_venue_run_prior_play_share": svrp_share.values,
+                "same_venue_run_position": svrp_position,
+                "is_cover": is_cover_vals,
+            }
+        )
         df["target_show_index"] = target_show_index
         df["target_show_date"] = target_show_date_str
         billy_rows.append(df)

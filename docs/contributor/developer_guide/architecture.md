@@ -134,6 +134,11 @@ multi-model classes (Notebook, Deal, CK+) are retained in
 `src/jambandnerd/models/legacy/` for offline backtest comparison until
 per-band models clear the active Phase B promotion gate.
 
+Billy's accepted baseline is `BillyFastBaselinePredictor`, an alias for
+`BillyFastPredictorV3` with model version `billy_fast_gbm_v3`. V4, V5, and V6
+remain importable experiment classes, but they are not registered production
+predictors.
+
 Adding or updating a per-band model:
 1. Implement `PredictionModel` in `src/jambandnerd/models/{band}/model.py`.
 2. Update the band's registry entry with a new `model_version`.
