@@ -28,6 +28,7 @@ from jambandnerd.transformations.run_context import (
     normalized_venue_key,
     same_venue_run_show_indices,
 )
+from jambandnerd.transformations.set_position import compute_set_position_features
 
 from .features import _run_position, _tour_position
 from .model import _BILLY_ORIGINAL_ARTISTS, _fetch_songs_from_supabase
@@ -80,6 +81,21 @@ BILLY_FAST_V3_FEATURE_COLS: list[str] = [
     "ltp_diff_recent",
 ]
 
+BILLY_FAST_V5_FEATURE_COLS: list[str] = [
+    *BILLY_FAST_V3_FEATURE_COLS,
+    "gap_percentile",
+    "shows_since_debut",
+    "is_recent_debut",
+    "gap_days",
+    "avg_days_between_plays",
+    "days_overdue",
+    "pct_set_1",
+    "pct_encore",
+    "set_affinity",
+]
+
+_EMPTY_ARR: np.ndarray = np.array([], dtype=float)
+
 _LGB_PARAMS: dict[str, Any] = {
     "objective": "rank_xendcg",
     "metric": "ndcg",
@@ -118,6 +134,53 @@ def _build_is_cover_lookup(songs_df: pd.DataFrame | None) -> dict[str, float]:
     return lookup
 
 
+def _precompute_gap_distributions(presence: pd.DataFrame) -> dict[str, np.ndarray]:
+    """Per-song sorted array of inter-play column gaps from the presence matrix."""
+    arr = presence.values.astype(bool)
+    result: dict[str, np.ndarray] = {}
+    for i, song in enumerate(presence.index):
+        play_cols = np.where(arr[i])[0]
+        if len(play_cols) >= 2:
+            result[str(song)] = np.sort(np.diff(play_cols).astype(float))
+        else:
+            result[str(song)] = _EMPTY_ARR
+    return result
+
+
+def _precompute_first_play_col(presence: pd.DataFrame) -> dict[str, int]:
+    """Per-song column index of the first-ever play."""
+    arr = presence.values.astype(bool)
+    result: dict[str, int] = {}
+    for i, song in enumerate(presence.index):
+        play_cols = np.where(arr[i])[0]
+        result[str(song)] = int(play_cols[0]) if len(play_cols) > 0 else 0
+    return result
+
+
+def _precompute_avg_days_between_plays(
+    presence: pd.DataFrame, col_dates: list
+) -> dict[str, float]:
+    """Per-song mean calendar days between consecutive plays."""
+    arr = presence.values.astype(bool)
+    result: dict[str, float] = {}
+    for i, song in enumerate(presence.index):
+        play_cols = np.where(arr[i])[0]
+        if len(play_cols) >= 2:
+            dates = [
+                col_dates[c]
+                for c in play_cols
+                if c < len(col_dates) and col_dates[c] is not None
+            ]
+            if len(dates) >= 2:
+                diffs = [(dates[k + 1] - dates[k]).days for k in range(len(dates) - 1)]
+                result[str(song)] = float(np.mean(diffs))
+            else:
+                result[str(song)] = 0.0
+        else:
+            result[str(song)] = 0.0
+    return result
+
+
 def _clean_plays(plays: pd.DataFrame) -> pd.DataFrame:
     base_columns = ["song_name", "show_index", "show_date"]
     context_columns = [
@@ -125,7 +188,12 @@ def _clean_plays(plays: pd.DataFrame) -> pd.DataFrame:
         for column in ("venue_name", "city", "state", "country")
         if column in plays.columns
     ]
-    df = plays[base_columns + context_columns].copy()
+    set_columns = [
+        column
+        for column in ("set_number", "song_position", "encore")
+        if column in plays.columns
+    ]
+    df = plays[base_columns + context_columns + set_columns].copy()
     df = df.dropna(subset=["song_name", "show_index", "show_date"])
     df["show_date"] = pd.to_datetime(df["show_date"], errors="coerce")
     df["show_index"] = pd.to_numeric(df["show_index"], errors="coerce")
@@ -280,6 +348,16 @@ class BillyFastPredictor(PredictionModel):
             )
         col_venues = [venue_map.get(int(sc)) for sc in show_cols]
 
+        gap_dist = _precompute_gap_distributions(presence)
+        first_play_col = _precompute_first_play_col(presence)
+        avg_days_bp = _precompute_avg_days_between_plays(presence, col_dates)
+        sp_df = compute_set_position_features(plays)
+        set_feats = (
+            sp_df.set_index("song_name")
+            if not sp_df.empty
+            else pd.DataFrame(index=pd.Index([], name="song_name"))
+        )
+
         return {
             "presence": presence,
             "show_cols": show_cols,
@@ -289,6 +367,10 @@ class BillyFastPredictor(PredictionModel):
             "show_date_map": show_date_map,
             "col_dates": col_dates,
             "col_venues": col_venues,
+            "gap_dist": gap_dist,
+            "first_play_col": first_play_col,
+            "avg_days_bp": avg_days_bp,
+            "set_feats": set_feats,
         }
 
     def build_diagnostic_training_frame(self, model_data: ModelData) -> pd.DataFrame:
@@ -880,3 +962,203 @@ class BillyFastPredictorV4(BillyFastPredictorV3):
     _FEATURE_COLS: list[str] = BILLY_FAST_V3_FEATURE_COLS
     _LGB_PARAMS: dict[str, Any] = _BILLY_FAST_V4_LGB_PARAMS
     _LGB_ROUNDS: int = _BILLY_FAST_V4_LGB_ROUNDS
+
+
+# ── BillyFastPredictorV5 ──────────────────────────────────────────────────────
+
+
+def _gap_percentile_arr(
+    eligible_songs: pd.Index,
+    gap_e: pd.Series,
+    gap_dist: dict[str, np.ndarray],
+) -> np.ndarray:
+    return np.array(
+        [
+            np.searchsorted(gap_dist.get(s, _EMPTY_ARR), g, side="right")
+            / max(1, len(gap_dist.get(s, _EMPTY_ARR)))
+            for s, g in zip(eligible_songs, gap_e.values)
+        ],
+        dtype=float,
+    )
+
+
+def _set_dist_arrays(
+    eligible_songs: pd.Index, set_feats: pd.DataFrame
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    n = len(eligible_songs)
+    if set_feats.empty:
+        return np.zeros(n), np.zeros(n), np.zeros(n)
+    sf = set_feats.reindex(eligible_songs, fill_value=0.0)
+    return (
+        sf["pct_set_1"].to_numpy(dtype=float, na_value=0.0),
+        sf["pct_encore"].to_numpy(dtype=float, na_value=0.0),
+        sf["set_affinity"].to_numpy(dtype=float, na_value=0.0),
+    )
+
+
+class BillyFastPredictorV5(BillyFastPredictorV3):
+    """BillyFast v5 — gap percentile, debut recency, calendar gap, set distribution.
+
+    Adds 9 features on top of V3's 16 (25 total):
+    - gap_percentile: how extreme is current gap vs song's own history
+    - shows_since_debut / is_recent_debut: new-song revisit dynamics
+    - gap_days / avg_days_between_plays / days_overdue: calendar-time signal
+    - pct_set_1 / pct_encore / set_affinity: historical set distribution
+    """
+
+    MODEL_VERSION = "billy_fast_gbm_v5"
+    _FEATURE_COLS: list[str] = BILLY_FAST_V5_FEATURE_COLS
+
+    def _extra_training_row_features(
+        self,
+        *,
+        eligible_songs: pd.Index,
+        j: int,
+        target_date: Any,
+        gap_e: pd.Series,
+        career_pct: pd.Series,
+        p25: pd.Series,
+        p50: pd.Series,
+        cache: dict,
+        plays: pd.DataFrame,
+        target_show_index: int,
+    ) -> dict:
+        v3 = super()._extra_training_row_features(
+            eligible_songs=eligible_songs,
+            j=j,
+            target_date=target_date,
+            gap_e=gap_e,
+            career_pct=career_pct,
+            p25=p25,
+            p50=p50,
+            cache=cache,
+            plays=plays,
+            target_show_index=target_show_index,
+        )
+
+        gap_dist = cache["gap_dist"]
+        first_play_col = cache["first_play_col"]
+        avg_days_bp = cache["avg_days_bp"]
+        col_dates = cache["col_dates"]
+        set_feats = cache["set_feats"]
+
+        gap_percentile = _gap_percentile_arr(eligible_songs, gap_e, gap_dist)
+
+        shows_since_debut = np.array(
+            [float(j - first_play_col.get(s, j)) for s in eligible_songs], dtype=float
+        )
+        is_recent_debut = (shows_since_debut < 20).astype(float)
+
+        current_date = col_dates[j] if j < len(col_dates) else None
+        if current_date is not None:
+            gap_days = np.array(
+                [
+                    (
+                        float((current_date - col_dates[j - int(g)]).days)
+                        if 0 <= (j - int(g)) < len(col_dates)
+                        and col_dates[j - int(g)] is not None
+                        else 0.0
+                    )
+                    for g in gap_e.values
+                ],
+                dtype=float,
+            )
+        else:
+            gap_days = np.zeros(len(eligible_songs), dtype=float)
+
+        avg_days = np.array(
+            [avg_days_bp.get(s, 0.0) for s in eligible_songs], dtype=float
+        )
+
+        pct_set_1, pct_encore, set_affinity = _set_dist_arrays(
+            eligible_songs, set_feats
+        )
+
+        return {
+            **v3,
+            "gap_percentile": gap_percentile,
+            "shows_since_debut": shows_since_debut,
+            "is_recent_debut": is_recent_debut,
+            "gap_days": gap_days,
+            "avg_days_between_plays": avg_days,
+            "days_overdue": gap_days - avg_days,
+            "pct_set_1": pct_set_1,
+            "pct_encore": pct_encore,
+            "set_affinity": set_affinity,
+        }
+
+    def _extra_predict_features(
+        self,
+        *,
+        eligible_songs: pd.Index,
+        n_shows: int,
+        ref_date: pd.Timestamp,
+        gap_e: pd.Series,
+        career_pct: pd.Series,
+        p25: pd.Series,
+        p50: pd.Series,
+        cache: dict,
+        plays: pd.DataFrame,
+        target_show_context: Any,
+    ) -> dict:
+        v3 = super()._extra_predict_features(
+            eligible_songs=eligible_songs,
+            n_shows=n_shows,
+            ref_date=ref_date,
+            gap_e=gap_e,
+            career_pct=career_pct,
+            p25=p25,
+            p50=p50,
+            cache=cache,
+            plays=plays,
+            target_show_context=target_show_context,
+        )
+
+        gap_dist = cache["gap_dist"]
+        first_play_col = cache["first_play_col"]
+        avg_days_bp = cache["avg_days_bp"]
+        col_dates = cache["col_dates"]
+        set_feats = cache["set_feats"]
+
+        gap_percentile = _gap_percentile_arr(eligible_songs, gap_e, gap_dist)
+
+        shows_since_debut = np.array(
+            [float(n_shows - first_play_col.get(s, n_shows)) for s in eligible_songs],
+            dtype=float,
+        )
+        is_recent_debut = (shows_since_debut < 20).astype(float)
+
+        ref_date_val = ref_date.date()
+        gap_days = np.array(
+            [
+                (
+                    float((ref_date_val - col_dates[n_shows - int(g)]).days)
+                    if 0 <= (n_shows - int(g)) < len(col_dates)
+                    and col_dates[n_shows - int(g)] is not None
+                    else 0.0
+                )
+                for g in gap_e.values
+            ],
+            dtype=float,
+        )
+
+        avg_days = np.array(
+            [avg_days_bp.get(s, 0.0) for s in eligible_songs], dtype=float
+        )
+
+        pct_set_1, pct_encore, set_affinity = _set_dist_arrays(
+            eligible_songs, set_feats
+        )
+
+        return {
+            **v3,
+            "gap_percentile": gap_percentile,
+            "shows_since_debut": shows_since_debut,
+            "is_recent_debut": is_recent_debut,
+            "gap_days": gap_days,
+            "avg_days_between_plays": avg_days,
+            "days_overdue": gap_days - avg_days,
+            "pct_set_1": pct_set_1,
+            "pct_encore": pct_encore,
+            "set_affinity": set_affinity,
+        }
