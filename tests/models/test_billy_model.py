@@ -5,6 +5,11 @@ from datetime import date, timedelta
 import pandas as pd
 import pytest
 
+from jambandnerd.models.billy.fast_predictor import (
+    BILLY_FAST_CANDIDATE_CONTEXT_COLS,
+    BILLY_FAST_FEATURE_COLS,
+    BillyFastPredictor,
+)
 from jambandnerd.models.billy.model import (
     BILLY_FEATURE_COLUMNS,
     BILLY_V2_FEATURE_COLUMNS,
@@ -54,7 +59,9 @@ def _billy_fixture() -> tuple[pd.DataFrame, pd.DataFrame]:
             {
                 "show_id": show_id,
                 "show_date": show_date.isoformat(),
-                "venue_name": "Ryman Auditorium" if show_index % 2 == 0 else "Red Rocks",
+                "venue_name": (
+                    "Ryman Auditorium" if show_index % 2 == 0 else "Red Rocks"
+                ),
                 "city": "Nashville" if show_index % 2 == 0 else "Morrison",
                 "state": "TN" if show_index % 2 == 0 else "CO",
                 "country": "USA",
@@ -86,7 +93,9 @@ def test_billy_predictor_owns_phase_b_defaults() -> None:
     assert predictor.min_training_shows == 25
     assert predictor.positive_weight_cap == 2.0
     assert predictor.feature_columns == BILLY_V2_FEATURE_COLUMNS
-    assert set(BILLY_FEATURE_COLUMNS).issubset(set(DEAL_FEATURE_COLUMNS) | set(BILLY_FEATURE_COLUMNS))
+    assert set(BILLY_FEATURE_COLUMNS).issubset(
+        set(DEAL_FEATURE_COLUMNS) | set(BILLY_FEATURE_COLUMNS)
+    )
 
 
 def test_billy_predictor_rejects_other_bands() -> None:
@@ -171,7 +180,103 @@ def test_build_is_cover_lookup_returns_empty_for_none() -> None:
 
 
 def test_registry_returns_billy_fast_predictor() -> None:
-    from jambandnerd.models.billy.fast_predictor import BillyFastPredictor
-    predictor = build_band_predictor("billy", songs_df=_SONGS_DF, persist_artifacts=False)
+    predictor = build_band_predictor(
+        "billy", songs_df=_SONGS_DF, persist_artifacts=False
+    )
     assert isinstance(predictor, BillyFastPredictor)
     assert predictor.MODEL_VERSION == "billy_fast_gbm_v1"
+
+
+def test_billy_fast_diagnostic_frame_includes_active_and_candidate_features() -> None:
+    shows_df, setlists_df = _billy_fixture()
+    model_data = generate_model_data(
+        shows_df,
+        setlists_df,
+        date(2024, 5, 20),
+        band="billy",
+    )
+
+    predictor = BillyFastPredictor(songs_df=_SONGS_DF, persist_artifacts=False)
+    frame = predictor.build_diagnostic_training_frame(model_data)
+
+    expected_columns = {
+        "song_name",
+        "target_show_index",
+        "target_show_date",
+        "label",
+        *BILLY_FAST_FEATURE_COLS,
+        *BILLY_FAST_CANDIDATE_CONTEXT_COLS,
+    }
+    assert expected_columns.issubset(frame.columns)
+    assert not frame.empty
+    assert frame["target_show_index"].notna().all()
+    assert frame["target_show_date"].notna().all()
+    assert set(frame["label"].unique()).issubset({0.0, 1.0})
+    assert predictor.MODEL_VERSION == "billy_fast_gbm_v1"
+    assert BILLY_FAST_FEATURE_COLS == [
+        "gap_shows",
+        "plays_past_10",
+        "plays_past_25",
+        "plays_past_50",
+        "career_play_pct",
+        "month_play_rate",
+        "is_cover",
+    ]
+
+
+def test_billy_fast_diagnostic_frame_excludes_future_target_songs() -> None:
+    shows_df, setlists_df = _billy_fixture()
+    future_show = pd.DataFrame(
+        [
+            {
+                "show_id": "future-only-show",
+                "show_date": "2024-08-01",
+                "venue_name": "Future Hall",
+                "city": "Asheville",
+                "state": "NC",
+                "country": "USA",
+            }
+        ]
+    )
+    future_setlist = pd.DataFrame(
+        [
+            {
+                "show_id": "future-only-show",
+                "song_name": "Future Only Tune",
+                "song_position": 1,
+            }
+        ]
+    )
+    shows_df = pd.concat([shows_df, future_show], ignore_index=True)
+    setlists_df = pd.concat([setlists_df, future_setlist], ignore_index=True)
+
+    model_data = generate_model_data(
+        shows_df,
+        setlists_df,
+        date(2024, 5, 20),
+        band="billy",
+    )
+    predictor = BillyFastPredictor(songs_df=_SONGS_DF, persist_artifacts=False)
+    frame = predictor.build_diagnostic_training_frame(model_data)
+
+    assert "Future Only Tune" not in set(frame["song_name"])
+
+
+def test_billy_fast_diagnostic_frame_uses_neutral_same_venue_without_context() -> None:
+    shows_df, setlists_df = _billy_fixture()
+    shows_df = shows_df.drop(columns=["venue_name", "city", "state", "country"])
+    model_data = generate_model_data(
+        shows_df,
+        setlists_df,
+        date(2024, 5, 20),
+        band="billy",
+    )
+
+    predictor = BillyFastPredictor(songs_df=_SONGS_DF, persist_artifacts=False)
+    frame = predictor.build_diagnostic_training_frame(model_data)
+
+    assert not frame.empty
+    assert (frame["same_venue_run_prior_played"] == 0.0).all()
+    assert (frame["same_venue_run_prior_play_count"] == 0.0).all()
+    assert (frame["same_venue_run_prior_play_share"] == 0.0).all()
+    assert (frame["same_venue_run_position"] == 0.0).all()

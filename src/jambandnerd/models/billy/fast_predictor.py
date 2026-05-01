@@ -23,13 +23,19 @@ import pandas as pd
 
 from jambandnerd.models.base import PredictionModel
 from jambandnerd.transformations.gaps import ModelData
+from jambandnerd.transformations.run_context import (
+    normalize_target_show_context,
+    normalized_venue_key,
+    same_venue_run_show_indices,
+)
 
+from .features import _run_position, _tour_position
 from .model import _BILLY_ORIGINAL_ARTISTS, _fetch_songs_from_supabase
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 
 _MIN_PLAYS = 3
-_RETIRED_GAP = 120     # shows; songs absent > this are excluded
+_RETIRED_GAP = 120  # shows; songs absent > this are excluded
 _TRAINING_WINDOW = 75  # most recent N shows used to build training pairs
 
 BILLY_FAST_FEATURE_COLS: list[str] = [
@@ -40,6 +46,21 @@ BILLY_FAST_FEATURE_COLS: list[str] = [
     "career_play_pct",
     "month_play_rate",
     "is_cover",
+]
+
+BILLY_FAST_CANDIDATE_CONTEXT_COLS: list[str] = [
+    "show_position_in_run",
+    "tour_position",
+    "diff_25_to_50",
+    "same_venue_run_prior_played",
+    "same_venue_run_prior_play_count",
+    "same_venue_run_prior_play_share",
+    "same_venue_run_position",
+]
+
+BILLY_FAST_DIAGNOSTIC_FEATURE_COLS: list[str] = [
+    *BILLY_FAST_FEATURE_COLS,
+    *BILLY_FAST_CANDIDATE_CONTEXT_COLS,
 ]
 
 _LGB_PARAMS: dict[str, Any] = {
@@ -57,6 +78,7 @@ _LGB_ROUNDS = 200
 
 # ── Prediction result ─────────────────────────────────────────────────────────
 
+
 @dataclass
 class BillyPrediction:
     song_name: str
@@ -65,6 +87,7 @@ class BillyPrediction:
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 def _build_is_cover_lookup(songs_df: pd.DataFrame | None) -> dict[str, float]:
     if songs_df is None or songs_df.empty:
@@ -79,7 +102,13 @@ def _build_is_cover_lookup(songs_df: pd.DataFrame | None) -> dict[str, float]:
 
 
 def _clean_plays(plays: pd.DataFrame) -> pd.DataFrame:
-    df = plays[["song_name", "show_index", "show_date"]].copy()
+    base_columns = ["song_name", "show_index", "show_date"]
+    context_columns = [
+        column
+        for column in ("venue_name", "city", "state", "country")
+        if column in plays.columns
+    ]
+    df = plays[base_columns + context_columns].copy()
     df = df.dropna(subset=["song_name", "show_index", "show_date"])
     df["show_date"] = pd.to_datetime(df["show_date"], errors="coerce")
     df["show_index"] = pd.to_numeric(df["show_index"], errors="coerce")
@@ -164,6 +193,7 @@ def _is_cover_series(songs: pd.Index, lookup: dict[str, float]) -> np.ndarray:
 
 # ── Predictor ─────────────────────────────────────────────────────────────────
 
+
 class BillyFastPredictor(PredictionModel):
     """Billy Strings LightGBM LambdaRank predictor using vectorized presence-matrix features.
 
@@ -191,6 +221,7 @@ class BillyFastPredictor(PredictionModel):
         self._model: lgb.Booster | None = None
         # Cached from train() for reuse in predict()
         self._cache: dict | None = None
+        self.diagnostic_feature_columns = list(BILLY_FAST_DIAGNOSTIC_FEATURE_COLS)
 
     # ── Matrix build ───────────────────────────────────────────────────────────
 
@@ -218,6 +249,144 @@ class BillyFastPredictor(PredictionModel):
             "month_cums": month_cums,
             "show_date_map": show_date_map,
         }
+
+    def build_diagnostic_training_frame(self, model_data: ModelData) -> pd.DataFrame:
+        """Return the labeled frame used for Phase B feature diagnostics.
+
+        This method is intentionally separate from ``train``. It exposes the active
+        BillyFast training features plus offline candidate context features without
+        changing the production feature set or model version.
+        """
+        plays = _clean_plays(model_data.historical_plays)
+        columns = [
+            "song_name",
+            "target_show_index",
+            "target_show_date",
+            *BILLY_FAST_DIAGNOSTIC_FEATURE_COLS,
+            "label",
+        ]
+        if plays.empty:
+            return pd.DataFrame(columns=columns)
+
+        cache = self._prepare(plays)
+        presence = cache["presence"]
+        cum = cache["cum"]
+        gap_mat = cache["gap_mat"]
+        month_cums = cache["month_cums"]
+        show_cols = cache["show_cols"]
+        show_date_map = cache["show_date_map"]
+        all_songs = presence.index
+        n_shows = len(show_cols)
+
+        start_col = max(_MIN_PLAYS, n_shows - _TRAINING_WINDOW)
+        rows: list[pd.DataFrame] = []
+
+        for j in range(start_col, n_shows):
+            ref_col = j - 1
+            target_show_index = int(show_cols[j])
+            raw_target_date = show_date_map.get(target_show_index)
+            if raw_target_date is None:
+                continue
+            target_date = pd.Timestamp(raw_target_date).date()
+
+            total_before = cum.iloc[:, ref_col]
+            gap_at_j = gap_mat.iloc[:, j]
+            eligible_mask = (
+                (total_before >= _MIN_PLAYS)
+                & (gap_at_j > 0)
+                & (gap_at_j <= _RETIRED_GAP)
+            )
+            if not eligible_mask.any():
+                continue
+
+            eligible_songs = all_songs[eligible_mask]
+            gap_e = gap_at_j.loc[eligible_songs]
+            total_e = total_before.loc[eligible_songs]
+
+            p10 = _window_plays(cum, j, 10).loc[eligible_songs]
+            p25 = _window_plays(cum, j, 25).loc[eligible_songs]
+            p50 = _window_plays(cum, j, 50).loc[eligible_songs]
+            career_pct = total_e / max(1, j)
+
+            target_month = target_date.month
+            month_before = month_cums[target_month].iloc[:, ref_col].loc[eligible_songs]
+            month_play_rate = (month_before / total_e.clip(lower=1)).fillna(0.0)
+
+            sub_plays = plays[plays["show_index"] < target_show_index].copy()
+            show_dates = sorted(
+                sub_plays["show_date"].dropna().dt.date.unique().tolist()
+            )
+            show_position = _run_position(show_dates, target_date, gap_days=1)
+            tour_position = _tour_position(show_dates, target_date, tour_gap_days=14)
+
+            pct25 = p25 / max(1, min(25, j))
+            pct50 = p50 / max(1, min(50, j))
+            diff_25_to_50 = pct25 - pct50
+
+            target_rows = plays[plays["show_index"] == target_show_index]
+            target_context = (
+                normalize_target_show_context(target_rows.iloc[0])
+                if not target_rows.empty
+                else {}
+            )
+            normalized_ctx = normalize_target_show_context(target_context)
+            if normalized_venue_key(normalized_ctx):
+                same_run_indices = same_venue_run_show_indices(
+                    sub_plays,
+                    normalized_ctx,
+                )
+            else:
+                same_run_indices = []
+
+            if same_run_indices:
+                same_run_counts = (
+                    sub_plays[sub_plays["show_index"].isin(same_run_indices)]
+                    .groupby("song_name")["show_index"]
+                    .nunique()
+                    .reindex(eligible_songs, fill_value=0)
+                    .astype(float)
+                )
+                same_run_played = (same_run_counts > 0).astype(float)
+                same_run_share = same_run_counts / len(same_run_indices)
+                same_run_position = float(len(same_run_indices) + 1)
+            else:
+                same_run_counts = pd.Series(0.0, index=eligible_songs)
+                same_run_played = pd.Series(0.0, index=eligible_songs)
+                same_run_share = pd.Series(0.0, index=eligible_songs)
+                same_run_position = 1.0 if normalized_venue_key(normalized_ctx) else 0.0
+
+            labels = presence.iloc[:, j].loc[eligible_songs].astype(float)
+            rows.append(
+                pd.DataFrame(
+                    {
+                        "song_name": eligible_songs.to_numpy(),
+                        "target_show_index": target_show_index,
+                        "target_show_date": target_date.isoformat(),
+                        "gap_shows": gap_e.values,
+                        "plays_past_10": p10.values,
+                        "plays_past_25": p25.values,
+                        "plays_past_50": p50.values,
+                        "career_play_pct": career_pct.values,
+                        "month_play_rate": month_play_rate.values,
+                        "is_cover": _is_cover_series(
+                            eligible_songs,
+                            self._songs_lookup,
+                        ),
+                        "show_position_in_run": float(show_position),
+                        "tour_position": float(tour_position),
+                        "diff_25_to_50": diff_25_to_50.values,
+                        "same_venue_run_prior_played": same_run_played.values,
+                        "same_venue_run_prior_play_count": same_run_counts.values,
+                        "same_venue_run_prior_play_share": same_run_share.values,
+                        "same_venue_run_position": same_run_position,
+                        "label": labels.values,
+                    }
+                )
+            )
+
+        if not rows:
+            return pd.DataFrame(columns=columns)
+        return pd.concat(rows, ignore_index=True)[columns]
 
     # ── Training ───────────────────────────────────────────────────────────────
 

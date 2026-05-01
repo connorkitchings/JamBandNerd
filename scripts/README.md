@@ -51,6 +51,7 @@ Prediction entry points (band-specific wrappers):
 - `audit_raw_data.py` — run the raw-data audit across one band or all supported bands
 - `audit_shared_model_inputs.py` — audit normalized shared model-input field availability across bands before adding cross-band features
 - `check_recent_avg_gap.py` — legacy diagnostic for band/model gap checks
+- `diagnose_phase_b_features.py` — reusable Phase B feature diagnostics for per-band predictors; writes Markdown and JSON reports with descriptives, lift, and diagnostic LightGBM importance
 - `compare_models.py` — legacy baseline comparison helper; use it only for offline Phase B evidence against Notebook/Deal-era results
 - `evaluate_deal_model.py` — compatibility wrapper that runs the generic comparison workflow for Deal
 - `model_readiness.py` — canonical staged readiness workflow for future model promotion: comparison evidence, local snapshot export, historical publish, and backend validation
