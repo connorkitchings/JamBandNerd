@@ -63,6 +63,14 @@ BILLY_FAST_DIAGNOSTIC_FEATURE_COLS: list[str] = [
     *BILLY_FAST_CANDIDATE_CONTEXT_COLS,
 ]
 
+BILLY_FAST_V2_FEATURE_COLS: list[str] = [
+    *BILLY_FAST_FEATURE_COLS,
+    "tour_position",
+    "diff_25_to_50",
+    "show_position_in_run",
+    "same_venue_run_position",
+]
+
 _LGB_PARAMS: dict[str, Any] = {
     "objective": "rank_xendcg",
     "metric": "ndcg",
@@ -203,6 +211,7 @@ class BillyFastPredictor(PredictionModel):
     """
 
     MODEL_VERSION = "billy_fast_gbm_v1"
+    _FEATURE_COLS: list[str] = BILLY_FAST_FEATURE_COLS
 
     def __init__(
         self,
@@ -241,6 +250,25 @@ class BillyFastPredictor(PredictionModel):
             .to_dict()
         )
 
+        col_dates = [
+            (
+                pd.Timestamp(show_date_map[int(sc)]).date()
+                if int(sc) in show_date_map
+                else None
+            )
+            for sc in show_cols
+        ]
+        venue_map: dict[int, Any] = {}
+        if "venue_name" in plays.columns:
+            venue_map = (
+                plays[["show_index", "venue_name"]]
+                .dropna(subset=["venue_name"])
+                .drop_duplicates("show_index")
+                .set_index("show_index")["venue_name"]
+                .to_dict()
+            )
+        col_venues = [venue_map.get(int(sc)) for sc in show_cols]
+
         return {
             "presence": presence,
             "show_cols": show_cols,
@@ -248,6 +276,8 @@ class BillyFastPredictor(PredictionModel):
             "gap_mat": gap_mat,
             "month_cums": month_cums,
             "show_date_map": show_date_map,
+            "col_dates": col_dates,
+            "col_venues": col_venues,
         }
 
     def build_diagnostic_training_frame(self, model_data: ModelData) -> pd.DataFrame:
@@ -388,6 +418,35 @@ class BillyFastPredictor(PredictionModel):
             return pd.DataFrame(columns=columns)
         return pd.concat(rows, ignore_index=True)[columns]
 
+    # ── Extension hooks ────────────────────────────────────────────────────────
+
+    def _extra_training_row_features(
+        self,
+        *,
+        eligible_songs: pd.Index,
+        j: int,
+        target_date: Any,
+        p25: pd.Series,
+        p50: pd.Series,
+        cache: dict,
+        plays: pd.DataFrame,
+        target_show_index: int,
+    ) -> dict:
+        return {}
+
+    def _extra_predict_features(
+        self,
+        *,
+        eligible_songs: pd.Index,
+        n_shows: int,
+        ref_date: pd.Timestamp,
+        p25: pd.Series,
+        p50: pd.Series,
+        cache: dict,
+        plays: pd.DataFrame,
+    ) -> dict:
+        return {}
+
     # ── Training ───────────────────────────────────────────────────────────────
 
     def train(self, model_data: ModelData) -> None:
@@ -438,11 +497,23 @@ class BillyFastPredictor(PredictionModel):
 
             sd = show_date_map.get(int(show_cols[j]))
             target_month = pd.Timestamp(sd).month if sd is not None else 1
+            target_date = pd.Timestamp(sd).date() if sd is not None else None
+            target_show_index = int(show_cols[j])
             month_before = month_cums[target_month].iloc[:, ref_col].loc[eligible_songs]
             mpr = (month_before / total_e.clip(lower=1)).fillna(0.0)
 
             is_cover = _is_cover_series(eligible_songs, self._songs_lookup)
             labels = presence.iloc[:, j].loc[eligible_songs].astype(float)
+            extra = self._extra_training_row_features(
+                eligible_songs=eligible_songs,
+                j=j,
+                target_date=target_date,
+                p25=p25,
+                p50=p50,
+                cache=cache,
+                plays=plays,
+                target_show_index=target_show_index,
+            )
 
             rows.append(
                 pd.DataFrame(
@@ -454,6 +525,7 @@ class BillyFastPredictor(PredictionModel):
                         "career_play_pct": career_pct.values,
                         "month_play_rate": mpr.values,
                         "is_cover": is_cover,
+                        **extra,
                         "label": labels.values,
                     }
                 )
@@ -467,7 +539,7 @@ class BillyFastPredictor(PredictionModel):
         y = X_all.pop("label")
 
         train_data = lgb.Dataset(
-            X_all[BILLY_FAST_FEATURE_COLS],
+            X_all[self._FEATURE_COLS],
             label=y,
             group=group_sizes,
             free_raw_data=False,
@@ -529,6 +601,15 @@ class BillyFastPredictor(PredictionModel):
         month_before = month_cums[target_month].iloc[:, ref_col].loc[eligible_songs]
         mpr = (month_before / total_e.clip(lower=1)).fillna(0.0)
         is_cover = _is_cover_series(eligible_songs, self._songs_lookup)
+        extra = self._extra_predict_features(
+            eligible_songs=eligible_songs,
+            n_shows=n_shows,
+            ref_date=ref_date,
+            p25=p25,
+            p50=p50,
+            cache=cache,
+            plays=plays,
+        )
 
         X = pd.DataFrame(
             {
@@ -539,11 +620,12 @@ class BillyFastPredictor(PredictionModel):
                 "career_play_pct": career_pct.values,
                 "month_play_rate": mpr.values,
                 "is_cover": is_cover,
+                **extra,
             },
             index=eligible_songs,
         )
 
-        scores = self._model.predict(X[BILLY_FAST_FEATURE_COLS].values)
+        scores = self._model.predict(X[self._FEATURE_COLS].values)
         probs = 1.0 / (1.0 + np.exp(-scores))
 
         order = np.argsort(probs)[::-1][:top_k]
@@ -556,3 +638,92 @@ class BillyFastPredictor(PredictionModel):
             )
             for i in order
         ]
+
+
+# ── BillyFastPredictorV2 ──────────────────────────────────────────────────────
+
+
+class BillyFastPredictorV2(BillyFastPredictor):
+    """BillyFast v2 — Phase B ablation candidate adding 4 context features.
+
+    Extends v1 with tour_position, diff_25_to_50, show_position_in_run, and
+    same_venue_run_position. Retire if it does not improve dual_score over v1.
+    """
+
+    MODEL_VERSION = "billy_fast_gbm_v2"
+    _FEATURE_COLS: list[str] = BILLY_FAST_V2_FEATURE_COLS
+
+    def _extra_training_row_features(
+        self,
+        *,
+        eligible_songs: pd.Index,
+        j: int,
+        target_date: Any,
+        p25: pd.Series,
+        p50: pd.Series,
+        cache: dict,
+        plays: pd.DataFrame,
+        target_show_index: int,
+    ) -> dict:
+        col_dates = cache["col_dates"]
+        col_venues = cache["col_venues"]
+
+        prior_dates = [d for d in col_dates[:j] if d is not None]
+        if target_date is None:
+            tour_pos = 1.0
+            run_pos = 1.0
+        else:
+            tour_pos = float(_tour_position(prior_dates, target_date, tour_gap_days=14))
+            run_pos = float(_run_position(prior_dates, target_date, gap_days=1))
+
+        pct25 = p25 / max(1, min(25, j))
+        pct50 = p50 / max(1, min(50, j))
+        diff = (pct25 - pct50).values
+
+        target_venue = col_venues[j] if j < len(col_venues) else None
+        if target_venue:
+            target_context = normalize_target_show_context({"venue_name": target_venue})
+            if normalized_venue_key(target_context):
+                sub_plays = plays[plays["show_index"] < target_show_index]
+                same_run_indices = same_venue_run_show_indices(
+                    sub_plays, target_context
+                )
+                same_run_position = float(len(same_run_indices) + 1)
+            else:
+                same_run_position = 0.0
+        else:
+            same_run_position = 0.0
+
+        return {
+            "tour_position": tour_pos,
+            "diff_25_to_50": diff,
+            "show_position_in_run": run_pos,
+            "same_venue_run_position": same_run_position,
+        }
+
+    def _extra_predict_features(
+        self,
+        *,
+        eligible_songs: pd.Index,
+        n_shows: int,
+        ref_date: pd.Timestamp,
+        p25: pd.Series,
+        p50: pd.Series,
+        cache: dict,
+        plays: pd.DataFrame,
+    ) -> dict:
+        col_dates = cache["col_dates"]
+        prior_dates = [d for d in col_dates if d is not None]
+        tour_pos = float(_tour_position(prior_dates, ref_date.date(), tour_gap_days=14))
+        run_pos = float(_run_position(prior_dates, ref_date.date(), gap_days=1))
+
+        pct25 = p25 / max(1, min(25, n_shows))
+        pct50 = p50 / max(1, min(50, n_shows))
+        diff = (pct25 - pct50).values
+
+        return {
+            "tour_position": tour_pos,
+            "diff_25_to_50": diff,
+            "show_position_in_run": run_pos,
+            "same_venue_run_position": 0.0,
+        }
