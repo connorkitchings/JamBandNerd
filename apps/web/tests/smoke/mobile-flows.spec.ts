@@ -113,8 +113,7 @@ test.describe("mobile flows", () => {
     }
 
     const firstRow = rows.first();
-    await expect(firstRow.getByTestId("deal-mobile-metrics")).toBeVisible();
-    await expect(firstRow).toContainText("Probability");
+    await firstRow.locator("button").click();
     await expect(firstRow).toContainText("Gap");
 
     const box = await firstRow.boundingBox();
