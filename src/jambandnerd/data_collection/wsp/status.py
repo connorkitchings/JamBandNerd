@@ -70,6 +70,8 @@ class CollectionStatus:
             return "failed_internal"
 
         if self.request_blocked_missing_setlists > 0:
+            if self.shows_collected > 0 or self.songs_collected > 0:
+                return "degraded_upstream_stale"
             return "failed_upstream_stale"
 
         if (
