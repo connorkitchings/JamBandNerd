@@ -303,6 +303,7 @@ class BandCollector(ABC):
                     self.cache.set(url, result, params, cache_ttl)
 
                 self.record_success()
+                self._outer_fetch_retries = 0
                 return result
 
             except ValueError as e:

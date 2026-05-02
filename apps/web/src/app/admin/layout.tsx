@@ -1,5 +1,9 @@
 import { getBands } from "@/lib/data";
 
+function serializeScriptJson(value: unknown): string {
+  return JSON.stringify(value).replace(/</g, "\\u003c");
+}
+
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const bandsResult = await getBands();
   const bands = bandsResult.status === "ready" ? bandsResult.bands : [];
@@ -14,7 +18,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           id="admin-bands"
           type="application/json"
           dangerouslySetInnerHTML={{
-            __html: JSON.stringify(bands),
+            __html: serializeScriptJson(bands),
           }}
         />
       ) : null}

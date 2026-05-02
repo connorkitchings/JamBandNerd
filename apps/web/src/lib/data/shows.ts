@@ -11,6 +11,13 @@ import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { buildShowDetails, selectUmUpcomingShowRow, type ShowDetails } from "@/lib/next-show";
 
 import { getClientOrState, getBandContext, bandEntryBySlug, getBands } from "./bands";
+import {
+  getPreviewLastShowSetlist,
+  getPreviewNextShowDetails,
+  getPreviewSetlistForDate,
+  getPreviewShowDetailsByDate,
+  shouldUseLocalPreview,
+} from "./preview";
 import { asRecord, parseNumber, parseStringArray } from "./parsers";
 import type { RouteState, SetlistSnapshot, SetlistSong } from "./types";
 
@@ -22,6 +29,10 @@ export async function getSetlistForDate(
   band: BandSlug,
   showDate: string,
 ): Promise<SetlistSnapshot | null> {
+  if (shouldUseLocalPreview()) {
+    return getPreviewSetlistForDate(band, showDate);
+  }
+
   const client = getSupabaseServerClient();
   if (!client) {
     return null;
@@ -137,6 +148,10 @@ export const getShowDetailsByDate = cache(
       return bandState as RouteState<{ band: BandSlug; show: ShowDetails }>;
     }
 
+    if (shouldUseLocalPreview()) {
+      return getPreviewShowDetailsByDate(bandInput, showDate);
+    }
+
     const band = bandState.band;
     if (!showDate) {
       return { status: "empty" };
@@ -190,6 +205,10 @@ export const getNextShowDetails = cache(
     const bandState = await getBandContext(bandInput);
     if (bandState.status !== "ready") {
       return bandState as RouteState<{ band: BandSlug; show: ShowDetails }>;
+    }
+
+    if (shouldUseLocalPreview()) {
+      return getPreviewNextShowDetails(bandInput);
     }
 
     const client = getSupabaseServerClient();
@@ -266,6 +285,10 @@ export const getLastShowSetlist = cache(
     const bandState = await getBandContext(bandInput);
     if (bandState.status !== "ready") {
       return bandState as RouteState<{ band: BandSlug; setlist: SetlistSnapshot }>;
+    }
+
+    if (shouldUseLocalPreview()) {
+      return getPreviewLastShowSetlist(bandInput);
     }
 
     const band = bandState.band;

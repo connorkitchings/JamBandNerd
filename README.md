@@ -42,6 +42,12 @@ A cloud-based data platform for collecting, transforming, and predicting jam ban
     SUPABASE_ANON_KEY=your_supabase_anon_key
     ```
 
+    When those website variables are present, the app reads real Supabase data
+    locally. If your local Next.js root is the repository root, you can also put
+    the same two variables in `./.env.local`; the website loader checks both
+    locations. Seeded preview data is available only when
+    `JAMBNERD_PREVIEW_MODE=1` is set explicitly.
+
 ## Usage
 
 ### Optimized Pipeline (Recommended)

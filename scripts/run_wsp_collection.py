@@ -61,11 +61,6 @@ def run_wsp_collection(
         logging.exception("Full traceback:")
         _write_failure_github_outputs(str(e))
         raise RuntimeError(str(e)) from e
-    except Exception as e:
-        logging.error(f"❌ Unexpected error during WSP collection: {e}")
-        logging.exception("Full traceback:")
-        _write_failure_github_outputs(str(e))
-        sys.exit(1)
 
 
 def _write_github_outputs(status: CollectionStatus) -> None:

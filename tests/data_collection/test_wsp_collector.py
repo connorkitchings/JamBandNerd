@@ -74,7 +74,8 @@ def test_tourwrangler_fallback_uses_recent_resolver(
     mock_supabase_client.table.return_value.select.return_value.gte.return_value.lt.return_value.execute.return_value.data = [
         mock_show
     ]
-    mock_supabase_client.table.return_value.select.return_value.in_.return_value.execute.return_value.data = []  # No existing setlist
+    # No existing setlist.
+    mock_supabase_client.table.return_value.select.return_value.in_.return_value.execute.return_value.data = []
 
     # Act
     row_count, show_count = tourwrangler_fallback(mock_supabase_client)

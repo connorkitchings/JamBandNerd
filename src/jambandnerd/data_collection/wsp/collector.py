@@ -102,7 +102,8 @@ class WSPCollector(BandCollector):
                 logger.error(
                     f"HTTP {e.response.status_code if e.response else 'unknown'} error for {show_url}: {e}"
                 )
-                return []  # Don't raise, return empty to continue processing other shows
+                # Don't raise; return empty to continue processing other shows.
+                return []
         except requests.exceptions.RequestException as e:
             logger.error(f"Failed to scrape setlist for {show_url}: {e}")
             return []  # Don't raise, return empty to continue processing other shows

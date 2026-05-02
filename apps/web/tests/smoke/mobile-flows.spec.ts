@@ -97,6 +97,31 @@ test.describe("mobile flows", () => {
     expect(modelBox!.height).toBeGreaterThanOrEqual(44);
   });
 
+  test("deal mobile song rows keep metrics grouped", async ({ page }, testInfo) => {
+    test.skip(
+      testInfo.project.name !== "mobile-chromium",
+      "mobile-only test",
+    );
+
+    await bootstrapHostedPreviewBypass(page);
+    await page.goto("/predictions?band=goose&model=deal");
+
+    const rows = page.getByTestId("deal-mobile-song-row");
+    if ((await rows.count()) === 0) {
+      await expectMainHeadingOrDataFallback(page);
+      return;
+    }
+
+    const firstRow = rows.first();
+    await expect(firstRow.getByTestId("deal-mobile-metrics")).toBeVisible();
+    await expect(firstRow).toContainText("Probability");
+    await expect(firstRow).toContainText("Gap");
+
+    const box = await firstRow.boundingBox();
+    expect(box).not.toBeNull();
+    expect(box!.width).toBeLessThanOrEqual(390);
+  });
+
   test("compare page stacks on narrow viewport", async ({ page }, testInfo) => {
     test.skip(
       testInfo.project.name !== "mobile-chromium",
@@ -121,7 +146,7 @@ test.describe("mobile flows", () => {
     });
 
     await bootstrapHostedPreviewBypass(page);
-    
+
     const routes = ["/", "/predictions", "/performance", "/compare", "/replay"];
     for (const route of routes) {
       await page.goto(route);

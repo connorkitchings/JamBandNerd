@@ -11,6 +11,7 @@ import { normalizeModel } from "@/lib/config";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 
 import { getClientOrState, getBandContext } from "./bands";
+import { getPreviewRecentAccuracy, shouldUseLocalPreview } from "./preview";
 import {
   asRecord,
   parseNumber,
@@ -43,6 +44,10 @@ export const getRecentAccuracy = cache(
         model: ModelSlug;
         rows: AccuracyRow[];
       }>;
+    }
+
+    if (shouldUseLocalPreview()) {
+      return getPreviewRecentAccuracy(bandInput, modelInput, limit);
     }
 
     const band = bandState.band;

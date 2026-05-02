@@ -251,6 +251,97 @@ export function TierDesktopTable({
   );
 }
 
+function formatProbabilityLabel(probability: number | null): string {
+  return probability !== null ? `${(probability * 100).toFixed(1)}%` : "Unknown";
+}
+
+function formatGapLabel(currentGap: number | null): string {
+  if (currentGap === null) return "Gap unknown";
+  return `${currentGap} ${currentGap === 1 ? "show" : "shows"}`;
+}
+
+function DealMobileRow({
+  row,
+  isHighlighted,
+  agreesWithOtherModel,
+}: {
+  row: PredictionRow;
+  isHighlighted: boolean;
+  agreesWithOtherModel: boolean;
+}) {
+  const probabilityLabel = formatProbabilityLabel(row.probability);
+  const probabilityFill =
+    row.probability !== null ? `${Math.min(row.probability * 100, 100)}%` : "0%";
+
+  return (
+    <div
+      data-testid="deal-mobile-song-row"
+      className={`flex flex-col gap-3 px-4 py-4 ${isHighlighted ? "bg-green-950/20" : ""}`}
+    >
+      <div className="flex min-w-0 items-start gap-3">
+        <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-surface-container-high/60 font-headline text-sm font-bold tabular-nums text-on-surface-variant">
+          {row.rank}
+        </span>
+        <p
+          className={`min-w-0 flex-1 break-words font-headline text-base leading-5 font-semibold ${isHighlighted ? "text-green-300" : "text-on-surface"}`}
+        >
+          {row.songName}
+        </p>
+      </div>
+
+      <div className="pl-11" data-testid="deal-mobile-metrics">
+        <div className="rounded-xl border border-outline-variant/20 bg-surface-container-low/85 p-3">
+          <div className="flex items-center justify-between gap-3">
+            <span className="font-label text-[10px] font-medium uppercase tracking-[0.14rem] text-on-surface-variant">
+              Probability
+            </span>
+            <span className="font-mono text-sm font-semibold tabular-nums text-primary">
+              {probabilityLabel}
+            </span>
+          </div>
+          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-container-high">
+            <div className="h-full rounded-full bg-primary/70" style={{ width: probabilityFill }} />
+          </div>
+        </div>
+
+        <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-on-surface-variant">
+          <span className="rounded-lg bg-surface-container/70 px-2.5 py-2">
+            Gap <span className="font-mono tabular-nums text-on-surface">{formatGapLabel(row.currentGap)}</span>
+          </span>
+          <span className="rounded-lg bg-surface-container/70 px-2.5 py-2">
+            Last{" "}
+            <span className="font-mono tabular-nums text-on-surface">
+              {row.lastPlayed ? formatMMDDYYYY(row.lastPlayed) : "Unknown"}
+            </span>
+          </span>
+          {row.recentPlays50 !== null ? (
+            <span className="rounded-lg bg-surface-container/70 px-2.5 py-2">
+              Recent{" "}
+              <span className="font-mono tabular-nums text-on-surface">
+                {row.recentPlays50}/50
+              </span>
+            </span>
+          ) : null}
+          {isHighlighted || agreesWithOtherModel ? (
+            <span className="flex items-center gap-2 rounded-lg bg-surface-container/70 px-2.5 py-2 text-on-surface">
+              {isHighlighted ? (
+                <span className="inline-flex items-center gap-1 text-green-300">
+                  <CheckIcon /> Played
+                </span>
+              ) : null}
+              {agreesWithOtherModel ? (
+                <span className="inline-flex items-center gap-1 text-primary">
+                  <ModelAgreeIcon /> Both
+                </span>
+              ) : null}
+            </span>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function TierMobileList({
   rows,
   highlightSongs,
@@ -272,6 +363,17 @@ export function TierMobileList({
           highlightSongs,
           secondarySongs,
         );
+
+        if (isDeal) {
+          return (
+            <DealMobileRow
+              key={`${row.rank}-${row.songName}`}
+              row={row}
+              isHighlighted={isHighlighted}
+              agreesWithOtherModel={agreesWithOtherModel}
+            />
+          );
+        }
 
         return (
           <div

@@ -140,6 +140,9 @@ def ensure_source_reachable(band: str, *, timeout: int = 15) -> None:
                     )
                     time.sleep(2**attempt)
                     continue
+                raise RuntimeError(
+                    f"Received transient status {status} from {url} after 3 attempts"
+                )
             # Treat 5xx responses as fatal for most.
             if status >= 500:
                 if band == "um":
