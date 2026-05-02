@@ -6,6 +6,10 @@ import pandas as pd
 import pytest
 
 from jambandnerd.models.deal.features import DEAL_FEATURE_COLUMNS
+from jambandnerd.models.goose.distilled import (
+    GooseDistilledPredictor,
+    _build_feature_columns,
+)
 from jambandnerd.models.goose.fast_predictor import (
     GOOSE_FAST_FEATURE_COLS,
     GOOSE_MATRIX_FEATURE_COLS,
@@ -428,3 +432,64 @@ def test_goose_notebook_blend_trains_and_predicts_without_artifacts() -> None:
     assert 0 < len(predictions) <= 10
     assert len({prediction.song_name for prediction in predictions}) == len(predictions)
     assert all(0.0 <= prediction.probability <= 1.0 for prediction in predictions)
+
+
+class TestGooseDistilledPredictor:
+    def test_defaults_to_notebook_family(self) -> None:
+        predictor = GooseDistilledPredictor()
+        assert predictor.selected_families == ("notebook",)
+        assert predictor.feature_columns == ["current_gap", "plays_past_year"]
+
+    def test_rejects_other_bands(self) -> None:
+        with pytest.raises(ValueError, match="only supports band='goose'"):
+            GooseDistilledPredictor(band="billy")
+
+    def test_rejects_unknown_family(self) -> None:
+        with pytest.raises(ValueError, match="Unknown feature family"):
+            GooseDistilledPredictor(families=("notebook", "nonsense"))
+
+    def test_rejects_empty_families(self) -> None:
+        with pytest.raises(ValueError, match="At least one feature family"):
+            GooseDistilledPredictor(families=())
+
+    def test_deduplicates_overlapping_families(self) -> None:
+        predictor = GooseDistilledPredictor(
+            families=("notebook", "gap"),
+        )
+        cols = predictor.feature_columns
+        assert cols[0] == "current_gap"
+        assert cols[1] == "plays_past_year"
+        assert "avg_ltp" in cols
+        assert len(cols) == len(set(cols))
+
+    def test_model_version_reflects_families(self) -> None:
+        predictor = GooseDistilledPredictor(
+            families=("notebook", "debut"),
+        )
+        assert predictor.MODEL_VERSION == "goose_distilled_notebook_debut"
+
+    def test_train_and_predict_notebook_only(self) -> None:
+        shows_df, setlists_df = _goose_fixture()
+        model_data = generate_model_data(
+            shows_df, setlists_df, date(2024, 5, 20), band="goose",
+        )
+        predictor = GooseDistilledPredictor(
+            families=("notebook",),
+            persist_artifacts=False,
+            min_training_shows=10,
+            training_window_shows=25,
+        )
+        predictor.train(model_data)
+        predictions = predictor.predict(model_data, top_k=10)
+
+        assert predictions
+        assert len(predictions) <= 10
+        assert all(0.0 <= p.probability <= 1.0 for p in predictions)
+
+    def test_feature_columns_additive_order(self) -> None:
+        cols = _build_feature_columns(("notebook", "gap", "debut"))
+        assert cols[:2] == ["current_gap", "plays_past_year"]
+        assert "avg_ltp" in cols
+        assert "novelty_rank" in cols
+        assert cols.index("current_gap") < cols.index("avg_ltp")
+        assert cols.index("avg_ltp") < cols.index("debut_age_shows")

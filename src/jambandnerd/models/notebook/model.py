@@ -23,7 +23,9 @@ class RankedPrediction:
 class NotebookPredictor(PredictionModel):
     """Baseline notebook predictor using past-year features."""
 
-    def __init__(self, band: str | None = None):
+    MODEL_VERSION = "notebook_v1"
+
+    def __init__(self, band: str | None = None, **kwargs: Any):
         self.band = band
 
     def predict(

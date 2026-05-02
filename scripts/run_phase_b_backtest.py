@@ -137,6 +137,8 @@ def run_phase_b_backtest(
             )
             predictor.train(model_data)
             predictions = predictor.predict(model_data, top_k=50)
+            if isinstance(predictions, tuple):
+                predictions = predictions[0]
             if not predictions:
                 continue
             pred_songs = [p.song_name for p in predictions]
