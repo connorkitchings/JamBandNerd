@@ -124,9 +124,9 @@ def test_html_table_parser_stops_at_stats_section(
     # No duplicate song names within the same set
     for set_songs, label in [(set1, "Set 1"), (set2, "Set 2")]:
         names = [s["song_name"] for s in set_songs]
-        assert len(names) == len(set(names)), (
-            f"{label} has duplicate song names: {names}"
-        )
+        assert len(names) == len(
+            set(names)
+        ), f"{label} has duplicate song names: {names}"
 
 
 @patch("jambandnerd.data_collection.wsp.collector.make_request")
