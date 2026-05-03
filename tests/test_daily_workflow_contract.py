@@ -62,3 +62,39 @@ def test_github_actions_docs_match_current_deal_window_and_band_authority() -> N
 
     assert "both models use the same last-50 window" in contents
     assert "repo-authoritative automation band list" in contents
+
+
+def test_daily_workflow_missing_recent_setlists_skip_regeneration() -> None:
+    workflow = WORKFLOW_PATH.read_text()
+
+    gated_steps = (
+        "Generate Predictions (Notebook & Deal)",
+        "Validate Prediction Tables",
+        "Run Backtest and Save Per-Show Accuracy",
+        "Validate Accuracy Tables",
+    )
+    for step_name in gated_steps:
+        step_index = workflow.index(f"- name: {step_name}")
+        step_block = workflow[
+            step_index : workflow.index("\n      - name:", step_index + 1)
+        ]
+        assert "steps.data_check.outputs.missing_data != 'true'" in step_block
+
+    assert 'workflow_state = "degraded"' in workflow
+    assert 'outcome_code = "degraded_missing_recent_setlists"' in workflow
+    assert 'prediction_action = "skipped_missing_setlists"' in workflow
+
+
+def test_daily_workflow_preserves_verify_only_prediction_action() -> None:
+    workflow = WORKFLOW_PATH.read_text()
+
+    assert (
+        "PREDICTION_ACTION: ${{ steps.collection.outputs.prediction_action || "
+        "steps.collection_idle.outputs.prediction_action || '' }}"
+    ) in workflow
+    assert (
+        'explicit_prediction_action = os.environ.get("PREDICTION_ACTION", "").strip()'
+        in workflow
+    )
+    assert "elif explicit_prediction_action:" in workflow
+    assert "prediction_action = explicit_prediction_action" in workflow

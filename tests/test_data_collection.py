@@ -1,8 +1,10 @@
 """Tests for data collection modules."""
 
 from datetime import date
+from unittest.mock import MagicMock
 
 import pytest
+import requests
 
 import jambandnerd.data_collection as data_collection
 from jambandnerd.data_collection.base import BandCollector
@@ -110,12 +112,27 @@ class TestMockBandCollector:
         assert venues[0]["venue_id"] == "test_venue_1"
         assert venues[0]["name"] == "Test Venue"
 
-        venues = collector.collect_venues()
+    def test_fetch_resets_outer_retry_counter_after_recovered_5xx(self, monkeypatch):
+        """A recovered endpoint should not consume retries for later endpoints."""
+        collector = MockBandCollector()
+        monkeypatch.setattr(
+            "jambandnerd.data_collection.base.time.sleep",
+            lambda *_args, **_kwargs: None,
+        )
 
-        assert len(venues) == 1
-        assert venues[0]["venue_id"] == "test_venue_1"
-        assert venues[0]["name"] == "Test Venue"
+        error_response = MagicMock(spec=requests.Response)
+        error_response.status_code = 502
+        error = requests.exceptions.HTTPError("502 Bad Gateway")
+        error.response = error_response
 
-        assert len(venues) == 1
-        assert venues[0]["venue_id"] == "test_venue_1"
-        assert venues[0]["name"] == "Test Venue"
+        failed = MagicMock(spec=requests.Response)
+        failed.raise_for_status.side_effect = error
+
+        recovered = MagicMock(spec=requests.Response)
+        recovered.raise_for_status.return_value = None
+        recovered.json.return_value = [{"id": 1}]
+
+        collector.session.get = MagicMock(side_effect=[failed, recovered])
+
+        assert collector._fetch_from_endpoint("v2/songs.json") == [{"id": 1}]
+        assert getattr(collector, "_outer_fetch_retries", 0) == 0

@@ -8,7 +8,7 @@ import { PageHero } from "@/components/page-hero";
 import { SectionCard } from "@/components/section-card";
 import { getBands, bandEntryBySlug, resolveBandSelection, getRecentAccuracy } from "@/lib/data";
 import { ACTIVE_MODELS, MODEL_CONFIG, type ModelSlug } from "@/lib/config";
-import { buildLocationLabel, formatCompactDateLabel, formatPercent } from "@/lib/format";
+import { buildLocationLabel, formatCompactDateLabel, formatPercent, buildReplayHref } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -77,14 +77,6 @@ function averageMetric(values: Array<number | null>) {
   }
 
   return presentValues.reduce((sum, value) => sum + value, 0) / presentValues.length;
-}
-
-function buildReplayHref(band: string | null | undefined, showDate: string | null) {
-  if (!band || !showDate) {
-    return null;
-  }
-
-  return `/replay?band=${band}&date=${showDate}`;
 }
 
 function resolveComparisonMetric(value: string | undefined): ComparisonMetric {
@@ -166,7 +158,7 @@ export default async function ComparePage({ searchParams }: Props) {
 
   const modelARows = modelAPerf.status === "ready" ? modelAPerf.rows : [];
   const modelBRows = modelBPerf.status === "ready" ? modelBPerf.rows : [];
-  
+
   const sharedDates = new Set([
     ...modelARows.map((row) => row.showDate),
     ...modelBRows.map((row) => row.showDate),

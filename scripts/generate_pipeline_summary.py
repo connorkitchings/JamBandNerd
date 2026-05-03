@@ -171,12 +171,12 @@ def build_prediction_coverage_lines(
             }
 
             prediction_rows = (
-                client.table("predictions")
+                client.table("completed_show_prediction_runs")
                 .select("predictions")
                 .eq("band", band)
                 .eq("model_slug", "notebook")
-                .eq("reference_date", reference_date)
-                .order("predicted_at", desc=True)
+                .eq("target_show_date", reference_date)
+                .order("generated_at", desc=True)
                 .limit(1)
                 .execute()
                 .data

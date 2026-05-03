@@ -7,65 +7,11 @@ export type ShowDetails = {
   raw: Record<string, unknown>;
 };
 
-function getVenueNameFromRow(row: Record<string, unknown> | null): string | null {
-  if (!row) {
-    return null;
-  }
-
-  if (typeof row.venue_name === "string") {
-    return row.venue_name;
-  }
-
-  if (typeof row.venue === "string") {
-    return row.venue;
-  }
-
-  return null;
-}
-
-function getVenueCityFromRow(row: Record<string, unknown> | null): string | null {
-  if (!row) {
-    return null;
-  }
-
-  if (typeof row.venue_city === "string") {
-    return row.venue_city;
-  }
-
-  if (typeof row.city === "string") {
-    return row.city;
-  }
-
-  return null;
-}
-
-function getVenueRegionFromRow(row: Record<string, unknown> | null): string | null {
-  if (!row) {
-    return null;
-  }
-
-  if (typeof row.region === "string") {
-    return row.region;
-  }
-
-  if (typeof row.venue_state === "string") {
-    return row.venue_state;
-  }
-
-  if (typeof row.state === "string") {
-    return row.state;
-  }
-
-  if (typeof row.venue_country === "string") {
-    return row.venue_country;
-  }
-
-  if (typeof row.country === "string") {
-    return row.country;
-  }
-
-  return null;
-}
+import {
+  getVenueNameFromRow,
+  getVenueCityFromRow,
+  getVenueRegionFromRow,
+} from "@/lib/data/parsers";
 
 export function buildShowDetails(row: Record<string, unknown>): ShowDetails {
   return {

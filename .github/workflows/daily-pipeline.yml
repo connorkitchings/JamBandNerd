@@ -79,26 +79,26 @@ jobs:
         run: |
           MISSING=()
           BAND="${{ matrix.band }}"
-          
+
           # Check each secret by testing if it's empty
           if [[ -z "$SUPABASE_URL" ]]; then
             MISSING+=("SUPABASE_URL")
           fi
-          
+
           if [[ -z "$SUPABASE_SERVICE_ROLE_KEY" ]]; then
             MISSING+=("SUPABASE_SERVICE_ROLE_KEY")
           fi
-          
+
           # PHISH_API_KEY is only required for Phish collection
           if [[ "$BAND" == "phish" && -z "$PHISH_API_KEY" ]]; then
             MISSING+=("PHISH_API_KEY (required for phish only)")
           fi
-          
+
           if [[ ${#MISSING[@]} -gt 0 ]]; then
             echo "::error::Missing required secrets: ${MISSING[*]}"
             exit 1
           fi
-          
+
           echo "✅ All required secrets are configured"
 
       - name: Set up Python
@@ -223,7 +223,7 @@ jobs:
             echo "recent_data_usable=true" >> "$STEP_OUTPUT"
             echo "prediction_action=generated" >> "$STEP_OUTPUT"
           fi
-          
+
           echo "::endgroup::"
 
       - name: Seed Verify-Only Collection Outputs
@@ -243,11 +243,11 @@ jobs:
           BAND: ${{ matrix.band }}
         run: |
           echo "::group::Verifying data freshness for ${{ matrix.band }}"
-          
+
           uv run python scripts/verify_data_freshness.py
-          
+
           echo "::endgroup::"
-          
+
       - name: Alert on Data Issues
         if: steps.data_check.outputs.missing_data == 'true'
         env:
@@ -260,12 +260,12 @@ jobs:
           else
             echo "::error::Critical: ${COUNT} recent ${{ matrix.band }} shows are missing setlist data!"
             echo "This may cause predictions to include songs that were recently played."
-            echo "Consider running the collection script manually to fetch missing setlists."
+            echo "Skipping prediction generation for this band. Existing predictions will be reused only if they pass freshness enforcement."
           fi
-          
+
       - name: Generate Predictions (Notebook & Deal)
         id: predictions
-        if: steps.preflight.outputs.should_run_collection == 'true' && steps.collection.outputs.workflow_state != 'degraded'
+        if: steps.preflight.outputs.should_run_collection == 'true' && steps.collection.outputs.workflow_state != 'degraded' && steps.data_check.outputs.missing_data != 'true'
         run: |
           echo "::group::Generating live next-show predictions for ${{ matrix.band }}"
 
@@ -276,7 +276,7 @@ jobs:
 
       - name: Validate Prediction Tables
         id: prediction_validation
-        if: steps.preflight.outputs.should_run_collection == 'true' && steps.collection.outputs.workflow_state != 'degraded'
+        if: steps.preflight.outputs.should_run_collection == 'true' && steps.collection.outputs.workflow_state != 'degraded' && steps.data_check.outputs.missing_data != 'true'
         run: |
           echo "::group::Validating prediction table freshness for ${{ matrix.band }}"
           uv run python scripts/validate_prediction_tables.py --band ${{ matrix.band }} --max-age-hours 72
@@ -284,10 +284,10 @@ jobs:
 
       - name: Run Backtest and Save Per-Show Accuracy
         id: accuracy_calc
-        if: github.event.inputs.skip_accuracy != 'true' && steps.preflight.outputs.should_run_collection == 'true' && steps.collection.outputs.workflow_state != 'degraded'
+        if: github.event.inputs.skip_accuracy != 'true' && steps.preflight.outputs.should_run_collection == 'true' && steps.collection.outputs.workflow_state != 'degraded' && steps.data_check.outputs.missing_data != 'true'
         run: |
           echo "::group::Running backtest for ${{ matrix.band }}"
-          
+
           # Default: assume all shows are already scored. Any model with new shows
           # will overwrite backtest_incremental_all_scored=false. This ensures
           # correct AND semantics when two models run sequentially (last-write-wins).
@@ -301,7 +301,7 @@ jobs:
 
       - name: Validate Accuracy Tables
         id: accuracy_validation
-        if: github.event.inputs.skip_accuracy != 'true' && steps.preflight.outputs.should_run_collection == 'true' && steps.collection.outputs.workflow_state != 'degraded'
+        if: github.event.inputs.skip_accuracy != 'true' && steps.preflight.outputs.should_run_collection == 'true' && steps.collection.outputs.workflow_state != 'degraded' && steps.data_check.outputs.missing_data != 'true'
         env:
           BACKTEST_INCREMENTAL_ALL_SCORED: ${{ steps.accuracy_calc.outputs.backtest_incremental_all_scored }}
         run: |
@@ -390,6 +390,7 @@ jobs:
           FAILURE_REASON: ${{ steps.collection.outputs.failure_reason || '' }}
           MISSING_DATA: ${{ steps.data_check.outputs.missing_data || 'false' }}
           MISSING_COUNT: ${{ steps.data_check.outputs.missing_count || '0' }}
+          PREDICTION_ACTION: ${{ steps.collection.outputs.prediction_action || steps.collection_idle.outputs.prediction_action || '' }}
           PREDICTIONS_OUTCOME: ${{ steps.predictions.outcome || '' }}
           ACCURACY_SKIPPED: ${{ github.event.inputs.skip_accuracy == 'true' }}
           COLLECTION_MODE: ${{ steps.preflight.outputs.collection_mode || 'unknown' }}
@@ -417,15 +418,26 @@ jobs:
           workflow_state = os.environ.get("WORKFLOW_STATE", "failed")
           missing_data = os.environ.get("MISSING_DATA", "false") == "true"
           recent_data_usable = os.environ.get("RECENT_DATA_USABLE", "false") == "true"
+          explicit_prediction_action = os.environ.get("PREDICTION_ACTION", "").strip()
 
-          if workflow_state == "degraded":
+          if missing_data:
+              workflow_state = "degraded"
+              outcome_code = "degraded_missing_recent_setlists"
+          else:
+              outcome_code = os.environ.get("OUTCOME_CODE", "failed_internal")
+
+          if missing_data:
+              prediction_action = "skipped_missing_setlists"
+          elif workflow_state == "degraded":
               prediction_action = "reused_existing" if recent_data_usable and not missing_data else "skipped"
           elif os.environ.get("PREDICTIONS_OUTCOME") == "success":
               prediction_action = "generated"
           elif os.environ.get("WORKFLOW_STATE") == "failed":
               prediction_action = "skipped"
+          elif explicit_prediction_action:
+              prediction_action = explicit_prediction_action
           else:
-              prediction_action = os.environ.get("prediction_action", "pending")
+              prediction_action = "pending"
 
           def parse_model_list(value: str | None) -> list[str]:
               if not value:
@@ -443,7 +455,7 @@ jobs:
           payload = {
               "band": os.environ["BAND"],
               "workflow_state": workflow_state,
-              "outcome_code": os.environ.get("OUTCOME_CODE", "failed_internal"),
+              "outcome_code": outcome_code,
               "recent_data_usable": recent_data_usable,
               "missing_data": missing_data,
               "missing_count": int(os.environ.get("MISSING_COUNT", "0") or 0),
@@ -553,11 +565,11 @@ jobs:
 
           if [[ -n "${STALE_PREDICTION_MODELS}" ]]; then
             if [[ "${WORKFLOW_STATE}" == "degraded" ]]; then
-              echo "::error::${BAND} degraded reuse exceeded the 48h prediction freshness window for supported models: ${STALE_PREDICTION_MODELS}. ${FRESHNESS_REASON}"
+              echo "::warning::${BAND} degraded reuse exceeded the 48h prediction freshness window for supported models: ${STALE_PREDICTION_MODELS}. ${FRESHNESS_REASON}"
             else
               echo "::error::${BAND} regeneration completed but supported-model predictions remained stale: ${STALE_PREDICTION_MODELS}. ${FRESHNESS_REASON}"
+              exit 1
             fi
-            exit 1
           fi
 
           if [[ "${BACKTEST_INCREMENTAL_ALL_SCORED}" == "true" ]]; then
@@ -567,11 +579,11 @@ jobs:
 
           if [[ "${ACCURACY_SKIPPED}" != "true" && -n "${STALE_ACCURACY_MODELS}" ]]; then
             if [[ "${WORKFLOW_STATE}" == "degraded" ]]; then
-              echo "::error::${BAND} degraded reuse exceeded the 48h accuracy freshness window for supported models: ${STALE_ACCURACY_MODELS}. ${FRESHNESS_REASON}"
+              echo "::warning::${BAND} degraded reuse exceeded the 48h accuracy freshness window for supported models: ${STALE_ACCURACY_MODELS}. ${FRESHNESS_REASON}"
             else
               echo "::error::${BAND} regeneration completed but supported-model accuracy remained stale: ${STALE_ACCURACY_MODELS}. ${FRESHNESS_REASON}"
+              exit 1
             fi
-            exit 1
           fi
 
           echo "Supported-model freshness reported stale, but no enforced stale surface remained."
@@ -581,12 +593,12 @@ jobs:
     needs: [setup, daily-pipeline]
     if: always()
     runs-on: ubuntu-latest
-    
+
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       BAND_LIST_JSON: ${{ needs.setup.outputs.bands_list }}
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -597,7 +609,7 @@ jobs:
           pattern: band-status-*
           path: .github/workflow-status
           merge-multiple: true
-        
+
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
@@ -610,7 +622,7 @@ jobs:
 
       - name: Install dependencies
         run: uv sync --locked --no-dev
-          
+
       - name: Generate pipeline summary header
         run: |
           echo "## Daily Pipeline Summary - $(date)" >> $GITHUB_STEP_SUMMARY
@@ -666,7 +678,7 @@ jobs:
             fi
           done
           uv run python scripts/generate_pipeline_summary.py --bands-json "$BAND_LIST_JSON" "${STATUS_ARGS[@]}" >> $GITHUB_STEP_SUMMARY
-          
+
       - name: Add next steps
         run: |
           echo "" >> $GITHUB_STEP_SUMMARY

@@ -13,13 +13,6 @@ import { buildLocationLabel, formatDateLabel } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
-const HOME_TEASER_BANDS = [
-  { slug: "phish", label: "Phish", fallbackName: "Phish" },
-  { slug: "wsp", label: "WSP", fallbackName: "Widespread Panic" },
-  { slug: "billy", label: "Billy", fallbackName: "Billy Strings" },
-  { slug: "goose", label: "Goose", fallbackName: "Goose" },
-] as const;
-
 const HOW_IT_WORKS = [
   {
     step: "01",
@@ -71,10 +64,19 @@ export default async function HomePage({ searchParams }: Props) {
   const bandsResult = await getBands();
   const bands = bandsResult.status === "ready" ? bandsResult.bands : [];
   const requestedTeaser = params.teaser?.trim().toLowerCase();
-  const teaserConfig =
-    HOME_TEASER_BANDS.find((band) => band.slug === requestedTeaser) ??
-    HOME_TEASER_BANDS[0];
-  const teaserBandSlug = teaserConfig.slug;
+  const TEASER_ORDER = ["phish", "wsp", "billy", "goose"];
+  const TEASER_LABELS: Record<string, string> = {
+    wsp: "WSP",
+    billy: "Billy",
+  };
+  const teaserBands = TEASER_ORDER
+    .map((slug) => bands.find((b) => b.slug === slug))
+    .filter((b): b is NonNullable<typeof b> => b != null);
+  const teaserBandSlug =
+    teaserBands.find((b) => b.slug === requestedTeaser)?.slug ??
+    teaserBands[0]?.slug ??
+    bands[0]?.slug ??
+    "goose";
 
   const teaserPredictionState = await getLatestPredictions(teaserBandSlug, "notebook");
   const teaserNextShowState = await getNextShowDetails(teaserBandSlug);
@@ -128,7 +130,7 @@ export default async function HomePage({ searchParams }: Props) {
               Teasers
             </p>
             <div className="grid grid-cols-4 gap-2">
-              {HOME_TEASER_BANDS.map((band) => {
+              {teaserBands.map((band) => {
                 const isActive = band.slug === teaserBandSlug;
                 return (
                   <Link
@@ -141,7 +143,7 @@ export default async function HomePage({ searchParams }: Props) {
                         : "border-transparent bg-surface-container-low text-on-surface-variant hover:bg-outline-variant/20 hover:text-on-surface"
                     }`}
                   >
-                    {band.label}
+                    {TEASER_LABELS[band.slug] ?? band.displayName}
                   </Link>
                 );
               })}

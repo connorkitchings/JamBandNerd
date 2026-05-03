@@ -11,7 +11,8 @@ import { RecallChart } from "@/components/recall-chart";
 import { SectionCard } from "@/components/section-card";
 import { MODEL_CONFIG, normalizeModel } from "@/lib/config";
 import { getBands, getRecentAccuracy, bandEntryBySlug, resolveBandSelection } from "@/lib/data";
-import { formatCompactDateLabel, formatPercent } from "@/lib/format";
+import { formatCompactDateLabel, formatPercent, buildReplayHref } from "@/lib/format";
+import { average } from "@/lib/math";
 
 export const dynamic = "force-dynamic";
 
@@ -38,14 +39,6 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
   };
 }
 
-function average(values: Array<number | null>) {
-  const filtered = values.filter((value): value is number => value !== null);
-  if (filtered.length === 0) {
-    return null;
-  }
-  return filtered.reduce((sum, value) => sum + value, 0) / filtered.length;
-}
-
 type KSelection = 10 | 25 | 50 | "all";
 
 function normalizeK(value?: string): KSelection {
@@ -55,14 +48,6 @@ function normalizeK(value?: string): KSelection {
 
   const n = Number(value);
   return n === 10 || n === 25 || n === 50 ? n : "all";
-}
-
-function buildReplayHref(band: string, showDate: string | null) {
-  if (!showDate) {
-    return null;
-  }
-
-  return `/replay?band=${band}&date=${showDate}`;
 }
 
 export default async function PerformancePage({ searchParams }: Props) {

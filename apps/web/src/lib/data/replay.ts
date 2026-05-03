@@ -11,6 +11,7 @@ import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { buildShowDetails } from "@/lib/next-show";
 
 import { getClientOrState, getBandContext } from "./bands";
+import { getPreviewReplaySnapshot, shouldUseLocalPreview } from "./preview";
 import {
   asRecord,
   getVenueNameFromRow,
@@ -36,6 +37,16 @@ export const getReplaySnapshot = cache(
     const bandState = await getBandContext(bandInput);
     if (bandState.status !== "ready") {
       return bandState as RouteState<{ band: BandSlug; replay: ReplaySnapshot }>;
+    }
+
+    if (shouldUseLocalPreview()) {
+      return getPreviewReplaySnapshot(
+        bandInput,
+        selectedDateInput,
+        modelAInput,
+        modelBInput,
+        replayWindow,
+      );
     }
 
     const client = getSupabaseServerClient();

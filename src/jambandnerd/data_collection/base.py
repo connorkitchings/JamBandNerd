@@ -303,6 +303,7 @@ class BandCollector(ABC):
                     self.cache.set(url, result, params, cache_ttl)
 
                 self.record_success()
+                self._outer_fetch_retries = 0
                 return result
 
             except ValueError as e:
@@ -319,7 +320,8 @@ class BandCollector(ABC):
             self.record_failure()
             raise
         except requests.exceptions.HTTPError as e:
-            logger.error(f"HTTP error {e.response.status_code} for {url}: {e}")
+            status = e.response.status_code if e.response is not None else None
+            logger.error(f"HTTP error {status} for {url}: {e}")
             self.record_failure()
             if e.response is not None and e.response.status_code == 403:
                 logger.warning(
@@ -327,6 +329,23 @@ class BandCollector(ABC):
                 )
                 self._check_circuit_breaker()
                 return []
+            if status in (502, 503, 504):
+                retries = getattr(self, "_outer_fetch_retries", 0)
+                if retries < 2:
+                    self._outer_fetch_retries = retries + 1
+                    delay = 60 * self._outer_fetch_retries
+                    logger.warning(
+                        "Upstream %s for %s — retrying in %ds (attempt %d/2)",
+                        status,
+                        url,
+                        delay,
+                        self._outer_fetch_retries,
+                    )
+                    time.sleep(delay)
+                    return self._fetch_from_endpoint(
+                        endpoint, use_cache=False, cache_ttl=cache_ttl, **kwargs
+                    )
+                self._outer_fetch_retries = 0
             raise
         except requests.exceptions.RequestException as e:
             logger.error(f"Request failed for {url}: {e}")
@@ -340,11 +359,37 @@ class BandCollector(ABC):
         """Collect show data for a given date range."""
         pass
 
+    def _is_target_artist(
+        self,
+        item: Dict[str, Any],
+        *,
+        artist_id: Optional[int] = None,
+        artist_name: Optional[str] = None,
+    ) -> bool:
+        """Return whether an API row belongs to the target artist.
+
+        Checks ``artist_id`` first when provided, then falls back to
+        case-insensitive ``artist_name`` match.
+        """
+        if artist_id is not None:
+            item_id = item.get("artist_id")
+            if item_id is not None:
+                try:
+                    return int(item_id) == artist_id
+                except (TypeError, ValueError):
+                    return False
+
+        if artist_name is not None:
+            item_artist = str(item.get("artist", "")).strip().lower()
+            return item_artist == artist_name.strip().lower()
+
+        return True  # no filter configured — accept all
+
     @abstractmethod
     def collect_setlists(
-        self, show_ids: Optional[List[str]] = None
+        self, shows_to_process: Optional[List[Dict[str, Any]]] = None
     ) -> List[Dict[str, Any]]:
-        """Collect setlist data for a list of show IDs."""
+        """Collect setlist data for the given shows (each dict must contain at least show_id)."""
         pass
 
     @abstractmethod

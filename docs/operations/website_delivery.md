@@ -117,7 +117,13 @@ The website currently expects the same two server-side variables in all environm
 - `SUPABASE_URL`
 - `SUPABASE_ANON_KEY`
 
+For local review, the web app reads real Supabase data when those variables are
+set. Seeded preview data is only available when `JAMBNERD_PREVIEW_MODE=1` is
+set explicitly.
+
 For local development, copy `apps/web/.env.local.example` to `apps/web/.env.local`.
+If your local Next.js root is the repository root, you can also mirror the same
+two variables in `./.env.local`; the website loader checks both locations.
 
 Do not use a service-role key in the website environment.
 
@@ -136,6 +142,9 @@ The admin route now authenticates into an httpOnly cookie-backed session instead
 ## Vercel Project Setup
 
 Use Vercel’s native GitHub integration rather than a repo-driven deploy action.
+The production product URL is `https://jambandnerd.com`; legacy reference
+projects or design influences should not be documented as JamBandNerd product
+surfaces.
 
 Recommended project settings:
 

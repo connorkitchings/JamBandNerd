@@ -158,7 +158,8 @@ class DealPredictor(PredictionModel):
             return True
 
         age_days = (
-            datetime.now() - datetime.fromtimestamp(model_path.stat().st_mtime)
+            datetime.now(UTC)
+            - datetime.fromtimestamp(model_path.stat().st_mtime, tz=UTC)
         ).days
         return age_days >= DEAL_RETRAIN_INTERVAL_DAYS
 

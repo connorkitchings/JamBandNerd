@@ -83,11 +83,10 @@ class EggyCollector(BandCollector):
             "artist" not in record or record.get("artist") is None for record in records
         ):
             return records
-        artist_lower = self.ARTIST_NAME.lower()
         filtered = [
             record
             for record in records
-            if str(record.get("artist", "")).strip().lower() == artist_lower
+            if self._is_target_artist(record, artist_name=self.ARTIST_NAME)
         ]
         logger.debug("Filtered %s records down to %s", len(records), len(filtered))
         return filtered

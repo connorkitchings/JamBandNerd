@@ -16,6 +16,14 @@ import {
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { getClientOrState, getBandContext } from "./bands";
 import {
+  getPreviewCurrentModelVersion,
+  getPreviewExplorerSnapshot,
+  getPreviewLatestPredictions,
+  getPreviewPredictionDates,
+  getPreviewPredictionsForDate,
+  shouldUseLocalPreview,
+} from "./preview";
+import {
   asRecord,
   buildPredictionSnapshotFromCanonicalRow,
   buildPredictionSnapshotFromProjectionRows,
@@ -109,6 +117,10 @@ export async function getCurrentModelVersion(
   band: BandSlug,
   model: ModelSlug,
 ): Promise<string> {
+  if (shouldUseLocalPreview()) {
+    return getPreviewCurrentModelVersion(model);
+  }
+
   try {
     const projectionSnapshot = await fetchProjectedPredictionSnapshot(client, {
       band,
@@ -187,6 +199,10 @@ export const getLatestPredictions = cache(
       }>;
     }
 
+    if (shouldUseLocalPreview()) {
+      return getPreviewLatestPredictions(bandInput, modelInput);
+    }
+
     const band = bandState.band;
     const model = normalizeModel(modelInput);
     const client = getSupabaseServerClient();
@@ -246,6 +262,10 @@ export const getPredictionsForDate = cache(
         model: ModelSlug;
         snapshot: PredictionSnapshot;
       }>;
+    }
+
+    if (shouldUseLocalPreview()) {
+      return getPreviewPredictionsForDate(bandInput, modelInput, referenceDate);
     }
 
     const band = bandState.band;
@@ -325,6 +345,10 @@ export const getPredictionDates = cache(
       }>;
     }
 
+    if (shouldUseLocalPreview()) {
+      return getPreviewPredictionDates(bandInput, modelInput);
+    }
+
     const band = bandState.band;
     const model = normalizeModel(modelInput);
     const client = getSupabaseServerClient();
@@ -372,6 +396,10 @@ export async function getExplorerSnapshot(
   modelInput: string | undefined,
   selectedDateInput?: string,
 ): Promise<RouteState<{ band: BandSlug; model: ModelSlug; explorer: ExplorerSnapshot }>> {
+  if (shouldUseLocalPreview()) {
+    return getPreviewExplorerSnapshot(bandInput, modelInput, selectedDateInput);
+  }
+
   const datesState = await getPredictionDates(bandInput, modelInput);
 
   if (datesState.status !== "ready") {

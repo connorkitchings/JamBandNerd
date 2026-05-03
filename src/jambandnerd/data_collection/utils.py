@@ -6,12 +6,29 @@ import hashlib
 import json
 import logging
 import time
-from datetime import date
+from datetime import date, datetime
 from typing import Any, Dict, Optional
 
 import pandas as pd
 
+from jambandnerd.config.data_collection import DATE_FORMATS
+
 logger = logging.getLogger(__name__)
+
+
+def parse_date(value: Optional[str]) -> Optional[str]:
+    """Parse a date-like string to ISO date (YYYY-MM-DD) or return None.
+
+    Uses the canonical ``DATE_FORMATS`` tuple from the config layer.
+    """
+    if not value:
+        return None
+    for fmt in DATE_FORMATS:
+        try:
+            return datetime.strptime(str(value), fmt).date().isoformat()
+        except (ValueError, TypeError):
+            continue
+    return None
 
 
 def compute_source_hash(record: Dict[str, Any]) -> str:

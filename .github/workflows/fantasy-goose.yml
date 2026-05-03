@@ -107,14 +107,10 @@ jobs:
         with:
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
-      - name: Install uv
+      - name: Install uv and Python
         uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
-
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
           python-version: "3.12"
 
       - name: Validate required secrets

@@ -86,3 +86,13 @@ export function formatSetLabel(value: number | null) {
 export function formatPercent(value: number | null, digits = 1) {
   return value === null ? "—" : `${(value * 100).toFixed(digits)}%`;
 }
+
+export function buildReplayHref(
+  band: string | null | undefined,
+  showDate: string | null,
+) {
+  if (!band || !showDate) {
+    return null;
+  }
+  return `/replay?band=${band}&date=${showDate}`;
+}

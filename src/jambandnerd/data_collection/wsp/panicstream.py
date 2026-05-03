@@ -8,6 +8,7 @@ WSP collectors.
 from __future__ import annotations
 
 import json
+import logging
 import re
 from datetime import date
 from html import unescape
@@ -18,6 +19,8 @@ from bs4 import BeautifulSoup
 
 from jambandnerd.data_collection.config import JAMBANNERD_BOT_UA
 from jambandnerd.data_collection.wsp.parser import SONGS_WITH_COMMAS
+
+logger = logging.getLogger(__name__)
 
 session = requests.Session()
 session.headers.update({"User-Agent": JAMBANNERD_BOT_UA})
@@ -306,16 +309,37 @@ def fetch_setlist_from_panicstream(
     """Fetch and parse a WSP setlist from PanicStream."""
     try:
         url = find_show_on_year_index(show_date, city, state)
-    except Exception:
+    except Exception as exc:
+        logger.warning(
+            "PanicStream fallback: failed to search year index for %s: %s",
+            show_date,
+            exc,
+        )
         return []
 
     if not url:
+        logger.info(
+            "PanicStream fallback: no matching show found on year index for %s "
+            "(city=%s state=%s)",
+            show_date,
+            city,
+            state,
+        )
         return []
 
     try:
         response = session.get(url, timeout=30)
         response.raise_for_status()
-    except Exception:
+    except Exception as exc:
+        logger.warning(
+            "PanicStream fallback: failed to fetch show page %s: %s", url, exc
+        )
         return []
 
-    return parse_show_page_html(response.text, show_id)
+    result = parse_show_page_html(response.text, show_id)
+    if not result:
+        logger.warning(
+            "PanicStream fallback: show page %s had no parseable setlist text",
+            url,
+        )
+    return result

@@ -46,13 +46,17 @@ class BillyCollector(BandCollector):
         logger.debug("Fetching Billy Strings show listing page %s", url)
         page_shows = []
 
+        self.rate_limiter.wait_if_needed()
         try:
             response = self.session.get(url, timeout=self.config.timeout)
             if response.status_code == 404:
-                return []  # Stop this page
+                self.record_success()
+                return []
             response.raise_for_status()
+            self.record_success()
         except RequestException as exc:
             logger.error("Failed to fetch show listing page %s: %s", page, exc)
+            self.record_failure()
             return []
 
         soup = BeautifulSoup(response.text, "html.parser")
@@ -233,11 +237,14 @@ class BillyCollector(BandCollector):
         url = f"{self.BASE_URL}/songs/"
         logger.info("Fetching Billy Strings song catalog from %s", url)
 
+        self.rate_limiter.wait_if_needed()
         try:
             response = self.session.get(url, params=params, timeout=self.config.timeout)
             response.raise_for_status()
+            self.record_success()
         except RequestException as exc:
             logger.error("Failed to fetch Billy Strings songs: %s", exc)
+            self.record_failure()
             return []
 
         soup = BeautifulSoup(response.text, "html.parser")
@@ -386,6 +393,7 @@ class BillyCollector(BandCollector):
         return city, state, country
 
     def _collect_upcoming_shows(self, min_date: date) -> List[Dict[str, Any]]:
+        self.rate_limiter.wait_if_needed()
         try:
             response = self.session.get(
                 f"{self.BASE_URL}/setlists",
@@ -393,8 +401,10 @@ class BillyCollector(BandCollector):
                 timeout=self.config.timeout,
             )
             response.raise_for_status()
+            self.record_success()
         except RequestException as exc:
             logger.error("Failed to fetch upcoming shows: %s", exc)
+            self.record_failure()
             return []
 
         soup = BeautifulSoup(response.text, "html.parser")
@@ -446,9 +456,11 @@ class BillyCollector(BandCollector):
         uuid: Optional[str],
         show_date: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
+        self.rate_limiter.wait_if_needed()
         try:
             response = self.session.get(source_url, timeout=self.config.timeout)
             response.raise_for_status()
+            self.record_success()
         except RequestException as exc:
             logger.error(
                 "Failed to fetch setlist for show_id=%s (%s): %s",

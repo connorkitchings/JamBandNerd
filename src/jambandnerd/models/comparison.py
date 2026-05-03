@@ -13,12 +13,29 @@ from jambandnerd.models.evaluation import get_evaluation_reference_date
 from jambandnerd.models.registry import (
     build_predictor,
     get_model_definition,
+    list_promoted_web_models,
     serialize_model_predictions,
 )
 from jambandnerd.transformations.gaps import generate_model_data
 
-PRIMARY_BASELINE_SLUG = "ckplus"
 PRIMARY_PROMOTION_METRIC = "recall"
+
+
+def get_promotion_baseline(candidate_slug: str | None = None) -> str:
+    """Return the default baseline slug for promotion-gate comparisons.
+
+    Defaults to 'deal' (the strongest currently promoted model).  Falls
+    back to 'notebook' when Deal is the candidate, or to any available
+    promoted model when neither is available.
+    """
+    promoted_slugs = [m.slug for m in list_promoted_web_models()]
+    available = [s for s in promoted_slugs if s != candidate_slug]
+
+    for preferred in ("deal", "notebook"):
+        if preferred in available:
+            return preferred
+
+    return available[0] if available else "deal"
 
 
 def build_evaluation_predictor(
@@ -369,16 +386,17 @@ def build_promotion_gate(
     metrics_by_band: dict[str, dict[str, dict[str, Any]]],
     cross_band_summary: dict[str, Any],
     candidate_slug: str,
-    baseline_slug: str = PRIMARY_BASELINE_SLUG,
+    baseline_slug: str | None = None,
 ) -> dict[str, Any]:
     """Return the standard promotion gate against the primary baseline."""
 
+    resolved_baseline = baseline_slug or get_promotion_baseline(candidate_slug)
     candidate_summary = cross_band_summary.get(candidate_slug)
-    baseline_summary = cross_band_summary.get(baseline_slug)
+    baseline_summary = cross_band_summary.get(resolved_baseline)
     if not candidate_summary or not baseline_summary:
         return {
             "candidate_model": candidate_slug,
-            "baseline_model": baseline_slug,
+            "baseline_model": resolved_baseline,
             "passes": False,
             "reason": "missing_summary",
         }
@@ -392,7 +410,7 @@ def build_promotion_gate(
     worst_k25_regression = 0.0
     for band_metrics in metrics_by_band.values():
         candidate_band = band_metrics.get(candidate_slug)
-        baseline_band = band_metrics.get(baseline_slug)
+        baseline_band = band_metrics.get(resolved_baseline)
         if not candidate_band or not baseline_band:
             continue
 
@@ -414,8 +432,10 @@ def build_promotion_gate(
     required_band_wins = min(4, bands_evaluated)
 
     checks = {
-        "avg_recall_k10_beats_ckplus": candidate_k10_recall > baseline_k10_recall,
-        "avg_recall_k25_beats_ckplus": candidate_k25_recall > baseline_k25_recall,
+        f"avg_recall_k10_beats_{resolved_baseline}": candidate_k10_recall
+        > baseline_k10_recall,
+        f"avg_recall_k25_beats_{resolved_baseline}": candidate_k25_recall
+        > baseline_k25_recall,
         "wins_at_least_required_bands_on_recall_k10": (
             recall_k10_wins >= required_band_wins
         ),
@@ -425,7 +445,7 @@ def build_promotion_gate(
     return {
         "candidate_model": candidate_slug,
         "candidate_model_version": get_model_definition(candidate_slug).version,
-        "baseline_model": baseline_slug,
+        "baseline_model": resolved_baseline,
         "metric": PRIMARY_PROMOTION_METRIC,
         "required_band_wins": required_band_wins,
         "bands_evaluated": bands_evaluated,

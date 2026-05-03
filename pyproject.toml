@@ -33,6 +33,7 @@ dev = [
   "pytest>=9.0.3",
   "mypy",
   "pytest-cov",
+  "types-requests>=2.31.0",
 ]
 docs = [
   "mkdocs",
@@ -92,3 +93,4 @@ python_version = "3.12"
 warn_return_any = true
 warn_unused_configs = true
 ignore_missing_imports = true
+explicit_package_bases = true

@@ -23,7 +23,7 @@ The GitHub Actions workflow (`.github/workflows/daily-pipeline.yml`) has been co
 
 ### Key Features
 
-- **Simplified Matrix Strategy**: The workflow now uses a simple matrix to parallelize jobs by band (`goose`, `phish`, `wsp`). The complex, hardcoded matrix for each band/model pair has been removed.
+- **Simplified Matrix Strategy**: The workflow now uses a simple matrix to parallelize jobs by band (`goose`, `phish`, `eggy`, `billy`, `um`, `wsp`). The complex, hardcoded matrix for each band/model pair has been removed.
 - **Streamlined Job**: The previous multi-job approach (`collect-data`, `generate-predictions`, `calculate-accuracy`) has been replaced by a single `daily-pipeline` job. This job contains sequential steps to run the full pipeline for each band, which is simpler to read and debug.
 - **Declarative Steps**: The `run` steps now make direct, clean calls to the consolidated scripts, eliminating the need for conditional `if` logic within the YAML to select the correct script.
 
@@ -33,7 +33,7 @@ jobs:
   daily-pipeline:
     strategy:
       matrix:
-        band: [goose, phish, wsp]
+        band: [goose, phish, eggy, billy, um, wsp]
     steps:
       - name: Run Data Collection
         run: python scripts/run_${{ matrix.band }}_collection.py

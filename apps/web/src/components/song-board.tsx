@@ -1,12 +1,10 @@
-"use client";
-
-import { useState } from "react";
-
 import type { PredictionRow } from "@/lib/data";
 import { TIER_ORDER, type LikelihoodTier, type ModelSlug } from "@/lib/config";
 import { TierBadge } from "@/components/tier-badge";
+import { TierSection } from "@/components/tier-section";
 import { formatMMDDYYYY } from "@/lib/format";
 import { groupPredictionRowsByTier, normalizeSongName } from "@/lib/song-board";
+import { DealMobileRow } from "@/components/deal-mobile-row";
 
 type Props = {
   rows: PredictionRow[];
@@ -73,22 +71,12 @@ function ModelAgreeIcon() {
   );
 }
 
-type TierSectionProps = {
-  tier: LikelihoodTier;
-  rows: PredictionRow[];
-  highlightSongs?: Set<string>;
-  secondarySongs?: Set<string>;
-  defaultOpen: boolean;
-  compact?: boolean;
-  modelSlug?: string;
-};
-
 type TierRowState = {
   isHighlighted: boolean;
   agreesWithOtherModel: boolean;
 };
 
-function getTierRowState(
+export function getTierRowState(
   row: PredictionRow,
   highlightSongs?: Set<string>,
   secondarySongs?: Set<string>,
@@ -101,7 +89,7 @@ function getTierRowState(
   };
 }
 
-function TierSectionHeader({
+export function TierSectionHeader({
   tier,
   rowCount,
   isOpen,
@@ -140,7 +128,7 @@ function TierSectionHeader({
 
 function ProbabilityBar({ probability }: { probability: number | null }) {
   if (probability === null) return <span className="text-sm tabular-nums text-on-surface-variant">—</span>;
-  const pct = Math.round(probability * 1000) / 10; // one decimal, e.g. 12.3
+  const pct = Math.round(probability * 1000) / 10;
   const fillPct = Math.min(probability * 100, 100);
   return (
     <div className="relative flex h-6 w-full items-center overflow-hidden rounded-full bg-surface-container">
@@ -155,7 +143,7 @@ function ProbabilityBar({ probability }: { probability: number | null }) {
   );
 }
 
-function TierDesktopTable({
+export function TierDesktopTable({
   compact,
   highlightSongs,
   rows,
@@ -264,7 +252,7 @@ function TierDesktopTable({
   );
 }
 
-function TierMobileList({
+export function TierMobileList({
   rows,
   highlightSongs,
   secondarySongs,
@@ -285,6 +273,17 @@ function TierMobileList({
           highlightSongs,
           secondarySongs,
         );
+
+        if (isDeal) {
+          return (
+            <DealMobileRow
+              key={`${row.rank}-${row.songName}`}
+              row={row}
+              isHighlighted={isHighlighted}
+              agreesWithOtherModel={agreesWithOtherModel}
+            />
+          );
+        }
 
         return (
           <div
@@ -342,60 +341,6 @@ function TierMobileList({
           </div>
         );
       })}
-    </div>
-  );
-}
-
-function TierSection({
-  tier,
-  rows,
-  highlightSongs,
-  secondarySongs,
-  defaultOpen,
-  compact,
-  modelSlug,
-}: TierSectionProps) {
-  const [isOpen, setIsOpen] = useState(defaultOpen);
-
-  if (rows.length === 0) return null;
-
-  return (
-    <div className="editorial-panel overflow-hidden rounded-[1.5rem]">
-      <TierSectionHeader
-        tier={tier}
-        rowCount={rows.length}
-        isOpen={isOpen}
-        onExpand={() => setIsOpen(true)}
-      />
-
-      <div
-        id={`tier-content-${tier}`}
-        className="w-full border-t border-outline-variant/15 bg-surface-container-low/65"
-        hidden={!isOpen}
-      >
-        <TierDesktopTable
-          compact={compact}
-          highlightSongs={highlightSongs}
-          rows={rows}
-          modelSlug={modelSlug}
-        />
-        <TierMobileList
-          rows={rows}
-          highlightSongs={highlightSongs}
-          secondarySongs={secondarySongs}
-          modelSlug={modelSlug}
-        />
-
-        <div className="border-t border-outline-variant/10 px-4 py-3">
-          <button
-            type="button"
-            onClick={() => setIsOpen(false)}
-            className="w-full rounded-full border border-outline-variant/20 bg-surface/75 px-4 py-2 text-center font-headline text-[10px] uppercase tracking-[0.14rem] text-on-surface transition hover:border-primary/35 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
-          >
-            Collapse
-          </button>
-        </div>
-      </div>
     </div>
   );
 }

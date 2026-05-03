@@ -44,5 +44,10 @@ npm run test:web:smoke
 - `main` is the production branch.
 - Preview deployments should come from pull requests and non-`main` branches.
 - The website expects `SUPABASE_URL` and `SUPABASE_ANON_KEY`.
+- For local review, the app uses real Supabase data when those env vars are
+  present. Seeded preview data is opt-in via `JAMBNERD_PREVIEW_MODE=1`.
+  If your Next.js root is the repository root, the loader also checks
+  `./.env.local` so the site can start from either the workspace env file or
+  the repo-level env file.
 - Do not use a service-role secret in the website environment.
 - The internal admin setlist flow additionally requires `ADMIN_PASSWORD` and `ADMIN_SESSION_SECRET`, and now authenticates through an httpOnly session cookie.

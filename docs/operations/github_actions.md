@@ -165,6 +165,7 @@ CI quality gate for the `apps/web` Next.js website.
 ## Hosted Website Smoke
 
 Daily smoke test against the live deployed website.
+The canonical production URL is `https://jambandnerd.com`.
 
 - **Triggers**:
   - `schedule`: `0 22 * * *` (daily at 22:00 UTC)

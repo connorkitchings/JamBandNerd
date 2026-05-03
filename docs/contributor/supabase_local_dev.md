@@ -42,6 +42,14 @@ development and testing.
    # Fill in SUPABASE_URL and SUPABASE_ANON_KEY
    ```
 
+   The website accepts the project anon key locally, including the
+   `sb_secret_...` style key this repo currently uses. That key is only
+   rejected on Vercel, where the public website must not rely on a secret
+   anon key. If your local Next.js root is the repository root, the website
+   loader will also check `./.env.local`, so keeping the same two website
+   variables in both `apps/web/.env.local` and `./.env.local` is safe for local
+   review.
+
 ## Applying Migrations
 
 After pulling new migrations from the remote or writing new ones:
