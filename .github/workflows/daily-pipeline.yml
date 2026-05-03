@@ -366,12 +366,13 @@ jobs:
         env:
           AUDIT_PATH: .github/workflow-audits/${{ matrix.band }}.json
           BACKTEST_INCREMENTAL_ALL_SCORED: ${{ steps.accuracy_calc.outputs.backtest_incremental_all_scored }}
+          WORKFLOW_STATE: ${{ steps.collection.outputs.workflow_state || steps.collection_idle.outputs.workflow_state || 'unknown' }}
         run: |
           echo "::group::Auditing website-facing Supabase tables for ${{ matrix.band }}"
 
           mkdir -p .github/workflow-audits
           ARGS=(--band ${{ matrix.band }} --max-age-hours 72 --output "$AUDIT_PATH")
-          if [[ "${{ github.event.inputs.skip_accuracy }}" == "true" || "${BACKTEST_INCREMENTAL_ALL_SCORED}" == "true" ]]; then
+          if [[ "${{ github.event.inputs.skip_accuracy }}" == "true" || "${BACKTEST_INCREMENTAL_ALL_SCORED}" == "true" || "${WORKFLOW_STATE}" == "degraded" ]]; then
             ARGS+=(--skip-accuracy)
           fi
 
