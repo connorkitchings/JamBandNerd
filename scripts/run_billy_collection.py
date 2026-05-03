@@ -43,6 +43,16 @@ def _parse_date(date_str: Optional[str]) -> Optional[date]:
         raise argparse.ArgumentTypeError(f"Invalid date '{date_str}'. Use YYYY-MM-DD.")
 
 
+def _emit_github_output(**kwargs: str) -> None:
+    """Write key=value pairs to GITHUB_OUTPUT if available."""
+    output_path = os.environ.get("GITHUB_OUTPUT")
+    if not output_path:
+        return
+    with open(output_path, "a", encoding="utf-8") as handle:
+        for key, value in kwargs.items():
+            handle.write(f"{key}={value}\n")
+
+
 def run_billy_collection(
     skip_validation: bool = False,
     start_date: Optional[str] = None,
@@ -53,7 +63,18 @@ def run_billy_collection(
 ) -> None:
     print("Starting Billy Strings data collection...")
     timer = CollectionTimer()
-    ensure_source_reachable("billy")
+    try:
+        ensure_source_reachable("billy")
+    except RuntimeError as exc:
+        _emit_github_output(
+            workflow_state="degraded",
+            outcome_code="degraded_upstream_blocked",
+            should_retry_collection="false",
+            recent_data_usable="true",
+            prediction_action="reused_existing",
+            failure_reason=str(exc),
+        )
+        raise
 
     start_dt = _parse_date(start_date)
     end_dt = _parse_date(end_date)
