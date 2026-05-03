@@ -70,12 +70,11 @@ The primary production workflow. Collects raw data, generates predictions, runs 
 - WSP upstream blocking is degraded only when recent completed-show data is still usable.
 - Recent completed-show setlist gaps from upstream blocking remain hard failures.
 - Supported-model freshness is a separate enforcement path from collection success:
-  - degraded reuse older than `48h` is a hard failure for supported predictions
-  - stale supported accuracy is also a hard failure unless the run was manually dispatched with `skip_accuracy=true`
+  - when `WORKFLOW_STATE == "degraded"`: stale predictions and stale accuracy emit `::warning::` only (no job failure). Degraded bands cannot regenerate predictions; staleness is expected and surfaced in the summary
+  - when `WORKFLOW_STATE != "degraded"`: stale predictions and stale accuracy are hard failures (unless `skip_accuracy=true` or `backtest_incremental_all_scored=true`). If regeneration completed but freshness is still stale, something else is wrong
   - when incremental backtest finds all shows in the window already scored, accuracy staleness is expected and not enforced (scores are immutable; the backtest emits `backtest_incremental_all_scored=true`)
   - the `backtest_incremental_all_scored` signal gates three steps: `Validate Accuracy Tables` (uses `--skip-freshness`), `Audit Website Supabase Tables` (uses `--skip-accuracy`), and `Enforce Supported Model Freshness` (exits early)
   - the signal uses default-true semantics: the workflow writes `true` before running backtest, and each model call only writes `false` when it finds new shows. This ensures correct AND behavior when notebook and deal produce different results
-  - prediction freshness is always enforced regardless of backtest state
   - missing supported-model rows count as stale, not as pass
 - The workflow summary shows per-band health, execution mode, missing-setlist counts, prediction handling, and supported-model freshness.
 - GitHub Actions YAML is the canonical daily workflow contract. Local Python helpers mirror it for operator convenience, but do not override it.
