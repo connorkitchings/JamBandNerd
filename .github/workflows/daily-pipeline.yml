@@ -199,11 +199,36 @@ jobs:
               exit $FINAL_EXIT_CODE
             fi
           else
+            FINAL_EXIT_CODE=0
+            WORKFLOW_STATE="failed"
+            SHOULD_RETRY="true"
+            DEGRADED_DETECTED="false"
+
             while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
               echo "Attempt $((RETRY_COUNT + 1)) of $MAX_RETRIES for ${BAND} collection"
+              : > "$ATTEMPT_OUTPUT"
 
-              if uv run python "$SCRIPT_PATH"; then
+              set +e
+              GITHUB_OUTPUT="$ATTEMPT_OUTPUT" uv run python "$SCRIPT_PATH"
+              FINAL_EXIT_CODE=$?
+              set -e
+
+              WORKFLOW_STATE="$(grep '^workflow_state=' "$ATTEMPT_OUTPUT" | tail -n 1 | cut -d= -f2-)"
+              SHOULD_RETRY="$(grep '^should_retry_collection=' "$ATTEMPT_OUTPUT" | tail -n 1 | cut -d= -f2-)"
+
+              if [[ $FINAL_EXIT_CODE -eq 0 ]]; then
                 echo "✅ Collection for ${BAND} successful"
+                break
+              fi
+
+              if [[ "$WORKFLOW_STATE" == "degraded" ]]; then
+                echo "::warning::Collection for ${BAND} failed due to upstream unavailability — degrading gracefully"
+                DEGRADED_DETECTED="true"
+                break
+              fi
+
+              if [[ "$SHOULD_RETRY" == "false" ]]; then
+                echo "::warning::Collection for ${BAND} produced a non-retryable outcome"
                 break
               fi
 
@@ -213,15 +238,22 @@ jobs:
                 sleep $RETRY_DELAY
               else
                 echo "::error::Collection for ${BAND} failed after $MAX_RETRIES attempts"
-                exit 1
               fi
             done
 
-            echo "workflow_state=success" >> "$STEP_OUTPUT"
-            echo "outcome_code=success" >> "$STEP_OUTPUT"
-            echo "should_retry_collection=false" >> "$STEP_OUTPUT"
-            echo "recent_data_usable=true" >> "$STEP_OUTPUT"
-            echo "prediction_action=generated" >> "$STEP_OUTPUT"
+            cat "$ATTEMPT_OUTPUT" >> "$STEP_OUTPUT"
+
+            if [[ "$DEGRADED_DETECTED" == "true" ]]; then
+              : # degraded outputs already written by the script
+            elif [[ $FINAL_EXIT_CODE -ne 0 ]]; then
+              exit $FINAL_EXIT_CODE
+            else
+              echo "workflow_state=success" >> "$STEP_OUTPUT"
+              echo "outcome_code=success" >> "$STEP_OUTPUT"
+              echo "should_retry_collection=false" >> "$STEP_OUTPUT"
+              echo "recent_data_usable=true" >> "$STEP_OUTPUT"
+              echo "prediction_action=generated" >> "$STEP_OUTPUT"
+            fi
           fi
 
           echo "::endgroup::"
