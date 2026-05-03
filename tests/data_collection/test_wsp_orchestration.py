@@ -3,6 +3,7 @@ from src.jambandnerd.data_collection.wsp.orchestration import (
     _dedupe_show_batch,
     classify_missing_recent_setlists,
 )
+from src.jambandnerd.data_collection.wsp.status import CollectionStatus
 
 
 class _QueryStub:
@@ -266,3 +267,40 @@ def test_classify_missing_recent_setlists_keeps_request_failed_when_all_fallback
             "detail": "Everyday Companion request failed and fallback was empty",
         }
     ]
+
+
+class TestCollectionStatusOutcomeCode:
+    def test_success_when_no_issues(self):
+        status = CollectionStatus()
+        status.songs_collected = 100
+        status.shows_collected = 10
+        assert status.outcome_code() == "success"
+
+    def test_failed_upstream_stale_when_no_data_and_request_blocked(self):
+        status = CollectionStatus()
+        status.request_blocked_missing_setlists = 1
+        assert status.outcome_code() == "failed_upstream_stale"
+
+    def test_degraded_upstream_stale_when_shows_collected_and_request_blocked(self):
+        status = CollectionStatus()
+        status.request_blocked_missing_setlists = 1
+        status.shows_collected = 74
+        assert status.outcome_code() == "degraded_upstream_stale"
+
+    def test_degraded_upstream_stale_when_songs_collected_and_request_blocked(self):
+        status = CollectionStatus()
+        status.request_blocked_missing_setlists = 1
+        status.songs_collected = 708
+        assert status.outcome_code() == "degraded_upstream_stale"
+
+    def test_workflow_state_degraded_when_upstream_stale_with_data(self):
+        status = CollectionStatus()
+        status.request_blocked_missing_setlists = 1
+        status.shows_collected = 74
+        assert status.workflow_state() == "degraded"
+
+    def test_should_not_retry_when_degraded(self):
+        status = CollectionStatus()
+        status.request_blocked_missing_setlists = 1
+        status.shows_collected = 74
+        assert status.should_retry_collection() is False
