@@ -79,26 +79,26 @@ jobs:
         run: |
           MISSING=()
           BAND="${{ matrix.band }}"
-          
+
           # Check each secret by testing if it's empty
           if [[ -z "$SUPABASE_URL" ]]; then
             MISSING+=("SUPABASE_URL")
           fi
-          
+
           if [[ -z "$SUPABASE_SERVICE_ROLE_KEY" ]]; then
             MISSING+=("SUPABASE_SERVICE_ROLE_KEY")
           fi
-          
+
           # PHISH_API_KEY is only required for Phish collection
           if [[ "$BAND" == "phish" && -z "$PHISH_API_KEY" ]]; then
             MISSING+=("PHISH_API_KEY (required for phish only)")
           fi
-          
+
           if [[ ${#MISSING[@]} -gt 0 ]]; then
             echo "::error::Missing required secrets: ${MISSING[*]}"
             exit 1
           fi
-          
+
           echo "✅ All required secrets are configured"
 
       - name: Set up Python
@@ -223,7 +223,7 @@ jobs:
             echo "recent_data_usable=true" >> "$STEP_OUTPUT"
             echo "prediction_action=generated" >> "$STEP_OUTPUT"
           fi
-          
+
           echo "::endgroup::"
 
       - name: Seed Verify-Only Collection Outputs
@@ -243,11 +243,11 @@ jobs:
           BAND: ${{ matrix.band }}
         run: |
           echo "::group::Verifying data freshness for ${{ matrix.band }}"
-          
+
           uv run python scripts/verify_data_freshness.py
-          
+
           echo "::endgroup::"
-          
+
       - name: Alert on Data Issues
         if: steps.data_check.outputs.missing_data == 'true'
         env:
@@ -262,7 +262,7 @@ jobs:
             echo "This may cause predictions to include songs that were recently played."
             echo "Skipping prediction generation for this band. Existing predictions will be reused only if they pass freshness enforcement."
           fi
-          
+
       - name: Generate Predictions (Notebook & Deal)
         id: predictions
         if: steps.preflight.outputs.should_run_collection == 'true' && steps.collection.outputs.workflow_state != 'degraded' && steps.data_check.outputs.missing_data != 'true'
@@ -287,7 +287,7 @@ jobs:
         if: github.event.inputs.skip_accuracy != 'true' && steps.preflight.outputs.should_run_collection == 'true' && steps.collection.outputs.workflow_state != 'degraded' && steps.data_check.outputs.missing_data != 'true'
         run: |
           echo "::group::Running backtest for ${{ matrix.band }}"
-          
+
           # Default: assume all shows are already scored. Any model with new shows
           # will overwrite backtest_incremental_all_scored=false. This ensures
           # correct AND semantics when two models run sequentially (last-write-wins).
@@ -565,11 +565,11 @@ jobs:
 
           if [[ -n "${STALE_PREDICTION_MODELS}" ]]; then
             if [[ "${WORKFLOW_STATE}" == "degraded" ]]; then
-              echo "::error::${BAND} degraded reuse exceeded the 48h prediction freshness window for supported models: ${STALE_PREDICTION_MODELS}. ${FRESHNESS_REASON}"
+              echo "::warning::${BAND} degraded reuse exceeded the 48h prediction freshness window for supported models: ${STALE_PREDICTION_MODELS}. ${FRESHNESS_REASON}"
             else
               echo "::error::${BAND} regeneration completed but supported-model predictions remained stale: ${STALE_PREDICTION_MODELS}. ${FRESHNESS_REASON}"
+              exit 1
             fi
-            exit 1
           fi
 
           if [[ "${BACKTEST_INCREMENTAL_ALL_SCORED}" == "true" ]]; then
@@ -579,11 +579,11 @@ jobs:
 
           if [[ "${ACCURACY_SKIPPED}" != "true" && -n "${STALE_ACCURACY_MODELS}" ]]; then
             if [[ "${WORKFLOW_STATE}" == "degraded" ]]; then
-              echo "::error::${BAND} degraded reuse exceeded the 48h accuracy freshness window for supported models: ${STALE_ACCURACY_MODELS}. ${FRESHNESS_REASON}"
+              echo "::warning::${BAND} degraded reuse exceeded the 48h accuracy freshness window for supported models: ${STALE_ACCURACY_MODELS}. ${FRESHNESS_REASON}"
             else
               echo "::error::${BAND} regeneration completed but supported-model accuracy remained stale: ${STALE_ACCURACY_MODELS}. ${FRESHNESS_REASON}"
+              exit 1
             fi
-            exit 1
           fi
 
           echo "Supported-model freshness reported stale, but no enforced stale surface remained."
@@ -593,12 +593,12 @@ jobs:
     needs: [setup, daily-pipeline]
     if: always()
     runs-on: ubuntu-latest
-    
+
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       BAND_LIST_JSON: ${{ needs.setup.outputs.bands_list }}
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -609,7 +609,7 @@ jobs:
           pattern: band-status-*
           path: .github/workflow-status
           merge-multiple: true
-        
+
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
@@ -622,7 +622,7 @@ jobs:
 
       - name: Install dependencies
         run: uv sync --locked --no-dev
-          
+
       - name: Generate pipeline summary header
         run: |
           echo "## Daily Pipeline Summary - $(date)" >> $GITHUB_STEP_SUMMARY
@@ -678,7 +678,7 @@ jobs:
             fi
           done
           uv run python scripts/generate_pipeline_summary.py --bands-json "$BAND_LIST_JSON" "${STATUS_ARGS[@]}" >> $GITHUB_STEP_SUMMARY
-          
+
       - name: Add next steps
         run: |
           echo "" >> $GITHUB_STEP_SUMMARY
