@@ -21,6 +21,7 @@ if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
 from scripts.common import ensure_source_reachable  # type: ignore  # noqa: E402
+from src.jambandnerd.config.bands import get_collection_policy  # noqa: E402
 from src.jambandnerd.data_collection.um.collector import UmCollector  # noqa: E402
 from src.jambandnerd.data_collection.um.normalizer import (  # noqa: E402
     attach_source_hash,
@@ -34,6 +35,7 @@ from src.jambandnerd.data_collection.utils import CollectionTimer  # noqa: E402
 from src.jambandnerd.db.operations import (  # noqa: E402
     dedupe_dataframe_on_conflict,
     fetch_existing_values,
+    fetch_last_collection_timestamp,
     validate_and_upsert_dataframe,
 )
 
@@ -110,16 +112,44 @@ def run_um_collection(
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
     full_backfill: bool = False,
+    incremental: bool = True,
 ) -> None:
-    """Run the Umphrey's McGee data collection workflow."""
+    """Run the Umphrey's McGee data collection workflow.
+
+    Args:
+        skip_validation: Skip Supabase schema validation before upserting.
+        start_date: Earliest show date to collect (YYYY-MM-DD).
+        end_date: Latest show date to collect (YYYY-MM-DD).
+        full_backfill: Re-fetch setlists for all shows regardless of existing rows.
+        incremental: Use timestamp-based incremental collection (default: True).
+    """
     timer = CollectionTimer()
 
     print("Starting Umphrey's McGee data collection...")
     ensure_source_reachable("um")
     collector = UmCollector()
 
+    # Determine collection mode
+    use_incremental = incremental and not full_backfill
+    since_timestamp = None
+
+    if use_incremental:
+        from jambandnerd.db.connection import get_supabase_client
+
+        client = get_supabase_client()
+        since_timestamp = fetch_last_collection_timestamp("um", client=client)
+        if since_timestamp:
+            print(f"Using incremental mode (since: {since_timestamp.isoformat()})")
+        else:
+            print("No previous collection found, falling back to full window mode")
+            use_incremental = False
+
     # Songs -----------------------------------------------------------------
-    songs_data = collector.collect_songs()
+    if use_incremental and since_timestamp:
+        songs_data = collector.collect_songs_incremental(since_timestamp)
+    else:
+        songs_data = collector.collect_songs()
+
     if songs_data:
         songs_df = pd.DataFrame(songs_data)
         songs_df = songs_df.drop_duplicates(subset=["song_id"]).reset_index(drop=True)
@@ -135,6 +165,7 @@ def run_um_collection(
         print("No UM songs returned by API; skipping um_songs_raw upsert.")
 
     # Venues ----------------------------------------------------------------
+    # Venues don't have timestamp fields, so always do full fetch (small dataset)
     venues_data = collector.collect_venues()
     if venues_data:
         venues_df = pd.DataFrame(venues_data)
@@ -152,16 +183,29 @@ def run_um_collection(
     # Shows -----------------------------------------------------------------
     start_dt = _parse_date(start_date)
     end_dt = _parse_date(end_date)
-    if not full_backfill:
-        today = date.today()
-        if start_dt is None:
-            start_dt = max(
-                today - timedelta(days=730), date(collector.EARLIEST_YEAR, 1, 1)
-            )
-        if end_dt is None or end_dt < today:
-            end_dt = today + timedelta(days=90)
 
-    shows_data = collector.collect_shows(start_date=start_dt, end_date=end_dt)
+    if use_incremental and since_timestamp:
+        # Incremental mode: use timestamp + optional date range
+        shows_data = collector.collect_shows_incremental(
+            since_timestamp, start_date=start_dt, end_date=end_dt
+        )
+    else:
+        # Window mode: use date range only
+        if not full_backfill:
+            today = date.today()
+            if start_dt is None:
+                # Use rolling window from collection policy (default: 90 days)
+                policy = get_collection_policy("um")
+                window_days = policy.rolling_window_days or 90
+                start_dt = max(
+                    today - timedelta(days=window_days),
+                    date(collector.EARLIEST_YEAR, 1, 1),
+                )
+            if end_dt is None or end_dt < today:
+                end_dt = today + timedelta(days=90)
+
+        shows_data = collector.collect_shows(start_date=start_dt, end_date=end_dt)
+
     if not shows_data:
         print("No UM shows returned by API; skipping show upsert.")
         _finish_collection(timer, skip_validation=skip_validation)
@@ -177,8 +221,19 @@ def run_um_collection(
     )
     print(f"Upserted {len(shows_df)} shows into um_shows_raw.")
 
-    if full_backfill:
+    # Setlists -------------------------------------------------------------
+    if use_incremental and since_timestamp:
+        # Incremental: fetch setlists updated since timestamp
+        print(
+            f"Collecting setlists incrementally since {since_timestamp.isoformat()}..."
+        )
+        setlists_data = collector.collect_setlists_incremental(
+            since_timestamp, shows_to_process=shows_data
+        )
+    elif full_backfill:
         shows_to_process = shows_data
+        print(f"Collecting setlists for {len(shows_to_process)} shows...")
+        setlists_data = collector.collect_setlists(shows_to_process)
     else:
         # Determine which shows still require setlist collection
         candidate_ids = [str(s["show_id"]) for s in shows_data]
@@ -191,13 +246,16 @@ def run_um_collection(
             s for s in shows_data if str(s["show_id"]) not in existing_ids
         ]
 
-    if not shows_to_process:
-        print("All UM setlists already ingested; no additional collection required.")
-        _finish_collection(timer, skip_validation=skip_validation)
-        return
+        if not shows_to_process:
+            print(
+                "All UM setlists already ingested; no additional collection required."
+            )
+            _finish_collection(timer, skip_validation=skip_validation)
+            return
 
-    print(f"Collecting setlists for {len(shows_to_process)} shows...")
-    setlists_data = collector.collect_setlists(shows_to_process)
+        print(f"Collecting setlists for {len(shows_to_process)} shows...")
+        setlists_data = collector.collect_setlists(shows_to_process)
+
     if not setlists_data:
         print("No UM setlists collected.")
         _finish_collection(timer, skip_validation=skip_validation)
@@ -237,6 +295,11 @@ def _build_argument_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Re-fetch setlists for all shows regardless of existing rows.",
     )
+    parser.add_argument(
+        "--no-incremental",
+        action="store_true",
+        help="Disable incremental collection (force full window refresh).",
+    )
     return parser
 
 
@@ -248,6 +311,7 @@ def main() -> None:
         start_date=args.start_date,
         end_date=args.end_date,
         full_backfill=args.full_backfill,
+        incremental=not args.no_incremental,
     )
 
 

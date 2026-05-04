@@ -939,7 +939,7 @@ def check_prediction_staleness(
 
         if not is_fresh:
             logger.warning(
-                "Predictions for %s/%s are stale: " "%.1fh old (max: %sh)",
+                "Predictions for %s/%s are stale: %.1fh old (max: %sh)",
                 band,
                 model_version,
                 age_hours,
@@ -967,6 +967,56 @@ def fetch_active_bands() -> list[dict[str, Any]]:
     except Exception as e:
         logger.warning("Failed to fetch active bands from registry: %s", e)
         return []
+
+
+def fetch_last_collection_timestamp(
+    band: str,
+    *,
+    status: str = "success",
+    client=None,
+) -> datetime | None:
+    """Fetch the timestamp of the last successful collection run for a band.
+
+    Args:
+        band: Band slug (e.g., "eggy", "um").
+        status: Filter by run status (default: "success").
+        client: Optional Supabase client instance.
+
+    Returns:
+        datetime of the last successful collection, or None if no runs found.
+    """
+    try:
+        client = client or get_supabase_client()
+        response = (
+            client.table("collection_runs")
+            .select("created_at")
+            .eq("band", band)
+            .eq("status", status)
+            .order("created_at", desc=True)
+            .limit(1)
+            .execute()
+        )
+
+        if not response.data:
+            return None
+
+        created_at = response.data[0].get("created_at")
+        if not created_at:
+            return None
+
+        # Parse ISO timestamp string to datetime
+        if isinstance(created_at, str):
+            # Handle both with and without timezone
+            try:
+                return datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+            except ValueError:
+                # Try parsing as simple datetime
+                return datetime.strptime(created_at, "%Y-%m-%dT%H:%M:%S.%f")
+        return created_at
+
+    except Exception as e:
+        logger.warning("Failed to fetch last collection timestamp for %s: %s", band, e)
+        return None
 
 
 def fetch_scored_show_ids(
