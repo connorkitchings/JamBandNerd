@@ -366,7 +366,7 @@ jobs:
         env:
           AUDIT_PATH: .github/workflow-audits/${{ matrix.band }}.json
           BACKTEST_INCREMENTAL_ALL_SCORED: ${{ steps.accuracy_calc.outputs.backtest_incremental_all_scored }}
-          WORKFLOW_STATE: ${{ steps.collection.outputs.workflow_state || steps.collection_idle.outputs.workflow_state || 'unknown' }}
+          WORKFLOW_STATE: ${{ (steps.data_check.outputs.missing_data == 'true' && 'degraded') || steps.collection.outputs.workflow_state || steps.collection_idle.outputs.workflow_state || 'unknown' }}
         run: |
           echo "::group::Auditing website-facing Supabase tables for ${{ matrix.band }}"
 
@@ -586,7 +586,7 @@ jobs:
         if: always() && steps.preflight.outputs.should_run_collection == 'true'
         env:
           BAND: ${{ matrix.band }}
-          WORKFLOW_STATE: ${{ steps.collection.outputs.workflow_state || steps.collection_idle.outputs.workflow_state || (job.status == 'success' && 'success' || 'failed') }}
+          WORKFLOW_STATE: ${{ (steps.data_check.outputs.missing_data == 'true' && 'degraded') || steps.collection.outputs.workflow_state || steps.collection_idle.outputs.workflow_state || (job.status == 'success' && 'success' || 'failed') }}
           FRESHNESS_STATE: ${{ steps.freshness_audit.outputs.freshness_state || 'unknown' }}
           STALE_PREDICTION_MODELS: ${{ steps.freshness_audit.outputs.stale_prediction_models || '' }}
           STALE_ACCURACY_MODELS: ${{ steps.freshness_audit.outputs.stale_accuracy_models || '' }}
