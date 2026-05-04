@@ -35,29 +35,27 @@ class TransitionMatrix:
         df["song_name"] = df["song_name"].astype(str).str.strip()
         df = df.sort_values(["show_id", "set_number", "song_position"])
 
-        prev_song: str | None = None
-        prev_show_id: str | None = None
-        prev_set_number: int | None = None
+        df["show_id"] = df["show_id"].astype(str)
+        df["set_number"] = df["set_number"].astype(int)
+        df["_prev_song"] = df["song_name"].shift(1)
+        df["_prev_show"] = df["show_id"].shift(1)
+        df["_prev_set"] = df["set_number"].shift(1)
 
-        for _, row in df.iterrows():
-            show_id = str(row["show_id"])
-            set_number = int(row["set_number"])
-            song = str(row["song_name"])
+        same_group = (df["show_id"] == df["_prev_show"]) & (
+            df["set_number"] == df["_prev_set"]
+        )
+        pairs = df.loc[same_group & df["_prev_song"].notna()]
 
-            if (
-                prev_song is not None
-                and show_id == prev_show_id
-                and set_number == prev_set_number
-            ):
-                key = (prev_song, song)
-                self._transitions[key] = self._transitions.get(key, 0) + 1
-                self._prefix_counts[prev_song] = (
-                    self._prefix_counts.get(prev_song, 0) + 1
-                )
-
-            prev_song = song
-            prev_show_id = show_id
-            prev_set_number = set_number
+        if not pairs.empty:
+            pair_counts = (
+                pairs.groupby(["_prev_song", "song_name"])
+                .size()
+                .to_dict()
+            )
+            prefix_counts = pairs.groupby("_prev_song").size().to_dict()
+            self._transitions.update(pair_counts)
+            for song, cnt in prefix_counts.items():
+                self._prefix_counts[song] = self._prefix_counts.get(song, 0) + cnt
 
         return self
 
@@ -79,3 +77,15 @@ class TransitionMatrix:
                     candidates.append((b, prob))
         candidates.sort(key=lambda x: (-x[1], x[0]))
         return candidates[:n]
+
+    def as_nested_dict(self) -> Dict[str, Dict[str, float]]:
+        nested: Dict[str, Dict[str, float]] = {}
+        for (a, b), count in self._transitions.items():
+            prefix = self._prefix_counts.get(a, 0)
+            if prefix == 0:
+                continue
+            prob = count / prefix
+            if a not in nested:
+                nested[a] = {}
+            nested[a][b] = prob
+        return nested

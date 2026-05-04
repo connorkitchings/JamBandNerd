@@ -17,7 +17,6 @@ to 0.0.
 
 from __future__ import annotations
 
-import math
 from typing import Any
 
 import numpy as np
@@ -32,6 +31,54 @@ COOCCURRENCE_FEATURES: list[str] = [
 ]
 
 _DEFAULT_DECAY_SHOWS: float = 80.0
+
+
+def _build_cooccurrence_numpy(
+    historical_plays: pd.DataFrame,
+    *,
+    decay_shows: float = _DEFAULT_DECAY_SHOWS,
+) -> tuple[np.ndarray, np.ndarray, list[str], dict[str, int]] | None:
+    if historical_plays.empty:
+        return None
+    if "show_index" not in historical_plays.columns:
+        return None
+
+    valid = historical_plays.dropna(subset=["show_index"])
+    if valid.empty:
+        return None
+
+    max_index = int(valid["show_index"].max())
+
+    unique_songs = sorted(valid["song_name"].astype(str).unique())
+    song_to_idx = {s: i for i, s in enumerate(unique_songs)}
+    n_songs = len(unique_songs)
+
+    unique_shows = sorted(valid["show_index"].astype(int).unique())
+    show_to_col = {idx: col for col, idx in enumerate(unique_shows)}
+    n_shows = len(unique_shows)
+
+    if decay_shows == float("inf"):
+        weights = np.ones(n_shows, dtype=np.float64)
+    else:
+        weights = np.exp(
+            -(max_index - np.array(unique_shows, dtype=np.float64)) / decay_shows
+        )
+
+    pairs = valid[["song_name", "show_index"]].drop_duplicates()
+    s_idx = pairs["song_name"].astype(str).map(song_to_idx).values.astype(int)
+    sh_idx = pairs["show_index"].astype(int).map(show_to_col).values.astype(int)
+
+    presence = np.zeros((n_songs, n_shows), dtype=np.float64)
+    presence[s_idx, sh_idx] = 1.0
+
+    weighted_presence = presence @ weights
+    weighted_P = presence * weights[np.newaxis, :]
+    overlap = weighted_P @ presence.T
+
+    safe_wp = np.where(weighted_presence > 0, weighted_presence, 1.0)
+    normalized = overlap / safe_wp[:, np.newaxis]
+
+    return normalized, weighted_presence, unique_songs, song_to_idx
 
 
 def build_cooccurrence_matrix(
@@ -61,61 +108,27 @@ def build_cooccurrence_matrix(
     The forward direction ``(song_a, song_b)`` is the weighted fraction of
     song_a's presence that overlaps with song_b.
     """
-    if historical_plays.empty:
+    result = _build_cooccurrence_numpy(historical_plays, decay_shows=decay_shows)
+    if result is None:
         return {}
 
-    plays = historical_plays.copy()
-    if "show_index" not in plays.columns:
-        return {}
+    normalized, weighted_presence, unique_songs, _ = result
+    n_songs = len(unique_songs)
 
-    max_index = int(plays["show_index"].max())
-
-    show_weights: dict[int, float] = {}
-    for idx in plays["show_index"].dropna().astype(int).unique():
-        if decay_shows == float("inf"):
-            show_weights[idx] = 1.0
-        else:
-            show_weights[idx] = math.exp(-(max_index - idx) / decay_shows)
-
-    songs_in_show: dict[int, set[str]] = {}
-    for show_index, group in plays.groupby("show_index"):
-        songs_in_show[int(show_index)] = set(group["song_name"].astype(str).unique())
-
-    weighted_presence: dict[str, float] = {}
-    all_songs: set[str] = set()
-    for songs in songs_in_show.values():
-        all_songs.update(songs)
-
-    for song in all_songs:
-        wp = 0.0
-        for show_idx, songs in songs_in_show.items():
-            if song in songs:
-                wp += show_weights.get(show_idx, 0.0)
-        weighted_presence[song] = wp
-
-    sorted_songs = sorted(all_songs)
     matrix: dict[tuple[str, str], float] = {}
-    for i, song_a in enumerate(sorted_songs):
-        for song_b in sorted_songs[i:]:
-            overlap = 0.0
-            for show_idx, songs in songs_in_show.items():
-                if song_a in songs and song_b in songs:
-                    overlap += show_weights.get(show_idx, 0.0)
-
-            wa = weighted_presence.get(song_a, 0.0)
-            wb = weighted_presence.get(song_b, 0.0)
-            key = (song_a, song_b)
-            matrix_val = overlap / wa if wa > 0 else 0.0
-            matrix[key] = matrix_val
-            if song_a != song_b:
-                reverse_key = (song_b, song_a)
-                matrix[reverse_key] = overlap / wb if wb > 0 else 0.0
+    for i in range(n_songs):
+        song_a = unique_songs[i]
+        for j in range(n_songs):
+            song_b = unique_songs[j]
+            if weighted_presence[i] <= 0 and weighted_presence[j] <= 0:
+                val = 0.0
+            elif weighted_presence[i] <= 0:
+                val = 0.0
+            else:
+                val = float(normalized[i, j])
+            matrix[(song_a, song_b)] = val
 
     return matrix
-
-
-def _lookup(matrix: dict[tuple[str, str], float], a: str, b: str) -> float:
-    return matrix.get((a, b), 0.0)
 
 
 def compute_cooccurrence_features(
@@ -146,9 +159,10 @@ def compute_cooccurrence_features(
     pd.DataFrame
         Columns ``["song_name", *COOCCURRENCE_FEATURES]``.
     """
-    empty = pd.DataFrame(columns=["song_name"] + COOCCURRENCE_FEATURES)
+    empty_cols = ["song_name"] + COOCCURRENCE_FEATURES
 
     if historical_plays.empty or not recently_played_songs:
+        empty = pd.DataFrame(columns=empty_cols)
         if candidate_song_names:
             empty["song_name"] = candidate_song_names
         elif not historical_plays.empty:
@@ -157,59 +171,92 @@ def compute_cooccurrence_features(
             empty[col] = 0.0
         return empty
 
-    matrix = build_cooccurrence_matrix(historical_plays, decay_shows=decay_shows)
-    if not matrix:
-        if candidate_song_names:
-            empty["song_name"] = candidate_song_names
-        else:
-            empty["song_name"] = sorted(
-                historical_plays["song_name"].astype(str).unique()
-            )
-        for col in COOCCURRENCE_FEATURES:
-            empty[col] = 0.0
-        return empty
-
-    recent_set = set(recently_played_songs)
-    last_played = recently_played_songs[-1] if recently_played_songs else None
-
     all_songs: list[str]
     if candidate_song_names is not None:
         all_songs = list(candidate_song_names)
     else:
         all_songs = sorted(historical_plays["song_name"].astype(str).unique())
 
-    affinity_scores: dict[str, float] = {}
+    result = _build_cooccurrence_numpy(historical_plays, decay_shows=decay_shows)
+    if result is None:
+        empty = pd.DataFrame(columns=empty_cols)
+        empty["song_name"] = all_songs
+        for col in COOCCURRENCE_FEATURES:
+            empty[col] = 0.0
+        return empty
+
+    normalized, _, unique_songs, song_to_idx = result
+
+    recent_set = set(recently_played_songs)
+    last_played = recently_played_songs[-1] if recently_played_songs else None
+
+    recent_in_matrix = [r for r in recent_set if r in song_to_idx]
+    if not recent_in_matrix:
+        empty = pd.DataFrame(columns=empty_cols)
+        empty["song_name"] = all_songs
+        for col in COOCCURRENCE_FEATURES:
+            empty[col] = 0.0
+        return empty
+
+    recent_col_indices = np.array([song_to_idx[r] for r in recent_in_matrix], dtype=int)
+
+    candidate_in_matrix = [s for s in all_songs if s in song_to_idx]
+    candidate_not_in_matrix = [s for s in all_songs if s not in song_to_idx]
+
     records: list[dict[str, Any]] = []
-    for song in all_songs:
-        co_values = [_lookup(matrix, song, r) for r in recent_set if r != song]
-        if not co_values:
-            co_values = [0.0]
 
-        avg_co = float(np.mean(co_values))
-        max_co = float(np.max(co_values))
-        n_strong = sum(1 for v in co_values if v > 0.5)
-        last_co = (
-            _lookup(matrix, song, last_played)
-            if last_played and last_played != song
-            else 0.0
+    if candidate_in_matrix:
+        cand_row_indices = np.array(
+            [song_to_idx[s] for s in candidate_in_matrix], dtype=int
         )
+        sub = normalized[np.ix_(cand_row_indices, recent_col_indices)]
 
-        affinity_scores[song] = avg_co
+        self_mask = cand_row_indices[:, np.newaxis] != recent_col_indices[np.newaxis, :]
+        valid_count = self_mask.sum(axis=1).astype(float)
+        valid_count = np.where(valid_count == 0, 1.0, valid_count)
+        sub_zeroed = np.where(self_mask, sub, 0.0)
+
+        avg_co_arr = sub_zeroed.sum(axis=1) / valid_count
+        max_co_arr = np.where(self_mask, sub, -1.0).max(axis=1)
+        max_co_arr = np.maximum(max_co_arr, 0.0)
+        n_strong_arr = (sub_zeroed > 0.5).sum(axis=1).astype(float)
+
+        if last_played and last_played in song_to_idx:
+            last_col = song_to_idx[last_played]
+            last_co_arr = normalized[cand_row_indices, last_col].copy()
+            for k, s in enumerate(candidate_in_matrix):
+                if s == last_played:
+                    last_co_arr[k] = 0.0
+        else:
+            last_co_arr = np.zeros(len(candidate_in_matrix))
+
+        affinity = avg_co_arr.copy()
+        sorted_order = np.argsort(-affinity)
+        rank = np.empty_like(sorted_order, dtype=float)
+        rank[sorted_order] = np.arange(len(sorted_order), dtype=float)
+
+        for k, song in enumerate(candidate_in_matrix):
+            records.append(
+                {
+                    "song_name": song,
+                    "avg_cooccurrence_with_recent": float(avg_co_arr[k]),
+                    "max_cooccurrence_with_recent": float(max_co_arr[k]),
+                    "n_strong_pairs_recent": float(n_strong_arr[k]),
+                    "cooccurrence_with_last_played": float(last_co_arr[k]),
+                    "pair_affinity_rank": float(rank[k]),
+                }
+            )
+
+    for song in candidate_not_in_matrix:
         records.append(
             {
                 "song_name": song,
-                "avg_cooccurrence_with_recent": avg_co,
-                "max_cooccurrence_with_recent": max_co,
-                "n_strong_pairs_recent": float(n_strong),
-                "cooccurrence_with_last_played": last_co,
+                "avg_cooccurrence_with_recent": 0.0,
+                "max_cooccurrence_with_recent": 0.0,
+                "n_strong_pairs_recent": 0.0,
+                "cooccurrence_with_last_played": 0.0,
                 "pair_affinity_rank": 0.0,
             }
         )
-
-    if records:
-        sorted_songs = sorted(affinity_scores, key=affinity_scores.get, reverse=True)
-        rank_map = {song: float(rank) for rank, song in enumerate(sorted_songs)}
-        for rec in records:
-            rec["pair_affinity_rank"] = rank_map.get(rec["song_name"], 0.0)
 
     return pd.DataFrame(records)

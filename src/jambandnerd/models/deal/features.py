@@ -124,7 +124,6 @@ def generate_deal_features(
 
     reference_date = pd.Timestamp(model_data.reference_date)
     reference_index = model_data.reference_index
-    features: list[dict[str, Any]] = []
 
     shows_in_6mo = max(
         1,
@@ -142,38 +141,82 @@ def generate_deal_features(
     )
     total_shows = max(1, plays["show_index"].nunique())
 
-    for song_name, song_plays in plays.groupby("song_name"):
-        plays_idx = sorted(song_plays["show_index"].unique().tolist())
-        if len(plays_idx) < min_plays_threshold:
-            continue
+    song_show_counts = plays.groupby("song_name")["show_index"].nunique()
+    eligible_songs = song_show_counts[song_show_counts >= min_plays_threshold].index
 
-        n_shows_6mo = song_plays[
-            (song_plays["show_date"] >= reference_date - timedelta(days=182))
-            & (song_plays["show_date"] < reference_date)
-        ]["show_index"].nunique()
-        n_shows_1yr = song_plays[
-            (song_plays["show_date"] >= reference_date - timedelta(days=365))
-            & (song_plays["show_date"] < reference_date)
-        ]["show_index"].nunique()
-        n_shows_2yr = song_plays[
-            (song_plays["show_date"] >= reference_date - timedelta(days=730))
-            & (song_plays["show_date"] < reference_date)
-        ]["show_index"].nunique()
-        recent_plays_50 = int(
-            sum(play_index >= reference_index - 50 for play_index in plays_idx)
+    if eligible_songs.empty:
+        return pd.DataFrame(
+            columns=[
+                "song_name",
+                *DEAL_FEATURE_COLUMNS,
+                "recent_plays_50",
+                "last_played_date",
+                "total_plays",
+            ]
         )
 
+    mask_6mo = (plays["show_date"] >= reference_date - timedelta(days=182)) & (
+        plays["show_date"] < reference_date
+    )
+    mask_1yr = (plays["show_date"] >= reference_date - timedelta(days=365)) & (
+        plays["show_date"] < reference_date
+    )
+    mask_2yr = (plays["show_date"] >= reference_date - timedelta(days=730)) & (
+        plays["show_date"] < reference_date
+    )
+
+    n_6mo = plays[mask_6mo].groupby("song_name")["show_index"].nunique().reindex(eligible_songs, fill_value=0)
+    n_1yr = plays[mask_1yr].groupby("song_name")["show_index"].nunique().reindex(eligible_songs, fill_value=0)
+    n_2yr = plays[mask_2yr].groupby("song_name")["show_index"].nunique().reindex(eligible_songs, fill_value=0)
+
+    recent_mask = plays["show_index"] >= (reference_index - 50)
+    recent_50 = plays[recent_mask].groupby("song_name")["show_index"].nunique().reindex(eligible_songs, fill_value=0)
+
+    sorted_plays = plays.sort_values(["song_name", "show_index"])
+    last_plays = sorted_plays.groupby("song_name").last()
+    last_plays = last_plays.reindex(eligible_songs)
+
+    debut_idx = plays.groupby("song_name")["show_index"].min().reindex(eligible_songs)
+
+    total_per_song = song_show_counts.reindex(eligible_songs)
+
+    song_plays_map: dict[str, list[int]] = {}
+    for song_name, group in plays[plays["song_name"].isin(eligible_songs)].groupby("song_name"):
+        song_plays_map[song_name] = sorted(group["show_index"].unique().tolist())
+
+    venue_counts = plays.groupby(["song_name", "venue_name"])["show_index"].nunique()
+    state_counts = plays.groupby(["song_name", "state"])["show_index"].nunique()
+
+    features: list[dict[str, Any]] = []
+    for song_name in eligible_songs:
+        plays_idx = song_plays_map[song_name]
         ltp = _compute_ltp_features(plays_idx, reference_index)
-        total_plays = len(plays_idx)
-        debut_show_index = plays_idx[0]
+        total_plays = int(total_per_song[song_name])
+        debut_show_index = int(debut_idx[song_name])
         debut_age_shows = reference_index - debut_show_index
+        n_shows_6mo = int(n_6mo[song_name])
+        n_shows_1yr = int(n_1yr[song_name])
+        n_shows_2yr = int(n_2yr[song_name])
         pct_shows_6mo = n_shows_6mo / shows_in_6mo
         pct_shows_1yr = n_shows_1yr / shows_in_1yr
         pct_shows_all_time = total_plays / total_shows
 
-        last_play_row = song_plays.sort_values("show_index").iloc[-1]
-        venue_name = last_play_row.get("venue_name")
-        state = last_play_row.get("state")
+        venue_name = last_plays.loc[song_name].get("venue_name") if pd.notna(last_plays.loc[song_name].get("venue_name")) else None
+        state = last_plays.loc[song_name].get("state") if pd.notna(last_plays.loc[song_name].get("state")) else None
+
+        n_same_venue = 0
+        if venue_name:
+            try:
+                n_same_venue = int(venue_counts.loc[(song_name, venue_name)])
+            except KeyError:
+                n_same_venue = 0
+
+        n_same_state = 0
+        if state:
+            try:
+                n_same_state = int(state_counts.loc[(song_name, state)])
+            except KeyError:
+                n_same_state = 0
 
         features.append(
             {
@@ -183,37 +226,23 @@ def generate_deal_features(
                 "recent_avg_ltp": ltp["recent_avg_ltp"],
                 "overdue_metric": ltp["overdue_metric"],
                 "gap_z_score": ltp["gap_z_score"],
-                "plays_past_year": int(n_shows_1yr),
-                "plays_past_2yr": int(n_shows_2yr),
-                "recent_plays_50": recent_plays_50,
+                "plays_past_year": n_shows_1yr,
+                "plays_past_2yr": n_shows_2yr,
+                "recent_plays_50": int(recent_50[song_name]),
                 "pct_shows_6mo": pct_shows_6mo,
                 "pct_shows_1yr": pct_shows_1yr,
                 "pct_shows_all_time": pct_shows_all_time,
                 "diff_6mo_to_1yr": pct_shows_6mo - pct_shows_1yr,
                 "diff_1yr_to_alltime": pct_shows_1yr - pct_shows_all_time,
-                "n_shows_same_venue": (
-                    int(
-                        song_plays[song_plays["venue_name"] == venue_name][
-                            "show_index"
-                        ].nunique()
-                    )
-                    if venue_name
-                    else 0
-                ),
-                "n_shows_same_state": (
-                    int(
-                        song_plays[song_plays["state"] == state]["show_index"].nunique()
-                    )
-                    if state
-                    else 0
-                ),
+                "n_shows_same_venue": n_same_venue,
+                "n_shows_same_state": n_same_state,
                 "debut_age_shows": debut_age_shows,
                 "career_play_pct": (
                     total_plays / debut_age_shows if debut_age_shows > 0 else 0.0
                 ),
                 "novelty_rank": 0,
-                "last_played_date": pd.Timestamp(last_play_row["show_date"]),
-                "total_plays": int(total_plays),
+                "last_played_date": pd.Timestamp(last_plays.loc[song_name, "show_date"]),
+                "total_plays": total_plays,
                 "_debut_show_index": debut_show_index,
             }
         )

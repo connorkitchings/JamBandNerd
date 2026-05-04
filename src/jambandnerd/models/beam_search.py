@@ -53,6 +53,8 @@ def beam_search(
 
     import math
 
+    trans_dict = transition_matrix.as_nested_dict()
+
     openers = sorted(all_songs, key=lambda s: -stage1_probs[s])[:beam_width]
     beam: List[BeamPath] = []
     for song in openers:
@@ -64,6 +66,7 @@ def beam_search(
 
         for path in beam:
             last_song = path.songs[-1]
+            last_trans = trans_dict.get(last_song, {})
 
             for song in all_songs:
                 if song in path.used:
@@ -73,7 +76,7 @@ def beam_search(
                 if s1_prob <= 0.0:
                     continue
 
-                trans_prob = transition_matrix.get_probability(last_song, song)
+                trans_prob = last_trans.get(song)
                 joint_prob = s1_prob * trans_prob if trans_prob is not None else s1_prob
 
                 log_joint = path.log_prob + math.log(max(joint_prob, 1e-12))
@@ -90,17 +93,21 @@ def beam_search(
         candidates_for_step.sort(key=lambda x: -x[0])
         beam = [path for _, path in candidates_for_step[:beam_width]]
 
-    song_max_scores: Dict[str, float] = {}
+    song_max_log: Dict[str, float] = {}
     for path in beam:
-        for i, song in enumerate(path.songs):
-            path_prob = math.exp(path.log_prob)
-            if song not in song_max_scores or path_prob > song_max_scores[song]:
-                song_max_scores[song] = path_prob
+        for song in path.songs:
+            if song not in song_max_log or path.log_prob > song_max_log[song]:
+                song_max_log[song] = path.log_prob
 
-    ranked = sorted(all_songs, key=lambda s: -song_max_scores.get(s, 0.0))
+    ranked = sorted(all_songs, key=lambda s: -song_max_log.get(s, float("-inf")))
+
+    max_log = max(song_max_log.values()) if song_max_log else 0.0
+    song_scores: Dict[str, float] = {}
+    for song, log_p in song_max_log.items():
+        song_scores[song] = math.exp(log_p - max_log)
 
     return BeamSearchResult(
         ranked_songs=ranked,
-        song_scores=song_max_scores,
+        song_scores=song_scores,
         paths=beam,
     )

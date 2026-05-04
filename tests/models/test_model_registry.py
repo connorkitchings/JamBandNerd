@@ -5,6 +5,7 @@ import pytest
 from jambandnerd.models.baseline.predictor import BaselinePredictor
 from jambandnerd.models.billy.fast_predictor import BillyFastBaselinePredictor
 from jambandnerd.models.goose.model import GoosePredictor
+from jambandnerd.models.phish.fast_predictor import PhishFastPredictor
 from src.jambandnerd.models.registry import (
     build_band_predictor,
     build_predictor,
@@ -66,7 +67,7 @@ def test_band_predictor_dispatches_goose_to_phase_b_model() -> None:
 
     assert isinstance(goose, GoosePredictor)
     assert isinstance(billy, BillyFastBaselinePredictor)
-    assert isinstance(phish, BaselinePredictor)
+    assert isinstance(phish, PhishFastPredictor)
     assert get_band_model_version("goose") == "goose_phase_b_v1"
     assert get_band_model_version("billy") == "billy_fast_gbm_v3"
 

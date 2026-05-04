@@ -1,0 +1,4 @@
+Loaded 1220 records from local snapshot for billy_shows_raw (.snapshots/billy_phase_b).
+Loaded 19533 records from local snapshot for billy_setlists_raw (.snapshots/billy_phase_b).
+[BILLY/deal_v2] Backtesting 100 shows (2025-02-14 – 2026-04-18)
+  [1/100] 2025-02-14 (show_id=68)

@@ -351,6 +351,40 @@ class PhishFastPredictor(PredictionModel):
         self._cache: dict | None = None
         self.diagnostic_feature_columns = list(PHISH_FAST_DIAGNOSTIC_FEATURE_COLS)
 
+    # ── Extension hooks ────────────────────────────────────────────────────────
+
+    def _extra_training_row_features(
+        self,
+        *,
+        eligible_songs: pd.Index,
+        j: int,
+        target_date: Any,
+        gap_e: pd.Series,
+        career_pct: pd.Series,
+        p25: pd.Series,
+        p50: pd.Series,
+        cache: dict,
+        plays: pd.DataFrame,
+        target_show_index: int,
+    ) -> dict:
+        return {}
+
+    def _extra_predict_features(
+        self,
+        *,
+        eligible_songs: pd.Index,
+        n_shows: int,
+        ref_date: pd.Timestamp,
+        gap_e: pd.Series,
+        career_pct: pd.Series,
+        p25: pd.Series,
+        p50: pd.Series,
+        cache: dict,
+        plays: pd.DataFrame,
+        target_show_context: Any,
+    ) -> dict:
+        return {}
+
     # ── Matrix build ───────────────────────────────────────────────────────────
 
     def _prepare(self, plays: pd.DataFrame) -> dict:
@@ -609,11 +643,25 @@ class PhishFastPredictor(PredictionModel):
             career_pct = total_e / max(1, j)
 
             sd = show_date_map.get(int(show_cols[j]))
+            target_date = pd.Timestamp(sd).date() if sd is not None else None
             target_month = pd.Timestamp(sd).month if sd is not None else 1
             month_before = month_cums[target_month].iloc[:, ref_col].loc[eligible_songs]
             mpr = (month_before / total_e.clip(lower=1)).fillna(0.0)
 
             labels = presence.iloc[:, j].loc[eligible_songs].astype(float)
+
+            extra = self._extra_training_row_features(
+                eligible_songs=eligible_songs,
+                j=j,
+                target_date=target_date,
+                gap_e=gap_e,
+                career_pct=career_pct,
+                p25=p25,
+                p50=p50,
+                cache=cache,
+                plays=plays,
+                target_show_index=int(show_cols[j]),
+            )
 
             rows.append(
                 pd.DataFrame(
@@ -625,6 +673,7 @@ class PhishFastPredictor(PredictionModel):
                         "plays_past_2yr": p2yr.values,
                         "career_play_pct": career_pct.values,
                         "month_play_rate": mpr.values,
+                        **extra,
                         "label": labels.values,
                     }
                 )
@@ -765,6 +814,19 @@ class PhishFastPredictor(PredictionModel):
         month_before = month_cums[target_month].iloc[:, ref_col].loc[eligible_songs]
         mpr = (month_before / total_e.clip(lower=1)).fillna(0.0)
 
+        extra = self._extra_predict_features(
+            eligible_songs=eligible_songs,
+            n_shows=n_shows,
+            ref_date=ref_date,
+            gap_e=gap_e,
+            career_pct=career_pct,
+            p25=p25,
+            p50=p50,
+            cache=cache,
+            plays=plays,
+            target_show_context=model_data.target_show_context,
+        )
+
         X = pd.DataFrame(
             {
                 "gap_shows": gap_e.values,
@@ -774,6 +836,7 @@ class PhishFastPredictor(PredictionModel):
                 "plays_past_2yr": p2yr.values,
                 "career_play_pct": career_pct.values,
                 "month_play_rate": mpr.values,
+                **extra,
             },
             index=eligible_songs,
         )
@@ -791,3 +854,142 @@ class PhishFastPredictor(PredictionModel):
             )
             for i in order
         ]
+
+
+# ── PhishFastPredictorV2 ──────────────────────────────────────────────────────
+
+
+PHISH_FAST_V2_FEATURE_COLS: list[str] = [
+    *PHISH_FAST_FEATURE_COLS,
+    "tour_position",
+    "diff_25_to_50",
+    "show_position_in_run",
+    "same_venue_run_position",
+    "plays_past_3",
+    "plays_past_5",
+    "overdue_ratio",
+    "avg_ltp_recent",
+    "ltp_diff_recent",
+]
+
+
+class PhishFastPredictorV2(PhishFastPredictor):
+    """PhishFast v2 — extended features + per-show LightGBM early stopping.
+
+    Adds BillyFast V3-equivalent features (tour/run context, short-window
+    recency, rotation analytics) plus early stopping. Total: 16 features.
+    """
+
+    MODEL_VERSION = "phish_fast_gbm_v2"
+    _FEATURE_COLS: list[str] = PHISH_FAST_V2_FEATURE_COLS
+    _LGB_ROUNDS: int = 500
+    _EARLY_STOPPING_ROUNDS: int | None = 25
+
+    def _extra_training_row_features(
+        self,
+        *,
+        eligible_songs: pd.Index,
+        j: int,
+        target_date: Any,
+        gap_e: pd.Series,
+        career_pct: pd.Series,
+        p25: pd.Series,
+        p50: pd.Series,
+        cache: dict,
+        plays: pd.DataFrame,
+        target_show_index: int,
+    ) -> dict:
+        col_dates = cache["col_dates"]
+        col_venues = cache["col_venues"]
+
+        prior_dates = [d for d in col_dates[:j] if d is not None]
+        if target_date is None:
+            tour_pos = 1.0
+            run_pos = 1.0
+        else:
+            tour_pos = float(_tour_position(prior_dates, target_date, tour_gap_days=14))
+            run_pos = float(_run_position(prior_dates, target_date, gap_days=1))
+
+        pct25 = p25 / max(1, min(25, j))
+        pct50 = p50 / max(1, min(50, j))
+        diff = (pct25 - pct50).values
+
+        target_venue = col_venues[j] if j < len(col_venues) else None
+        if target_venue:
+            target_context = normalize_target_show_context({"venue_name": target_venue})
+            if normalized_venue_key(target_context):
+                sub_plays = plays[plays["show_index"] < target_show_index]
+                same_run_indices = same_venue_run_show_indices(
+                    sub_plays, target_context
+                )
+                same_run_position = float(len(same_run_indices) + 1)
+            else:
+                same_run_position = 0.0
+        else:
+            same_run_position = 0.0
+
+        cum = cache["cum"]
+        p3 = _window_plays(cum, j, 3).loc[eligible_songs]
+        p5 = _window_plays(cum, j, 5).loc[eligible_songs]
+        window = max(1, min(25, j))
+        avg_ltp = window / p25.clip(lower=1).values
+
+        return {
+            "tour_position": tour_pos,
+            "diff_25_to_50": diff,
+            "show_position_in_run": run_pos,
+            "same_venue_run_position": same_run_position,
+            "plays_past_3": p3.values,
+            "plays_past_5": p5.values,
+            "overdue_ratio": (gap_e * career_pct).values,
+            "avg_ltp_recent": avg_ltp,
+            "ltp_diff_recent": gap_e.values - avg_ltp,
+        }
+
+    def _extra_predict_features(
+        self,
+        *,
+        eligible_songs: pd.Index,
+        n_shows: int,
+        ref_date: pd.Timestamp,
+        gap_e: pd.Series,
+        career_pct: pd.Series,
+        p25: pd.Series,
+        p50: pd.Series,
+        cache: dict,
+        plays: pd.DataFrame,
+        target_show_context: Any,
+    ) -> dict:
+        col_dates = cache["col_dates"]
+        prior_dates = [d for d in col_dates if d is not None]
+        tour_pos = float(_tour_position(prior_dates, ref_date.date(), tour_gap_days=14))
+        run_pos = float(_run_position(prior_dates, ref_date.date(), gap_days=1))
+
+        pct25 = p25 / max(1, min(25, n_shows))
+        pct50 = p50 / max(1, min(50, n_shows))
+        diff = (pct25 - pct50).values
+
+        normalized_ctx = normalize_target_show_context(target_show_context or {})
+        if normalized_venue_key(normalized_ctx):
+            same_run_indices = same_venue_run_show_indices(plays, normalized_ctx)
+            same_run_position = float(len(same_run_indices) + 1)
+        else:
+            same_run_position = 0.0
+
+        cum = cache["cum"]
+        p3 = _window_plays(cum, n_shows, 3).loc[eligible_songs]
+        p5 = _window_plays(cum, n_shows, 5).loc[eligible_songs]
+        window = max(1, min(25, n_shows))
+        avg_ltp = window / p25.clip(lower=1).values
+
+        return {
+            "tour_position": tour_pos,
+            "diff_25_to_50": diff,
+            "show_position_in_run": run_pos,
+            "same_venue_run_position": same_run_position,
+            "plays_past_3": p3.values,
+            "plays_past_5": p5.values,
+            "overdue_ratio": (gap_e * career_pct).values,
+            "avg_ltp_recent": avg_ltp,
+            "ltp_diff_recent": gap_e.values - avg_ltp,
+        }
