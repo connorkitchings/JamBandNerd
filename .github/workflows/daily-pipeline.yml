@@ -375,6 +375,9 @@ jobs:
           if [[ "${{ github.event.inputs.skip_accuracy }}" == "true" || "${BACKTEST_INCREMENTAL_ALL_SCORED}" == "true" || "${WORKFLOW_STATE}" == "degraded" ]]; then
             ARGS+=(--skip-accuracy)
           fi
+          if [[ "${WORKFLOW_STATE}" == "degraded" ]]; then
+            ARGS+=(--degraded)
+          fi
 
           set +e
           uv run python -m scripts.audit_supabase_tables "${ARGS[@]}"
