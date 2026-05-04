@@ -77,6 +77,11 @@ def test_um_collection_refreshes_upcoming_when_setlists_already_ingested(monkeyp
         "_upsert",
         lambda table_name, *_args, **_kwargs: upserted_tables.append(table_name),
     )
+    monkeypatch.setattr(
+        run_um_collection,
+        "fetch_last_collection_timestamp",
+        lambda *_args, **_kwargs: None,
+    )
 
     run_um_collection.run_um_collection()
 
