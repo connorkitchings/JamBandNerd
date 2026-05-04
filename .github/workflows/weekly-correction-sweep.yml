@@ -173,7 +173,7 @@ jobs:
 
       - name: Upload Sweep Report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: correction-sweep-report-${{ needs.setup.outputs.band }}-${{ github.run_id }}
           path: correction_sweep_report.json
