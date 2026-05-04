@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pandas as pd
 
+from jambandnerd.db import connection as db_connection
 from scripts import run_um_collection
-from src.jambandnerd.db import connection as db_connection
 
 
 def test_um_upsert_dedupes_duplicate_conflict_keys(monkeypatch):
