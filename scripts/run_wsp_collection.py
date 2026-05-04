@@ -10,12 +10,13 @@ from __future__ import annotations
 import logging
 import os
 import sys
-from datetime import datetime
+from datetime import date, timedelta
 
 # Add the project root to the Python path
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, project_root)
 
+from src.jambandnerd.config.bands import get_collection_policy
 from src.jambandnerd.data_collection.wsp.orchestration import process_wsp_data
 from src.jambandnerd.data_collection.wsp.status import CollectionStatus
 
@@ -31,12 +32,21 @@ def run_wsp_collection(
     full_backfill: bool = False,
 ) -> CollectionStatus:
     """Runs the Widespread Panic data collection pipeline."""
+    start_date = None
+    end_date = None
+
     if not full_backfill and year_start is None and year_end is None:
-        current_year = datetime.now().year
-        year_start = current_year - 1
-        year_end = current_year
+        # Use rolling_window_days from collection policy (default: 90 days)
+        policy = get_collection_policy("wsp")
+        window_days = policy.rolling_window_days or 730
+
+        today = date.today()
+        start_date = today - timedelta(days=window_days)
+        end_date = today + timedelta(days=90)  # Include upcoming shows
+
         logging.info(
-            f"Defaulting to show collection for years: {year_start}-{year_end}"
+            f"Defaulting to show collection window: {start_date.isoformat()} to {end_date.isoformat()} "
+            f"({window_days} days historical + 90 days upcoming)"
         )
 
     try:
@@ -44,6 +54,8 @@ def run_wsp_collection(
             skip_existing_setlists=skip_existing_setlists,
             year_start=year_start,
             year_end=year_end,
+            start_date=start_date,
+            end_date=end_date,
             full_backfill=full_backfill,
         )
         _write_github_outputs(status)
@@ -115,7 +127,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # Example of runs:
-    # uv run python scripts/run_wsp_collection.py                    # Default: last year + this year
+    # uv run python scripts/run_wsp_collection.py                    # Default: 90-day rolling window + upcoming
     # uv run python scripts/run_wsp_collection.py --year_start 2023 --year_end 2023  # Specific year
     # uv run python scripts/run_wsp_collection.py --full_backfill   # All historical data
     try:

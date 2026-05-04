@@ -403,6 +403,8 @@ def process_wsp_data(
     skip_existing_setlists: bool = True,
     year_start: int | None = None,
     year_end: int | None = None,
+    start_date: date | None = None,
+    end_date: date | None = None,
     full_backfill: bool = False,
 ) -> CollectionStatus:
     """Collect all WSP data and store it in Supabase raw tables."""
@@ -441,9 +443,16 @@ def process_wsp_data(
 
     # 2. Collect and Upsert Shows
     logging.info("--- Starting WSP Show Collection ---")
+
+    # Determine date range: explicit dates take precedence over years
+    if start_date is None and year_start is not None:
+        start_date = datetime(year_start, 1, 1).date()
+    if end_date is None and year_end is not None:
+        end_date = datetime(year_end, 12, 31).date()
+
     shows_data = collector.collect_shows(
-        start_date=datetime(year_start, 1, 1).date() if year_start else None,
-        end_date=datetime(year_end, 12, 31).date() if year_end else None,
+        start_date=start_date,
+        end_date=end_date,
     )
 
     if shows_data:
@@ -505,9 +514,21 @@ def process_wsp_data(
         logging.info(f"Upserted {len(venues_df)} venues into wsp_venues_raw.")
     logging.info("--- Finished WSP Venue Collection ---")
 
-    # 4. Fetch shows from DB for the specified year range
+    # 4. Fetch shows from DB for the specified date range
     if not full_backfill:
-        if year_start and year_end:
+        if start_date and end_date:
+            logging.info(
+                f"Fetching shows from database for date range {start_date.isoformat()} to {end_date.isoformat()}..."
+            )
+            shows_response = (
+                client.table("wsp_shows_raw")
+                .select("*")
+                .gte("show_date", start_date.isoformat())
+                .lte("show_date", end_date.isoformat())
+                .execute()
+            )
+            shows_to_process_df = pd.DataFrame(shows_response.data)
+        elif year_start and year_end:
             logging.info(
                 f"Fetching shows from database for years {year_start}-{year_end}..."
             )
