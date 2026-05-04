@@ -3,6 +3,7 @@ from __future__ import annotations
 import pandas as pd
 
 from scripts import run_um_collection
+from src.jambandnerd.db import connection as db_connection
 
 
 def test_um_upsert_dedupes_duplicate_conflict_keys(monkeypatch):
@@ -81,6 +82,12 @@ def test_um_collection_refreshes_upcoming_when_setlists_already_ingested(monkeyp
         run_um_collection,
         "fetch_last_collection_timestamp",
         lambda *_args, **_kwargs: None,
+    )
+    # Mock get_supabase_client to avoid requiring environment variables in tests
+    monkeypatch.setattr(
+        db_connection,
+        "get_supabase_client",
+        lambda: None,
     )
 
     run_um_collection.run_um_collection()
