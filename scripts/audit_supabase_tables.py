@@ -188,6 +188,7 @@ def _derive_model_audit(
     replay_window_override: int | None,
     freshness_result,
     skip_accuracy: bool,
+    degraded: bool = False,
 ) -> SupabaseModelAudit:
     blockers: list[str] = []
     warnings: list[str] = []
@@ -268,7 +269,10 @@ def _derive_model_audit(
                 datetime.now(timezone.utc) - generated_at
             ).total_seconds() / 3600
             if latest_prediction_age_hours > max_age_hours:
-                _append_unique(blockers, "canonical_predictions_stale")
+                _append_unique(
+                    warnings if degraded else blockers,
+                    "canonical_predictions_stale",
+                )
 
         if latest_reference_date:
             projection_rows = fetch_prediction_songs_for_date(
@@ -360,7 +364,10 @@ def _derive_model_audit(
             )
 
     if definition.slug in freshness_result.stale_prediction_models:
-        _append_unique(blockers, "supported_prediction_freshness_stale")
+        _append_unique(
+            warnings if degraded else blockers,
+            "supported_prediction_freshness_stale",
+        )
     if definition.slug in freshness_result.stale_accuracy_models:
         target = warnings if skip_accuracy else blockers
         _append_unique(
@@ -409,6 +416,7 @@ def run_supabase_audit(
     max_age_hours: int = 72,
     replay_window: int | None = None,
     skip_accuracy: bool = False,
+    degraded: bool = False,
 ) -> SupabaseAuditReport:
     selected_bands = bands or list(get_repo_supported_bands())
     promoted_models = list_promoted_web_models()
@@ -443,6 +451,7 @@ def run_supabase_audit(
                 replay_window_override=replay_window,
                 freshness_result=freshness_result,
                 skip_accuracy=skip_accuracy,
+                degraded=degraded,
             )
             for definition in promoted_models
         )
@@ -579,6 +588,11 @@ def main() -> None:
         action="store_true",
         help="Treat stale accuracy freshness as a warning for this run.",
     )
+    parser.add_argument(
+        "--degraded",
+        action="store_true",
+        help="Treat stale prediction freshness as a warning (degraded-band mode).",
+    )
     args = parser.parse_args()
 
     report = run_supabase_audit(
@@ -586,6 +600,7 @@ def main() -> None:
         max_age_hours=args.max_age_hours,
         replay_window=args.replay_window,
         skip_accuracy=args.skip_accuracy,
+        degraded=args.degraded,
     )
     if args.output:
         _write_report(args.output, report)

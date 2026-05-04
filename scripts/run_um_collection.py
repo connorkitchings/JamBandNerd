@@ -106,6 +106,16 @@ def _finish_collection(timer: CollectionTimer, *, skip_validation: bool) -> None
     print("UM collection complete.")
 
 
+def _emit_github_output(**kwargs: str) -> None:
+    """Write key=value pairs to GITHUB_OUTPUT if available."""
+    output_path = os.environ.get("GITHUB_OUTPUT")
+    if not output_path:
+        return
+    with open(output_path, "a", encoding="utf-8") as handle:
+        for key, value in kwargs.items():
+            handle.write(f"{key}={value}\n")
+
+
 def run_um_collection(
     *,
     skip_validation: bool = False,
@@ -126,7 +136,18 @@ def run_um_collection(
     timer = CollectionTimer()
 
     print("Starting Umphrey's McGee data collection...")
-    ensure_source_reachable("um")
+    try:
+        ensure_source_reachable("um")
+    except RuntimeError as exc:
+        _emit_github_output(
+            workflow_state="degraded",
+            outcome_code="degraded_upstream_blocked",
+            should_retry_collection="false",
+            recent_data_usable="true",
+            prediction_action="reused_existing",
+            failure_reason=str(exc),
+        )
+        raise
     collector = UmCollector()
 
     # Determine collection mode

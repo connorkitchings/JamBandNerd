@@ -349,6 +349,8 @@ class WSPCollector(BandCollector):
                             show_date = datetime.strptime(
                                 f"{month}/{day}/{full_year}", "%m/%d/%Y"
                             ).date()
+                            if show_date > date.today():
+                                continue
                         except (ValueError, IndexError) as date_error:
                             logger.debug(
                                 f"Skipping link due to date parse error: {link_text} | Error: {date_error}"
