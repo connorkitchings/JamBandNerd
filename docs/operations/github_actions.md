@@ -70,6 +70,7 @@ The primary production workflow. Collects raw data, generates predictions, runs 
 - WSP upstream blocking is degraded only when recent completed-show data is still usable.
 - Recent completed-show setlist gaps from upstream blocking remain hard failures.
 - Supported-model freshness is a separate enforcement path from collection success:
+  - `WORKFLOW_STATE` is resolved from `steps.collection.outputs.workflow_state`, with `missing_data` (from `Verify Data Freshness`) overriding to `"degraded"` when true — this ensures upstream blocking that logs warnings rather than exceptions still triggers degraded handling
   - when `WORKFLOW_STATE == "degraded"`: stale predictions and stale accuracy emit `::warning::` only (no job failure). Degraded bands cannot regenerate predictions; staleness is expected and surfaced in the summary
   - when `WORKFLOW_STATE != "degraded"`: stale predictions and stale accuracy are hard failures (unless `skip_accuracy=true` or `backtest_incremental_all_scored=true`). If regeneration completed but freshness is still stale, something else is wrong
   - when incremental backtest finds all shows in the window already scored, accuracy staleness is expected and not enforced (scores are immutable; the backtest emits `backtest_incremental_all_scored=true`)
