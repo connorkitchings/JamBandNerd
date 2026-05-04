@@ -27,6 +27,7 @@ from src.jambandnerd.data_collection.billy.normalizer import (
     normalize_songs,
 )
 from src.jambandnerd.data_collection.utils import CollectionTimer
+from src.jambandnerd.db.connection import get_supabase_client
 from src.jambandnerd.db.operations import (
     fetch_existing_values,
     fetch_rows_by_column_values,
@@ -41,6 +42,26 @@ def _parse_date(date_str: Optional[str]) -> Optional[date]:
         return datetime.strptime(date_str, "%Y-%m-%d").date()
     except ValueError:
         raise argparse.ArgumentTypeError(f"Invalid date '{date_str}'. Use YYYY-MM-DD.")
+
+
+def _get_db_show_count_for_window(
+    start_date: Optional[date], end_date: Optional[date]
+) -> int:
+    """Get the current show count from DB for the given date window."""
+    try:
+        client = get_supabase_client()
+        query = client.table("billy_shows_raw").select("*", count="exact")
+
+        if start_date:
+            query = query.gte("show_date", start_date.isoformat())
+        if end_date:
+            query = query.lte("show_date", end_date.isoformat())
+
+        response = query.limit(0).execute()
+        return response.count or 0
+    except Exception as exc:
+        print(f"Warning: Could not fetch DB show count ({exc})")
+        return -1
 
 
 def _emit_github_output(**kwargs: str) -> None:
@@ -60,6 +81,8 @@ def run_billy_collection(
     skip_existing_setlists: bool = True,
     full_backfill: bool = False,
     skip_setlists: bool = False,
+    skip_if_unchanged: bool = True,
+    force: bool = False,
 ) -> None:
     print("Starting Billy Strings data collection...")
     timer = CollectionTimer()
@@ -96,6 +119,31 @@ def run_billy_collection(
         )
 
     collector = BillyCollector()
+
+    # Check if collection is needed based on show count
+    if skip_if_unchanged and not force and not full_backfill:
+        print("Checking for new shows...")
+        db_count = _get_db_show_count_for_window(start_dt, end_dt)
+
+        if db_count >= 0:
+            upstream_count = collector.peek_show_count(
+                start_date=start_dt, end_date=end_dt
+            )
+
+            if upstream_count == db_count:
+                print(
+                    f"✓ Billy Strings show count unchanged ({db_count} shows). Skipping collection."
+                )
+                timer.log("billy")
+                return
+            else:
+                print(
+                    f"✗ Show count changed: DB={db_count}, Upstream={upstream_count}. Running collection..."
+                )
+        else:
+            print("Could not determine DB show count. Proceeding with collection...")
+    elif force:
+        print("Force flag set. Proceeding with collection...")
 
     # Songs
     songs_data = collector.collect_songs()
@@ -237,6 +285,16 @@ def _build_cli() -> argparse.ArgumentParser:
         action="store_true",
         help="Scrape the full show history (overrides the default rolling window)",
     )
+    parser.add_argument(
+        "--no-skip-unchanged",
+        action="store_true",
+        help="Disable show count comparison (always run collection).",
+    )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Force collection even if show counts match.",
+    )
     return parser
 
 
@@ -249,6 +307,8 @@ def main() -> None:
         end_date=args.end_date,
         full_backfill=args.full_backfill,
         skip_setlists=args.skip_setlists,
+        skip_if_unchanged=not args.no_skip_unchanged,
+        force=args.force,
     )
 
 

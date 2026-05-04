@@ -63,13 +63,13 @@ COLLECTION_POLICIES: Final[dict[str, CollectionPolicy]] = {
     ),
     "phish": CollectionPolicy(
         collection_mode="window_refresh",
-        rolling_window_days=730,
+        rolling_window_days=90,  # Reduced from 730 for daily efficiency
         supports_upstream_update_timestamp=True,
         skip_existing_setlists=False,
     ),
     "wsp": CollectionPolicy(
         collection_mode="window_refresh",
-        rolling_window_days=730,
+        rolling_window_days=90,  # Reduced from 730 for daily efficiency
         skip_existing_setlists=True,
     ),
     "billy": CollectionPolicy(
@@ -79,7 +79,7 @@ COLLECTION_POLICIES: Final[dict[str, CollectionPolicy]] = {
     ),
     "um": CollectionPolicy(
         collection_mode="window_refresh",
-        rolling_window_days=730,
+        rolling_window_days=90,  # Reduced from 730 for daily efficiency
         skip_existing_setlists=True,
     ),
 }

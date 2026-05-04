@@ -26,13 +26,63 @@ from src.jambandnerd.data_collection.utils import CollectionTimer  # noqa: E402
 from src.jambandnerd.db.connection import get_supabase_client  # noqa: E402
 
 
-def run_goose_collection(skip_validation: bool = False) -> None:
-    """Collect all Goose data and store it in Supabase raw tables."""
+def _get_db_show_count(client) -> int:
+    """Get the current show count from the database."""
+    try:
+        response = (
+            client.table("goose_shows_raw")
+            .select("*", count="exact")
+            .limit(0)
+            .execute()
+        )
+        return response.count or 0
+    except Exception as exc:
+        print(f"Warning: Could not fetch DB show count ({exc})")
+        return -1
+
+
+def run_goose_collection(
+    skip_validation: bool = False,
+    skip_if_unchanged: bool = True,
+    force: bool = False,
+) -> None:
+    """Collect all Goose data and store it in Supabase raw tables.
+
+    Args:
+        skip_validation: Bypass schema validation before upserts.
+        skip_if_unchanged: Skip collection if upstream show count matches DB.
+        force: Force collection even if counts match.
+    """
     timer = CollectionTimer()
     print("Starting Goose data collection...")
     ensure_source_reachable("goose")
     collector = GooseCollector()
-    get_supabase_client()
+    client = get_supabase_client()
+
+    # Check if we can skip collection based on show count
+    if skip_if_unchanged and not force:
+        print("Checking for new shows...")
+        db_count = _get_db_show_count(client)
+
+        if db_count >= 0:
+            # Peek at upstream show count without full fetch
+            upstream_shows = collector.collect_shows()
+            upstream_count = len(upstream_shows)
+
+            if upstream_count == db_count:
+                print(
+                    f"✓ Goose show count unchanged ({db_count} shows). Skipping collection."
+                )
+                timer.log("goose")
+                return
+            else:
+                print(
+                    f"✗ Show count changed: DB={db_count}, Upstream={upstream_count}. Running collection..."
+                )
+        else:
+            print("Could not determine DB show count. Proceeding with collection...")
+    elif force:
+        print("Force flag set. Proceeding with collection...")
 
     upsert_table(
         "goose_songs_raw",
@@ -79,8 +129,22 @@ def main() -> None:
         action="store_true",
         help="Bypass schema validation before upserts",
     )
+    parser.add_argument(
+        "--no-skip-unchanged",
+        action="store_true",
+        help="Disable show count comparison (always run collection).",
+    )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Force collection even if show counts match.",
+    )
     args = parser.parse_args()
-    run_goose_collection(skip_validation=args.skip_validation)
+    run_goose_collection(
+        skip_validation=args.skip_validation,
+        skip_if_unchanged=not args.no_skip_unchanged,
+        force=args.force,
+    )
 
 
 if __name__ == "__main__":
