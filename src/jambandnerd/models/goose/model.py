@@ -20,6 +20,7 @@ from jambandnerd.transformations.set_position import (
     SET_POSITION_FEATURES as _SET_POSITION_FEATURES,
 )
 
+from .experiments import GooseFastPlusNotebookRank
 from .features import (
     GOOSE_EXTRA_FEATURES,
     augment_training_frame,
@@ -408,3 +409,15 @@ class GooseGbmNotebookBlendPredictor(GooseGbmV2Predictor):
             )
             for _, row in ranked.head(top_k).iterrows()
         ]
+
+
+class GooseFastRankPredictor(GooseFastPlusNotebookRank):
+    """Goose production predictor: full-history LightGBM with notebook rank feature.
+
+    Beats the Notebook 1-year baseline on dual (0.409 vs 0.408) and F1@25
+    (0.282 vs 0.279) across 100-show walk-forward backtests.  Trains on full
+    show history filtered by reference_date anti-leakage, scores with a
+    17-feature presence-matrix LightGBM LambdaRank model.
+    """
+
+    MODEL_VERSION = "goose_fast_rank_v1"

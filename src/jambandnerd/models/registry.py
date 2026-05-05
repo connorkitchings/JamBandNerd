@@ -16,7 +16,7 @@ from jambandnerd.models.deal.model import DealPredictor
 from jambandnerd.models.deal.serialization import (
     serialize_predictions as serialize_deal_predictions,
 )
-from jambandnerd.models.goose.model import GooseNotebookFloorPredictor
+from jambandnerd.models.goose.model import GooseFastRankPredictor
 from jambandnerd.models.metadata import (
     BAND_METADATA,
     MODEL_METADATA,
@@ -225,7 +225,7 @@ _BAND_METADATA_MAP: dict[str, BandMetadata] = {m.band: m for m in BAND_METADATA}
 
 _BAND_PREDICTOR_CLASSES: dict[str, type[PredictionModel]] = {
     "billy": BillyFastBaselinePredictor,
-    "goose": GooseNotebookFloorPredictor,
+    "goose": GooseFastRankPredictor,
     "phish": PhishFastPredictor,
 }
 

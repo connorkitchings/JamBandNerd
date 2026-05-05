@@ -50,8 +50,8 @@ class BandMetadata:
 BAND_METADATA: tuple[BandMetadata, ...] = (
     BandMetadata(
         band="goose",
-        model_version="goose_notebook_floor_v1",
-        notes="Goose-owned Notebook 1-year floor promoted after matching notebook_v1 100-show metrics.",
+        model_version="goose_fast_rank_v1",
+        notes="Full-history LightGBM with notebook_rank_score feature. Beats Notebook baseline (dual 0.409 vs 0.408).",
     ),
     BandMetadata(band="phish", model_version="phish_fast_gbm_v1"),
     BandMetadata(band="wsp", model_version="wsp_baseline_v1"),

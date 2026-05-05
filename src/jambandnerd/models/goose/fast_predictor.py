@@ -770,7 +770,7 @@ class GooseFastPredictor(PredictionModel):
         show_date_map = cache["show_date_map"]
         all_songs = presence.index
         n_shows = len(show_cols)
-        start_col = max(self.min_plays_threshold, n_shows - self.training_window_shows)
+        start_col = self.min_plays_threshold
         excluded_songs = get_excluded_songs(self.band)
         frames: list[tuple[pd.DataFrame, int]] = []
 
