@@ -29,6 +29,7 @@ from scripts.run_phase_b_backtest import run_phase_b_backtest
 # Per-band base predictor class for HP sweeps.
 _BASE_PREDICTOR_PATHS: dict[str, str] = {
     "goose": "jambandnerd.models.goose.fast_predictor.GooseFastPredictor",
+    "phish": "jambandnerd.models.phish.fast_predictor.PhishFastPredictorV2",
 }
 
 

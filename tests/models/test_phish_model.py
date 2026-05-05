@@ -6,10 +6,11 @@ from datetime import date
 import pandas as pd
 import pytest
 
+from jambandnerd.models.phish.experiments import PHISH_SWEEPS
 from jambandnerd.models.phish.fast_predictor import (
-    PHISH_FAST_DIAGNOSTIC_FEATURE_COLS,
     PHISH_FAST_FEATURE_COLS,
     PhishFastPredictor,
+    PhishFastPredictorV2,
     PhishPrediction,
     _build_gap_matrix,
     _build_presence,
@@ -18,9 +19,19 @@ from jambandnerd.models.phish.fast_predictor import (
     _run_position,
     _tour_position,
     _window_plays,
-    _window_plays_by_days,
 )
 from jambandnerd.transformations.gaps import ModelData
+
+
+def _model_data(plays: pd.DataFrame, reference_date: date) -> ModelData:
+    return ModelData(
+        historical_plays=plays,
+        master_feature_set=pd.DataFrame(),
+        reference_date=reference_date,
+        reference_index=0,
+        recently_played_songs=[],
+        diagnostics={},
+    )
 
 
 class TestPhishFastPredictor:
@@ -51,6 +62,13 @@ class TestPhishFastPredictor:
         assert "plays_past_2yr" in predictor.diagnostic_feature_columns
         assert "tour_position" in predictor.diagnostic_feature_columns
 
+    def test_v2_defaults(self):
+        """Test V2 is available as an experiment incumbent."""
+        predictor = PhishFastPredictorV2()
+        assert predictor.MODEL_VERSION == "phish_fast_gbm_v2"
+        assert predictor._EARLY_STOPPING_ROUNDS == 25
+        assert "plays_past_5" in predictor._FEATURE_COLS
+
 
 class TestHelperFunctions:
     """Test helper functions."""
@@ -76,9 +94,9 @@ class TestHelperFunctions:
         plays["show_date"] = pd.to_datetime(plays["show_date"])
         presence, show_cols = _build_presence(plays)
         assert presence.shape == (2, 2)  # 2 songs, 2 shows
-        assert presence.loc["Song A", 1] == True
-        assert presence.loc["Song A", 2] == True
-        assert presence.loc["Song B", 2] == False
+        assert presence.loc["Song A", 1]
+        assert presence.loc["Song A", 2]
+        assert not presence.loc["Song B", 2]
 
     def test_build_gap_matrix(self):
         """Test gap matrix building."""
@@ -90,8 +108,8 @@ class TestHelperFunctions:
         plays["show_date"] = pd.to_datetime(plays["show_date"])
         presence, _ = _build_presence(plays)
         gap_mat = _build_gap_matrix(presence)
-        # At column 4 (show 4), gap since last play (show 2) should be 2
-        assert gap_mat.loc["Song A", 4] == 2.0
+        # Gap matrix uses dense show-column positions, not raw show_id deltas.
+        assert gap_mat.loc["Song A", 4] == 1.0
 
     def test_window_plays(self):
         """Test window play counting."""
@@ -102,7 +120,7 @@ class TestHelperFunctions:
         })
         presence, _ = _build_presence(plays)
         cum = presence.astype(float).cumsum(axis=1)
-        # At show 5, plays in last 2 shows (shows 3-4)
+        # upper_col is the first dense column not included, so this counts shows 4-5.
         window_plays = _window_plays(cum, 5, 2)
         assert window_plays.loc["Song A"] == 2.0
 
@@ -114,8 +132,8 @@ class TestHelperFunctions:
             date(2024, 1, 3),
         ]
         target = date(2024, 1, 4)
-        # Consecutive days, so position should be 4 (4th in run)
-        assert _run_position(dates, target, gap_days=1) == 4
+        # Only the immediately preceding date is within the 1-day continuation gap.
+        assert _run_position(dates, target, gap_days=1) == 2
 
     def test_tour_position(self):
         """Test tour position calculation."""
@@ -125,8 +143,8 @@ class TestHelperFunctions:
             date(2024, 1, 20),
         ]
         target = date(2024, 1, 25)
-        # Within 14 days of last show, so position should be 4
-        assert _tour_position(dates, target, tour_gap_days=14) == 4
+        # The previous show is within 14 days; the one before it is 15 days away.
+        assert _tour_position(dates, target, tour_gap_days=14) == 2
 
 
 class TestCandidatePruning:
@@ -135,9 +153,8 @@ class TestCandidatePruning:
     def test_get_candidate_songs_basic(self):
         """Test candidate selection with recent + top career."""
         # Create presence matrix with 200 shows
-        songs = [f"Song {i}" for i in range(10)]
         show_indices = list(range(1, 201))
-        
+
         # Song 0: played in last 50 shows only
         # Song 1: played early only (career high)
         # Song 2: played throughout
@@ -149,17 +166,18 @@ class TestCandidatePruning:
             if show_idx <= 50:  # Early shows
                 data.append({"song_name": "Song 1", "show_index": show_idx})
                 data.append({"song_name": "Song 2", "show_index": show_idx})
-        
+
         plays = pd.DataFrame(data)
         plays["show_date"] = pd.date_range("2020-01-01", periods=len(data))
         presence, _ = _build_presence(plays)
+        presence = presence.reindex(columns=show_indices, fill_value=False)
         cum = presence.astype(float).cumsum(axis=1)
-        
+
         # Get candidates at show 200
         candidates = _get_candidate_songs(
             presence, cum, ref_col=199, recent_shows=50, top_career=5
         )
-        
+
         # Should include Song 0 (recent) and Song 1 (top career) and Song 2 (both)
         assert "Song 0" in candidates
         assert "Song 1" in candidates
@@ -181,6 +199,23 @@ class TestPredictionResult:
         assert pred.gap_shows == 5
 
 
+class TestPhishExperiments:
+    """Test Phish experiment sweep registration."""
+
+    def test_sweeps_are_registered(self):
+        assert set(PHISH_SWEEPS) == {"hp_sweep", "feature_sweep"}
+        assert len(PHISH_SWEEPS["hp_sweep"]) >= 1
+        assert len(PHISH_SWEEPS["feature_sweep"]) >= 1
+
+    def test_feature_sweep_uses_explicit_predictors(self):
+        predictor_paths = [
+            config.predictor_path for config in PHISH_SWEEPS["feature_sweep"]
+        ]
+        assert all(
+            path.startswith("jambandnerd.models.phish.") for path in predictor_paths
+        )
+
+
 class TestIntegration:
     """Integration tests with sample data."""
 
@@ -193,10 +228,7 @@ class TestIntegration:
             "show_index": [1],
             "show_date": pd.to_datetime(["2024-01-01"]),
         })
-        model_data = ModelData(
-            historical_plays=plays,
-            reference_date=date(2024, 1, 2),
-        )
+        model_data = _model_data(plays, date(2024, 1, 2))
         predictions = predictor.predict(model_data, top_k=10)
         assert predictions == []
 
@@ -208,10 +240,7 @@ class TestIntegration:
             "show_index": [],
             "show_date": [],
         })
-        model_data = ModelData(
-            historical_plays=plays,
-            reference_date=date(2024, 1, 1),
-        )
+        model_data = _model_data(plays, date(2024, 1, 1))
         predictor.train(model_data)  # Should not raise
         assert predictor._model is None
 
@@ -224,10 +253,7 @@ class TestIntegration:
             "show_index": list(range(1, 6)),
             "show_date": pd.date_range("2024-01-01", periods=5),
         })
-        model_data = ModelData(
-            historical_plays=plays,
-            reference_date=date(2024, 1, 6),
-        )
+        model_data = _model_data(plays, date(2024, 1, 6))
         predictor.train(model_data)
         # Should have no model since not enough training data
         assert predictor._model is None
