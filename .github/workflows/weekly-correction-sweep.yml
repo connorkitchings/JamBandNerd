@@ -1,0 +1,233 @@
+name: Weekly Correction Sweep
+
+on:
+  schedule:
+    # Tuesdays at staggered times (UTC)
+    # 14:00 UTC = 10:00 AM ET (Goose)
+    # 15:00 UTC = 11:00 AM ET (Phish)
+    # 16:00 UTC = 12:00 PM ET (Eggy)
+    # 17:00 UTC = 1:00 PM ET (Billy)
+    # 18:00 UTC = 2:00 PM ET (WSP)
+    # 19:00 UTC = 3:00 PM ET (UM)
+    - cron: '0 14 * * 2'  # Tuesday 10 AM ET - Goose
+    - cron: '0 15 * * 2'  # Tuesday 11 AM ET - Phish
+    - cron: '0 16 * * 2'  # Tuesday 12 PM ET - Eggy
+    - cron: '0 17 * * 2'  # Tuesday 1 PM ET - Billy
+    - cron: '0 18 * * 2'  # Tuesday 2 PM ET - WSP
+    - cron: '0 19 * * 2'  # Tuesday 3 PM ET - UM
+  workflow_dispatch:
+    inputs:
+      band:
+        description: 'Run sweep for a specific band (or all)'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - billy
+          - eggy
+          - goose
+          - phish
+          - um
+          - wsp
+      window_days:
+        description: 'Number of days to look back for corrections'
+        required: false
+        default: '730'
+        type: string
+      dry_run:
+        description: 'Run in dry-run mode (detect only, do not apply)'
+        required: false
+        default: true
+        type: boolean
+
+jobs:
+  setup:
+    name: Setup Sweep Parameters
+    runs-on: ubuntu-latest
+    outputs:
+      bands: ${{ steps.determine-band.outputs.bands }}
+      is_multi: ${{ steps.determine-band.outputs.is_multi }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Determine target band
+        id: determine-band
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            INPUT_BAND="${{ github.event.inputs.band || 'all' }}"
+            if [[ "$INPUT_BAND" == "all" ]]; then
+              BANDS_JSON=$(python -m scripts.get_all_bands)
+              echo "is_multi=true" >> $GITHUB_OUTPUT
+            else
+              BANDS_JSON="[\"$INPUT_BAND\"]"
+              echo "is_multi=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            CURRENT_HOUR=$(date -u +%H)
+            case $CURRENT_HOUR in
+              14) BAND="goose" ;;
+              15) BAND="phish" ;;
+              16) BAND="eggy" ;;
+              17) BAND="billy" ;;
+              18) BAND="wsp" ;;
+              19) BAND="um" ;;
+              *) BAND="unknown" ;;
+            esac
+            if [[ "$BAND" == "unknown" ]]; then
+              echo "::error::Could not determine band from scheduled hour: $CURRENT_HOUR"
+              exit 1
+            fi
+            BANDS_JSON="[\"$BAND\"]"
+            echo "is_multi=false" >> $GITHUB_OUTPUT
+            echo "Running scheduled correction sweep for: $BAND"
+          fi
+          echo "bands=$BANDS_JSON" >> $GITHUB_OUTPUT
+
+  correction-sweep:
+    name: Correction Sweep - ${{ matrix.band }}
+    needs: setup
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      matrix:
+        band: ${{ fromJson(needs.setup.outputs.bands) }}
+      fail-fast: false
+
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      PHISH_API_KEY: ${{ secrets.PHISH_API_KEY }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Validate required secrets
+        run: |
+          MISSING=()
+          BAND="${{ matrix.band }}"
+
+          if [[ -z "$SUPABASE_URL" ]]; then
+            MISSING+=("SUPABASE_URL")
+          fi
+
+          if [[ -z "$SUPABASE_SERVICE_ROLE_KEY" ]]; then
+            MISSING+=("SUPABASE_SERVICE_ROLE_KEY")
+          fi
+
+          if [[ "$BAND" == "phish" && -z "$PHISH_API_KEY" ]]; then
+            MISSING+=("PHISH_API_KEY (required for phish only)")
+          fi
+
+          if [[ ${#MISSING[@]} -gt 0 ]]; then
+            echo "::error::Missing required secrets: ${MISSING[*]}"
+            exit 1
+          fi
+
+          echo "All required secrets are configured"
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: uv sync --locked --no-dev
+
+      - name: Install Playwright OS Dependencies
+        if: matrix.band == 'wsp' || matrix.band == 'eggy'
+        run: uv run python -m playwright install-deps firefox
+
+      - name: Cache Playwright Browsers
+        if: matrix.band == 'wsp' || matrix.band == 'eggy'
+        uses: actions/cache@v5
+        id: playwright-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-firefox-${{ hashFiles('uv.lock') }}
+
+      - name: Install Playwright Browsers
+        if: (matrix.band == 'wsp' || matrix.band == 'eggy') && steps.playwright-cache.outputs.cache-hit != 'true'
+        run: uv run python -m playwright install firefox
+
+      - name: Run Correction Sweep
+        id: sweep
+        run: |
+          BAND="${{ matrix.band }}"
+          WINDOW_DAYS="${{ github.event.inputs.window_days || '730' }}"
+          DRY_RUN_FLAG=""
+
+          if [[ "${{ github.event_name }}" == "schedule" ]]; then
+            echo "Running in LIVE mode (scheduled)"
+          elif [[ "${{ github.event.inputs.dry_run }}" != "false" ]]; then
+            DRY_RUN_FLAG="--dry-run"
+            echo "Running in DRY-RUN mode (corrections will be detected but not applied)"
+          else
+            echo "Running in LIVE mode (manual)"
+          fi
+
+          echo "::group::Running correction sweep for $BAND (window: $WINDOW_DAYS days)"
+
+          uv run python scripts/run_correction_sweep.py \
+            --band "$BAND" \
+            --window-days "$WINDOW_DAYS" \
+            $DRY_RUN_FLAG
+
+          echo "::endgroup::"
+
+      - name: Upload Sweep Report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: correction-sweep-report-${{ matrix.band }}-${{ github.run_id }}
+          path: correction_sweep_report_${{ matrix.band }}.json
+          if-no-files-found: ignore
+
+      - name: Notify on Completion
+        if: always()
+        run: |
+          BAND="${{ matrix.band }}"
+          STATUS="${{ steps.sweep.outcome }}"
+
+          if [[ "$STATUS" == "success" ]]; then
+            echo "Correction sweep completed successfully for $BAND"
+          else
+            echo "Correction sweep failed for $BAND"
+          fi
+
+  sweep-summary:
+    name: Sweep Summary
+    needs: [setup, correction-sweep]
+    if: always() && needs.setup.outputs.is_multi == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all reports
+        uses: actions/download-artifact@v8
+        with:
+          pattern: correction-sweep-report-*
+          merge-multiple: true
+
+      - name: Generate Summary
+        run: |
+          echo "## Weekly Correction Sweep Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if ls correction_sweep_report_*.json 1> /dev/null 2>&1; then
+            for report in correction_sweep_report_*.json; do
+              echo "- $report" >> $GITHUB_STEP_SUMMARY
+            done
+          else
+            echo "No correction reports generated." >> $GITHUB_STEP_SUMMARY
+          fi
