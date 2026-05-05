@@ -1,4 +1,5 @@
 """Tests for PhishFastPredictor."""
+
 from __future__ import annotations
 
 from datetime import date
@@ -75,22 +76,26 @@ class TestHelperFunctions:
 
     def test_clean_plays_basic(self):
         """Test basic play cleaning."""
-        plays = pd.DataFrame({
-            "song_name": ["Song A", "Song B"],
-            "show_index": [1, 1],
-            "show_date": ["2024-01-01", "2024-01-01"],
-        })
+        plays = pd.DataFrame(
+            {
+                "song_name": ["Song A", "Song B"],
+                "show_index": [1, 1],
+                "show_date": ["2024-01-01", "2024-01-01"],
+            }
+        )
         cleaned = _clean_plays(plays)
         assert len(cleaned) == 2
         assert cleaned["show_index"].dtype == int
 
     def test_build_presence(self):
         """Test presence matrix building."""
-        plays = pd.DataFrame({
-            "song_name": ["Song A", "Song A", "Song B"],
-            "show_index": [1, 2, 1],
-            "show_date": ["2024-01-01", "2024-01-02", "2024-01-01"],
-        })
+        plays = pd.DataFrame(
+            {
+                "song_name": ["Song A", "Song A", "Song B"],
+                "show_index": [1, 2, 1],
+                "show_date": ["2024-01-01", "2024-01-02", "2024-01-01"],
+            }
+        )
         plays["show_date"] = pd.to_datetime(plays["show_date"])
         presence, show_cols = _build_presence(plays)
         assert presence.shape == (2, 2)  # 2 songs, 2 shows
@@ -100,11 +105,13 @@ class TestHelperFunctions:
 
     def test_build_gap_matrix(self):
         """Test gap matrix building."""
-        plays = pd.DataFrame({
-            "song_name": ["Song A", "Song A", "Song A"],
-            "show_index": [1, 2, 4],
-            "show_date": ["2024-01-01", "2024-01-02", "2024-01-04"],
-        })
+        plays = pd.DataFrame(
+            {
+                "song_name": ["Song A", "Song A", "Song A"],
+                "show_index": [1, 2, 4],
+                "show_date": ["2024-01-01", "2024-01-02", "2024-01-04"],
+            }
+        )
         plays["show_date"] = pd.to_datetime(plays["show_date"])
         presence, _ = _build_presence(plays)
         gap_mat = _build_gap_matrix(presence)
@@ -113,11 +120,13 @@ class TestHelperFunctions:
 
     def test_window_plays(self):
         """Test window play counting."""
-        plays = pd.DataFrame({
-            "song_name": ["Song A"] * 5,
-            "show_index": [1, 2, 3, 4, 5],
-            "show_date": pd.date_range("2024-01-01", periods=5),
-        })
+        plays = pd.DataFrame(
+            {
+                "song_name": ["Song A"] * 5,
+                "show_index": [1, 2, 3, 4, 5],
+                "show_date": pd.date_range("2024-01-01", periods=5),
+            }
+        )
         presence, _ = _build_presence(plays)
         cum = presence.astype(float).cumsum(axis=1)
         # upper_col is the first dense column not included, so this counts shows 4-5.
@@ -223,11 +232,13 @@ class TestIntegration:
         """Test that predict without training returns empty list."""
         predictor = PhishFastPredictor()
         # Create minimal ModelData
-        plays = pd.DataFrame({
-            "song_name": ["Song A"],
-            "show_index": [1],
-            "show_date": pd.to_datetime(["2024-01-01"]),
-        })
+        plays = pd.DataFrame(
+            {
+                "song_name": ["Song A"],
+                "show_index": [1],
+                "show_date": pd.to_datetime(["2024-01-01"]),
+            }
+        )
         model_data = _model_data(plays, date(2024, 1, 2))
         predictions = predictor.predict(model_data, top_k=10)
         assert predictions == []
@@ -235,11 +246,13 @@ class TestIntegration:
     def test_train_with_empty_plays(self):
         """Test training with empty plays doesn't crash."""
         predictor = PhishFastPredictor()
-        plays = pd.DataFrame({
-            "song_name": [],
-            "show_index": [],
-            "show_date": [],
-        })
+        plays = pd.DataFrame(
+            {
+                "song_name": [],
+                "show_index": [],
+                "show_date": [],
+            }
+        )
         model_data = _model_data(plays, date(2024, 1, 1))
         predictor.train(model_data)  # Should not raise
         assert predictor._model is None
@@ -248,11 +261,13 @@ class TestIntegration:
         """Test training with too few shows doesn't crash."""
         predictor = PhishFastPredictor()
         # Only 5 shows, need at least 30
-        plays = pd.DataFrame({
-            "song_name": ["Song A"] * 5,
-            "show_index": list(range(1, 6)),
-            "show_date": pd.date_range("2024-01-01", periods=5),
-        })
+        plays = pd.DataFrame(
+            {
+                "song_name": ["Song A"] * 5,
+                "show_index": list(range(1, 6)),
+                "show_date": pd.date_range("2024-01-01", periods=5),
+            }
+        )
         model_data = _model_data(plays, date(2024, 1, 6))
         predictor.train(model_data)
         # Should have no model since not enough training data

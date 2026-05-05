@@ -86,13 +86,17 @@ class PhishFastPlusPlaysPastYear(PhishFastPredictorV2):
             target_show_index=target_show_index,
         )
         ref_col = j - 1
-        extra["plays_past_year"] = _window_plays_by_days(
-            plays,
-            cache["presence"],
-            ref_col,
-            365,
-            cache["col_dates"],
-        ).loc[eligible_songs].values
+        extra["plays_past_year"] = (
+            _window_plays_by_days(
+                plays,
+                cache["presence"],
+                ref_col,
+                365,
+                cache["col_dates"],
+            )
+            .loc[eligible_songs]
+            .values
+        )
         return extra
 
     def _extra_predict_features(
@@ -122,13 +126,17 @@ class PhishFastPlusPlaysPastYear(PhishFastPredictorV2):
             target_show_context=target_show_context,
         )
         ref_col = n_shows - 1
-        extra["plays_past_year"] = _window_plays_by_days(
-            plays,
-            cache["presence"],
-            ref_col,
-            365,
-            cache["col_dates"],
-        ).loc[eligible_songs].values
+        extra["plays_past_year"] = (
+            _window_plays_by_days(
+                plays,
+                cache["presence"],
+                ref_col,
+                365,
+                cache["col_dates"],
+            )
+            .loc[eligible_songs]
+            .values
+        )
         return extra
 
 
@@ -168,8 +176,7 @@ class PhishFastPlusNotebookRank(PhishFastPlusPlaysPastYear):
             for rank, (_, row) in enumerate(ranked.iterrows())
         }
         return [
-            float(scores.get(str(song), 0.0))
-            for song in eligible_songs.astype(str)
+            float(scores.get(str(song), 0.0)) for song in eligible_songs.astype(str)
         ]
 
     def _extra_training_row_features(self, **kwargs: Any) -> dict:
@@ -296,7 +303,9 @@ class PhishFastPlusVenueRun(PhishFastPredictorV2):
         extra = super()._extra_training_row_features(**kwargs)
         target_show_index = kwargs["target_show_index"]
         sub_plays = kwargs["plays"][kwargs["plays"]["show_index"] < target_show_index]
-        target_rows = kwargs["plays"][kwargs["plays"]["show_index"] == target_show_index]
+        target_rows = kwargs["plays"][
+            kwargs["plays"]["show_index"] == target_show_index
+        ]
         target_context = target_rows.iloc[0] if not target_rows.empty else {}
         extra.update(
             self._venue_run_features(
@@ -311,6 +320,46 @@ class PhishFastPlusVenueRun(PhishFastPredictorV2):
         extra = super()._extra_predict_features(**kwargs)
         extra.update(
             self._venue_run_features(
+                eligible_songs=kwargs["eligible_songs"],
+                plays=kwargs["plays"],
+                target_show_context=kwargs["target_show_context"],
+            )
+        )
+        return extra
+
+
+class PhishFastPlusNotebookRankVenueRun(PhishFastPlusNotebookRank):
+    """Stack notebook_rank + venue_run features on top of PhishFast V2."""
+
+    MODEL_VERSION = "phish_fast_gbm_v2_feat_notebook_rank_venue_run"
+    _FEATURE_COLS: list[str] = [
+        *PhishFastPlusNotebookRank._FEATURE_COLS,
+        "same_venue_run_prior_played",
+        "same_venue_run_prior_play_count",
+        "same_venue_run_prior_play_share",
+    ]
+
+    def _extra_training_row_features(self, **kwargs: Any) -> dict:
+        extra = super()._extra_training_row_features(**kwargs)
+        target_show_index = kwargs["target_show_index"]
+        sub_plays = kwargs["plays"][kwargs["plays"]["show_index"] < target_show_index]
+        target_rows = kwargs["plays"][
+            kwargs["plays"]["show_index"] == target_show_index
+        ]
+        target_context = target_rows.iloc[0] if not target_rows.empty else {}
+        extra.update(
+            PhishFastPlusVenueRun._venue_run_features(
+                eligible_songs=kwargs["eligible_songs"],
+                plays=sub_plays,
+                target_show_context=target_context,
+            )
+        )
+        return extra
+
+    def _extra_predict_features(self, **kwargs: Any) -> dict:
+        extra = super()._extra_predict_features(**kwargs)
+        extra.update(
+            PhishFastPlusVenueRun._venue_run_features(
                 eligible_songs=kwargs["eligible_songs"],
                 plays=kwargs["plays"],
                 target_show_context=kwargs["target_show_context"],
@@ -339,6 +388,11 @@ PHISH_FEATURE_SWEEP: list[ExperimentConfig] = [
         slug="feat_venue_run",
         description="Add same-venue run prior-play candidate features",
         predictor_path="jambandnerd.models.phish.experiments.PhishFastPlusVenueRun",
+    ),
+    ExperimentConfig(
+        slug="feat_notebook_rank_venue_run",
+        description="Stack notebook_rank + venue_run features",
+        predictor_path="jambandnerd.models.phish.experiments.PhishFastPlusNotebookRankVenueRun",
     ),
 ]
 

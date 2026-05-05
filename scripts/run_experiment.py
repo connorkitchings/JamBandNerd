@@ -43,9 +43,7 @@ def _import_class(dotted_path: str) -> type[PredictionModel]:
 
 
 def _load_sweeps(band: str) -> dict[str, list[ExperimentConfig]]:
-    module = importlib.import_module(
-        f"jambandnerd.models.{band}.experiments"
-    )
+    module = importlib.import_module(f"jambandnerd.models.{band}.experiments")
     sweeps: dict[str, list[ExperimentConfig]] = getattr(
         module, f"{band.upper()}_SWEEPS", {}
     )
@@ -98,12 +96,16 @@ def run_experiment(
         f1_25=summary.f1_25,
         dual_f1_score=summary.dual_f1_score,
         n_shows=summary.n_shows,
-        summary_path=str(Path(out_dir) / f"{band}_{predictor_cls.MODEL_VERSION}_summary.json"),
+        summary_path=str(
+            Path(out_dir) / f"{band}_{predictor_cls.MODEL_VERSION}_summary.json"
+        ),
         elapsed_s=elapsed,
     )
 
 
-def _print_results_table(results: list[SweepResult], baseline_dual: float | None = None) -> None:
+def _print_results_table(
+    results: list[SweepResult], baseline_dual: float | None = None
+) -> None:
     header = f"{'Experiment':<28} {'dual':>7} {'p@10':>7} {'p@25':>7} {'r@50':>7} {'F1@25':>7} {'dual_f1':>7} {'n':>4} {'time':>7}"
     sep = "-" * len(header)
     print(f"\n{sep}")

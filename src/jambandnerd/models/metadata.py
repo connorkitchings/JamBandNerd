@@ -53,7 +53,11 @@ BAND_METADATA: tuple[BandMetadata, ...] = (
         model_version="goose_fast_rank_v1",
         notes="Full-history LightGBM with notebook_rank_score feature. Beats Notebook baseline (dual 0.409 vs 0.408).",
     ),
-    BandMetadata(band="phish", model_version="phish_fast_gbm_v1"),
+    BandMetadata(
+        band="phish",
+        model_version="phish_fast_gbm_v2_feat_notebook_rank_venue_run",
+        notes="Stacked notebook_rank + venue_run on PhishFast V2. dual=0.419 (+0.014 vs V2).",
+    ),
     BandMetadata(band="wsp", model_version="wsp_baseline_v1"),
     BandMetadata(band="billy", model_version="billy_fast_gbm_v3"),
     BandMetadata(band="um", model_version="um_baseline_v1"),
