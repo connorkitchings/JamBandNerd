@@ -114,6 +114,111 @@ def _notebook_ranked_songs(model_data: ModelData, *, band: str) -> list[str]:
     return ranked["song_name"].astype(str).tolist()
 
 
+class GooseNotebookFloorPredictor(DealPredictor):
+    """Goose-owned Notebook 1-year floor for the single-band registry.
+
+    The ranking intentionally mirrors NotebookPredictor's 1-year contract:
+    plays in the trailing year first, current gap second, song name third.
+    It returns DealPrediction objects so the existing single-band serializer
+    can publish the results without a separate legacy Notebook shape.
+    """
+
+    MODEL_DIR = Path("models/goose")
+    MODEL_VERSION = "goose_notebook_floor_v1"
+
+    def __init__(self, band: str = "goose", **kwargs: Any):
+        if band != "goose":
+            raise ValueError("GooseNotebookFloorPredictor only supports band='goose'.")
+        self.band = band
+
+    def train(self, data: ModelData) -> None:
+        """No-op: the Notebook floor is a deterministic ranking rule."""
+        return None
+
+    def predict(self, model_data: ModelData, top_k: int = 50) -> list[DealPrediction]:
+        features = model_data.master_feature_set
+        plays = model_data.historical_plays
+        if features.empty or plays.empty:
+            return []
+
+        features = features.copy()
+        plays = plays.copy()
+        features["last_played_date"] = pd.to_datetime(
+            features["last_played_date"], errors="coerce"
+        )
+        plays["show_date"] = pd.to_datetime(plays["show_date"], errors="coerce")
+
+        last_completed_show_date = features["last_played_date"].max()
+        if pd.isna(last_completed_show_date):
+            return []
+
+        window_start = last_completed_show_date - timedelta(days=365)
+        plays_in_window = plays[plays["show_date"] >= window_start]
+        plays_past_year_count = (
+            plays_in_window.groupby("song_name")["show_index"]
+            .nunique()
+            .rename("plays_past_year")
+        )
+
+        candidates = features.merge(plays_past_year_count, on="song_name", how="inner")
+        if candidates.empty:
+            return []
+
+        candidates["current_gap"] = (
+            model_data.reference_index - candidates["last_played_index"] - 1
+        ).clip(lower=0)
+        candidates = candidates[
+            ~candidates["song_name"].isin(set(model_data.recently_played_songs))
+        ]
+        if candidates.empty:
+            return []
+
+        max_show_index = int(plays["show_index"].max())
+        recent_start = max(0, max_show_index - 49)
+        recent_plays_50 = (
+            plays[plays["show_index"] >= recent_start]
+            .groupby("song_name")["show_index"]
+            .nunique()
+            .rename("recent_plays_50")
+        )
+        candidates = candidates.merge(recent_plays_50, on="song_name", how="left")
+        candidates["recent_plays_50"] = candidates["recent_plays_50"].fillna(0)
+
+        ranked = candidates.sort_values(
+            by=["plays_past_year", "current_gap", "song_name"],
+            ascending=[False, False, True],
+        ).head(top_k)
+
+        excluded_songs = get_excluded_songs(self.band)
+        if excluded_songs:
+            ranked = ranked[
+                ~ranked["song_name"].str.lower().str.strip().isin(excluded_songs)
+            ]
+        if ranked.empty:
+            return []
+
+        count = len(ranked)
+        denominator = max(1, count - 1)
+        predictions: list[DealPrediction] = []
+        for rank, (_, row) in enumerate(ranked.iterrows()):
+            last_played_date = row.get("last_played_date")
+            if pd.isna(last_played_date):
+                ltp = None
+            else:
+                ltp = pd.Timestamp(last_played_date).date().isoformat()
+            predictions.append(
+                DealPrediction(
+                    song_name=str(row["song_name"]),
+                    probability=float(1.0 - (rank / denominator)),
+                    current_gap=int(row["current_gap"]),
+                    plays_past_year=int(row["plays_past_year"]),
+                    recent_plays_50=int(row["recent_plays_50"]),
+                    LTP=ltp,
+                )
+            )
+        return predictions
+
+
 def _rank_blended_candidate_features(
     candidates: pd.DataFrame,
     *,

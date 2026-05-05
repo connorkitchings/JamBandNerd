@@ -58,9 +58,9 @@ uv run python scripts/sync_retained_prediction_corpus.py --band goose --window 1
 
 ## Prediction and Storage
 
-- Goose currently uses the Phase B band-owned predictor at
+- Goose currently uses the Goose-owned Notebook floor predictor at
   `src/jambandnerd/models/goose/model.py`.
-- The active Goose model version is `goose_phase_b_v1`.
+- The active Goose model version is `goose_notebook_floor_v1`.
 - live next-show predictions are stored in `setlist_predictions` with
   derived rows in `setlist_prediction_songs`
 - retained completed-show boards are stored in `setlist_results`

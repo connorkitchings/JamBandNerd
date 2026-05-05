@@ -2,9 +2,8 @@ from __future__ import annotations
 
 import pytest
 
-from jambandnerd.models.baseline.predictor import BaselinePredictor
 from jambandnerd.models.billy.fast_predictor import BillyFastBaselinePredictor
-from jambandnerd.models.goose.model import GoosePredictor
+from jambandnerd.models.goose.model import GooseNotebookFloorPredictor
 from jambandnerd.models.phish.fast_predictor import PhishFastPredictor
 from src.jambandnerd.models.registry import (
     build_band_predictor,
@@ -60,15 +59,15 @@ def test_build_predictor_constructs_model_for_band() -> None:
     assert predictor is not None
 
 
-def test_band_predictor_dispatches_goose_to_phase_b_model() -> None:
+def test_band_predictor_dispatches_goose_to_notebook_floor_model() -> None:
     goose = build_band_predictor("goose", persist_artifacts=False)
     billy = build_band_predictor("billy", persist_artifacts=False)
     phish = build_band_predictor("phish", persist_artifacts=False)
 
-    assert isinstance(goose, GoosePredictor)
+    assert isinstance(goose, GooseNotebookFloorPredictor)
     assert isinstance(billy, BillyFastBaselinePredictor)
     assert isinstance(phish, PhishFastPredictor)
-    assert get_band_model_version("goose") == "goose_phase_b_v1"
+    assert get_band_model_version("goose") == "goose_notebook_floor_v1"
     assert get_band_model_version("billy") == "billy_fast_gbm_v3"
 
 

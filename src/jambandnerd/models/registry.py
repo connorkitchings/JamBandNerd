@@ -16,8 +16,7 @@ from jambandnerd.models.deal.model import DealPredictor
 from jambandnerd.models.deal.serialization import (
     serialize_predictions as serialize_deal_predictions,
 )
-from jambandnerd.models.goose.model import GoosePredictor
-from jambandnerd.models.phish.fast_predictor import PhishFastPredictor
+from jambandnerd.models.goose.model import GooseNotebookFloorPredictor
 from jambandnerd.models.metadata import (
     BAND_METADATA,
     MODEL_METADATA,
@@ -30,6 +29,7 @@ from jambandnerd.models.notebook.model import NotebookPredictor
 from jambandnerd.models.notebook.serialization import (
     serialize_predictions as serialize_notebook_predictions,
 )
+from jambandnerd.models.phish.fast_predictor import PhishFastPredictor
 
 PredictionSerializer = Callable[[Sequence[Any]], list[dict[str, Any]]]
 
@@ -225,7 +225,7 @@ _BAND_METADATA_MAP: dict[str, BandMetadata] = {m.band: m for m in BAND_METADATA}
 
 _BAND_PREDICTOR_CLASSES: dict[str, type[PredictionModel]] = {
     "billy": BillyFastBaselinePredictor,
-    "goose": GoosePredictor,
+    "goose": GooseNotebookFloorPredictor,
     "phish": PhishFastPredictor,
 }
 

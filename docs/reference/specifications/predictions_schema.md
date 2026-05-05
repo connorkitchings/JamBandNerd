@@ -142,7 +142,7 @@ the exact ranked board that was scored without overloading the live
 
 The active single-model path uses explicit per-band model version strings such as:
 
-- `goose_phase_b_v1`
+- `goose_notebook_floor_v1`
 - `phish_baseline_v1`
 - `wsp_baseline_v1`
 

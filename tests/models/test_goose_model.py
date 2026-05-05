@@ -21,9 +21,11 @@ from jambandnerd.models.goose.fast_predictor import (
 from jambandnerd.models.goose.model import (
     GOOSE_FEATURE_COLUMNS,
     GooseGbmNotebookBlendPredictor,
+    GooseNotebookFloorPredictor,
     GoosePredictor,
     _rank_blended_candidate_features,
 )
+from jambandnerd.models.notebook.model import NotebookPredictor
 from jambandnerd.transformations.gaps import generate_model_data
 
 
@@ -113,6 +115,41 @@ def test_goose_predictor_trains_and_predicts_without_artifacts() -> None:
     assert predictor.model is not None
     assert 0 < len(predictions) <= 10
     assert len({prediction.song_name for prediction in predictions}) == len(predictions)
+
+
+def test_goose_notebook_floor_owns_single_band_defaults() -> None:
+    predictor = GooseNotebookFloorPredictor(persist_artifacts=False)
+
+    assert predictor.band == "goose"
+    assert predictor.MODEL_VERSION == "goose_notebook_floor_v1"
+
+
+def test_goose_notebook_floor_rejects_other_bands() -> None:
+    with pytest.raises(ValueError, match="only supports band='goose'"):
+        GooseNotebookFloorPredictor(band="phish")
+
+
+def test_goose_notebook_floor_matches_notebook_ranking_contract() -> None:
+    shows_df, setlists_df = _goose_fixture()
+    model_data = generate_model_data(
+        shows_df,
+        setlists_df,
+        date(2024, 5, 20),
+        band="goose",
+    )
+
+    floor = GooseNotebookFloorPredictor(persist_artifacts=False)
+    notebook = NotebookPredictor(band="goose")
+
+    floor_predictions = floor.predict(model_data, top_k=10)
+    notebook_predictions, _ = notebook.predict(model_data, top_k=10)
+
+    assert [p.song_name for p in floor_predictions] == [
+        p.song_name for p in notebook_predictions
+    ]
+    assert floor_predictions
+    assert all(0.0 <= p.probability <= 1.0 for p in floor_predictions)
+    assert all(hasattr(p, "recent_plays_50") for p in floor_predictions)
 
 
 def test_goose_fast_predictor_owns_experiment_defaults() -> None:
@@ -471,7 +508,10 @@ class TestGooseDistilledPredictor:
     def test_train_and_predict_notebook_only(self) -> None:
         shows_df, setlists_df = _goose_fixture()
         model_data = generate_model_data(
-            shows_df, setlists_df, date(2024, 5, 20), band="goose",
+            shows_df,
+            setlists_df,
+            date(2024, 5, 20),
+            band="goose",
         )
         predictor = GooseDistilledPredictor(
             families=("notebook",),
