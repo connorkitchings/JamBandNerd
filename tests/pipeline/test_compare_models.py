@@ -96,21 +96,15 @@ def test_compare_models_generate_report_emits_schema(monkeypatch):
     monkeypatch.setattr(
         module,
         "build_evaluation_predictor",
-        lambda model_slug,
-        *,
-        band,
-        fresh_training=False,
-        candidate_overrides=None,
-        **kw: _Predictor(model_slug),
+        lambda model_slug, *, band, fresh_training=False, candidate_overrides=None, **kw: _Predictor(
+            model_slug
+        ),
     )
     monkeypatch.setattr(
         "src.jambandnerd.models.comparison.build_evaluation_predictor",
-        lambda model_slug,
-        *,
-        band,
-        fresh_training=False,
-        candidate_overrides=None,
-        **kw: _Predictor(model_slug),
+        lambda model_slug, *, band, fresh_training=False, candidate_overrides=None, **kw: _Predictor(
+            model_slug
+        ),
     )
     monkeypatch.setattr(
         "src.jambandnerd.models.comparison.generate_model_data",
@@ -174,12 +168,9 @@ def test_compare_models_promotion_gate_fails_when_candidate_loses(monkeypatch):
     )
     monkeypatch.setattr(
         "src.jambandnerd.models.comparison.build_evaluation_predictor",
-        lambda model_slug,
-        *,
-        band,
-        fresh_training=False,
-        candidate_overrides=None,
-        **kw: _Predictor(model_slug),
+        lambda model_slug, *, band, fresh_training=False, candidate_overrides=None, **kw: _Predictor(
+            model_slug
+        ),
     )
     monkeypatch.setattr(
         "src.jambandnerd.models.comparison.generate_model_data",
@@ -219,12 +210,9 @@ def test_compare_models_candidate_notebook_matches_backtest_metrics(monkeypatch)
     )
     monkeypatch.setattr(
         "src.jambandnerd.models.comparison.build_evaluation_predictor",
-        lambda model_slug,
-        *,
-        band,
-        fresh_training=False,
-        candidate_overrides=None,
-        **kw: _Predictor(model_slug),
+        lambda model_slug, *, band, fresh_training=False, candidate_overrides=None, **kw: _Predictor(
+            model_slug
+        ),
     )
     monkeypatch.setattr(
         backtest_module,
@@ -307,12 +295,9 @@ def test_compare_models_loads_each_band_once_across_multiple_windows(monkeypatch
     )
     monkeypatch.setattr(
         "src.jambandnerd.models.comparison.build_evaluation_predictor",
-        lambda model_slug,
-        *,
-        band,
-        fresh_training=False,
-        candidate_overrides=None,
-        **kw: _Predictor(model_slug),
+        lambda model_slug, *, band, fresh_training=False, candidate_overrides=None, **kw: _Predictor(
+            model_slug
+        ),
     )
     monkeypatch.setattr(
         "src.jambandnerd.models.comparison.generate_model_data",
@@ -379,12 +364,9 @@ def test_compare_models_writes_partial_report_after_each_completed_band(
     )
     monkeypatch.setattr(
         "src.jambandnerd.models.comparison.build_evaluation_predictor",
-        lambda model_slug,
-        *,
-        band,
-        fresh_training=False,
-        candidate_overrides=None,
-        **kw: _Predictor(model_slug),
+        lambda model_slug, *, band, fresh_training=False, candidate_overrides=None, **kw: _Predictor(
+            model_slug
+        ),
     )
     monkeypatch.setattr(
         "src.jambandnerd.models.comparison.generate_model_data",
@@ -438,12 +420,9 @@ def test_compare_models_resume_skips_completed_bands(monkeypatch, tmp_path):
     )
     monkeypatch.setattr(
         "src.jambandnerd.models.comparison.build_evaluation_predictor",
-        lambda model_slug,
-        *,
-        band,
-        fresh_training=False,
-        candidate_overrides=None,
-        **kw: _Predictor(model_slug),
+        lambda model_slug, *, band, fresh_training=False, candidate_overrides=None, **kw: _Predictor(
+            model_slug
+        ),
     )
     monkeypatch.setattr(
         "src.jambandnerd.models.comparison.generate_model_data",
@@ -565,21 +544,15 @@ def test_compare_models_candidate_overrides_appear_in_experiment_metadata(monkey
     monkeypatch.setattr(
         module,
         "build_evaluation_predictor",
-        lambda model_slug,
-        *,
-        band,
-        fresh_training=False,
-        candidate_overrides=None,
-        **kw: _Predictor(model_slug),
+        lambda model_slug, *, band, fresh_training=False, candidate_overrides=None, **kw: _Predictor(
+            model_slug
+        ),
     )
     monkeypatch.setattr(
         "src.jambandnerd.models.comparison.build_evaluation_predictor",
-        lambda model_slug,
-        *,
-        band,
-        fresh_training=False,
-        candidate_overrides=None,
-        **kw: _Predictor(model_slug),
+        lambda model_slug, *, band, fresh_training=False, candidate_overrides=None, **kw: _Predictor(
+            model_slug
+        ),
     )
     monkeypatch.setattr(
         "src.jambandnerd.models.comparison.generate_model_data",
