@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timedelta
 from typing import Any, Final, Sequence
 
 # Repo-authoritative automation band list.
@@ -36,8 +37,12 @@ BAND_ID_COLUMNS: Final[dict[str, str]] = {
 }
 
 # In-memory caches for runtime metadata sourced from the Supabase registry.
+# TTL prevents stale data from persisting indefinitely across long-running processes.
+_REGISTRY_CACHE_TTL = timedelta(hours=1)
 _cached_registry_band_rows: list[dict[str, Any]] | None = None
+_cached_registry_band_rows_at: datetime | None = None
 _cached_runtime_band_id_columns: dict[str, str] | None = None
+_cached_runtime_band_id_columns_at: datetime | None = None
 
 
 @dataclass(frozen=True)
@@ -97,8 +102,13 @@ def get_repo_band_id_column(band: str) -> str:
 
 def get_registry_active_band_rows() -> list[dict[str, Any]]:
     """Return active band rows from the runtime Supabase registry when available."""
-    global _cached_registry_band_rows
-    if _cached_registry_band_rows is not None:
+    global _cached_registry_band_rows, _cached_registry_band_rows_at
+    now = datetime.now()
+    if (
+        _cached_registry_band_rows is not None
+        and _cached_registry_band_rows_at is not None
+        and now - _cached_registry_band_rows_at < _REGISTRY_CACHE_TTL
+    ):
         return _cached_registry_band_rows
 
     try:
@@ -109,6 +119,7 @@ def get_registry_active_band_rows() -> list[dict[str, Any]]:
         rows = []
 
     _cached_registry_band_rows = list(rows or [])
+    _cached_registry_band_rows_at = now
     return _cached_registry_band_rows
 
 
@@ -122,8 +133,14 @@ def get_registry_active_band_slugs() -> Sequence[str]:
 
 def get_runtime_band_id_column(band: str) -> str:
     """Return the runtime show id column, preferring registry metadata."""
-    global _cached_runtime_band_id_columns
-    if _cached_runtime_band_id_columns is None:
+    global _cached_runtime_band_id_columns, _cached_runtime_band_id_columns_at
+    now = datetime.now()
+    cache_expired = (
+        _cached_runtime_band_id_columns is None
+        or _cached_runtime_band_id_columns_at is None
+        or now - _cached_runtime_band_id_columns_at >= _REGISTRY_CACHE_TTL
+    )
+    if cache_expired:
         rows = get_registry_active_band_rows()
         if rows:
             _cached_runtime_band_id_columns = {
@@ -133,6 +150,7 @@ def get_runtime_band_id_column(band: str) -> str:
             }
         else:
             _cached_runtime_band_id_columns = dict(BAND_ID_COLUMNS)
+        _cached_runtime_band_id_columns_at = now
 
     return _cached_runtime_band_id_columns.get(band, get_repo_band_id_column(band))
 

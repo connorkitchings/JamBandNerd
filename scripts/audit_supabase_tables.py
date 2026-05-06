@@ -28,6 +28,7 @@ from jambandnerd.db.operations import fetch_prediction_songs_for_date
 from jambandnerd.models.readiness import build_model_readiness_report
 from jambandnerd.models.registry import list_promoted_web_models
 from scripts.check_supported_model_freshness import audit_supported_model_freshness
+from scripts.common import parse_timestamp as _parse_prediction_timestamp
 from scripts.validate_accuracy_tables import (
     _recent_replay_eligible_rows,
 )
@@ -35,9 +36,6 @@ from scripts.validate_prediction_tables import (
     _has_upcoming_show,
     _latest_prediction_row,
     list_stale_projection_reference_dates,
-)
-from scripts.validate_prediction_tables import (
-    _parse_timestamp as _parse_prediction_timestamp,
 )
 from scripts.verify_data_freshness import (
     audit_recent_setlist_completeness,

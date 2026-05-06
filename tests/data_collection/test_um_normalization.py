@@ -1,21 +1,19 @@
 import pandas as pd
 
-from src.jambandnerd.data_collection.um.normalizer import (
-    attach_source_hash,
-    normalize_setlists,
-)
+from src.jambandnerd.data_collection.um.normalizer import normalize_setlists
+from src.jambandnerd.data_collection.utils import attach_source_hash_column
 
 
 class TestUmNormalization:
     def test_attach_source_hash(self):
         df = pd.DataFrame([{"song_name": "Pay the Snucka", "show_id": "1"}])
-        result = attach_source_hash(df)
+        result = attach_source_hash_column(df)
         assert "source_hash" in result.columns
         assert len(result["source_hash"].iloc[0]) == 64  # SHA-256 hex
 
     def test_attach_source_hash_empty(self):
         df = pd.DataFrame()
-        result = attach_source_hash(df)
+        result = attach_source_hash_column(df)
         assert result.empty
 
     def test_normalize_setlists_coerces_numeric_columns(self):

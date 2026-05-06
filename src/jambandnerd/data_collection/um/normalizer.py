@@ -4,17 +4,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from jambandnerd.data_collection.utils import compute_source_hash
-
-
-def attach_source_hash(df: pd.DataFrame) -> pd.DataFrame:
-    """Attach a deterministic source_hash column to a DataFrame."""
-    if df.empty:
-        return df
-    df = df.copy()
-    df = df.where(pd.notnull(df), None)
-    df["source_hash"] = df.apply(lambda row: compute_source_hash(row.to_dict()), axis=1)
-    return df
+from jambandnerd.data_collection.utils import attach_source_hash_column
 
 
 def normalize_setlists(df: pd.DataFrame) -> pd.DataFrame:
@@ -22,6 +12,7 @@ def normalize_setlists(df: pd.DataFrame) -> pd.DataFrame:
     if df.empty:
         return df
     df = df.copy()
+    df = df.where(pd.notnull(df), None)
 
     numeric_columns = {
         "set_sequence": "Int64",
@@ -59,4 +50,4 @@ def normalize_setlists(df: pd.DataFrame) -> pd.DataFrame:
         if column in df.columns:
             df[column] = df[column].fillna(False).astype(bool)
 
-    return attach_source_hash(df)
+    return attach_source_hash_column(df)

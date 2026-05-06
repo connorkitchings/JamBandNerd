@@ -14,7 +14,10 @@ import pandas as pd
 import requests
 from bs4 import BeautifulSoup
 
-from jambandnerd.data_collection.utils import CollectionTimer, compute_source_hash
+from jambandnerd.data_collection.utils import (
+    CollectionTimer,
+    attach_source_hash_column,
+)
 from jambandnerd.db.connection import get_supabase_client
 from jambandnerd.db.operations import (
     fetch_existing_values,
@@ -833,9 +836,7 @@ def tourwrangler_fallback(
                 elif "source" in backup_df.columns:
                     backup_df = backup_df.drop(columns=["source"])
 
-                backup_df["source_hash"] = backup_df.apply(
-                    lambda row: compute_source_hash(row.to_dict()), axis=1
-                )
+                backup_df = attach_source_hash_column(backup_df)
 
                 validate_and_upsert_dataframe(
                     table_name="wsp_setlists_raw",

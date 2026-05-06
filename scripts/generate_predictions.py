@@ -25,14 +25,18 @@ import sys
 from datetime import date, datetime, timezone
 from typing import Any
 
-import numpy as np
 import pandas as pd
 
 # Add project root to path
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, project_root)
 
-from scripts.common import fetch_table, prepare_band_data, resolve_reference_date
+from scripts.common import (
+    NpEncoder,
+    fetch_table,
+    prepare_band_data,
+    resolve_reference_date,
+)
 from src.jambandnerd.config.bands import get_repo_supported_bands
 from src.jambandnerd.db.operations import (
     replace_prediction_projection,
@@ -45,21 +49,6 @@ from src.jambandnerd.models.registry import (
     serialize_model_predictions,
 )
 from src.jambandnerd.transformations.gaps import generate_model_data
-
-
-class NpEncoder(json.JSONEncoder):
-    """Helper to convert numpy types to native Python types for JSON serialization."""
-
-    def default(self, obj):
-        if isinstance(obj, (np.integer, np.int64)):
-            return int(obj)
-        if isinstance(obj, (np.floating, np.float64)):
-            return float(obj)
-        if isinstance(obj, np.ndarray):
-            return obj.tolist()
-        if isinstance(obj, (datetime, date)):
-            return obj.isoformat()
-        return super(NpEncoder, self).default(obj)
 
 
 def generate_predictions_batched(

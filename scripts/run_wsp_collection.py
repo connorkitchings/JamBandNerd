@@ -75,30 +75,23 @@ def run_wsp_collection(
         raise RuntimeError(str(e)) from e
 
 
+from scripts.common import write_github_output
+
+
 def _write_github_outputs(status: CollectionStatus) -> None:
     """Write structured outputs for GitHub Actions consumers when available."""
-    github_output = os.environ.get("GITHUB_OUTPUT")
-    if not github_output:
-        return
-
-    with open(github_output, "a", encoding="utf-8") as handle:
-        for key, value in status.as_github_outputs().items():
-            handle.write(f"{key}={value}\n")
+    for key, value in status.as_github_outputs().items():
+        write_github_output(key, value)
 
 
 def _write_failure_github_outputs(reason: str) -> None:
     """Write explicit failure outputs when the runner exits non-zero."""
-    github_output = os.environ.get("GITHUB_OUTPUT")
-    if not github_output:
-        return
-
-    with open(github_output, "a", encoding="utf-8") as handle:
-        handle.write("workflow_state=failed\n")
-        handle.write("outcome_code=failed_internal\n")
-        handle.write("should_retry_collection=true\n")
-        handle.write("recent_data_usable=false\n")
-        handle.write("prediction_action=skipped\n")
-        handle.write(f"failure_reason={reason}\n")
+    write_github_output("workflow_state", "failed")
+    write_github_output("outcome_code", "failed_internal")
+    write_github_output("should_retry_collection", "true")
+    write_github_output("recent_data_usable", "false")
+    write_github_output("prediction_action", "skipped")
+    write_github_output("failure_reason", reason)
 
 
 if __name__ == "__main__":

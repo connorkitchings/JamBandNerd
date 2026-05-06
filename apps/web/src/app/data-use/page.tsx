@@ -3,14 +3,13 @@ import Link from "next/link";
 
 import { PageHero } from "@/components/page-hero";
 import { SectionCard } from "@/components/section-card";
+import { CONTACT_EMAIL } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Data Use | JamBandNerd",
   description:
     "How JamBandNerd uses public factual setlist information and its own derived analytics.",
 };
-
-const CONTACT_EMAIL = "jambandnerd2026@gmail.com";
 
 export default function DataUsePage() {
   return (

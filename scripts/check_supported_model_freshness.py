@@ -23,6 +23,7 @@ from jambandnerd.models.registry import (
     list_accuracy_validation_models,
     list_models,
 )
+from scripts.common import parse_timestamp
 from scripts.validate_prediction_tables import _has_upcoming_show
 
 
@@ -61,15 +62,6 @@ def _format_hours_output(value: float | None) -> str:
     return "" if value is None else f"{value:.1f}"
 
 
-def _parse_timestamp(value: str | None) -> datetime | None:
-    if not value:
-        return None
-    try:
-        return datetime.fromisoformat(value.replace("Z", "+00:00"))
-    except ValueError:
-        return None
-
-
 def _latest_timestamp_row(
     client,
     *,
@@ -104,7 +96,7 @@ def _evaluate_timestamp_row(
     if not row:
         return True, None, missing_reason
 
-    timestamp = _parse_timestamp(str(row.get(timestamp_field) or ""))
+    timestamp = parse_timestamp(str(row.get(timestamp_field) or ""))
     if timestamp is None:
         return True, None, invalid_reason
 
@@ -310,7 +302,7 @@ def _render_surface_line(
     return f"- {slug} {surface}: {status}"
 
 
-def _write_github_outputs(result: SupportedModelFreshnessResult) -> None:
+def write_github_outputs(result: SupportedModelFreshnessResult) -> None:
     github_output = os.environ.get("GITHUB_OUTPUT")
     if not github_output:
         return
@@ -350,7 +342,7 @@ def main() -> None:
         skip_accuracy=args.skip_accuracy,
         emit_text=args.format == "text",
     )
-    _write_github_outputs(result)
+    write_github_outputs(result)
 
     if args.format == "json":
         print(json.dumps(result.as_dict()))

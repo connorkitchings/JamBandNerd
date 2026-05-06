@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import type { BandSlug } from "@/lib/config";
 import type { AccuracyRow } from "@/lib/data";
+import { formatPercent } from "@/lib/format";
 import {
   ResponsiveTableFrame,
   TABLE_CELL_CLASS,
@@ -12,10 +13,6 @@ type Props = {
   rows: AccuracyRow[];
   replayBand?: BandSlug;
 };
-
-function formatPercent(value: number | null) {
-  return value === null ? "—" : `${(value * 100).toFixed(1)}%`;
-}
 
 export function AccuracyTable({ rows, replayBand }: Props) {
   return (
