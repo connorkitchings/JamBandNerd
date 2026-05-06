@@ -127,7 +127,7 @@ def test_validate_predictions_uses_latest_generated_at(monkeypatch, capsys):
 
     assert failures == 0
     captured = capsys.readouterr().out
-    assert "top_song=Fresh Song" in captured
+    assert "goose/notebook:" in captured and "top_song=Fresh Song" in captured
     assert "reference_date=2026-03-20" in captured
 
 
@@ -151,7 +151,7 @@ def test_validate_predictions_fails_on_invalid_latest_json(monkeypatch, capsys):
 
     assert failures == 2
     captured = capsys.readouterr().out
-    assert "[FAIL] goose: invalid JSON payload" in captured
+    assert "[FAIL] goose/notebook: invalid JSON payload" in captured
 
 
 def test_validate_predictions_warns_on_missing_latest_generated_at(monkeypatch, capsys):
@@ -171,7 +171,7 @@ def test_validate_predictions_warns_on_missing_latest_generated_at(monkeypatch, 
 
     assert failures == 2
     captured = capsys.readouterr().out
-    assert "[WARN] goose: missing generated_at timestamp" in captured
+    assert "[WARN] goose/notebook: missing generated_at timestamp" in captured
 
 
 def test_validate_predictions_fails_on_projection_mismatch(monkeypatch, capsys):
@@ -206,7 +206,8 @@ def test_validate_predictions_fails_on_projection_mismatch(monkeypatch, capsys):
     assert failures == 2
     captured = capsys.readouterr().out
     assert (
-        "projection top_song=Wrong Song does not match canonical Fresh Song" in captured
+        "projection top_song='Wrong Song' does not match canonical 'Fresh Song' for reference_date="
+        in captured
     )
 
 

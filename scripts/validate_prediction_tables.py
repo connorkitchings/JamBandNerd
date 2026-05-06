@@ -78,7 +78,9 @@ def _validate_projection(
     reference_date: str | None,
 ) -> int:
     if not reference_date:
-        print(f"[FAIL] {band}: canonical prediction row is missing reference_date")
+        print(
+            f"[FAIL] {band}/{model_slug}: canonical prediction row is missing reference_date"
+        )
         return 1
 
     projection_rows = fetch_prediction_songs_for_date(
@@ -89,13 +91,16 @@ def _validate_projection(
     )
     if not projection_rows:
         print(
-            f"[FAIL] {band}: no projected song rows found for reference_date={reference_date}"
+            f"[FAIL] {band}/{model_slug}: no projected song rows found in next_show_prediction_songs for reference_date={reference_date}"
+        )
+        print(
+            f"  → Expected {top_k} rows (top_song={parsed_predictions[0]['song_name'] if parsed_predictions else '<empty>'})"
         )
         return 1
 
     if len(projection_rows) != top_k:
         print(
-            f"[FAIL] {band}: projection row count {len(projection_rows)} does not match top_k={top_k}"
+            f"[FAIL] {band}/{model_slug}: projection row count {len(projection_rows)} does not match top_k={top_k} for reference_date={reference_date}"
         )
         return 1
 
@@ -105,7 +110,7 @@ def _validate_projection(
     )
     if projected_top_song != top_song:
         print(
-            f"[FAIL] {band}: projection top_song={projected_top_song} does not match canonical {top_song}"
+            f"[FAIL] {band}/{model_slug}: projection top_song={projected_top_song!r} does not match canonical {top_song!r} for reference_date={reference_date}"
         )
         return 1
 
@@ -132,7 +137,7 @@ def _check_stale_projection_rows(
 
     for ref in stale:
         print(
-            f"[STALE] {band}/{model_slug}: next_show_prediction_songs "
+            f"[STALE] {band}/{model_slug} ({model_version}): next_show_prediction_songs "
             f"reference_date={ref} has generated_at older than {max_age_hours}h cutoff"
         )
     return len(stale)
@@ -235,11 +240,11 @@ def validate_predictions(
             )
             if not row:
                 if _has_upcoming_show(client, band=band):
-                    print(f"[FAIL] {band}: no live next-show rows found")
+                    print(f"[FAIL] {band}/{model_slug}: no live next-show rows found")
                     failures += 1
                 else:
                     print(
-                        f"[OK] {band}: no upcoming show; live prediction row not required"
+                        f"[OK] {band}/{model_slug}: no upcoming show; live prediction row not required"
                     )
                 continue
 
@@ -257,13 +262,13 @@ def validate_predictions(
                 )
                 top_song = parsed[0]["song_name"] if parsed else "<empty>"
             except Exception as exc:
-                print(f"[FAIL] {band}: invalid JSON payload ({exc})")
+                print(f"[FAIL] {band}/{model_slug}: invalid JSON payload ({exc})")
                 failures += 1
                 continue
 
             if predicted_at is None:
                 print(
-                    f"[WARN] {band}: missing generated_at timestamp; latest target_show_date={row.get('target_show_date')}"
+                    f"[WARN] {band}/{model_slug}: missing generated_at timestamp; latest target_show_date={row.get('target_show_date')}"
                 )
                 failures += 1
                 continue
@@ -275,7 +280,7 @@ def validate_predictions(
 
             age_display = f"{age_hrs:.1f}h" if age_hrs is not None else "unknown age"
             print(
-                f"[{status}] {band}: target_show_date={row.get('target_show_date')} reference_date={row.get('reference_date')} generated_at={predicted_at.isoformat()} age={age_display} top_song={top_song}"
+                f"[{status}] {band}/{model_slug}: target_show_date={row.get('target_show_date')} reference_date={row.get('reference_date')} generated_at={predicted_at.isoformat()} age={age_display} top_song={top_song}"
             )
 
             if validate_projection:
