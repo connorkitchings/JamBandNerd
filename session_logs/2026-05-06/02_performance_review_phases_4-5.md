@@ -129,12 +129,15 @@ Added `CONTACT_EMAIL` to `site.ts` and updated both pages to import from there i
 
 All planned items completed. PR #116 created to merge dev into main.
 
-### Additional UI Tweaks (Post-Session)
+### Post-Session CI Fixes
 - Centered "Next show" teaser text on homepage
 - Removed redundant "Completed show date" and "Prediction cutoff date" from replay page
+- Fixed black/ruff-format pre-commit mismatch: replaced `ruff-format` with `black` in `.pre-commit-config.yaml` to match CI's `verify:python` command
 
 ## Lesson Learned
 
 **Pattern:** When centralizing duplicated utilities, check ALL files that import from the original location, not just where the function is defined. The `audit_supabase_tables.py` file imported `_parse_timestamp` from `validate_prediction_tables.py`, which would have broken after removal.
 
 **Prevention:** Use `rg -n "function_name" scripts/ tests/` before removing any centralized utility to catch all import sites.
+
+**CI/Pre-commit alignment:** The formatter used in `.pre-commit-config.yaml` MUST match the formatter in `verify:python` (or any CI gate). Black and ruff-format disagree on lambda argument formatting, which caused a CI failure after the pre-commit hook auto-formatted a file with ruff-format. Always verify both use the same tool.
