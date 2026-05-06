@@ -151,7 +151,7 @@ export default async function HomePage({ searchParams }: Props) {
 
             {teaserPredictionState.status === "ready" ? (
               <>
-                <div className="editorial-chip mt-5 rounded-[1.5rem] p-4">
+                <div className="editorial-chip mt-5 rounded-[1.5rem] p-4 text-center">
                   <p className="font-label text-[10px] font-medium uppercase tracking-[0.18rem] text-on-surface-variant/70">
                     Next Show
                   </p>
