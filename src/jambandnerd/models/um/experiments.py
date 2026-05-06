@@ -122,7 +122,45 @@ UM_COMBO_SWEEP: list[ExperimentConfig] = [
     ),
 ]
 
+UM_WINDOW_SWEEP: list[ExperimentConfig] = [
+    ExperimentConfig(
+        slug="window_200",
+        description="200-show training window (2x default)",
+        predictor_path="jambandnerd.models.um.fast_predictor.UMFastPredictorV2Window200",
+    ),
+    ExperimentConfig(
+        slug="window_300",
+        description="300-show training window (3x default)",
+        predictor_path="jambandnerd.models.um.fast_predictor.UMFastPredictorV2Window300",
+    ),
+    ExperimentConfig(
+        slug="full_history",
+        description="Full-history training (no window cap)",
+        predictor_path="jambandnerd.models.um.fast_predictor.UMFastPredictorV2FullHistory",
+    ),
+]
+
+UM_FEAT_SWEEP: list[ExperimentConfig] = [
+    ExperimentConfig(
+        slug="feat_notebook_rank",
+        description="Add notebook_rank_score (Notebook-style heuristic ranking)",
+        predictor_path="jambandnerd.models.um.fast_predictor.UMFastPredictorV2NotebookRank",
+    ),
+    ExperimentConfig(
+        slug="feat_venue_run",
+        description="Add per-song venue run history (played/count/share)",
+        predictor_path="jambandnerd.models.um.fast_predictor.UMFastPredictorV2VenueRun",
+    ),
+    ExperimentConfig(
+        slug="feat_long_rotation",
+        description="Add plays_past_100 + rotation pressure features",
+        predictor_path="jambandnerd.models.um.fast_predictor.UMFastPredictorV2LongRotation",
+    ),
+]
+
 UM_SWEEPS: dict[str, list[ExperimentConfig]] = {
     "hp_sweep": UM_HP_SWEEP,
     "combo_sweep": UM_COMBO_SWEEP,
+    "window_sweep": UM_WINDOW_SWEEP,
+    "feat_sweep": UM_FEAT_SWEEP,
 }

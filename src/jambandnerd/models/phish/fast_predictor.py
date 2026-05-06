@@ -470,7 +470,7 @@ class PhishFastPredictor(PredictionModel):
         all_songs = presence.index
         n_shows = len(show_cols)
 
-        start_col = max(_MIN_TRAINING_SHOWS, n_shows - _TRAINING_WINDOW)
+        start_col = max(_MIN_TRAINING_SHOWS, n_shows - self._training_window())
         rows: list[pd.DataFrame] = []
 
         for j in range(start_col, n_shows):
@@ -590,6 +590,9 @@ class PhishFastPredictor(PredictionModel):
 
     # ── Training ───────────────────────────────────────────────────────────────
 
+    def _training_window(self) -> int:
+        return _TRAINING_WINDOW
+
     def train(self, model_data: ModelData) -> None:
         plays = _clean_plays(model_data.historical_plays)
         if plays.empty:
@@ -608,7 +611,7 @@ class PhishFastPredictor(PredictionModel):
         all_songs = presence.index
         n_shows = len(show_cols)
 
-        start_col = max(_MIN_TRAINING_SHOWS, n_shows - _TRAINING_WINDOW)
+        start_col = max(_MIN_TRAINING_SHOWS, n_shows - self._training_window())
 
         rows: list[pd.DataFrame] = []
         group_sizes: list[int] = []
