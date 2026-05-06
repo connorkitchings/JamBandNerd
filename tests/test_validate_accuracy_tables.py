@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
+from jambandnerd.models.registry import get_band_model_version
 from scripts.validate_accuracy_tables import validate_accuracy
 
 
@@ -65,7 +66,7 @@ def _repeat_rows(
         rows.append(
             {
                 "band": "goose",
-                "model_version": "goose_phase_b_v1",
+                "model_version": get_band_model_version("goose"),
                 "evaluated_at": now.isoformat(),
                 "show_date": f"2026-03-{index + 1:02d}",
                 "prediction_run_id": 1000 + index if with_lineage else None,

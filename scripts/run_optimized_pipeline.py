@@ -46,6 +46,7 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 logger = logging.getLogger(__name__)
+RETAINED_CORPUS_WINDOW = 50
 
 # Suppress noisy httpx logs
 logging.getLogger("httpx").setLevel(logging.WARNING)
@@ -86,7 +87,11 @@ def _validate_band_predictions(*, band: str, max_age_hours: int = 72) -> None:
 
 
 def _validate_band_accuracy(*, band: str, max_age_hours: int = 72) -> None:
-    failures = validate_accuracy(bands=[band], max_age_hours=max_age_hours)
+    failures = validate_accuracy(
+        bands=[band],
+        max_age_hours=max_age_hours,
+        replay_window=RETAINED_CORPUS_WINDOW,
+    )
 
     if failures:
         raise RuntimeError(
@@ -100,6 +105,7 @@ def _validate_band_accuracy_skip_freshness(
     failures = validate_accuracy(
         bands=[band],
         max_age_hours=max_age_hours,
+        replay_window=RETAINED_CORPUS_WINDOW,
         skip_freshness=True,
     )
 
@@ -118,6 +124,7 @@ def _audit_band_supabase(
     report = run_supabase_audit(
         bands=[band],
         max_age_hours=max_age_hours,
+        replay_window=RETAINED_CORPUS_WINDOW,
         skip_accuracy=skip_accuracy,
     )
     if report.state == "failed":
@@ -141,7 +148,7 @@ def _run_band_backtest(*, band: str) -> int:
         model=None,
         start=None,
         end=None,
-        shows=50,
+        shows=RETAINED_CORPUS_WINDOW,
         exclusion_window=None,
         incremental=True,
         require_results=True,

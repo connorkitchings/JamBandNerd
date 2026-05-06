@@ -255,7 +255,6 @@ def build_accuracy_results_dataframe(
             "show_id": record["show_id"],
             "target_show_key": record["show_id"],
             "show_date": record["target_show_date"],
-            "target_show_date": record["target_show_date"],
             "reference_date": record["reference_date"],
             "actual_song_count": record["actual_song_count"],
             "prediction_run_id": prediction_run_id,

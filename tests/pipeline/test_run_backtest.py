@@ -136,6 +136,8 @@ def test_run_backtest_persists_string_show_ids(monkeypatch):
     ]
     assert captured["df"]["show_id"].tolist() == ["goose-show-3"]
     assert captured["df"]["show_id"].map(type).eq(str).all()
+    assert "target_show_date" not in captured["df"].columns
+    assert captured["df"]["show_date"].tolist() == ["2024-01-20"]
     assert captured["df"]["prediction_run_id"].tolist() == [987]
     assert len(completed_runs) == 1
     assert completed_runs[0]["band"] == "goose"
