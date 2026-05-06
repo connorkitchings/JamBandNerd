@@ -70,8 +70,8 @@ BAND_METADATA: tuple[BandMetadata, ...] = (
     ),
     BandMetadata(
         band="um",
-        model_version="um_fast_gbm_v1",
-        notes="UMFast V1 (PhishFast V2 arch). dual=0.323 (+0.009 vs Deal).",
+        model_version="um_fast_gbm_v2",
+        notes="UMFast V2 (HP-tuned leaves=15, lr=0.07, lambda=0.1). dual=0.343 (+0.020 vs V1).",
     ),
 )
 
