@@ -2,8 +2,8 @@ from datetime import date
 
 import pandas as pd
 import pytest
-
 from src.jambandnerd.models.ckplus.model import CKPlusPredictor
+
 from src.jambandnerd.transformations.gaps import ModelData
 
 

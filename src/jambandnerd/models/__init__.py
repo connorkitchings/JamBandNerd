@@ -5,7 +5,7 @@ prediction algorithms, along with accuracy calculation utilities.
 
 Supported models:
 - notebook: Rotation-based predictor using past-year frequency analysis
-- ckplus: Gap-based statistical predictor with z-score calculations
+- deal: Logistic regression predictor with feature engineering
 
 Core components:
 - base: Abstract PredictionModel interface
@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from .accuracy import TopKMetrics, aggregate_metrics, compute_per_show_metrics
     from .base import PredictionModel, PredictionResult
-    from .ckplus.model import CKPlusPrediction, CKPlusPredictor
+    from .deal.model import DealPredictor
     from .notebook.model import NotebookPredictor, RankedPrediction
 
 __all__ = [
@@ -28,10 +28,9 @@ __all__ = [
     "aggregate_metrics",
     "NotebookPredictor",
     "RankedPrediction",
-    "CKPlusPredictor",
-    "CKPlusPrediction",
+    "DealPredictor",
     "base",
     "accuracy",
     "notebook",
-    "ckplus",
+    "deal",
 ]

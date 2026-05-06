@@ -32,7 +32,6 @@ from .database import (
 )
 from .models import (
     BAND_EXCLUSION_WINDOWS,
-    CKPLUS_ALPHA_DEFAULT,  # Deprecated: CK+ model retired 2026-04-11
     DEAL_EPOCHS,
     DEAL_L2_REGULARIZATION,
     DEAL_LEARNING_RATE,
@@ -75,7 +74,6 @@ __all__ = [
     "EXCLUSION_WINDOW_DEFAULT",
     "BAND_EXCLUSION_WINDOWS",
     "MIN_PLAYS_THRESHOLD_DEFAULT",
-    "CKPLUS_ALPHA_DEFAULT",
     "RETIREMENT_GAPS",
     "MODEL_VERSIONS",
     "ENABLED_MODELS",
