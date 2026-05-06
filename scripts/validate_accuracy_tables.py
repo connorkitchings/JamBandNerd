@@ -19,15 +19,7 @@ from jambandnerd.db.connection import get_supabase_client
 from jambandnerd.models.registry import (
     list_accuracy_validation_models,
 )
-
-
-def _parse_timestamp(value: str | None) -> datetime | None:
-    if not value:
-        return None
-    try:
-        return datetime.fromisoformat(value.replace("Z", "+00:00"))
-    except ValueError:
-        return None
+from scripts.common import parse_timestamp
 
 
 def _latest_row(client, *, table: str, band: str, model_version: str):
@@ -74,7 +66,7 @@ def _recent_replay_eligible_rows(
         key=lambda row: (
             str(row.get("show_date") or ""),
             row.get("prediction_run_id") is not None,
-            _parse_timestamp(str(row.get("evaluated_at") or ""))
+            parse_timestamp(str(row.get("evaluated_at") or ""))
             or datetime.min.replace(tzinfo=timezone.utc),
         ),
         reverse=True,
@@ -106,7 +98,7 @@ def _validate_row(
         print(f"[FAIL] {band}: no {label} row found")
         return 1
 
-    evaluated_at = _parse_timestamp(str(row.get("evaluated_at") or ""))
+    evaluated_at = parse_timestamp(str(row.get("evaluated_at") or ""))
     if evaluated_at is None:
         print(f"[FAIL] {band}: {label} row is missing a valid evaluated_at timestamp")
         return 1
@@ -138,7 +130,7 @@ def _validate_row_skip_freshness(
         print(f"[FAIL] {band}: no {label} row found")
         return 1
 
-    evaluated_at = _parse_timestamp(str(row.get("evaluated_at") or ""))
+    evaluated_at = parse_timestamp(str(row.get("evaluated_at") or ""))
     if evaluated_at is None:
         print(f"[FAIL] {band}: {label} row is missing a valid evaluated_at timestamp")
         return 1

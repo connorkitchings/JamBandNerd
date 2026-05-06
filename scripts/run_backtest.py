@@ -28,7 +28,7 @@ import pandas as pd
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, project_root)
 
-from scripts.common import fetch_table, prepare_band_data
+from scripts.common import fetch_table, prepare_band_data, write_github_output
 from src.jambandnerd.config import (
     COMPLETED_SHOW_ACCURACY_TABLE,
     COMPLETED_SHOW_PREDICTION_RUNS_TABLE,
@@ -55,14 +55,6 @@ from src.jambandnerd.models.registry import (
     serialize_model_predictions,
 )
 from src.jambandnerd.transformations.gaps import generate_model_data
-
-
-def _write_github_output(key: str, value: str) -> None:
-    github_output = os.environ.get("GITHUB_OUTPUT")
-    if not github_output:
-        return
-    with open(github_output, "a", encoding="utf-8") as handle:
-        handle.write(f"{key}={value}\n")
 
 
 def load_backtest_frames(
@@ -97,7 +89,11 @@ def build_scored_run_records(
     local_cache: LocalModelTestCache | None = None,
     show_progress: bool = False,
 ) -> list[dict[str, Any]]:
-    """Build detailed per-show scored-run records without writing to Supabase."""
+    """Build detailed per-show scored-run records without writing to Supabase.
+
+    For training-capable models, trains once on the earliest reference date
+    and reuses weights for subsequent shows, avoiding O(N) training passes.
+    """
 
     definition = get_model_definition(model)
     kwargs: dict[str, Any] = {}
@@ -108,23 +104,13 @@ def build_scored_run_records(
     scored_run_records: list[dict[str, Any]] = []
     total_shows = len(target_shows)
 
-    for index, (_, show_row) in enumerate(target_shows.iterrows(), start=1):
+    # Pre-compute reference dates and identify shows needing scoring
+    show_entries: list[tuple[date, date, str, list[str]]] = []
+    for _, show_row in target_shows.iterrows():
         ref_date = show_row["show_date"]
-        show_id = str(show_row["show_id"])
-        if show_progress:
-            target_date = (
-                ref_date.isoformat() if isinstance(ref_date, date) else ref_date
-            )
-            print(
-                f"[{band.upper()}/{model.upper()}] Scoring retained show "
-                f"{index}/{total_shows}: target_show_date={target_date} "
-                f"show_id={show_id}",
-                flush=True,
-            )
-
         if not isinstance(ref_date, date):
             continue
-
+        show_id = str(show_row["show_id"])
         actual_songs = (
             sets_df.loc[sets_df["show_id"] == show_id, "song_name"]
             .dropna()
@@ -133,8 +119,12 @@ def build_scored_run_records(
         )
         if not actual_songs or len(actual_songs) <= 2:
             continue
-
         prediction_date = get_evaluation_reference_date(ref_date)
+        show_entries.append((ref_date, prediction_date, show_id, actual_songs))
+
+    # Check cache for already-scored runs
+    cached_entries: list[tuple[date, date, str, list[str]]] = []
+    for ref_date, prediction_date, show_id, actual_songs in show_entries:
         if local_cache is not None:
             cached = local_cache.load_scored_run(
                 band=band,
@@ -145,8 +135,37 @@ def build_scored_run_records(
             if cached is not None:
                 scored_run_records.append(cached)
                 continue
+        cached_entries.append((ref_date, prediction_date, show_id, actual_songs))
 
-        try:
+    # Train once on the earliest prediction date for training-capable models
+    earliest_model_data = None
+    if definition.supports_training and cached_entries:
+        earliest_prediction_date = cached_entries[0][1]
+        earliest_model_data = generate_model_data(
+            shows_df,
+            sets_df,
+            earliest_prediction_date,
+            exclusion_window=exclusion_window,
+            band=band,
+        )
+        predictor.train(earliest_model_data)
+
+    for index, (ref_date, prediction_date, show_id, actual_songs) in enumerate(
+        cached_entries, start=1
+    ):
+        if show_progress:
+            target_date = ref_date.isoformat()
+            print(
+                f"[{band.upper()}/{model.upper()}] Scoring retained show "
+                f"{index}/{total_shows}: target_show_date={target_date} "
+                f"show_id={show_id}",
+                flush=True,
+            )
+
+        # Reuse earliest model_data if same prediction date, otherwise regenerate
+        if earliest_model_data is not None and prediction_date == cached_entries[0][1]:
+            model_data = earliest_model_data
+        else:
             model_data = generate_model_data(
                 shows_df,
                 sets_df,
@@ -155,39 +174,21 @@ def build_scored_run_records(
                 band=band,
             )
 
-            if definition.supports_training:
-                predictor.train(model_data)
-            prediction_output = predictor.predict(
-                model_data=model_data,
-                top_k=definition.default_top_k,
-            )
-            preds = (
-                prediction_output[0]
-                if isinstance(prediction_output, tuple)
-                else prediction_output
-            )
+        prediction_output = predictor.predict(
+            model_data=model_data,
+            top_k=definition.default_top_k,
+        )
+        preds = (
+            prediction_output[0]
+            if isinstance(prediction_output, tuple)
+            else prediction_output
+        )
 
-            if not preds:
-                continue
+        if not preds:
+            continue
 
-            serialized_predictions = serialize_model_predictions(model, preds)
-            pred_songs = [
-                prediction["song_name"] for prediction in serialized_predictions
-            ]
-        except (ValueError, AttributeError, KeyError, TypeError) as exc:
-            print(
-                f"  WARNING: show {show_id} ({ref_date}) skipped: "
-                f"{type(exc).__name__}: {exc}",
-                flush=True,
-            )
-            continue
-        except Exception as exc:
-            print(
-                f"  WARNING: show {show_id} ({ref_date}) skipped unexpectedly: "
-                f"{type(exc).__name__}: {exc}",
-                flush=True,
-            )
-            continue
+        serialized_predictions = serialize_model_predictions(model, preds)
+        pred_songs = [prediction["song_name"] for prediction in serialized_predictions]
 
         metrics_by_k: dict[str, dict[str, float]] = {}
         for k in [10, 25, 50]:
@@ -462,7 +463,7 @@ def run_backtest(
             return 0
         target_shows = target_shows[target_shows["show_id"].astype(str).isin(new_ids)]
 
-    _write_github_output("backtest_incremental_all_scored", "false")
+    write_github_output("backtest_incremental_all_scored", "false")
 
     if not definition.supports_backtest:
         raise ValueError(f"Model does not support backtests: {model}")

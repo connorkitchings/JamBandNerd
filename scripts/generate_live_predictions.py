@@ -9,13 +9,12 @@ import sys
 from datetime import date, datetime, timezone
 from typing import Any
 
-import numpy as np
 import pandas as pd
 
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, project_root)
 
-from scripts.common import fetch_table, prepare_band_data
+from scripts.common import NpEncoder, fetch_table, prepare_band_data
 from src.jambandnerd.config import (
     NEXT_SHOW_PREDICTION_RUNS_TABLE,
     NEXT_SHOW_PREDICTION_SONGS_TABLE,
@@ -32,21 +31,6 @@ from src.jambandnerd.models.registry import (
     serialize_model_predictions,
 )
 from src.jambandnerd.transformations.gaps import generate_model_data
-
-
-class NpEncoder(json.JSONEncoder):
-    """Convert numpy/date values to JSON-safe Python values."""
-
-    def default(self, obj):
-        if isinstance(obj, (np.integer, np.int64)):
-            return int(obj)
-        if isinstance(obj, (np.floating, np.float64)):
-            return float(obj)
-        if isinstance(obj, np.ndarray):
-            return obj.tolist()
-        if isinstance(obj, (datetime, date)):
-            return obj.isoformat()
-        return super().default(obj)
 
 
 def _first_string(row: pd.Series | dict[str, Any], keys: tuple[str, ...]) -> str | None:

@@ -299,8 +299,10 @@ export const getLastShowSetlist = cache(
     }
 
     try {
-      const { showsTable } = bandState.bandEntry;
+      const { idColumn, showsTable } = bandState.bandEntry;
       const todayIso = new Date().toISOString().slice(0, 10);
+      const positionColumn = band === "phish" ? "position" : "song_position";
+      const setlistTable = `${band}_setlists_raw`;
 
       const { data: recentShows, error } = await client
         .from(showsTable)
@@ -313,17 +315,66 @@ export const getLastShowSetlist = cache(
         return { status: "error", message: error.message };
       }
 
-      const selectedDate = recentShows?.[0]?.show_date;
-      if (typeof selectedDate !== "string") {
+      const lastShow = recentShows?.[0];
+      if (!lastShow) {
         return { status: "empty" };
       }
 
-      const setlist = await getSetlistForDate(band, selectedDate);
-      if (!setlist) {
+      const showId = lastShow[idColumn];
+      const selectedDate = lastShow.show_date;
+
+      if (typeof selectedDate !== "string" || !showId) {
         return { status: "empty" };
       }
 
-      return { status: "ready", band, setlist };
+      const [setlistResponse, detailResponse] = await Promise.all([
+        client
+          .from(setlistTable)
+          .select("*")
+          .eq(idColumn, showId)
+          .order("set_number", { ascending: true })
+          .order(positionColumn, { ascending: true }),
+        client.from(showsTable).select("*").eq(idColumn, showId).limit(1),
+      ]);
+
+      if (setlistResponse.error || detailResponse.error) {
+        return { status: "error", message: setlistResponse.error?.message ?? detailResponse.error?.message ?? "Unknown error" };
+      }
+
+      const seen = new Set<string>();
+      const songs: SetlistSnapshot["songs"] =
+        setlistResponse.data?.flatMap((item) => {
+          const row = asRecord(item);
+          if (!row) {
+            return [];
+          }
+
+          const key = `${row.set_number}-${row[positionColumn]}`;
+          if (seen.has(key)) {
+            return [];
+          }
+          seen.add(key);
+          return [
+            {
+              setNumber: parseNumber(row.set_number),
+              position: parseNumber(row[positionColumn]),
+              songName: String(row.song_name ?? "Unknown Song"),
+            },
+          ];
+        }) ?? [];
+
+      if (songs.length === 0) {
+        return { status: "empty" };
+      }
+
+      return {
+        status: "ready",
+        band,
+        setlist: {
+          showDetails: detailResponse.data?.[0] ?? null,
+          songs,
+        },
+      };
     } catch (error) {
       return {
         status: "error",

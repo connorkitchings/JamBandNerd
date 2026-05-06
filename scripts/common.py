@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 import time
@@ -10,11 +11,61 @@ from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
+import numpy as np
 import pandas as pd
 
 from src.jambandnerd.db.operations import validate_and_upsert_dataframe
 
 logger = logging.getLogger(__name__)
+
+_fetch_table_cache: dict[tuple[str, str | None], List[Dict]] = {}
+
+
+# ---------------------------------------------------------------------------
+# Centralized utilities (replaces duplicated patterns across scripts)
+# ---------------------------------------------------------------------------
+
+
+class NpEncoder(json.JSONEncoder):
+    """JSON encoder that handles numpy/pandas types for script output."""
+
+    def default(self, obj):
+        if isinstance(obj, (np.integer, np.int64)):
+            return int(obj)
+        if isinstance(obj, (np.floating, np.float64)):
+            return float(obj)
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        if isinstance(obj, (datetime, date)):
+            return obj.isoformat()
+        return super().default(obj)
+
+
+def parse_timestamp(value: str | None) -> datetime | None:
+    """Parse an ISO8601 timestamp string (with optional Z suffix) to datetime."""
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def write_github_output(key: str, value: str) -> None:
+    """Write a key=value pair to GITHUB_OUTPUT for GitHub Actions."""
+    github_output = os.environ.get("GITHUB_OUTPUT")
+    if not github_output:
+        return
+    with open(github_output, "a", encoding="utf-8") as handle:
+        handle.write(f"{key}={value}\n")
+
+
+def write_json_atomic(path: Path, payload: dict[str, Any]) -> None:
+    """Write JSON atomically via temp file + rename."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temp_path = path.with_suffix(f"{path.suffix}.tmp")
+    temp_path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+    temp_path.replace(path)
 
 
 def upsert_table(
@@ -26,24 +77,28 @@ def upsert_table(
     skip_validation: bool = False,
     required_columns: Sequence[str] | None = None,
     log: Callable[..., None] = print,
-) -> None:
+) -> bool:
     """Collect, normalize, and upsert data to a Supabase raw table.
 
     The collector is invoked to fetch raw data, the normalizer converts it
     into a DataFrame matching the target table schema, and the result is
     upserted against the given conflict columns.
+
+    Returns:
+        True if the upsert succeeded (or was skipped due to empty data),
+        False if collection or upsert failed.
     """
     log(f"Collecting {table_name}...")
     try:
         raw_data = collector_func()
     except Exception as e:
         log(f"Error collecting {table_name}: {e}")
-        return
+        return False
     df = normalizer_func(raw_data)
     log(f"Prepared {len(df)} records for {table_name}.")
     if df.empty:
         log(f"No data for {table_name}; skipping upsert.")
-        return
+        return True
 
     try:
         validate_and_upsert_dataframe(
@@ -54,8 +109,10 @@ def upsert_table(
             skip_validation=skip_validation,
         )
         log(f"Upserted data into {table_name}.")
+        return True
     except Exception as e:
         log(f"Error upserting to {table_name}: {e}")
+        return False
 
 
 def completed_show_window(
@@ -332,7 +389,16 @@ def fetch_table(
     *,
     snapshot_root: str | None = None,
 ) -> List[Dict]:
-    """Fetch all rows from a Supabase table with robust, verbose pagination."""
+    """Fetch all rows from a Supabase table with robust, verbose pagination.
+
+    Results are cached in-memory for the lifetime of the process to avoid
+    redundant fetches when multiple models run in the same pipeline.
+    """
+    cache_key = (table_name, snapshot_root)
+    if cache_key in _fetch_table_cache:
+        logger.debug("Returning cached result for %s.", table_name)
+        return _fetch_table_cache[cache_key]
+
     if snapshot_root:
         from src.jambandnerd.db.table_snapshots import load_table_snapshot
 
@@ -340,6 +406,7 @@ def fetch_table(
         print(
             f"Loaded {len(rows)} records from local snapshot for {table_name} ({snapshot_root})."
         )
+        _fetch_table_cache[cache_key] = rows
         return rows
 
     from src.jambandnerd.db.connection import get_supabase_client
@@ -398,6 +465,7 @@ def fetch_table(
             break
 
     logger.info("Fetched a total of %s records from %s.", len(all_data), table_name)
+    _fetch_table_cache[cache_key] = all_data
     return all_data
 
 

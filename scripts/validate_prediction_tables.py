@@ -16,16 +16,7 @@ from jambandnerd.models.registry import (
     list_model_slugs,
     list_pipeline_models,
 )
-
-
-def _parse_timestamp(value: str | None) -> datetime | None:
-    if not value:
-        return None
-    try:
-        # Supabase stores timestamps in ISO8601 with timezone
-        return datetime.fromisoformat(value.replace("Z", "+00:00"))
-    except ValueError:
-        return None
+from scripts.common import parse_timestamp
 
 
 def _latest_prediction_row(
@@ -176,7 +167,7 @@ def list_stale_projection_reference_dates(
     latest_key = max(
         (
             (
-                _parse_timestamp(row.get("generated_at"))
+                parse_timestamp(row.get("generated_at"))
                 or datetime.min.replace(tzinfo=timezone.utc),
                 row.get("reference_date") or "",
             )
@@ -191,7 +182,7 @@ def list_stale_projection_reference_dates(
     projected_by_ref: dict[str, datetime] = {}
     for row in rows:
         reference_date = row.get("reference_date")
-        predicted_at = _parse_timestamp(row.get("generated_at"))
+        predicted_at = parse_timestamp(row.get("generated_at"))
         if not reference_date or predicted_at is None:
             continue
         if reference_date < ref_window_start:
@@ -252,7 +243,7 @@ def validate_predictions(
                     )
                 continue
 
-            predicted_at = _parse_timestamp(row.get("generated_at"))
+            predicted_at = parse_timestamp(row.get("generated_at"))
             age_hrs = None
             if predicted_at:
                 age_hrs = (now - predicted_at).total_seconds() / 3600

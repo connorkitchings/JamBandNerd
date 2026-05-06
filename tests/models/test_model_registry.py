@@ -18,7 +18,7 @@ from src.jambandnerd.models.registry import (
 
 def test_registry_includes_expected_models() -> None:
     slugs = list_model_slugs()
-    assert slugs == ["notebook", "ckplus", "deal"]
+    assert slugs == ["notebook", "deal"]
 
 
 def test_registry_capability_lists_are_flag_driven() -> None:
@@ -71,7 +71,6 @@ def test_registry_invariants_for_serializer_and_capabilities() -> None:
 def test_registry_lifecycle_metadata_tracks_staged_rollout() -> None:
     notebook = get_model_definition("notebook")
     deal = get_model_definition("deal")
-    ckplus = get_model_definition("ckplus")
 
     assert notebook.lifecycle_stage == "web_promoted"
     assert notebook.web_visibility == "promoted"
@@ -79,4 +78,3 @@ def test_registry_lifecycle_metadata_tracks_staged_rollout() -> None:
     assert deal.web_visibility == "promoted"
     assert deal.readiness_windows == (50,)
     assert deal.readiness_baselines == ("notebook",)
-    assert ckplus.lifecycle_stage == "retired"

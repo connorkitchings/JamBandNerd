@@ -17,11 +17,8 @@ BAND_EXCLUSION_WINDOWS: Final[dict[str, int]] = {
     "um": 4,  # UM uses 4-show exclusion window instead of default 3
 }
 
-# Minimum number of plays required for a song to be considered by CK+ model
+# Minimum number of plays required for a song to be considered by Deal model
 MIN_PLAYS_THRESHOLD_DEFAULT: Final[int] = 5
-
-# Alpha parameter for CK+ model (weight for gap ratio vs z-score)
-CKPLUS_ALPHA_DEFAULT: Final[float] = 0.7
 
 # Retirement gap thresholds by band (shows without a play before considered "retired")
 RETIREMENT_GAPS: Final[dict[str, int]] = {

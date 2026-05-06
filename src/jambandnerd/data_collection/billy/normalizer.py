@@ -7,7 +7,7 @@ from typing import Any, Dict, Iterable
 
 import pandas as pd
 
-from jambandnerd.data_collection.utils import compute_source_hash
+from jambandnerd.data_collection.utils import attach_source_hash_column
 
 
 def normalize_songs(raw: Iterable[Dict[str, Any]]) -> pd.DataFrame:
@@ -16,7 +16,7 @@ def normalize_songs(raw: Iterable[Dict[str, Any]]) -> pd.DataFrame:
     if df.empty:
         return df
     df = df.drop_duplicates(subset=["song_name"]).reset_index(drop=True)
-    df["source_hash"] = df.apply(lambda row: compute_source_hash(row.to_dict()), axis=1)
+    df = attach_source_hash_column(df)
     now = datetime.now(timezone.utc).isoformat()
     df["created_at"] = now
     df["updated_at"] = now
@@ -39,7 +39,7 @@ def normalize_shows(raw: Iterable[Dict[str, Any]]) -> pd.DataFrame:
         lambda d: d.isoformat() if pd.notnull(d) else None
     )
 
-    df["source_hash"] = df.apply(lambda row: compute_source_hash(row.to_dict()), axis=1)
+    df = attach_source_hash_column(df)
     now = datetime.now(timezone.utc).isoformat()
     df["created_at"] = now
     df["updated_at"] = now
@@ -53,7 +53,7 @@ def normalize_setlists(raw: Iterable[Dict[str, Any]]) -> pd.DataFrame:
         return df
 
     df["created_at"] = datetime.now(timezone.utc).isoformat()
-    df["source_hash"] = df.apply(lambda row: compute_source_hash(row.to_dict()), axis=1)
+    df = attach_source_hash_column(df)
 
     numeric_columns = {
         "set_number": "Int64",

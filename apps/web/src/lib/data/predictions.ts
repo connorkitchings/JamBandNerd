@@ -112,11 +112,12 @@ async function fetchProjectedPredictionSnapshot(
   return buildPredictionSnapshotFromProjectionRows(rows);
 }
 
-export async function getCurrentModelVersion(
-  client: SupabaseClient,
-  band: BandSlug,
-  model: ModelSlug,
-): Promise<string> {
+export const getCurrentModelVersion = cache(
+  async (
+    client: SupabaseClient,
+    band: BandSlug,
+    model: ModelSlug,
+  ): Promise<string> => {
   if (shouldUseLocalPreview()) {
     return getPreviewCurrentModelVersion(model);
   }
@@ -151,7 +152,7 @@ export async function getCurrentModelVersion(
   }
 
   return `${model}_v1`;
-}
+});
 
 export function resolveReplayModels(
   modelAInput: string | undefined,

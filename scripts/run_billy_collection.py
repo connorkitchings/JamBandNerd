@@ -64,14 +64,13 @@ def _get_db_show_count_for_window(
         return -1
 
 
+from scripts.common import write_github_output
+
+
 def _emit_github_output(**kwargs: str) -> None:
     """Write key=value pairs to GITHUB_OUTPUT if available."""
-    output_path = os.environ.get("GITHUB_OUTPUT")
-    if not output_path:
-        return
-    with open(output_path, "a", encoding="utf-8") as handle:
-        for key, value in kwargs.items():
-            handle.write(f"{key}={value}\n")
+    for key, value in kwargs.items():
+        write_github_output(key, value)
 
 
 def run_billy_collection(

@@ -20,18 +20,23 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
-from scripts.common import ensure_source_reachable  # type: ignore  # noqa: E402
+from scripts.common import (  # type: ignore  # noqa: E402
+    ensure_source_reachable,
+    write_github_output,
+)
 from src.jambandnerd.config.bands import get_collection_policy  # noqa: E402
 from src.jambandnerd.data_collection.um.collector import UmCollector  # noqa: E402
 from src.jambandnerd.data_collection.um.normalizer import (  # noqa: E402
-    attach_source_hash,
     normalize_setlists,
 )
 from src.jambandnerd.data_collection.um.upcoming import (  # noqa: E402
     UpcomingShowsError,
     collect_upcoming_shows,
 )
-from src.jambandnerd.data_collection.utils import CollectionTimer  # noqa: E402
+from src.jambandnerd.data_collection.utils import (  # noqa: E402
+    CollectionTimer,
+    attach_source_hash_column,
+)
 from src.jambandnerd.db.operations import (  # noqa: E402
     dedupe_dataframe_on_conflict,
     fetch_existing_values,
@@ -90,7 +95,7 @@ def _refresh_upcoming_shows(*, skip_validation: bool) -> None:
         return
 
     upcoming_df = pd.DataFrame(upcoming_records)
-    upcoming_df = attach_source_hash(upcoming_df)
+    upcoming_df = attach_source_hash_column(upcoming_df)
     _upsert(
         "um_upcoming_shows",
         upcoming_df,
@@ -108,12 +113,8 @@ def _finish_collection(timer: CollectionTimer, *, skip_validation: bool) -> None
 
 def _emit_github_output(**kwargs: str) -> None:
     """Write key=value pairs to GITHUB_OUTPUT if available."""
-    output_path = os.environ.get("GITHUB_OUTPUT")
-    if not output_path:
-        return
-    with open(output_path, "a", encoding="utf-8") as handle:
-        for key, value in kwargs.items():
-            handle.write(f"{key}={value}\n")
+    for key, value in kwargs.items():
+        write_github_output(key, value)
 
 
 def run_um_collection(
@@ -174,7 +175,7 @@ def run_um_collection(
     if songs_data:
         songs_df = pd.DataFrame(songs_data)
         songs_df = songs_df.drop_duplicates(subset=["song_id"]).reset_index(drop=True)
-        songs_df = attach_source_hash(songs_df)
+        songs_df = attach_source_hash_column(songs_df)
         _upsert(
             "um_songs_raw",
             songs_df,
@@ -190,7 +191,7 @@ def run_um_collection(
     venues_data = collector.collect_venues()
     if venues_data:
         venues_df = pd.DataFrame(venues_data)
-        venues_df = attach_source_hash(venues_df)
+        venues_df = attach_source_hash_column(venues_df)
         _upsert(
             "um_venues_raw",
             venues_df,
@@ -233,7 +234,7 @@ def run_um_collection(
         return
 
     shows_df = pd.DataFrame(shows_data)
-    shows_df = attach_source_hash(shows_df)
+    shows_df = attach_source_hash_column(shows_df)
     _upsert(
         "um_shows_raw",
         shows_df,

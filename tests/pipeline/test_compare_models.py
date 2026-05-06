@@ -23,7 +23,7 @@ class _Predictor:
     def predict(self, model_data, top_k=50):  # noqa: ARG002
         if self.model_slug == "notebook":
             return ([_Prediction("Song A"), _Prediction("Song B")], {})
-        if self.model_slug == "ckplus":
+        if self.model_slug == "deal":
             return ([_Prediction("Song A"), _Prediction("Song Z")], {})
         return [_Prediction("Song A")]
 
@@ -117,7 +117,7 @@ def test_compare_models_generate_report_emits_schema(monkeypatch):
 
     report = module.generate_report(
         candidate_model="deal",
-        baseline_models=["ckplus", "notebook"],
+        baseline_models=["notebook", "notebook"],
         bands=["goose"],
         windows=[{"label": "last_2", "shows": 2}],
         exclusion_window=3,
@@ -128,7 +128,7 @@ def test_compare_models_generate_report_emits_schema(monkeypatch):
 
     assert report["candidate_model"] == {"slug": "deal", "version": "deal_v2"}
     assert report["baseline_models"] == [
-        {"slug": "ckplus", "version": "ckplus_v1"},
+        {"slug": "notebook", "version": "notebook_v1"},
         {"slug": "notebook", "version": "notebook_v1"},
     ]
     assert report["requested_bands"] == ["goose"]
@@ -141,7 +141,7 @@ def test_compare_models_generate_report_emits_schema(monkeypatch):
     assert "promotion_gate" in window
     assert set(window["metrics_by_band"]["goose"].keys()) == {
         "deal",
-        "ckplus",
+        "notebook",
         "notebook",
     }
 
@@ -183,7 +183,7 @@ def test_compare_models_promotion_gate_fails_when_candidate_loses(monkeypatch):
 
     report = module.generate_report(
         candidate_model="deal",
-        baseline_models=["ckplus"],
+        baseline_models=["notebook"],
         bands=["goose"],
         windows=[{"label": "last_2", "shows": 2}],
         exclusion_window=3,
@@ -264,7 +264,7 @@ def test_compare_models_candidate_notebook_matches_backtest_metrics(monkeypatch)
     )
     report = module.generate_report(
         candidate_model="notebook",
-        baseline_models=["ckplus"],
+        baseline_models=["notebook"],
         bands=["goose"],
         windows=[{"label": "last_2", "shows": 2}],
         exclusion_window=3,
@@ -310,7 +310,7 @@ def test_compare_models_loads_each_band_once_across_multiple_windows(monkeypatch
 
     module.generate_report(
         candidate_model="deal",
-        baseline_models=["ckplus", "notebook"],
+        baseline_models=["notebook", "notebook"],
         bands=["goose"],
         windows=[
             {"label": "last_2", "shows": 2},
@@ -337,7 +337,7 @@ def test_compare_models_raises_when_no_band_contexts_load(monkeypatch):
     try:
         module.generate_report(
             candidate_model="deal",
-            baseline_models=["ckplus"],
+            baseline_models=["notebook"],
             bands=["goose"],
             windows=[{"label": "last_2", "shows": 2}],
             exclusion_window=3,
@@ -384,7 +384,7 @@ def test_compare_models_writes_partial_report_after_each_completed_band(
 
     report = module.generate_report(
         candidate_model="deal",
-        baseline_models=["ckplus"],
+        baseline_models=["notebook"],
         bands=["goose", "phish"],
         windows=[{"label": "last_2", "shows": 2}],
         exclusion_window=3,
@@ -435,7 +435,7 @@ def test_compare_models_resume_skips_completed_bands(monkeypatch, tmp_path):
 
     existing_report = {
         "candidate_model": {"slug": "deal", "version": "deal_v2"},
-        "baseline_models": [{"slug": "ckplus", "version": "ckplus_v1"}],
+        "baseline_models": [{"slug": "notebook", "version": "notebook_v1"}],
         "experiment_metadata": {
             "evaluation_windows": ["last_2"],
             "exclusion_window": 3,
@@ -475,7 +475,7 @@ def test_compare_models_resume_skips_completed_bands(monkeypatch, tmp_path):
                                 },
                             },
                         },
-                        "ckplus": {
+                        "notebook": {
                             "shows_evaluated": 2,
                             "metrics": {
                                 "k10": {
@@ -512,7 +512,7 @@ def test_compare_models_resume_skips_completed_bands(monkeypatch, tmp_path):
 
     report = module.generate_report(
         candidate_model="deal",
-        baseline_models=["ckplus"],
+        baseline_models=["notebook"],
         bands=["goose", "phish"],
         windows=[{"label": "last_2", "shows": 2}],
         exclusion_window=3,
@@ -566,7 +566,7 @@ def test_compare_models_candidate_overrides_appear_in_experiment_metadata(monkey
     overrides = {"min_plays_threshold": 3}
     report = module.generate_report(
         candidate_model="deal",
-        baseline_models=["ckplus"],
+        baseline_models=["notebook"],
         bands=["goose"],
         windows=[{"label": "last_2", "shows": 2}],
         exclusion_window=3,

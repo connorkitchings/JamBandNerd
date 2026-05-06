@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import logging
-from datetime import date, datetime
-from typing import Any, Dict, Iterable, List, Optional, Sequence, Set
+from datetime import date, datetime, timedelta
+from typing import Any, Dict, Iterable, List, Optional, Sequence, Set, Tuple
 
 import pandas as pd
 
@@ -12,7 +12,8 @@ from .connection import get_supabase_client
 from .validation import coerce_df_types, validate_dataframe_against_table
 
 logger = logging.getLogger(__name__)
-_schema_cache: dict[str, List[Dict[str, Any]]] = {}
+_SCHEMA_CACHE_TTL = timedelta(hours=2)
+_schema_cache: dict[str, Tuple[List[Dict[str, Any]], datetime]] = {}
 
 
 def _clean_record_value(value: Any) -> Any:
@@ -478,17 +479,19 @@ def upsert_next_show_prediction_run(
         .eq("model_version", model_version)
         .execute()
     )
-    for item in stale.data or []:
-        stale_key = item.get("target_show_key")
-        if not stale_key or stale_key == target_show_key:
-            continue
+    stale_keys = [
+        item["target_show_key"]
+        for item in (stale.data or [])
+        if item.get("target_show_key") and item["target_show_key"] != target_show_key
+    ]
+    if stale_keys:
         (
             client.table(table_name)
             .delete()
             .eq("band", band)
             .eq("model_slug", model_slug)
             .eq("model_version", model_version)
-            .eq("target_show_key", stale_key)
+            .in_("target_show_key", stale_keys)
             .execute()
         )
 
@@ -630,31 +633,33 @@ def prune_completed_show_corpus(
         .eq("model_version", model_version)
         .execute()
     )
-    deleted = 0
-    for row in response.data or []:
-        target_show_key = row.get("target_show_key")
-        if not target_show_key or str(target_show_key) in retained:
-            continue
-        (
-            client.table(accuracy_table)
-            .delete()
-            .eq("band", band)
-            .eq("model_slug", model_slug)
-            .eq("model_version", model_version)
-            .eq("target_show_key", target_show_key)
-            .execute()
-        )
-        (
-            client.table(runs_table)
-            .delete()
-            .eq("band", band)
-            .eq("model_slug", model_slug)
-            .eq("model_version", model_version)
-            .eq("target_show_key", target_show_key)
-            .execute()
-        )
-        deleted += 1
-    return deleted
+    keys_to_delete = [
+        row["target_show_key"]
+        for row in (response.data or [])
+        if row.get("target_show_key") and str(row["target_show_key"]) not in retained
+    ]
+    if not keys_to_delete:
+        return 0
+
+    (
+        client.table(accuracy_table)
+        .delete()
+        .eq("band", band)
+        .eq("model_slug", model_slug)
+        .eq("model_version", model_version)
+        .in_("target_show_key", keys_to_delete)
+        .execute()
+    )
+    (
+        client.table(runs_table)
+        .delete()
+        .eq("band", band)
+        .eq("model_slug", model_slug)
+        .eq("model_version", model_version)
+        .in_("target_show_key", keys_to_delete)
+        .execute()
+    )
+    return len(keys_to_delete)
 
 
 def upsert_historical_prediction_run(
@@ -823,8 +828,12 @@ def get_table_schema(
     Returns:
         A list of dictionaries describing columns, or an empty list on failure.
     """
+    global _schema_cache
+    now = datetime.now()
     if use_cache and table_name in _schema_cache:
-        return _schema_cache[table_name]
+        cached_schema, cached_at = _schema_cache[table_name]
+        if now - cached_at < _SCHEMA_CACHE_TTL:
+            return cached_schema
 
     client = get_supabase_client()
     try:
@@ -833,7 +842,7 @@ def get_table_schema(
         ).execute()
         schema = response.data or []
         if use_cache:
-            _schema_cache[table_name] = schema
+            _schema_cache[table_name] = (schema, now)
         return schema
     except Exception:
         # RPC not available or other error; let validation layer use local expectations

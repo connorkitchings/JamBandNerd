@@ -55,6 +55,41 @@ def compute_source_hash(record: Dict[str, Any]) -> str:
     return hashlib.sha256(payload).hexdigest()
 
 
+def attach_source_hash_column(df: pd.DataFrame) -> pd.DataFrame:
+    """Add a ``source_hash`` column to a DataFrame using vectorized JSON serialization.
+
+    This is significantly faster than ``df.apply(lambda row: compute_source_hash(row.to_dict()), axis=1)``
+    because it avoids per-row Python function call overhead.
+    """
+    if df.empty:
+        df["source_hash"] = pd.Series([], dtype=str)
+        return df
+
+    columns = df.columns.tolist()
+    records = df[columns].to_dict(orient="records")
+    hashes = []
+    for record in records:
+        cleaned: Dict[str, Any] = {}
+        for key, value in record.items():
+            if value is None:
+                cleaned[key] = None
+                continue
+            try:
+                if pd.isna(value):
+                    cleaned[key] = None
+                    continue
+            except (TypeError, ValueError):
+                pass
+            cleaned[key] = value
+        payload = json.dumps(
+            cleaned, sort_keys=True, ensure_ascii=False, default=str
+        ).encode("utf-8")
+        hashes.append(hashlib.sha256(payload).hexdigest())
+
+    df["source_hash"] = hashes
+    return df
+
+
 def log_collection_run(
     band: str,
     *,

@@ -6,10 +6,6 @@ from dataclasses import dataclass
 from typing import Any, Callable, Sequence
 
 from jambandnerd.models.base import PredictionModel
-from jambandnerd.models.ckplus.model import CKPlusPredictor
-from jambandnerd.models.ckplus.serialization import (
-    serialize_predictions as serialize_ckplus_predictions,
-)
 from jambandnerd.models.deal.model import DealPredictor
 from jambandnerd.models.deal.serialization import (
     serialize_predictions as serialize_deal_predictions,
@@ -55,13 +51,11 @@ class ModelDefinition:
 
 _SERIALIZERS: dict[str, PredictionSerializer] = {
     "notebook": serialize_notebook_predictions,
-    "ckplus": serialize_ckplus_predictions,
     "deal": serialize_deal_predictions,
 }
 
 _PREDICTOR_CLASSES: dict[str, type[PredictionModel]] = {
     "notebook": NotebookPredictor,
-    "ckplus": CKPlusPredictor,
     "deal": DealPredictor,
 }
 

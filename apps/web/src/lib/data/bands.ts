@@ -4,6 +4,7 @@
 
 import "server-only";
 
+import { cache } from "react";
 import { DEFAULT_BAND_SLUG, type BandSlug, normalizeBand } from "@/lib/config";
 import { getSupabaseServerClient, hasSupabaseEnv } from "@/lib/supabase/server";
 
@@ -26,7 +27,8 @@ export function getClientOrState<T>(): RouteState<T> | null {
 // Band fetching
 // ---------------------------------------------------------------------------
 
-export async function getBands(): Promise<RouteState<{ bands: BandEntry[] }>> {
+export const getBands = cache(
+  async (): Promise<RouteState<{ bands: BandEntry[] }>> => {
   if (shouldUseLocalPreview()) {
     return { status: "ready", bands: getPreviewBands() };
   }
@@ -71,7 +73,7 @@ export async function getBands(): Promise<RouteState<{ bands: BandEntry[] }>> {
       message: error instanceof Error ? error.message : "Unknown error",
     };
   }
-}
+});
 
 // ---------------------------------------------------------------------------
 // Band selection helpers
