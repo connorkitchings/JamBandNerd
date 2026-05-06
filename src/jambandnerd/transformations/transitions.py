@@ -47,11 +47,7 @@ class TransitionMatrix:
         pairs = df.loc[same_group & df["_prev_song"].notna()]
 
         if not pairs.empty:
-            pair_counts = (
-                pairs.groupby(["_prev_song", "song_name"])
-                .size()
-                .to_dict()
-            )
+            pair_counts = pairs.groupby(["_prev_song", "song_name"]).size().to_dict()
             prefix_counts = pairs.groupby("_prev_song").size().to_dict()
             self._transitions.update(pair_counts)
             for song, cnt in prefix_counts.items():

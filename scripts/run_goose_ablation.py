@@ -33,24 +33,27 @@ ABLATION_VARIANTS: list[tuple[str, list[str]]] = [
     ("+plays25", CORE + ["plays_past_25", "diff_25_to_50"]),
     ("+tour", CORE + ["tour_position", "show_position_in_run"]),
     ("+venue", CORE + ["same_venue_run_position"]),
-    ("full_v1_plus_ppl", [
-        "current_gap",
-        "plays_past_3",
-        "plays_past_5",
-        "plays_past_10",
-        "plays_past_25",
-        "plays_past_50",
-        "career_play_pct",
-        "month_play_rate",
-        "diff_25_to_50",
-        "show_position_in_run",
-        "tour_position",
-        "same_venue_run_position",
-        "overdue_ratio",
-        "avg_ltp_recent",
-        "ltp_diff_recent",
-        "plays_past_year",
-    ]),
+    (
+        "full_v1_plus_ppl",
+        [
+            "current_gap",
+            "plays_past_3",
+            "plays_past_5",
+            "plays_past_10",
+            "plays_past_25",
+            "plays_past_50",
+            "career_play_pct",
+            "month_play_rate",
+            "diff_25_to_50",
+            "show_position_in_run",
+            "tour_position",
+            "same_venue_run_position",
+            "overdue_ratio",
+            "avg_ltp_recent",
+            "ltp_diff_recent",
+            "plays_past_year",
+        ],
+    ),
 ]
 
 
@@ -76,16 +79,18 @@ def main() -> None:
                 out_dir="backtests/",
             )
             elapsed = time.perf_counter() - t0
-            results.append({
-                "variant": name,
-                "n_features": len(features),
-                "features": features,
-                "dual": round(summary.dual_score, 4),
-                "p10": round(summary.p10, 4),
-                "r50": round(summary.r50, 4),
-                "n_shows": summary.n_shows,
-                "elapsed_s": round(elapsed, 1),
-            })
+            results.append(
+                {
+                    "variant": name,
+                    "n_features": len(features),
+                    "features": features,
+                    "dual": round(summary.dual_score, 4),
+                    "p10": round(summary.p10, 4),
+                    "r50": round(summary.r50, 4),
+                    "n_shows": summary.n_shows,
+                    "elapsed_s": round(elapsed, 1),
+                }
+            )
             print(
                 f"  -> dual={summary.dual_score:.4f} "
                 f"p@10={summary.p10:.3f} r@50={summary.r50:.3f} "
@@ -94,13 +99,15 @@ def main() -> None:
         except Exception as exc:
             elapsed = time.perf_counter() - t0
             print(f"  -> ERROR: {exc} ({elapsed:.1f}s)")
-            results.append({
-                "variant": name,
-                "n_features": len(features),
-                "features": features,
-                "error": str(exc),
-                "elapsed_s": round(elapsed, 1),
-            })
+            results.append(
+                {
+                    "variant": name,
+                    "n_features": len(features),
+                    "features": features,
+                    "error": str(exc),
+                    "elapsed_s": round(elapsed, 1),
+                }
+            )
 
     out_path = Path("backtests/goose_feature_ablation_results.json")
     out_path.write_text(json.dumps(results, indent=2))
@@ -119,7 +126,9 @@ def main() -> None:
         else:
             print(f"{r['variant']:<22} {r['n_features']:>4}   ERROR: {r['error'][:40]}")
 
-    print(f"\nBaseline: Notebook 1yr = 0.408, GooseFast v1 = 0.378, Goose phase_b v1 (logistic) = 0.399")
+    print(
+        f"\nBaseline: Notebook 1yr = 0.408, GooseFast v1 = 0.378, Goose phase_b v1 (logistic) = 0.399"
+    )
     print(f"Full results: {out_path}")
 
 

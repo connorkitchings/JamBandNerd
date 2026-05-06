@@ -91,9 +91,7 @@ class ThreeStagePredictor(PredictionModel):
             return []
 
         if self._transition_matrix is None or self._transition_matrix.n_pairs == 0:
-            return [
-                self._wrap_as_deal(p) for p in raw_predictions[:top_k]
-            ]
+            return [self._wrap_as_deal(p) for p in raw_predictions[:top_k]]
 
         stage1_probs = dict(_prediction_attrs(p) for p in raw_predictions)
         candidate_songs = list(stage1_probs.keys())
@@ -134,7 +132,11 @@ class ThreeStagePredictor(PredictionModel):
     def _wrap_as_deal(pred: Any, probability: float | None = None) -> DealPrediction:
         return DealPrediction(
             song_name=getattr(pred, "song_name", ""),
-            probability=float(probability if probability is not None else getattr(pred, "probability", 0.0)),
+            probability=float(
+                probability
+                if probability is not None
+                else getattr(pred, "probability", 0.0)
+            ),
             current_gap=getattr(pred, "current_gap", getattr(pred, "gap_shows", 0)),
             plays_past_year=getattr(pred, "plays_past_year", 0),
             recent_plays_50=getattr(pred, "recent_plays_50", 0),

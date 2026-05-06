@@ -97,7 +97,9 @@ def main() -> None:
     print("=" * 72)
 
     bands_seen = sorted(set(r["band"] for r in results if "dual" in r))
-    header = f"{'band':<8} {'1yr':>8} {'2yr':>8} {'50shows':>8} {'100shows':>8}  {'best':>8}"
+    header = (
+        f"{'band':<8} {'1yr':>8} {'2yr':>8} {'50shows':>8} {'100shows':>8}  {'best':>8}"
+    )
     print(header)
     print("-" * len(header))
 

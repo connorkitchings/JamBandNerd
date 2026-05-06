@@ -58,15 +58,13 @@ def compute_set_position_features(
 
     if has_set_number:
         sn = plays[["song_name", "set_number"]].copy()
-        sn["set_number"] = pd.to_numeric(
-            sn["set_number"], errors="coerce"
-        ).astype("Float64")
+        sn["set_number"] = pd.to_numeric(sn["set_number"], errors="coerce").astype(
+            "Float64"
+        )
         sn = sn.dropna(subset=["set_number"])
         if not sn.empty:
             counts = (
-                sn.groupby(["song_name", "set_number"])
-                .size()
-                .unstack(fill_value=0)
+                sn.groupby(["song_name", "set_number"]).size().unstack(fill_value=0)
             )
             result = result.merge(counts, on="song_name", how="left")
             s1 = result.get(1, pd.Series(0, index=result.index)).fillna(0)
@@ -106,9 +104,7 @@ def compute_set_position_features(
         pos = pos.dropna(subset=["song_position"])
         if not pos.empty and "show_index" in pos.columns:
             show_max = (
-                pos.groupby("show_index")["song_position"]
-                .max()
-                .rename("max_pos")
+                pos.groupby("show_index")["song_position"].max().rename("max_pos")
             )
             pos = pos.merge(show_max, on="show_index", how="left")
             pos["norm_pos"] = np.where(
@@ -121,12 +117,8 @@ def compute_set_position_features(
                 position_consistency=lambda x: x.std(ddof=0),
             )
             result = result.merge(pos_stats, on="song_name", how="left")
-            result["typical_position_pct"] = result[
-                "typical_position_pct"
-            ].fillna(0.0)
-            result["position_consistency"] = result[
-                "position_consistency"
-            ].fillna(0.0)
+            result["typical_position_pct"] = result["typical_position_pct"].fillna(0.0)
+            result["position_consistency"] = result["position_consistency"].fillna(0.0)
         else:
             result["typical_position_pct"] = 0.0
             result["position_consistency"] = 0.0

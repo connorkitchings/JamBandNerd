@@ -219,23 +219,24 @@ def _window_plays_by_days(
     """Per-song play count in the last N days before the reference column."""
     if ref_col < 0 or not col_dates:
         return pd.Series(0.0, index=presence.index)
-    
+
     ref_date = col_dates[ref_col]
     if ref_date is None:
         return pd.Series(0.0, index=presence.index)
-    
+
     # Calculate cutoff date
     cutoff_date = ref_date - pd.Timedelta(days=days)
-    
+
     # Find which columns are within the date window
     valid_cols = [
-        i for i, d in enumerate(col_dates[:ref_col + 1])
+        i
+        for i, d in enumerate(col_dates[: ref_col + 1])
         if d is not None and d >= cutoff_date
     ]
-    
+
     if not valid_cols:
         return pd.Series(0.0, index=presence.index)
-    
+
     # Sum plays across valid columns
     plays_in_window = presence.iloc[:, valid_cols].sum(axis=1).astype(float)
     return plays_in_window
@@ -298,18 +299,18 @@ def _get_candidate_songs(
     top_career: int = _CANDIDATE_TOP_CAREER,
 ) -> pd.Index:
     """Get candidate songs: played in last N shows + top M by career plays.
-    
+
     Reduces inference cost for large catalogs like Phish (~500-800 songs).
     """
     # Songs played in recent window
     start_col = max(0, ref_col - recent_shows + 1)
-    recent_plays = presence.iloc[:, start_col:ref_col + 1].sum(axis=1)
+    recent_plays = presence.iloc[:, start_col : ref_col + 1].sum(axis=1)
     recent_songs = presence.index[recent_plays > 0]
-    
+
     # Top songs by career plays
     career_plays = cum.iloc[:, ref_col]
     top_songs = career_plays.nlargest(top_career).index
-    
+
     # Union of both sets
     candidates = recent_songs.union(top_songs)
     return candidates
@@ -482,30 +483,32 @@ class PhishFastPredictor(PredictionModel):
 
             # Get candidate songs with pruning
             candidates = _get_candidate_songs(presence, cum, ref_col)
-            
+
             total_before = cum.iloc[:, ref_col]
             gap_at_j = gap_mat.iloc[:, j]
-            
+
             # Filter to eligible candidates
             eligible_mask = (
-                total_before.reindex(candidates, fill_value=0) >= _MIN_PLAYS
-            ) & (
-                gap_at_j.reindex(candidates, fill_value=999) > 0
-            ) & (
-                gap_at_j.reindex(candidates, fill_value=999) <= _RETIRED_GAP
+                (total_before.reindex(candidates, fill_value=0) >= _MIN_PLAYS)
+                & (gap_at_j.reindex(candidates, fill_value=999) > 0)
+                & (gap_at_j.reindex(candidates, fill_value=999) <= _RETIRED_GAP)
             )
-            
+
             if not eligible_mask.any():
                 continue
 
-            eligible_songs = candidates[eligible_mask.reindex(candidates, fill_value=False)]
+            eligible_songs = candidates[
+                eligible_mask.reindex(candidates, fill_value=False)
+            ]
             gap_e = gap_at_j.loc[eligible_songs]
             total_e = total_before.loc[eligible_songs]
 
             p10 = _window_plays(cum, j, 10).loc[eligible_songs]
             p25 = _window_plays(cum, j, 25).loc[eligible_songs]
             p50 = _window_plays(cum, j, 50).loc[eligible_songs]
-            p2yr = _window_plays_by_days(plays, presence, ref_col, 730, col_dates).loc[eligible_songs]
+            p2yr = _window_plays_by_days(plays, presence, ref_col, 730, col_dates).loc[
+                eligible_songs
+            ]
             career_pct = total_e / max(1, j)
 
             target_month = target_date.month
@@ -615,30 +618,32 @@ class PhishFastPredictor(PredictionModel):
 
             # Get candidate songs with pruning
             candidates = _get_candidate_songs(presence, cum, ref_col)
-            
+
             total_before = cum.iloc[:, ref_col]
             gap_at_j = gap_mat.iloc[:, j]
-            
+
             # Filter to eligible candidates
             eligible_mask = (
-                total_before.reindex(candidates, fill_value=0) >= _MIN_PLAYS
-            ) & (
-                gap_at_j.reindex(candidates, fill_value=999) > 0
-            ) & (
-                gap_at_j.reindex(candidates, fill_value=999) <= _RETIRED_GAP
+                (total_before.reindex(candidates, fill_value=0) >= _MIN_PLAYS)
+                & (gap_at_j.reindex(candidates, fill_value=999) > 0)
+                & (gap_at_j.reindex(candidates, fill_value=999) <= _RETIRED_GAP)
             )
-            
+
             if not eligible_mask.any():
                 continue
 
-            eligible_songs = candidates[eligible_mask.reindex(candidates, fill_value=False)]
+            eligible_songs = candidates[
+                eligible_mask.reindex(candidates, fill_value=False)
+            ]
             gap_e = gap_at_j.loc[eligible_songs]
             total_e = total_before.loc[eligible_songs]
 
             p10 = _window_plays(cum, j, 10).loc[eligible_songs]
             p25 = _window_plays(cum, j, 25).loc[eligible_songs]
             p50 = _window_plays(cum, j, 50).loc[eligible_songs]
-            p2yr = _window_plays_by_days(plays, presence, ref_col, 730, col_dates).loc[eligible_songs]
+            p2yr = _window_plays_by_days(plays, presence, ref_col, 730, col_dates).loc[
+                eligible_songs
+            ]
 
             career_pct = total_e / max(1, j)
 
@@ -785,16 +790,14 @@ class PhishFastPredictor(PredictionModel):
 
         # Get candidate songs with pruning
         candidates = _get_candidate_songs(presence, cum, ref_col)
-        
+
         # Filter to eligible candidates
         eligible_mask = (
-            total_plays.reindex(candidates, fill_value=0) >= _MIN_PLAYS
-        ) & (
-            gap_predict.reindex(candidates, fill_value=999) > 0
-        ) & (
-            gap_predict.reindex(candidates, fill_value=999) <= _RETIRED_GAP
+            (total_plays.reindex(candidates, fill_value=0) >= _MIN_PLAYS)
+            & (gap_predict.reindex(candidates, fill_value=999) > 0)
+            & (gap_predict.reindex(candidates, fill_value=999) <= _RETIRED_GAP)
         )
-        
+
         eligible_songs = candidates[eligible_mask.reindex(candidates, fill_value=False)]
         if len(eligible_songs) == 0:
             return []
@@ -808,7 +811,9 @@ class PhishFastPredictor(PredictionModel):
         p10 = _window_plays(cum, n_shows, 10).loc[eligible_songs]
         p25 = _window_plays(cum, n_shows, 25).loc[eligible_songs]
         p50 = _window_plays(cum, n_shows, 50).loc[eligible_songs]
-        p2yr = _window_plays_by_days(plays, presence, ref_col, 730, col_dates).loc[eligible_songs]
+        p2yr = _window_plays_by_days(plays, presence, ref_col, 730, col_dates).loc[
+            eligible_songs
+        ]
 
         career_pct = total_e / max(1, n_shows)
         month_before = month_cums[target_month].iloc[:, ref_col].loc[eligible_songs]

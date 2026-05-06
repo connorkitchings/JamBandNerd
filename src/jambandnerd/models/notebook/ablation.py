@@ -42,11 +42,7 @@ def _count_plays_in_window(
     else:
         raise ValueError(f"Unknown window_mode: {window_mode}")
 
-    return (
-        in_window.groupby("song_name")["show_index"]
-        .nunique()
-        .rename("window_plays")
-    )
+    return in_window.groupby("song_name")["show_index"].nunique().rename("window_plays")
 
 
 class NotebookAblationPredictor(PredictionModel):
@@ -66,9 +62,7 @@ class NotebookAblationPredictor(PredictionModel):
         if features.empty or plays.empty:
             return [], model_data.diagnostics
 
-        window_plays_count = _count_plays_in_window(
-            plays, features, self._WINDOW_MODE
-        )
+        window_plays_count = _count_plays_in_window(plays, features, self._WINDOW_MODE)
 
         song_candidates = features.merge(
             window_plays_count, on="song_name", how="inner"

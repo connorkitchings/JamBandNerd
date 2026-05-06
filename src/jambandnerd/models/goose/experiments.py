@@ -198,9 +198,7 @@ class GooseFastPlusTourFatigue(GooseFastPlusNotebookRank):
             target_show_index=target_show_index,
         )
         frame["tour_fatigue"] = frame["tour_position"] * frame["career_play_pct"]
-        frame["run_pressure"] = (
-            frame["show_position_in_run"] * frame["avg_ltp_recent"]
-        )
+        frame["run_pressure"] = frame["show_position_in_run"] * frame["avg_ltp_recent"]
         return frame
 
 

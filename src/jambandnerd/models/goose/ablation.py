@@ -113,7 +113,10 @@ class GooseFastAblationPredictor(GooseFastPredictor):
             target_show_index=target_show_index,
         )
 
-        if "plays_past_year" in self._ablation_feature_cols or "plays_past_2yr" in self._ablation_feature_cols:
+        if (
+            "plays_past_year" in self._ablation_feature_cols
+            or "plays_past_2yr" in self._ablation_feature_cols
+        ):
             ppl_1yr, ppl_2yr = _plays_past_year_array(
                 eligible_songs=eligible_songs,
                 target_date=target_date,
@@ -123,14 +126,21 @@ class GooseFastAblationPredictor(GooseFastPredictor):
             frame["plays_past_year"] = ppl_1yr
             frame["plays_past_2yr"] = ppl_2yr
 
-        cols = ["song_name"] + [c for c in self._ablation_feature_cols if c in frame.columns]
+        cols = ["song_name"] + [
+            c for c in self._ablation_feature_cols if c in frame.columns
+        ]
         return frame[cols]
 
     def predict(self, model_data: ModelData, top_k: int = 50) -> list[DealPrediction]:
         if self._model is None:
             return []
 
-        from .fast_predictor import _clean_plays, _build_presence, _current_gap_for_prediction, _window_plays
+        from .fast_predictor import (
+            _clean_plays,
+            _build_presence,
+            _current_gap_for_prediction,
+            _window_plays,
+        )
         from jambandnerd.config.bands import get_excluded_songs
 
         plays = _clean_plays(model_data.historical_plays)

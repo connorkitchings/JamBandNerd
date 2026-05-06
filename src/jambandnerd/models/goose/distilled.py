@@ -82,8 +82,7 @@ def _build_feature_columns(
     for family in families:
         if family not in _FAMILIES:
             raise ValueError(
-                f"Unknown feature family: {family}. "
-                f"Available: {sorted(_FAMILIES)}"
+                f"Unknown feature family: {family}. " f"Available: {sorted(_FAMILIES)}"
             )
         for col in _FAMILIES[family]:
             if col not in seen:

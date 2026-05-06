@@ -34,6 +34,4 @@ class WSPFastPredictor(PhishFastPredictorV2):
         self._model = None
         self.best_iteration = None
         self._cache = None
-        self.diagnostic_feature_columns = list(
-            PhishFastPredictorV2._FEATURE_COLS
-        )
+        self.diagnostic_feature_columns = list(PhishFastPredictorV2._FEATURE_COLS)
