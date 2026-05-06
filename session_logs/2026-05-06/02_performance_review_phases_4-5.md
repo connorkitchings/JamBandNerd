@@ -2,7 +2,7 @@
 
 **Date:** 2026-05-06
 **Agent:** Navigator → DataOps + Web/App
-**PR:** TBD
+**PR:** https://github.com/connorkitchings/JamBandNerd/pull/116
 
 ## Goal
 Complete medium and low priority items from the performance and efficiency review.
@@ -73,7 +73,7 @@ Added `CONTACT_EMAIL` to `site.ts` and updated both pages to import from there i
 **Impact:** Single source of truth for contact email.
 
 ### M4: Archive Retired CK+ Model
-**Status:** Deferred — requires moving files and updating many imports. Low priority since model is already disabled in registry and pipeline.
+**Status:** Completed — moved to `src/jambandnerd/models/archived/ckplus/`, removed from registry, config, and tests. Updated tests to use `notebook` as baseline.
 
 ## Verification Status
 
@@ -127,10 +127,11 @@ Added `CONTACT_EMAIL` to `site.ts` and updated both pages to import from there i
 
 ## Next Steps
 
-M4 (Archive CK+ model) is deferred to a future session. It requires:
-- Moving `src/jambandnerd/models/ckplus/` to `src/jambandnerd/models/archived/ckplus/`
-- Updating registry, config, and test imports
-- Lower priority since model is already disabled
+All planned items completed. PR #116 created to merge dev into main.
+
+### Additional UI Tweaks (Post-Session)
+- Centered "Next show" teaser text on homepage
+- Removed redundant "Completed show date" and "Prediction cutoff date" from replay page
 
 ## Lesson Learned
 
