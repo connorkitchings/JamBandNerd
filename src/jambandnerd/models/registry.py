@@ -30,6 +30,8 @@ from jambandnerd.models.notebook.serialization import (
     serialize_predictions as serialize_notebook_predictions,
 )
 from jambandnerd.models.phish.experiments import PhishFastPlusNotebookRankVenueRun
+from jambandnerd.models.um.fast_predictor import UMFastPredictor
+from jambandnerd.models.wsp.fast_predictor import WSPFastPredictor
 
 PredictionSerializer = Callable[[Sequence[Any]], list[dict[str, Any]]]
 
@@ -227,6 +229,8 @@ _BAND_PREDICTOR_CLASSES: dict[str, type[PredictionModel]] = {
     "billy": BillyFastBaselinePredictor,
     "goose": GooseFastRankPredictor,
     "phish": PhishFastPlusNotebookRankVenueRun,
+    "wsp": WSPFastPredictor,
+    "um": UMFastPredictor,
 }
 
 
