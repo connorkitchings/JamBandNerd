@@ -59,7 +59,11 @@ BAND_METADATA: tuple[BandMetadata, ...] = (
         notes="Stacked notebook_rank + venue_run on PhishFast V2. dual=0.419 (+0.014 vs V2).",
     ),
     BandMetadata(band="wsp", model_version="wsp_baseline_v1"),
-    BandMetadata(band="billy", model_version="billy_fast_gbm_v3"),
+    BandMetadata(
+        band="billy",
+        model_version="billy_fast_gbm_v10_hp_tuned",
+        notes="V3 features with HP-tuned leaves=15 + min_leaf=10. dual=0.388 (+0.011 vs V3).",
+    ),
     BandMetadata(band="um", model_version="um_baseline_v1"),
 )
 

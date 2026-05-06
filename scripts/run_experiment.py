@@ -30,6 +30,7 @@ from scripts.run_phase_b_backtest import run_phase_b_backtest
 _BASE_PREDICTOR_PATHS: dict[str, str] = {
     "goose": "jambandnerd.models.goose.fast_predictor.GooseFastPredictor",
     "phish": "jambandnerd.models.phish.fast_predictor.PhishFastPredictorV2",
+    "billy": "jambandnerd.models.billy.fast_predictor.BillyFastPredictorV3",
 }
 
 

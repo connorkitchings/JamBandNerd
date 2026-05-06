@@ -227,7 +227,7 @@ def test_registry_returns_billy_fast_predictor() -> None:
         "billy", songs_df=_SONGS_DF, persist_artifacts=False
     )
     assert isinstance(predictor, BillyFastPredictorV3)
-    assert predictor.MODEL_VERSION == "billy_fast_gbm_v3"
+    assert predictor.MODEL_VERSION == "billy_fast_gbm_v10_hp_tuned"
 
 
 def test_billy_fast_diagnostic_frame_includes_active_and_candidate_features() -> None:

@@ -81,6 +81,11 @@ BILLY_FAST_V3_FEATURE_COLS: list[str] = [
     "ltp_diff_recent",
 ]
 
+BILLY_FAST_V9_FEATURE_COLS: list[str] = [
+    *BILLY_FAST_V3_FEATURE_COLS,
+    "notebook_rank_score",
+]
+
 BILLY_FAST_V5_FEATURE_COLS: list[str] = [
     *BILLY_FAST_V3_FEATURE_COLS,
     "gap_percentile",
@@ -404,7 +409,8 @@ class BillyFastPredictor(PredictionModel):
         all_songs = presence.index
         n_shows = len(show_cols)
 
-        start_col = max(_MIN_PLAYS, n_shows - _TRAINING_WINDOW)
+        start_col = self._start_col(n_shows)
+
         rows: list[pd.DataFrame] = []
 
         for j in range(start_col, n_shows):
@@ -550,6 +556,9 @@ class BillyFastPredictor(PredictionModel):
 
     # ── Training ───────────────────────────────────────────────────────────────
 
+    def _start_col(self, n_shows: int) -> int:
+        return max(_MIN_PLAYS, n_shows - _TRAINING_WINDOW)
+
     def train(self, model_data: ModelData) -> None:
         plays = _clean_plays(model_data.historical_plays)
         if plays.empty:
@@ -567,7 +576,7 @@ class BillyFastPredictor(PredictionModel):
         all_songs = presence.index
         n_shows = len(show_cols)
 
-        start_col = max(_MIN_PLAYS, n_shows - _TRAINING_WINDOW)
+        start_col = self._start_col(n_shows)
 
         rows: list[pd.DataFrame] = []
         group_sizes: list[int] = []
@@ -1227,7 +1236,7 @@ class BillyFastPredictorV5(BillyFastPredictorV3):
 
 
 class BillyFastPredictorV6(BillyFastPredictorV3):
-    """BillyFast v6 — V3 features with per-show LightGBM early stopping."""
+    """BillyFast f6 — V3 features with per-show LightGBM early stopping."""
 
     MODEL_VERSION = "billy_fast_gbm_v6_early_stop"
     _FEATURE_COLS: list[str] = BILLY_FAST_V3_FEATURE_COLS
@@ -1235,6 +1244,115 @@ class BillyFastPredictorV6(BillyFastPredictorV3):
     _EARLY_STOPPING_ROUNDS: int | None = 25
 
 
+# ── BillyFastPredictorV7 ──────────────────────────────────────────────────────
+
+
+class BillyFastPredictorV7(BillyFastPredictorV3):
+    """BillyFast V7 — V3 features with full-history training (no 75-show cap).
+
+    Hypothesis: Billy plays ~200+ shows/year, so a 75-show window covers only
+    ~4 months.  Seasonal rotation patterns span longer periods.  Goose gained
+    +0.025 dual by switching to full-history training.
+    """
+
+    MODEL_VERSION = "billy_fast_gbm_v7_full_history"
+    _FEATURE_COLS: list[str] = BILLY_FAST_V3_FEATURE_COLS
+
+    def _start_col(self, n_shows: int) -> int:
+        return _MIN_PLAYS
+
+
+class BillyFastPredictorV8(BillyFastPredictorV3):
+    """BillyFast V8 — V3 features with 150-show training window (2x the V3 cap)."""
+
+    MODEL_VERSION = "billy_fast_gbm_v8_window_150"
+    _FEATURE_COLS: list[str] = BILLY_FAST_V3_FEATURE_COLS
+
+    def _start_col(self, n_shows: int) -> int:
+        return max(_MIN_PLAYS, n_shows - 150)
+
+
+class BillyFastPredictorV9(BillyFastPredictorV3):
+    """BillyFast V9 — V3 features + notebook_rank_score using plays_past_50 proxy.
+
+    Sorts eligible songs by (plays_past_50 DESC, gap_shows DESC, song_name ASC)
+    — the Notebook-style heuristic — and converts the rank to a normalized score
+    in [0, 1].  This gave Goose +0.006 and Phish +0.014 dual improvement.
+    """
+
+    MODEL_VERSION = "billy_fast_gbm_v9_notebook_rank"
+    _FEATURE_COLS: list[str] = BILLY_FAST_V9_FEATURE_COLS
+
+    @staticmethod
+    def _notebook_rank_score(
+        *,
+        eligible_songs: pd.Index,
+        plays_past_50: pd.Series,
+        gap_e: pd.Series,
+    ) -> list[float]:
+        frame = pd.DataFrame(
+            {
+                "song_name": eligible_songs.astype(str),
+                "plays_past_50": plays_past_50.values,
+                "gap_shows": gap_e.values,
+            }
+        )
+        ranked = frame.sort_values(
+            by=["plays_past_50", "gap_shows", "song_name"],
+            ascending=[False, False, True],
+        )
+        n = len(ranked)
+        if n <= 1:
+            return [1.0] * n
+        scores = {
+            str(row["song_name"]): 1.0 - (rank / (n - 1))
+            for rank, (_, row) in enumerate(ranked.iterrows())
+        }
+        return [
+            float(scores.get(str(song), 0.0)) for song in eligible_songs.astype(str)
+        ]
+
+    def _extra_training_row_features(self, **kwargs: Any) -> dict:
+        v3 = super()._extra_training_row_features(**kwargs)
+        v3["notebook_rank_score"] = self._notebook_rank_score(
+            eligible_songs=kwargs["eligible_songs"],
+            plays_past_50=kwargs["p50"],
+            gap_e=kwargs["gap_e"],
+        )
+        return v3
+
+    def _extra_predict_features(self, **kwargs: Any) -> dict:
+        v3 = super()._extra_predict_features(**kwargs)
+        v3["notebook_rank_score"] = self._notebook_rank_score(
+            eligible_songs=kwargs["eligible_songs"],
+            plays_past_50=kwargs["p50"],
+            gap_e=kwargs["gap_e"],
+        )
+        return v3
+
+
+# ── BillyFastPredictorV10 ─────────────────────────────────────────────────────
+
+_BILLY_FAST_V10_LGB_PARAMS: dict[str, Any] = {
+    **_LGB_PARAMS,
+    "num_leaves": 15,
+    "min_data_in_leaf": 10,
+}
+
+
+class BillyFastPredictorV10(BillyFastPredictorV3):
+    """BillyFast V10 — V3 features with HP-tuned leaves=15 + min_leaf=10.
+
+    Combo sweep winner: dual=0.3879 (+0.011 vs V3). Less capacity and more
+    leaf regularization help Billy's model generalize across its rapidly
+    changing rotation patterns.
+    """
+
+    MODEL_VERSION = "billy_fast_gbm_v10_hp_tuned"
+    _FEATURE_COLS: list[str] = BILLY_FAST_V3_FEATURE_COLS
+    _LGB_PARAMS: dict[str, Any] = _BILLY_FAST_V10_LGB_PARAMS
+
+
 # Accepted Billy baseline. Historical experiment class names remain importable so
 # prior backtest artifacts and diagnostic commands keep their original meaning.
-BillyFastBaselinePredictor = BillyFastPredictorV3
+BillyFastBaselinePredictor = BillyFastPredictorV10
