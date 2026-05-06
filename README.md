@@ -71,8 +71,8 @@ While the optimized pipeline is recommended, you can also run individual compone
 # Generate live next-show predictions for a single band
 uv run python scripts/generate_live_predictions.py --band phish
 
-# Sync the retained last-100 completed-show prediction and metric corpus
-uv run python scripts/sync_retained_prediction_corpus.py --band goose --window 100
+# Sync the retained last-50 completed-show prediction and metric corpus
+uv run python scripts/sync_retained_prediction_corpus.py --band goose --window 50
 
 # Backfill Eggy raw tables without validation warnings
 uv run python scripts/run_eggy_collection.py --skip-validation
@@ -205,7 +205,7 @@ The platform features comprehensive automation through GitHub Actions:
 
 - **Daily Pipeline**: Runs automatically at 3 PM ET every day.
 - **Fantasy Goose**: A dedicated GitHub Actions workflow can auto-submit Goose notebook picks when Fantasy Goose exposes an eligible show and the required secrets are configured.
-- **Dynamic Matrix**: The pipeline runs the repo-authoritative automation band list through `scripts/get_all_bands.py`.
+- **Dynamic Matrix**: The pipeline runs a repo-authoritative band list (goose, phish, wsp, billy, um) defined in the daily workflow setup job.
 - **Manual Triggers**: On-demand execution with band selection via the GitHub UI.
 - **Error Resilience**: Parallel matrix execution with graceful failure handling and explicit degraded-mode reporting for volatile upstreams such as WSP.
 - **Secret Management**: Secure API key and database credential handling.

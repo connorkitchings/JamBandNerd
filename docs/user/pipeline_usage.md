@@ -52,7 +52,7 @@ For debugging or more granular control, you can run individual pipeline componen
 
 - **Data Collection**: `run_goose_collection.py`, `run_phish_collection.py`, `run_wsp_collection.py`, `run_eggy_collection.py`, `run_billy_collection.py`, `run_um_collection.py`
 - **Live Prediction Generation**: `scripts/generate_live_predictions.py --band <band>`
-- **Retained Completed-Show Corpus**: `scripts/sync_retained_prediction_corpus.py --band <band> --window 100`
+- **Retained Completed-Show Corpus**: `scripts/sync_retained_prediction_corpus.py --band <band> --window 50`
 - **Backtesting & Accuracy internals**: `scripts/run_backtest.py --band <band>`
 
   The backtest script runs in **incremental mode by default**: it checks which shows in the target window are already scored and only computes the new ones. This makes daily reruns near-instant after the initial population.
@@ -62,9 +62,6 @@ For debugging or more granular control, you can run individual pipeline componen
 
 > **Branch note (feat/single-model-per-band)**: The `--model` flag has been
 > removed from prediction and backtest scripts. Each band has exactly one
-> registered model. On `main`/`dev`, the multi-model `--model <model>` flag
-> remains available.
-
-- **Legacy baseline comparison** (this branch only): `scripts/compare_to_legacy_baselines.py --band <band>`
+> registered model.
 
 Refer to the source code of these scripts for their specific command-line arguments.

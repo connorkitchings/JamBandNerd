@@ -32,7 +32,7 @@ The primary production workflow. Collects raw data, generates predictions, runs 
   3. Verify data freshness via `scripts/verify_data_freshness.py`
   4. Generate live next-show predictions via `scripts/generate_live_predictions.py`
   5. Validate live prediction tables via `scripts/validate_prediction_tables.py`
-   6. Sync the retained completed-show corpus via `scripts/sync_retained_prediction_corpus.py --window 100` (skippable via `skip_accuracy`; emits `backtest_incremental_all_scored` output through the underlying scorer)
+   6. Sync the retained completed-show corpus via `scripts/sync_retained_prediction_corpus.py --window 50` (skippable via `skip_accuracy`; emits `backtest_incremental_all_scored` output through the underlying scorer)
   8. Validate accuracy tables via `scripts/validate_accuracy_tables.py` (passes `--skip-freshness` when all shows already scored)
   9. Audit supported-model freshness via `scripts/check_supported_model_freshness.py`
   10. Audit website Supabase tables via `scripts/audit_supabase_tables.py` (passes `--skip-accuracy` when all shows already scored)
@@ -114,7 +114,7 @@ Regenerates the retained completed-show corpus for one or more active single-mod
 - **Inputs**: `band` (all or specific), `dry_run` (boolean)
 - **Flow**:
   1. Setup job builds an active-band matrix
-  2. Per-band backfill job runs `scripts/sync_retained_prediction_corpus.py --window 100 --no-incremental`
+  2. Per-band backfill job runs `scripts/sync_retained_prediction_corpus.py --window 50 --no-incremental`
   3. The job validates retained accuracy with `scripts/validate_accuracy_tables.py --skip-freshness`
   4. Summary job writes results
 - **Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
@@ -216,5 +216,5 @@ For manual recovery or migration workflows:
 - `scripts/check_supported_model_freshness.py` — audit supported prediction and accuracy freshness without failing before status artifacts are written
 - `scripts/rebuild_derived_data.py` — legacy multi-model rebuild helper for rollback paths
 - `scripts/generate_live_predictions.py` — write active next-show predictions into `setlist_predictions` and `setlist_prediction_songs`
-- `scripts/sync_retained_prediction_corpus.py` — write and prune the active last-100 completed-show corpus in `setlist_results` and `setlist_accuracy`
+- `scripts/sync_retained_prediction_corpus.py` — write and prune the active last-50 completed-show corpus in `setlist_results` and `setlist_accuracy`
 - `scripts/wipe_band_data.py` — legacy multi-model destructive cleanup helper

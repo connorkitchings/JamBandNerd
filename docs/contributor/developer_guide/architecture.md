@@ -73,7 +73,7 @@ graph TD
   the product-facing board accuracy metric and a non-regression guardrail.
   Legacy p@10/r@50 checks remain active during the metric transition.
 - `setlist_accuracy` is the target canonical evaluation table, keyed
-  `(band, model_version, target_show_key)`, retained to the last 100 eligible
+  `(band, model_version, target_show_key)`, retained to the last 50 eligible
   completed shows per band.
 - Legacy tables (`completed_show_accuracy`, `accuracy_per_show`) remain
   canonical on `main`/`dev` until new tables are fully populated and validated.
@@ -83,7 +83,7 @@ graph TD
 - The website in `apps/web` is the current public surface.
 - Supabase remains the shared storage and read layer for predictions and
   accuracy data.
-- `apps/web/src/lib/data.ts` remains the compatibility import surface while domain ownership is split across `apps/web/src/lib/data/{bands,predictions,accuracy,replay,shows,venues}.ts`.
+- `apps/web/src/lib/data.ts` remains the compatibility import surface while domain ownership is split across `apps/web/src/lib/data/{bands,predictions,accuracy,shows}.ts`.
 - Route files should compose server-side results rather than reimplement query logic.
 - Client components are reserved for interactive islands, navigation hooks, and live subscriptions.
 
@@ -102,7 +102,7 @@ Removed from multi-model era (not present on this branch):
 Key shared components:
 - `page-hero`, `site-header`, `site-footer`, `dashboard-side-nav`
 - `prediction-hero`, `song-board`, `recall-chart`, `accuracy-table`
-- `show-outlook-popover`, `live-tracker`, `model-agreement`
+- `show-outlook-popover`, `live-tracker`
 
 ### Orchestration
 
@@ -142,8 +142,8 @@ predictors.
 Adding or updating a per-band model:
 1. Implement `PredictionModel` in `src/jambandnerd/models/{band}/model.py`.
 2. Update the band's registry entry with a new `model_version`.
-3. Run `scripts/run_backtest.py --band {band}` and compare against legacy
-   baselines via `scripts/compare_to_legacy_baselines.py --band {band}`.
+3. Run `scripts/run_backtest.py --band {band}` and compare against the
+   incumbent metrics in the session logs.
 4. Promote once the per-band gate is met (see ADR 0001).
 
 Live model runs write to `setlist_predictions` and `setlist_prediction_songs`.
