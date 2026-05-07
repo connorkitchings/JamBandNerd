@@ -212,9 +212,10 @@ class TestPhishExperiments:
     """Test Phish experiment sweep registration."""
 
     def test_sweeps_are_registered(self):
-        assert set(PHISH_SWEEPS) == {"hp_sweep", "feature_sweep"}
+        assert set(PHISH_SWEEPS) == {"hp_sweep", "feature_sweep", "combo_sweep"}
         assert len(PHISH_SWEEPS["hp_sweep"]) >= 1
         assert len(PHISH_SWEEPS["feature_sweep"]) >= 1
+        assert len(PHISH_SWEEPS["combo_sweep"]) == 7
 
     def test_feature_sweep_uses_explicit_predictors(self):
         predictor_paths = [
@@ -223,6 +224,11 @@ class TestPhishExperiments:
         assert all(
             path.startswith("jambandnerd.models.phish.") for path in predictor_paths
         )
+
+    def test_combo_sweep_uses_stacked_base_predictor(self):
+        for config in PHISH_SWEEPS["combo_sweep"]:
+            assert config.base_predictor_path == "jambandnerd.models.phish.experiments.PhishFastPlusNotebookRankVenueRun"
+            assert not config.predictor_path
 
 
 class TestIntegration:

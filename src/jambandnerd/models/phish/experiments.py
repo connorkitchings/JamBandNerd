@@ -1,7 +1,7 @@
 """Phish-specific experiment sweep configs.
 
-These sweeps treat ``PhishFastPredictorV2`` as the current incumbent and test
-small, isolated changes before any registry promotion.  Run with:
+These sweeps treat ``PhishFastPlusNotebookRankVenueRun`` as the current incumbent
+and test small, isolated changes before any registry promotion. Run with:
 
 ``uv run python scripts/run_experiment.py --band phish --sweep feature_sweep``.
 """
@@ -10,12 +10,18 @@ from __future__ import annotations
 
 from typing import Any
 
+import lightgbm as lgb
 import pandas as pd
 
 from jambandnerd.models.experiment import ExperimentConfig
 from jambandnerd.models.phish.fast_predictor import (
+    _LGB_PARAMS,
+    _LGB_ROUNDS,
     PHISH_FAST_V2_FEATURE_COLS,
+    PhishFastPredictor,
     PhishFastPredictorV2,
+    _run_position,
+    _tour_position,
     _window_plays,
     _window_plays_by_days,
 )
@@ -368,6 +374,143 @@ class PhishFastPlusNotebookRankVenueRun(PhishFastPlusNotebookRank):
         return extra
 
 
+# ── PhishFastPredictorV3 (Cleaned Feature Set) ────────────────────────────────
+
+
+PHISH_FAST_V3_FEATURE_COLS: list[str] = [
+    "gap_shows",
+    "plays_past_25",
+    "plays_past_50",
+    "plays_past_2yr",
+    "career_play_pct",
+    "tour_position",
+    "diff_25_to_50",
+    "show_position_in_run",
+    "same_venue_run_position",
+]
+
+
+class PhishFastPredictorV3(PhishFastPredictor):
+    """PhishFast V3 — cleaned feature set based on diagnostics.
+
+    Removes 5 underperforming features identified in Session 05 diagnostics:
+    - plays_past_10 (53.7% zero, negative monotonicity)
+    - month_play_rate (zero label correlation)
+    - same_venue_run_prior_played (93% zero, zero gain)
+    - same_venue_run_prior_play_count (93% zero, zero gain)
+    - same_venue_run_prior_play_share (93% zero, zero gain)
+
+    Retains 9 high-value features with strong monotonicity and gain.
+    Total: 9 features (down from 14 in incumbent).
+    """
+
+    MODEL_VERSION = "phish_fast_gbm_v3"
+    _FEATURE_COLS: list[str] = PHISH_FAST_V3_FEATURE_COLS
+    _LGB_PARAMS: dict[str, Any] = _LGB_PARAMS
+    _LGB_ROUNDS: int = _LGB_ROUNDS
+    _EARLY_STOPPING_ROUNDS: int | None = None
+
+    def __init__(
+        self,
+        band: str = "phish",
+        **kwargs: Any,
+    ) -> None:
+        if band != "phish":
+            raise ValueError("PhishFastPredictorV3 only supports band='phish'.")
+        self.band = band
+        self._model: lgb.Booster | None = None
+        self.best_iteration: int | None = None
+        self._cache: dict | None = None
+        self.diagnostic_feature_columns = list(PHISH_FAST_V3_FEATURE_COLS)
+
+    def _extra_training_row_features(
+        self,
+        *,
+        eligible_songs: pd.Index,
+        j: int,
+        target_date: Any,
+        gap_e: pd.Series,
+        career_pct: pd.Series,
+        p25: pd.Series,
+        p50: pd.Series,
+        cache: dict,
+        plays: pd.DataFrame,
+        target_show_index: int,
+    ) -> dict:
+        col_dates = cache["col_dates"]
+        col_venues = cache["col_venues"]
+
+        prior_dates = [d for d in col_dates[:j] if d is not None]
+        if target_date is None:
+            tour_pos = 1.0
+            run_pos = 1.0
+        else:
+            tour_pos = float(_tour_position(prior_dates, target_date, tour_gap_days=14))
+            run_pos = float(_run_position(prior_dates, target_date, gap_days=1))
+
+        pct25 = p25 / max(1, min(25, j))
+        pct50 = p50 / max(1, min(50, j))
+        diff = (pct25 - pct50).values
+
+        target_venue = col_venues[j] if j < len(col_venues) else None
+        if target_venue:
+            target_context = normalize_target_show_context({"venue_name": target_venue})
+            if normalized_venue_key(target_context):
+                sub_plays = plays[plays["show_index"] < target_show_index]
+                same_run_indices = same_venue_run_show_indices(
+                    sub_plays, target_context
+                )
+                same_run_position = float(len(same_run_indices) + 1)
+            else:
+                same_run_position = 0.0
+        else:
+            same_run_position = 0.0
+
+        return {
+            "tour_position": tour_pos,
+            "diff_25_to_50": diff,
+            "show_position_in_run": run_pos,
+            "same_venue_run_position": same_run_position,
+        }
+
+    def _extra_predict_features(
+        self,
+        *,
+        eligible_songs: pd.Index,
+        n_shows: int,
+        ref_date: pd.Timestamp,
+        gap_e: pd.Series,
+        career_pct: pd.Series,
+        p25: pd.Series,
+        p50: pd.Series,
+        cache: dict,
+        plays: pd.DataFrame,
+        target_show_context: Any,
+    ) -> dict:
+        col_dates = cache["col_dates"]
+        prior_dates = [d for d in col_dates if d is not None]
+        tour_pos = float(_tour_position(prior_dates, ref_date.date(), tour_gap_days=14))
+        run_pos = float(_run_position(prior_dates, ref_date.date(), gap_days=1))
+
+        pct25 = p25 / max(1, min(25, n_shows))
+        pct50 = p50 / max(1, min(50, n_shows))
+        diff = (pct25 - pct50).values
+
+        normalized_ctx = normalize_target_show_context(target_show_context or {})
+        if normalized_venue_key(normalized_ctx):
+            same_run_indices = same_venue_run_show_indices(plays, normalized_ctx)
+            same_run_position = float(len(same_run_indices) + 1)
+        else:
+            same_run_position = 0.0
+
+        return {
+            "tour_position": tour_pos,
+            "diff_25_to_50": diff,
+            "show_position_in_run": run_pos,
+            "same_venue_run_position": same_run_position,
+        }
+
+
 PHISH_FEATURE_SWEEP: list[ExperimentConfig] = [
     ExperimentConfig(
         slug="feat_plays_past_year",
@@ -397,7 +540,56 @@ PHISH_FEATURE_SWEEP: list[ExperimentConfig] = [
 ]
 
 
+PHISH_COMBO_SWEEP: list[ExperimentConfig] = [
+    ExperimentConfig(
+        slug="combo_stack_leaves15",
+        description="num_leaves=15 on stacked feature model",
+        base_predictor_path="jambandnerd.models.phish.experiments.PhishFastPlusNotebookRankVenueRun",
+        param_overrides={"num_leaves": 15},
+    ),
+    ExperimentConfig(
+        slug="combo_stack_minleaf10",
+        description="min_data_in_leaf=10 on stacked feature model",
+        base_predictor_path="jambandnerd.models.phish.experiments.PhishFastPlusNotebookRankVenueRun",
+        param_overrides={"min_data_in_leaf": 10},
+    ),
+    ExperimentConfig(
+        slug="combo_stack_minleaf20",
+        description="min_data_in_leaf=20 on stacked feature model",
+        base_predictor_path="jambandnerd.models.phish.experiments.PhishFastPlusNotebookRankVenueRun",
+        param_overrides={"min_data_in_leaf": 20},
+    ),
+    ExperimentConfig(
+        slug="combo_stack_leaves15_minleaf10",
+        description="num_leaves=15 + min_data_in_leaf=10",
+        base_predictor_path="jambandnerd.models.phish.experiments.PhishFastPlusNotebookRankVenueRun",
+        param_overrides={"num_leaves": 15, "min_data_in_leaf": 10},
+    ),
+    ExperimentConfig(
+        slug="combo_stack_leaves15_minleaf20",
+        description="num_leaves=15 + min_data_in_leaf=20",
+        base_predictor_path="jambandnerd.models.phish.experiments.PhishFastPlusNotebookRankVenueRun",
+        param_overrides={"num_leaves": 15, "min_data_in_leaf": 20},
+    ),
+    ExperimentConfig(
+        slug="combo_stack_lr003_r700",
+        description="learning_rate=0.03, rounds=700 on stacked feature model",
+        base_predictor_path="jambandnerd.models.phish.experiments.PhishFastPlusNotebookRankVenueRun",
+        param_overrides={"learning_rate": 0.03},
+        round_overrides=700,
+    ),
+    ExperimentConfig(
+        slug="combo_stack_leaves15_lr003_r700",
+        description="num_leaves=15 + lr=0.03, rounds=700",
+        base_predictor_path="jambandnerd.models.phish.experiments.PhishFastPlusNotebookRankVenueRun",
+        param_overrides={"num_leaves": 15, "learning_rate": 0.03},
+        round_overrides=700,
+    ),
+]
+
+
 PHISH_SWEEPS: dict[str, list[ExperimentConfig]] = {
     "hp_sweep": PHISH_HP_SWEEP,
     "feature_sweep": PHISH_FEATURE_SWEEP,
+    "combo_sweep": PHISH_COMBO_SWEEP,
 }

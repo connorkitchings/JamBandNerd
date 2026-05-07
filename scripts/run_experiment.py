@@ -77,6 +77,7 @@ def run_experiment(
             param_overrides=config.param_overrides or None,
             round_overrides=config.round_overrides,
             feature_cols=config.feature_cols,
+            attr_overrides=config.attr_overrides or None,
         )
 
     t0 = time.perf_counter()
