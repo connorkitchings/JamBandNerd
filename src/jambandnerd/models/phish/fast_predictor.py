@@ -352,6 +352,14 @@ class PhishFastPredictor(PredictionModel):
         self._cache: dict | None = None
         self.diagnostic_feature_columns = list(PHISH_FAST_DIAGNOSTIC_FEATURE_COLS)
 
+    # ── Candidate-pruning hooks ─────────────────────────────────────────────────
+
+    def _candidate_recent_shows(self) -> int:
+        return _CANDIDATE_RECENT_SHOWS
+
+    def _candidate_top_career(self) -> int:
+        return _CANDIDATE_TOP_CAREER
+
     # ── Extension hooks ────────────────────────────────────────────────────────
 
     def _extra_training_row_features(
@@ -482,8 +490,11 @@ class PhishFastPredictor(PredictionModel):
             target_date = pd.Timestamp(raw_target_date).date()
 
             # Get candidate songs with pruning
-            candidates = _get_candidate_songs(presence, cum, ref_col)
-
+            candidates = _get_candidate_songs(
+                presence, cum, ref_col,
+                recent_shows=self._candidate_recent_shows(),
+                top_career=self._candidate_top_career(),
+            )
             total_before = cum.iloc[:, ref_col]
             gap_at_j = gap_mat.iloc[:, j]
 
@@ -620,7 +631,11 @@ class PhishFastPredictor(PredictionModel):
             ref_col = j - 1
 
             # Get candidate songs with pruning
-            candidates = _get_candidate_songs(presence, cum, ref_col)
+            candidates = _get_candidate_songs(
+                presence, cum, ref_col,
+                recent_shows=self._candidate_recent_shows(),
+                top_career=self._candidate_top_career(),
+            )
 
             total_before = cum.iloc[:, ref_col]
             gap_at_j = gap_mat.iloc[:, j]
@@ -792,7 +807,11 @@ class PhishFastPredictor(PredictionModel):
         )
 
         # Get candidate songs with pruning
-        candidates = _get_candidate_songs(presence, cum, ref_col)
+        candidates = _get_candidate_songs(
+            presence, cum, ref_col,
+            recent_shows=self._candidate_recent_shows(),
+            top_career=self._candidate_top_career(),
+        )
 
         # Filter to eligible candidates
         eligible_mask = (

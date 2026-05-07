@@ -1356,3 +1356,211 @@ class BillyFastPredictorV10(BillyFastPredictorV3):
 # Accepted Billy baseline. Historical experiment class names remain importable so
 # prior backtest artifacts and diagnostic commands keep their original meaning.
 BillyFastBaselinePredictor = BillyFastPredictorV10
+
+
+# ── V10 experiment subclasses ─────────────────────────────────────────────────
+
+
+def _window_plays_by_days(
+    plays: pd.DataFrame,
+    presence: pd.DataFrame,
+    ref_col: int,
+    days: int,
+    col_dates: list,
+) -> pd.Series:
+    """Per-song play count in the last N days before the reference column."""
+    if ref_col < 0 or not col_dates:
+        return pd.Series(0.0, index=presence.index)
+
+    ref_date = col_dates[ref_col]
+    if ref_date is None:
+        return pd.Series(0.0, index=presence.index)
+
+    cutoff_date = ref_date - pd.Timedelta(days=days)
+
+    valid_cols = [
+        i
+        for i, d in enumerate(col_dates[: ref_col + 1])
+        if d is not None and d >= cutoff_date
+    ]
+
+    if not valid_cols:
+        return pd.Series(0.0, index=presence.index)
+
+    plays_in_window = presence.iloc[:, valid_cols].sum(axis=1).astype(float)
+    return plays_in_window
+
+
+class BillyFastV10PlaysPastYear(BillyFastPredictorV10):
+    """V10 + plays_past_year (distinct shows in trailing 365 days)."""
+
+    MODEL_VERSION = "billy_fast_gbm_v10_feat_plays_past_year"
+    _FEATURE_COLS: list[str] = [
+        *BillyFastPredictorV10._FEATURE_COLS,
+        "plays_past_year",
+    ]
+
+    def _extra_training_row_features(
+        self,
+        *,
+        eligible_songs: pd.Index,
+        j: int,
+        target_date: Any,
+        gap_e: pd.Series,
+        career_pct: pd.Series,
+        p25: pd.Series,
+        p50: pd.Series,
+        cache: dict,
+        plays: pd.DataFrame,
+        target_show_index: int,
+    ) -> dict:
+        extra = super()._extra_training_row_features(
+            eligible_songs=eligible_songs,
+            j=j,
+            target_date=target_date,
+            gap_e=gap_e,
+            career_pct=career_pct,
+            p25=p25,
+            p50=p50,
+            cache=cache,
+            plays=plays,
+            target_show_index=target_show_index,
+        )
+        ref_col = j - 1
+        extra["plays_past_year"] = (
+            _window_plays_by_days(
+                plays,
+                cache["presence"],
+                ref_col,
+                365,
+                cache["col_dates"],
+            )
+            .loc[eligible_songs]
+            .values
+        )
+        return extra
+
+    def _extra_predict_features(
+        self,
+        *,
+        eligible_songs: pd.Index,
+        n_shows: int,
+        ref_date: pd.Timestamp,
+        gap_e: pd.Series,
+        career_pct: pd.Series,
+        p25: pd.Series,
+        p50: pd.Series,
+        cache: dict,
+        plays: pd.DataFrame,
+        target_show_context: Any,
+    ) -> dict:
+        extra = super()._extra_predict_features(
+            eligible_songs=eligible_songs,
+            n_shows=n_shows,
+            ref_date=ref_date,
+            gap_e=gap_e,
+            career_pct=career_pct,
+            p25=p25,
+            p50=p50,
+            cache=cache,
+            plays=plays,
+            target_show_context=target_show_context,
+        )
+        ref_col = n_shows - 1
+        extra["plays_past_year"] = (
+            _window_plays_by_days(
+                plays,
+                cache["presence"],
+                ref_col,
+                365,
+                cache["col_dates"],
+            )
+            .loc[eligible_songs]
+            .values
+        )
+        return extra
+
+
+class BillyFastV10LongRotation(BillyFastPredictorV10):
+    """V10 + longer-window rotation pressure.
+
+    Adds plays_past_100, diff_50_to_100, long_rotation_pressure.
+    """
+
+    MODEL_VERSION = "billy_fast_gbm_v10_feat_long_rotation"
+    _FEATURE_COLS: list[str] = [
+        *BillyFastPredictorV10._FEATURE_COLS,
+        "plays_past_100",
+        "diff_50_to_100",
+        "long_rotation_pressure",
+    ]
+
+    def _rotation_features(
+        self,
+        *,
+        eligible_songs: pd.Index,
+        upper_col: int,
+        p50: pd.Series,
+        gap_e: pd.Series,
+        cache: dict,
+    ) -> dict[str, Any]:
+        p100 = _window_plays(cache["cum"], upper_col, 100).loc[eligible_songs]
+        pct50 = p50 / max(1, min(50, upper_col))
+        pct100 = p100 / max(1, min(100, upper_col))
+        return {
+            "plays_past_100": p100.values,
+            "diff_50_to_100": (pct50 - pct100).values,
+            "long_rotation_pressure": (gap_e * pct100.clip(lower=0.01)).values,
+        }
+
+    def _extra_training_row_features(self, **kwargs: Any) -> dict:
+        extra = super()._extra_training_row_features(**kwargs)
+        extra.update(
+            self._rotation_features(
+                eligible_songs=kwargs["eligible_songs"],
+                upper_col=kwargs["j"],
+                p50=kwargs["p50"],
+                gap_e=kwargs["gap_e"],
+                cache=kwargs["cache"],
+            )
+        )
+        return extra
+
+    def _extra_predict_features(self, **kwargs: Any) -> dict:
+        extra = super()._extra_predict_features(**kwargs)
+        extra.update(
+            self._rotation_features(
+                eligible_songs=kwargs["eligible_songs"],
+                upper_col=kwargs["n_shows"],
+                p50=kwargs["p50"],
+                gap_e=kwargs["gap_e"],
+                cache=kwargs["cache"],
+            )
+        )
+        return extra
+
+
+class BillyFastV10EarlyStop(BillyFastPredictorV10):
+    """V10 + 500 rounds + 25-round per-show early stopping."""
+
+    MODEL_VERSION = "billy_fast_gbm_v10_early_stop"
+    _LGB_ROUNDS: int = 500
+    _EARLY_STOPPING_ROUNDS: int | None = 25
+
+
+class BillyFastV10FullHistory(BillyFastPredictorV10):
+    """V10 with full-history training (no 75-show window cap)."""
+
+    MODEL_VERSION = "billy_fast_gbm_v10_full_history"
+
+    def _start_col(self, n_shows: int) -> int:
+        return _MIN_PLAYS
+
+
+class BillyFastV10Window150(BillyFastPredictorV10):
+    """V10 with 150-show training window (2x the V10 cap)."""
+
+    MODEL_VERSION = "billy_fast_gbm_v10_window_150"
+
+    def _start_col(self, n_shows: int) -> int:
+        return max(_MIN_PLAYS, n_shows - 150)

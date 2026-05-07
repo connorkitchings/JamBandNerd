@@ -60,8 +60,8 @@ BAND_METADATA: tuple[BandMetadata, ...] = (
     ),
     BandMetadata(
         band="wsp",
-        model_version="wsp_fast_gbm_v1",
-        notes="WSPFast V1 (PhishFast V2 arch). dual=0.434 (+0.026 vs Deal).",
+        model_version="wsp_fast_gbm_v2",
+        notes="V2: long rotation features + lr=0.03, rounds=700. dual=0.448 (+0.014 vs V1).",
     ),
     BandMetadata(
         band="billy",

@@ -11,12 +11,18 @@ from jambandnerd.models.billy.fast_predictor import (
     BILLY_FAST_V2_FEATURE_COLS,
     BILLY_FAST_V3_FEATURE_COLS,
     BILLY_FAST_V5_FEATURE_COLS,
+    BillyFastBaselinePredictor,
     BillyFastPredictor,
     BillyFastPredictorV2,
     BillyFastPredictorV3,
     BillyFastPredictorV4,
     BillyFastPredictorV5,
     BillyFastPredictorV6,
+    BillyFastV10EarlyStop,
+    BillyFastV10FullHistory,
+    BillyFastV10LongRotation,
+    BillyFastV10PlaysPastYear,
+    BillyFastV10Window150,
 )
 from jambandnerd.models.billy.model import (
     BILLY_FEATURE_COLUMNS,
@@ -596,3 +602,80 @@ def test_billy_fast_v6_falls_back_when_validation_split_is_too_small() -> None:
     assert predictor.best_iteration is not None
     assert 0 < predictor.best_iteration <= predictor._LGB_ROUNDS
     assert len(predictions) > 0
+
+
+# ── V10 experiment subclass tests ─────────────────────────────────────────────
+
+
+class TestV10ExperimentSubclasses:
+    """Test V10 experiment subclasses for model version and feature config."""
+
+    def test_v10_plays_past_year(self):
+        predictor = BillyFastV10PlaysPastYear()
+        assert predictor.MODEL_VERSION == "billy_fast_gbm_v10_feat_plays_past_year"
+        assert "plays_past_year" in predictor._FEATURE_COLS
+        assert len(predictor._FEATURE_COLS) == 17
+        assert isinstance(predictor, BillyFastPredictorV3)
+
+    def test_v10_long_rotation(self):
+        predictor = BillyFastV10LongRotation()
+        assert predictor.MODEL_VERSION == "billy_fast_gbm_v10_feat_long_rotation"
+        assert "plays_past_100" in predictor._FEATURE_COLS
+        assert "diff_50_to_100" in predictor._FEATURE_COLS
+        assert "long_rotation_pressure" in predictor._FEATURE_COLS
+        assert len(predictor._FEATURE_COLS) == 19
+
+    def test_v10_early_stop(self):
+        predictor = BillyFastV10EarlyStop()
+        assert predictor.MODEL_VERSION == "billy_fast_gbm_v10_early_stop"
+        assert predictor._LGB_ROUNDS == 500
+        assert predictor._EARLY_STOPPING_ROUNDS == 25
+        assert predictor._LGB_PARAMS["num_leaves"] == 15
+        assert predictor._LGB_PARAMS["min_data_in_leaf"] == 10
+
+    def test_v10_full_history(self):
+        predictor = BillyFastV10FullHistory()
+        assert predictor.MODEL_VERSION == "billy_fast_gbm_v10_full_history"
+        assert predictor._start_col(100) == 3
+
+    def test_v10_window_150(self):
+        predictor = BillyFastV10Window150()
+        assert predictor.MODEL_VERSION == "billy_fast_gbm_v10_window_150"
+        assert predictor._start_col(100) == 3
+        assert predictor._start_col(200) == 50
+
+    def test_baseline_is_v10(self):
+        predictor = BillyFastBaselinePredictor()
+        assert predictor.MODEL_VERSION == "billy_fast_gbm_v10_hp_tuned"
+        assert predictor._LGB_PARAMS["num_leaves"] == 15
+
+
+class TestBillyV10Experiments:
+    """Test Billy V10 experiment sweep registration."""
+
+    def test_sweeps_are_registered(self):
+        from jambandnerd.models.billy.experiments import BILLY_SWEEPS
+        assert set(BILLY_SWEEPS) == {
+            "hp_sweep", "combo_sweep", "feature_sweep", "window_sweep", "hp_v10_sweep",
+        }
+        assert len(BILLY_SWEEPS["feature_sweep"]) == 3
+        assert len(BILLY_SWEEPS["window_sweep"]) == 3
+        assert len(BILLY_SWEEPS["hp_v10_sweep"]) == 4
+
+    def test_feature_sweep_uses_explicit_predictors(self):
+        from jambandnerd.models.billy.experiments import BILLY_SWEEPS
+        predictor_paths = [
+            config.predictor_path for config in BILLY_SWEEPS["feature_sweep"]
+        ]
+        assert all(
+            path.startswith("jambandnerd.models.billy.") for path in predictor_paths
+        )
+
+    def test_window_sweep_uses_explicit_predictors(self):
+        from jambandnerd.models.billy.experiments import BILLY_SWEEPS
+        predictor_paths = [
+            config.predictor_path for config in BILLY_SWEEPS["window_sweep"]
+        ]
+        assert all(
+            path.startswith("jambandnerd.models.billy.") for path in predictor_paths
+        )

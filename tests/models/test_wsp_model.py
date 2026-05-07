@@ -1,0 +1,195 @@
+"""Tests for WSPFastPredictor."""
+
+from __future__ import annotations
+
+from datetime import date
+
+import pandas as pd
+import pytest
+
+from jambandnerd.models.wsp.fast_predictor import (
+    WSPFastCandidateCareer150,
+    WSPFastCandidateRecent200,
+    WSPFastNotebookRank,
+    WSPFastPlaysPastYear,
+    WSPFastPredictor,
+    WSPFastVenueRun,
+)
+from jambandnerd.transformations.gaps import ModelData
+
+
+def _model_data(plays: pd.DataFrame, reference_date: date) -> ModelData:
+    return ModelData(
+        historical_plays=plays,
+        master_feature_set=pd.DataFrame(),
+        reference_date=reference_date,
+        reference_index=0,
+        recently_played_songs=[],
+        diagnostics={},
+    )
+
+
+class TestWSPFastPredictor:
+    """Test suite for WSPFastPredictor V2."""
+
+    def test_init_defaults(self):
+        predictor = WSPFastPredictor()
+        assert predictor.band == "wsp"
+        assert predictor.MODEL_VERSION == "wsp_fast_gbm_v2"
+        assert predictor._model is None
+        assert "plays_past_100" in predictor._FEATURE_COLS
+        assert "diff_50_to_100" in predictor._FEATURE_COLS
+        assert "long_rotation_pressure" in predictor._FEATURE_COLS
+
+    def test_init_wrong_band_raises(self):
+        with pytest.raises(ValueError, match="only supports band='wsp'"):
+            WSPFastPredictor(band="goose")
+
+    def test_model_version_property(self):
+        predictor = WSPFastPredictor()
+        assert predictor.MODEL_VERSION == "wsp_fast_gbm_v2"
+
+    def test_diagnostic_feature_columns(self):
+        predictor = WSPFastPredictor()
+        assert "gap_shows" in predictor.diagnostic_feature_columns
+        assert "tour_position" in predictor.diagnostic_feature_columns
+        assert "plays_past_5" in predictor.diagnostic_feature_columns
+        assert "plays_past_100" in predictor.diagnostic_feature_columns
+
+    def test_lgb_params_v2(self):
+        predictor = WSPFastPredictor()
+        assert predictor._LGB_PARAMS["learning_rate"] == 0.03
+        assert predictor._LGB_PARAMS["num_leaves"] == 31
+        assert predictor._LGB_ROUNDS == 700
+
+
+class TestCandidateHooks:
+    """Test that WSP candidate hooks override Phish defaults."""
+
+    def test_default_candidate_values(self):
+        predictor = WSPFastPredictor()
+        assert predictor._candidate_recent_shows() == 150
+        assert predictor._candidate_top_career() == 100
+
+    def test_candidate_recent_200_overrides(self):
+        predictor = WSPFastCandidateRecent200()
+        assert predictor._candidate_recent_shows() == 200
+        assert predictor._candidate_top_career() == 100
+
+    def test_candidate_career_150_overrides(self):
+        predictor = WSPFastCandidateCareer150()
+        assert predictor._candidate_recent_shows() == 150
+        assert predictor._candidate_top_career() == 150
+
+
+class TestFeatureExperimentSubclasses:
+    """Test that feature experiment classes are importable and correctly configured."""
+
+    def test_plays_past_year_model_version(self):
+        predictor = WSPFastPlaysPastYear()
+        assert predictor.MODEL_VERSION == "wsp_fast_gbm_v2_feat_plays_past_year"
+        assert "plays_past_year" in predictor._FEATURE_COLS
+        assert "plays_past_100" in predictor._FEATURE_COLS
+
+    def test_notebook_rank_model_version(self):
+        predictor = WSPFastNotebookRank()
+        assert predictor.MODEL_VERSION == "wsp_fast_gbm_v2_feat_notebook_rank"
+        assert "notebook_rank_score" in predictor._FEATURE_COLS
+        assert "plays_past_year" in predictor._FEATURE_COLS
+
+    def test_venue_run_model_version(self):
+        predictor = WSPFastVenueRun()
+        assert predictor.MODEL_VERSION == "wsp_fast_gbm_v2_feat_venue_run"
+        assert "same_venue_run_prior_played" in predictor._FEATURE_COLS
+        assert "same_venue_run_prior_play_count" in predictor._FEATURE_COLS
+        assert "same_venue_run_prior_play_share" in predictor._FEATURE_COLS
+
+    def test_notebook_rank_inherits_plays_past_year(self):
+        predictor = WSPFastNotebookRank()
+        assert isinstance(predictor, WSPFastPlaysPastYear)
+        assert isinstance(predictor, WSPFastPredictor)
+
+
+class TestWSPExperiments:
+    """Test WSP experiment sweep registration."""
+
+    def test_sweeps_are_registered(self):
+        from jambandnerd.models.wsp.experiments import WSP_SWEEPS
+        assert set(WSP_SWEEPS) == {"candidate_sweep", "hp_sweep", "feature_sweep"}
+        assert len(WSP_SWEEPS["candidate_sweep"]) == 5
+        assert len(WSP_SWEEPS["hp_sweep"]) >= 1
+        assert len(WSP_SWEEPS["feature_sweep"]) == 3
+
+    def test_feature_sweep_uses_explicit_predictors(self):
+        from jambandnerd.models.wsp.experiments import WSP_SWEEPS
+        predictor_paths = [
+            config.predictor_path for config in WSP_SWEEPS["feature_sweep"]
+        ]
+        assert all(
+            path.startswith("jambandnerd.models.wsp.") for path in predictor_paths
+        )
+
+    def test_candidate_sweep_uses_explicit_predictors(self):
+        from jambandnerd.models.wsp.experiments import WSP_SWEEPS
+        predictor_paths = [
+            config.predictor_path for config in WSP_SWEEPS["candidate_sweep"]
+        ]
+        assert all(
+            path.startswith("jambandnerd.models.wsp.") for path in predictor_paths
+        )
+
+
+class TestIntegration:
+    """Integration tests with sample data."""
+
+    def test_predict_without_train_returns_empty(self):
+        predictor = WSPFastPredictor()
+        plays = pd.DataFrame(
+            {
+                "song_name": ["Song A"],
+                "show_index": [1],
+                "show_date": pd.to_datetime(["2024-01-01"]),
+            }
+        )
+        model_data = _model_data(plays, date(2024, 1, 2))
+        predictions = predictor.predict(model_data, top_k=10)
+        assert predictions == []
+
+    def test_train_with_empty_plays(self):
+        predictor = WSPFastPredictor()
+        plays = pd.DataFrame(
+            {
+                "song_name": [],
+                "show_index": [],
+                "show_date": [],
+            }
+        )
+        model_data = _model_data(plays, date(2024, 1, 1))
+        predictor.train(model_data)
+        assert predictor._model is None
+
+    def test_train_with_insufficient_shows(self):
+        predictor = WSPFastPredictor()
+        plays = pd.DataFrame(
+            {
+                "song_name": ["Song A"] * 5,
+                "show_index": list(range(1, 6)),
+                "show_date": pd.date_range("2024-01-01", periods=5),
+            }
+        )
+        model_data = _model_data(plays, date(2024, 1, 6))
+        predictor.train(model_data)
+        assert predictor._model is None
+
+
+class TestRegistryIntegration:
+    """Test that WSP is correctly registered in model registry."""
+
+    def test_band_predictor_dispatches_wsp(self):
+        from src.jambandnerd.models.registry import (
+            build_band_predictor,
+            get_band_model_version,
+        )
+        wsp = build_band_predictor("wsp", persist_artifacts=False)
+        assert isinstance(wsp, WSPFastPredictor)
+        assert get_band_model_version("wsp") == "wsp_fast_gbm_v2"

@@ -75,7 +75,7 @@ def test_band_predictor_dispatches_goose_to_fast_rank_model() -> None:
     assert isinstance(um, UMFastPredictorV2)
     assert get_band_model_version("goose") == "goose_fast_rank_v1"
     assert get_band_model_version("billy") == "billy_fast_gbm_v10_hp_tuned"
-    assert get_band_model_version("wsp") == "wsp_fast_gbm_v1"
+    assert get_band_model_version("wsp") == "wsp_fast_gbm_v2"
     assert get_band_model_version("um") == "um_fast_gbm_v2"
 
 
