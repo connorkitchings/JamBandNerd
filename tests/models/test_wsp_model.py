@@ -121,12 +121,14 @@ class TestWSPExperiments:
             "feature_sweep",
             "combo_sweep",
             "es_sweep",
+            "fixed_round_sweep",
         }
         assert len(WSP_SWEEPS["candidate_sweep"]) == 5
         assert len(WSP_SWEEPS["hp_sweep"]) >= 1
         assert len(WSP_SWEEPS["feature_sweep"]) == 3
         assert len(WSP_SWEEPS["combo_sweep"]) == 6
         assert len(WSP_SWEEPS["es_sweep"]) == 6
+        assert len(WSP_SWEEPS["fixed_round_sweep"]) == 7
 
     def test_feature_sweep_uses_explicit_predictors(self):
         from jambandnerd.models.wsp.experiments import WSP_SWEEPS
@@ -172,6 +174,18 @@ class TestWSPExperiments:
                 f"{config.slug}: unexpected attr_overrides keys "
                 f"{set(config.attr_overrides.keys()) - allowed}"
             )
+
+    def test_fixed_round_sweep_no_early_stopping(self):
+        from jambandnerd.models.wsp.experiments import WSP_SWEEPS
+        for config in WSP_SWEEPS["fixed_round_sweep"]:
+            assert config.attr_overrides.get("_EARLY_STOPPING_ROUNDS") is None, (
+                f"{config.slug}: should disable early stopping"
+            )
+            assert config.base_predictor_path.startswith(
+                "jambandnerd.models.wsp."
+            )
+            assert config.predictor_path == ""
+            assert config.round_overrides is not None
 
     def test_make_experiment_predictor_applies_attr_overrides(self):
         from jambandnerd.models.experiment import make_experiment_predictor
