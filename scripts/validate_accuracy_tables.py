@@ -7,8 +7,13 @@ count < window with intact lineage → OK; broken links or empty corpus → fail
 from __future__ import annotations
 
 import argparse
+import os
+import sys
 from datetime import datetime, timezone
 from typing import Dict, Iterable, List
+
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+sys.path.insert(0, project_root)
 
 from jambandnerd.config import (
     COMPLETED_SHOW_ACCURACY_TABLE,
