@@ -33,7 +33,7 @@ dev = [
   "pytest>=9.0.3",
   "mypy",
   "pytest-cov",
-  "types-requests>=2.33.0.20260503",
+  "types-requests>=2.33.0.20260508",
 ]
 docs = [
   "mkdocs",
