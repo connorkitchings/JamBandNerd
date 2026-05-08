@@ -3,8 +3,13 @@
 from __future__ import annotations
 
 import argparse
+import os
+import sys
 from datetime import datetime, timezone
 from typing import Dict, Iterable, List
+
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+sys.path.insert(0, project_root)
 
 from jambandnerd.config import (
     SETLIST_ACCURACY_TABLE,
