@@ -179,6 +179,28 @@ WSP_ES_SWEEP: list[ExperimentConfig] = [
 
 _ES_NONE = {"_EARLY_STOPPING_ROUNDS": None}
 
+WSP_GAP_DECOUPLED_SWEEP: list[ExperimentConfig] = [
+    ExperimentConfig(
+        slug="gd_default",
+        description="gap_percentile + gap_vs_median (21 feats, default ES)",
+        predictor_path="jambandnerd.models.wsp.fast_predictor.WSPFastGapDecoupled",
+    ),
+    ExperimentConfig(
+        slug="gd_fr50",
+        description="gap decoupled (21 feats, fixed 50 rounds)",
+        predictor_path="jambandnerd.models.wsp.fast_predictor.WSPFastGapDecoupled",
+        attr_overrides=_ES_NONE,
+        round_overrides=50,
+    ),
+    ExperimentConfig(
+        slug="gd_clean_fr50",
+        description="gap decoupled clean (19 feats, no coupled, fixed 50 rounds)",
+        predictor_path="jambandnerd.models.wsp.fast_predictor.WSPFastGapDecoupledClean",
+        attr_overrides=_ES_NONE,
+        round_overrides=50,
+    ),
+]
+
 WSP_FIXED_ROUND_SWEEP: list[ExperimentConfig] = [
     ExperimentConfig(
         slug="fr_r30",
@@ -235,6 +257,31 @@ WSP_FIXED_ROUND_SWEEP: list[ExperimentConfig] = [
     ),
 ]
 
+_WSP_VENUE_RUN = "jambandnerd.models.wsp.fast_predictor.WSPFastVenueRun"
+
+WSP_VENUE_RUN_SWEEP: list[ExperimentConfig] = [
+    ExperimentConfig(
+        slug="vr_default",
+        description="venue-run features (22 feats, default ES)",
+        predictor_path=_WSP_VENUE_RUN,
+    ),
+    ExperimentConfig(
+        slug="vr_fr50",
+        description="venue-run features (22 feats, fixed 50 rounds)",
+        predictor_path=_WSP_VENUE_RUN,
+        attr_overrides=_ES_NONE,
+        round_overrides=50,
+    ),
+    ExperimentConfig(
+        slug="vr_fr50_lam01",
+        description="venue-run features (22 feats, fixed 50 rounds, lambda=0.1)",
+        predictor_path=_WSP_VENUE_RUN,
+        attr_overrides=_ES_NONE,
+        param_overrides={"reg_lambda": 0.1},
+        round_overrides=50,
+    ),
+]
+
 # ── Full sweep index ──────────────────────────────────────────────────────────
 
 WSP_SWEEPS: dict[str, list[ExperimentConfig]] = {
@@ -244,4 +291,6 @@ WSP_SWEEPS: dict[str, list[ExperimentConfig]] = {
     "combo_sweep": WSP_COMBO_SWEEP,
     "es_sweep": WSP_ES_SWEEP,
     "fixed_round_sweep": WSP_FIXED_ROUND_SWEEP,
+    "gap_decoupled_sweep": WSP_GAP_DECOUPLED_SWEEP,
+    "venue_run_sweep": WSP_VENUE_RUN_SWEEP,
 }
