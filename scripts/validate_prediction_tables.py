@@ -4,8 +4,13 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import sys
 from datetime import date, datetime, timezone
 from typing import Dict, Iterable, List
+
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+sys.path.insert(0, project_root)
 
 from jambandnerd.config import NEXT_SHOW_PREDICTION_RUNS_TABLE
 from jambandnerd.config.bands import get_repo_supported_bands
