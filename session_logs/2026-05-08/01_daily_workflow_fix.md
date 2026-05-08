@@ -34,3 +34,27 @@ Manual workflow run on dev branch succeeded for Goose band:
 
 ## Playbook Lesson
 When centralizing utilities into `scripts.common`, ensure all importing scripts have the `sys.path` setup pattern. Other scripts like `generate_live_predictions.py` already had this pattern — use it as a reference.
+
+## Commands Run
+```bash
+gh run list --workflow=daily-pipeline.yml --limit 5
+gh run view 25517576880 --json jobs
+gh run download 25517576880 --dir /tmp/run_logs
+npm run verify:python
+gh workflow run daily-pipeline.yml --ref dev -f band=goose
+```
+
+## Files Changed
+- `scripts/validate_prediction_tables.py` — diagnostic logging + sys.path fix
+- `scripts/validate_accuracy_tables.py` — sys.path fix
+- `scripts/check_supported_model_freshness.py` — sys.path fix
+- `tests/test_validate_prediction_tables.py` — updated assertions for new message format
+- `.agent/PLAYBOOK.md` — added lesson on sys.path pattern for scripts.common imports
+
+## Validation Status
+- `npm run verify:python`: passed (404 tests, 1 pre-existing unrelated failure in billy collection)
+- Manual workflow run on dev: all jobs succeeded for Goose band
+- Next scheduled daily run on main expected to succeed
+
+## Next Step
+Monitor the next scheduled daily run (19:00 UTC) to confirm all 6 bands pass; if any fail, check the new diagnostic output for the specific failure mode.
