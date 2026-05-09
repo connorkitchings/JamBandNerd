@@ -40,6 +40,11 @@ import { getSetlistForDate } from "./shows";
 // Internal helpers
 // ---------------------------------------------------------------------------
 
+import {
+  selectPreferredPredictionSeed,
+  type PredictionSeedRow,
+} from "@/lib/preferred-prediction-seed";
+
 async function fetchProjectedPredictionSnapshot(
   client: SupabaseClient,
   {
@@ -52,6 +57,8 @@ async function fetchProjectedPredictionSnapshot(
     referenceDate?: string;
   },
 ): Promise<PredictionSnapshot | null> {
+  const todayIso = new Date().toISOString().slice(0, 10);
+
   let seedQuery = client
     .from("next_show_prediction_songs")
     .select("target_show_date, reference_date, generated_at, model_version")
@@ -63,16 +70,27 @@ async function fetchProjectedPredictionSnapshot(
     seedQuery = seedQuery.eq("reference_date", referenceDate);
   }
 
-  const { data: seedRows, error: seedError } = await seedQuery
+  const { data: allSeedRows, error: seedError } = await seedQuery
     .order("generated_at", { ascending: false })
     .order("target_show_date", { ascending: true })
-    .limit(1);
+    .limit(100);
 
   if (seedError) {
     throw seedError;
   }
 
-  const seedRow = asRecord(seedRows?.[0]);
+  const parsedRows = (allSeedRows ?? [])
+    .map((item) => asRecord(item))
+    .filter(
+      (row): row is PredictionSeedRow =>
+        row !== null &&
+        typeof row.target_show_date === "string" &&
+        typeof row.reference_date === "string" &&
+        typeof row.generated_at === "string" &&
+        typeof row.model_version === "string",
+    );
+
+  const seedRow = selectPreferredPredictionSeed(parsedRows, { todayIso });
   const seedReferenceDate =
     seedRow && typeof seedRow.reference_date === "string"
       ? seedRow.reference_date
