@@ -533,3 +533,113 @@ class TestGooseDistilledPredictor:
         assert "novelty_rank" in cols
         assert cols.index("current_gap") < cols.index("avg_ltp")
         assert cols.index("avg_ltp") < cols.index("debut_age_shows")
+
+
+class TestGooseExperimentClasses:
+    def test_fast_plus_plays_past_year_defaults(self) -> None:
+        from jambandnerd.models.goose.experiments import GooseFastPlusPlaysPastYear
+
+        predictor = GooseFastPlusPlaysPastYear(persist_artifacts=False)
+        assert predictor.MODEL_VERSION == "goose_fast_gbm_v1_feat_ppa"
+        assert predictor._FEATURE_COLS == [
+            *GOOSE_FAST_FEATURE_COLS,
+            "plays_past_year",
+        ]
+        assert "plays_past_year" in predictor._FEATURE_COLS
+
+    def test_fast_plus_notebook_rank_defaults(self) -> None:
+        from jambandnerd.models.goose.experiments import GooseFastPlusNotebookRank
+
+        predictor = GooseFastPlusNotebookRank(persist_artifacts=False)
+        assert predictor.MODEL_VERSION == "goose_fast_gbm_v1_feat_nb_rank"
+        assert "plays_past_year" in predictor._FEATURE_COLS
+        assert "notebook_rank_score" in predictor._FEATURE_COLS
+        assert len(predictor._FEATURE_COLS) == len(GOOSE_FAST_FEATURE_COLS) + 2
+
+    def test_fast_plus_notebook_rank_trains_and_predicts(self) -> None:
+        from jambandnerd.models.goose.experiments import GooseFastPlusNotebookRank
+
+        shows_df, setlists_df = _goose_fixture()
+        target_show = {
+            "show_id": "future-goose",
+            "show_date": "2024-05-20",
+            "venue_name": "Capitol Theatre",
+            "city": "Port Chester",
+            "state": "NY",
+            "country": "USA",
+        }
+        model_data = generate_model_data(
+            shows_df,
+            setlists_df,
+            date(2024, 5, 20),
+            band="goose",
+            target_show_context=target_show,
+        )
+
+        predictor = GooseFastPlusNotebookRank(persist_artifacts=False)
+        frame = predictor.build_diagnostic_training_frame(model_data)
+        predictor.train(model_data)
+        predictions = predictor.predict(model_data, top_k=10)
+
+        assert predictor._model is not None
+        assert not frame.empty
+        assert "notebook_rank_score" in frame.columns
+        assert frame["notebook_rank_score"].between(0.0, 1.0).all()
+        assert 0 < len(predictions) <= 10
+
+    def test_fast_plus_rotation_defaults(self) -> None:
+        from jambandnerd.models.goose.experiments import GooseFastPlusRotation
+
+        predictor = GooseFastPlusRotation(persist_artifacts=False)
+        assert predictor.MODEL_VERSION == "goose_fast_gbm_v1_feat_rotation"
+        assert len(predictor._FEATURE_COLS) == 20
+        for col in ("plays_past_100", "diff_50_to_100", "long_rotation_pressure"):
+            assert col in predictor._FEATURE_COLS
+        assert "notebook_rank_score" in predictor._FEATURE_COLS
+
+    def test_fast_plus_rotation_trains_and_predicts(self) -> None:
+        from jambandnerd.models.goose.experiments import GooseFastPlusRotation
+
+        shows_df, setlists_df = _goose_fixture()
+        target_show = {
+            "show_id": "future-goose",
+            "show_date": "2024-05-20",
+            "venue_name": "Capitol Theatre",
+            "city": "Port Chester",
+            "state": "NY",
+            "country": "USA",
+        }
+        model_data = generate_model_data(
+            shows_df,
+            setlists_df,
+            date(2024, 5, 20),
+            band="goose",
+            target_show_context=target_show,
+        )
+
+        predictor = GooseFastPlusRotation(persist_artifacts=False)
+        frame = predictor.build_diagnostic_training_frame(model_data)
+        predictor.train(model_data)
+        predictions = predictor.predict(model_data, top_k=10)
+
+        assert predictor._model is not None
+        assert not frame.empty
+        for col in ("plays_past_100", "diff_50_to_100", "long_rotation_pressure"):
+            assert col in frame.columns
+        assert frame["plays_past_100"].ge(0.0).all()
+        assert 0 < len(predictions) <= 10
+
+    def test_v2_sweep_registered(self) -> None:
+        from jambandnerd.models.goose import experiments
+
+        sweeps = experiments.GOOSE_SWEEPS
+        assert "v2_sweep" in sweeps
+        sweep = sweeps["v2_sweep"]
+        assert len(sweep) >= 8
+        assert all(hasattr(c, "slug") for c in sweep)
+        slugs = {c.slug for c in sweep}
+        assert "feat_rotation" in slugs
+        assert "hp_lr003_r400" in slugs
+        assert "hp_leaves15_minleaf10" in slugs
+        assert "combo_rotation_leaves15_minleaf10" in slugs
+        assert "combo_rotation_leaves15_lr007_lambda01" in slugs

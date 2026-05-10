@@ -222,9 +222,161 @@ GOOSE_FEATURE_SWEEP: list[ExperimentConfig] = [
     ),
 ]
 
+# ── WSP-proven long-rotation feature class ────────────────────────────────────
+
+
+class GooseFastPlusRotation(GooseFastPlusNotebookRank):
+    """D: Add WSP-proven long-rotation features to the 17-feature baseline.
+
+    Adds plays_past_100, diff_50_to_100, and long_rotation_pressure
+    (gap x 100-show play rate).  These three features were worth +0.014
+    dual for WSP.  Does NOT add early stopping or validation split —
+    that requires base-class changes outside the experiment framework.
+    """
+
+    MODEL_VERSION = "goose_fast_gbm_v1_feat_rotation"
+    _FEATURE_COLS: list[str] = [
+        *GooseFastPlusNotebookRank._FEATURE_COLS,
+        "plays_past_100",
+        "diff_50_to_100",
+        "long_rotation_pressure",
+    ]
+
+    def _feature_frame_for_target(
+        self,
+        *,
+        eligible_songs: pd.Index,
+        upper_col: int,
+        target_date: Any,
+        gap_e: pd.Series,
+        total_e: pd.Series,
+        cache: dict[str, Any],
+        plays: pd.DataFrame,
+        target_show_context: Any,
+        target_show_index: int | None,
+    ) -> pd.DataFrame:
+        frame = super()._feature_frame_for_target(
+            eligible_songs=eligible_songs,
+            upper_col=upper_col,
+            target_date=target_date,
+            gap_e=gap_e,
+            total_e=total_e,
+            cache=cache,
+            plays=plays,
+            target_show_context=target_show_context,
+            target_show_index=target_show_index,
+        )
+        from jambandnerd.models.goose.fast_predictor import _window_plays
+
+        cum = cache["cum"]
+        p100 = _window_plays(cum, upper_col, 100).loc[eligible_songs]
+        p50 = _window_plays(cum, upper_col, 50).loc[eligible_songs]
+        pct50 = p50 / max(1, min(50, upper_col))
+        pct100 = p100 / max(1, min(100, upper_col))
+        frame["plays_past_100"] = p100.values
+        frame["diff_50_to_100"] = (pct50 - pct100).values
+        frame["long_rotation_pressure"] = (gap_e * pct100.clip(lower=0.01)).values
+        return frame
+
+
+# ── V2 combo sweep (HP x feature combos on 17/20-feature baselines) ────────
+
+_GOOSE_V2_BASE_PATH = (
+    "jambandnerd.models.goose.experiments.GooseFastPlusNotebookRank"
+)
+_GOOSE_V2_ROTATION_PATH = (
+    "jambandnerd.models.goose.experiments.GooseFastPlusRotation"
+)
+
+GOOSE_V2_SWEEP: list[ExperimentConfig] = [
+    # ── HP experiments on 17-feature (production) baseline ──
+    ExperimentConfig(
+        slug="hp_lr003_r400",
+        description="WSP-style lr=0.03, rounds=400 on 17-feature",
+        base_predictor_path=_GOOSE_V2_BASE_PATH,
+        param_overrides={"learning_rate": 0.03},
+        round_overrides=400,
+    ),
+    ExperimentConfig(
+        slug="hp_lr003_r600",
+        description="WSP-style lr=0.03, rounds=600 on 17-feature",
+        base_predictor_path=_GOOSE_V2_BASE_PATH,
+        param_overrides={"learning_rate": 0.03},
+        round_overrides=600,
+    ),
+    ExperimentConfig(
+        slug="hp_leaves15_lr007_lambda01",
+        description="UM-style leaves=15, lr=0.07, reg_lambda=0.1 on 17-feature",
+        base_predictor_path=_GOOSE_V2_BASE_PATH,
+        param_overrides={
+            "num_leaves": 15,
+            "learning_rate": 0.07,
+            "reg_lambda": 0.1,
+        },
+    ),
+    ExperimentConfig(
+        slug="hp_leaves15_minleaf10",
+        description="Billy-style leaves=15, min_data_in_leaf=10 on 17-feature",
+        base_predictor_path=_GOOSE_V2_BASE_PATH,
+        param_overrides={"num_leaves": 15, "min_data_in_leaf": 10},
+    ),
+    ExperimentConfig(
+        slug="hp_leaves15_lr005_r400_minleaf10",
+        description="Moderate combo: leaves=15, lr=0.05, rounds=400, min_leaf=10 on 17-feature",
+        base_predictor_path=_GOOSE_V2_BASE_PATH,
+        param_overrides={"num_leaves": 15, "min_data_in_leaf": 10},
+        round_overrides=400,
+    ),
+    # ── Rotation feature (20-feature, default HPs) ──
+    ExperimentConfig(
+        slug="feat_rotation",
+        description="Add plays_past_100, diff_50_to_100, long_rotation_pressure (20 feats, default HPs)",
+        predictor_path=_GOOSE_V2_ROTATION_PATH,
+    ),
+    # ── Rotation + HP combo experiments ──
+    ExperimentConfig(
+        slug="combo_rotation_lr003_r400",
+        description="20 features + WSP-style lr=0.03, rounds=400",
+        base_predictor_path=_GOOSE_V2_ROTATION_PATH,
+        param_overrides={"learning_rate": 0.03},
+        round_overrides=400,
+    ),
+    ExperimentConfig(
+        slug="combo_rotation_lr003_r600",
+        description="20 features + WSP-style lr=0.03, rounds=600",
+        base_predictor_path=_GOOSE_V2_ROTATION_PATH,
+        param_overrides={"learning_rate": 0.03},
+        round_overrides=600,
+    ),
+    ExperimentConfig(
+        slug="combo_rotation_leaves15_lr007_lambda01",
+        description="20 features + UM-style HP",
+        base_predictor_path=_GOOSE_V2_ROTATION_PATH,
+        param_overrides={
+            "num_leaves": 15,
+            "learning_rate": 0.07,
+            "reg_lambda": 0.1,
+        },
+    ),
+    ExperimentConfig(
+        slug="combo_rotation_leaves15_minleaf10",
+        description="20 features + Billy-style HP",
+        base_predictor_path=_GOOSE_V2_ROTATION_PATH,
+        param_overrides={"num_leaves": 15, "min_data_in_leaf": 10},
+    ),
+    ExperimentConfig(
+        slug="combo_rotation_leaves15_lr005_r400_minleaf10",
+        description="20 features + moderate combo HP",
+        base_predictor_path=_GOOSE_V2_ROTATION_PATH,
+        param_overrides={"num_leaves": 15, "min_data_in_leaf": 10},
+        round_overrides=400,
+    ),
+]
+
 # ── Full sweep index ─────────────────────────────────────────────────────────
 
 GOOSE_SWEEPS: dict[str, list[ExperimentConfig]] = {
     "hp_sweep": GOOSE_HP_SWEEP,
     "feature_sweep": GOOSE_FEATURE_SWEEP,
+    "v2_sweep": GOOSE_V2_SWEEP,
 }
