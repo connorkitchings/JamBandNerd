@@ -38,5 +38,7 @@ def normalize_setlists(df: pd.DataFrame) -> pd.DataFrame:
 
     if "set_label" in df.columns and "set_number" not in df.columns:
         df["set_number"] = df["set_label"].fillna("").astype(str)
+    if "transition" not in df.columns:
+        df["transition"] = None
 
     return attach_source_hash(df)

@@ -629,11 +629,79 @@ class TestGooseExperimentClasses:
         assert frame["plays_past_100"].ge(0.0).all()
         assert 0 < len(predictions) <= 10
 
+    def test_candidate_policy_experiments_scope_overrides(self) -> None:
+        from jambandnerd.models.goose.experiments import (
+            GooseFastRankMinPlayOneSpecialShows,
+            GooseFastRankRelaxedGlobalNotebookTop10,
+            GooseFastRankRelaxedRecentGlobal,
+            GooseFastRankRelaxedSpecialNotebookTop10,
+            GooseFastRankRelaxedSpecialShows,
+        )
+
+        special_context = {"tour_name": "Not Part of a Tour"}
+        regular_context = {"tour_name": "Spring Tour"}
+
+        relaxed_special = GooseFastRankRelaxedSpecialShows(persist_artifacts=False)
+        relaxed_global = GooseFastRankRelaxedRecentGlobal(persist_artifacts=False)
+        minplay_special = GooseFastRankMinPlayOneSpecialShows(persist_artifacts=False)
+        special_top10 = GooseFastRankRelaxedSpecialNotebookTop10(
+            persist_artifacts=False
+        )
+        global_top10 = GooseFastRankRelaxedGlobalNotebookTop10(persist_artifacts=False)
+
+        assert relaxed_special.MODEL_VERSION.endswith("relaxed_special")
+        assert relaxed_special._candidate_recent_gap_floor(special_context) == 0
+        assert (
+            relaxed_special._candidate_recent_gap_floor(regular_context)
+            == relaxed_special.exclusion_window
+        )
+        assert relaxed_global._candidate_recent_gap_floor(regular_context) == 0
+        assert minplay_special._candidate_min_plays(special_context) == 1
+        assert (
+            minplay_special._candidate_min_plays(regular_context)
+            == minplay_special.min_plays_threshold
+        )
+        assert special_top10._candidate_recent_gap_floor(special_context) == 0
+        assert global_top10._candidate_recent_gap_floor(regular_context) == 0
+
+    def test_candidate_rank_guard_keeps_notebook_top_10(self) -> None:
+        from jambandnerd.models.goose.experiments import (
+            GooseFastRankRelaxedSpecialNotebookTop10,
+        )
+
+        shows_df, setlists_df = _goose_fixture()
+        model_data = generate_model_data(
+            shows_df,
+            setlists_df,
+            date(2024, 5, 20),
+            band="goose",
+            target_show_context={"tour_name": "Not Part of a Tour"},
+        )
+
+        notebook = GooseNotebookFloorPredictor(persist_artifacts=False)
+        expected_top_10 = [
+            prediction.song_name
+            for prediction in notebook.predict(model_data, top_k=10)
+        ]
+
+        predictor = GooseFastRankRelaxedSpecialNotebookTop10(persist_artifacts=False)
+        predictor.train(model_data)
+        predictions = predictor.predict(model_data, top_k=25)
+
+        assert [
+            prediction.song_name for prediction in predictions[: len(expected_top_10)]
+        ] == expected_top_10
+        assert len({prediction.song_name for prediction in predictions}) == len(
+            predictions
+        )
+
     def test_v2_sweep_registered(self) -> None:
         from jambandnerd.models.goose import experiments
 
         sweeps = experiments.GOOSE_SWEEPS
         assert "v2_sweep" in sweeps
+        assert "candidate_policy_sweep" in sweeps
+        assert "candidate_rank_guard_sweep" in sweeps
         sweep = sweeps["v2_sweep"]
         assert len(sweep) >= 8
         assert all(hasattr(c, "slug") for c in sweep)
@@ -643,3 +711,14 @@ class TestGooseExperimentClasses:
         assert "hp_leaves15_minleaf10" in slugs
         assert "combo_rotation_leaves15_minleaf10" in slugs
         assert "combo_rotation_leaves15_lr007_lambda01" in slugs
+        candidate_slugs = {c.slug for c in sweeps["candidate_policy_sweep"]}
+        assert candidate_slugs == {
+            "candidate_relaxed_special",
+            "candidate_relaxed_global",
+            "candidate_minplay1_special",
+        }
+        rank_guard_slugs = {c.slug for c in sweeps["candidate_rank_guard_sweep"]}
+        assert rank_guard_slugs == {
+            "candidate_relaxed_special_nbtop10",
+            "candidate_relaxed_global_nbtop10",
+        }

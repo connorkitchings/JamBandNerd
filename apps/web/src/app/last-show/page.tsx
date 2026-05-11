@@ -172,7 +172,7 @@ export default async function LastShowPage({ searchParams }: Props) {
                   Snapshot date
                 </p>
                 <p className="mt-2 text-sm text-on-surface">
-                  {formatDateLabel(predictionState.snapshot.referenceDate)}
+                  {formatDateLabel(predictionState.snapshot.targetShowDate)}
                 </p>
               </div>
               <div className="rounded-xl border border-outline-variant/20 bg-surface-container-low p-4">

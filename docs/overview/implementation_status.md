@@ -1,6 +1,6 @@
 # JamBandNerd Implementation Status
 
-**Last Updated**: 2026-04-14
+**Last Updated**: 2026-05-11
 **Project Version**: 0.3.0
 
 ## Overall Status
@@ -64,6 +64,17 @@ JamBandNerd has a production-ready website-first product surface and a productio
 - HTML fixture regression tests
 
 ## Active Priorities
+
+### Current Upstream Blockers
+
+- WSP full-audit readiness is blocked by recent Everyday Companion pages that
+  expose show pages but no setlist table for May 8 and May 9, 2026. Treat this
+  as an upstream data-availability blocker, not a model-promotion blocker.
+- Billy full-audit readiness is blocked by `bmfsdb.com` returning HTTP 500
+  during source reachability preflight.
+- Until both upstreams can publish current website-facing rows again, defer the
+  full five-band Supabase audit and preserve the already-validated Goose,
+  Phish, and UM readiness fixes.
 
 ### Website Operations
 

@@ -655,8 +655,13 @@ class TestBillyV10Experiments:
 
     def test_sweeps_are_registered(self):
         from jambandnerd.models.billy.experiments import BILLY_SWEEPS
+
         assert set(BILLY_SWEEPS) == {
-            "hp_sweep", "combo_sweep", "feature_sweep", "window_sweep", "hp_v10_sweep",
+            "hp_sweep",
+            "combo_sweep",
+            "feature_sweep",
+            "window_sweep",
+            "hp_v10_sweep",
         }
         assert len(BILLY_SWEEPS["feature_sweep"]) == 3
         assert len(BILLY_SWEEPS["window_sweep"]) == 3
@@ -664,6 +669,7 @@ class TestBillyV10Experiments:
 
     def test_feature_sweep_uses_explicit_predictors(self):
         from jambandnerd.models.billy.experiments import BILLY_SWEEPS
+
         predictor_paths = [
             config.predictor_path for config in BILLY_SWEEPS["feature_sweep"]
         ]
@@ -673,6 +679,7 @@ class TestBillyV10Experiments:
 
     def test_window_sweep_uses_explicit_predictors(self):
         from jambandnerd.models.billy.experiments import BILLY_SWEEPS
+
         predictor_paths = [
             config.predictor_path for config in BILLY_SWEEPS["window_sweep"]
         ]

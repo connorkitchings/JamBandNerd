@@ -157,6 +157,8 @@ def prepare_dataframe_for_upsert(
         extra_columns=report.extra_columns,
         type_mismatches=report.type_mismatches,
     )
+    if report.extra_columns:
+        prepared = prepared.drop(columns=report.extra_columns)
     return prepared
 
 
@@ -517,6 +519,9 @@ def replace_setlist_prediction_projection(
     band: str,
     model_version: str,
     target_show_key: str,
+    target_show_date: str,
+    reference_date: str,
+    generated_at: str,
     predictions: Sequence[dict[str, Any]],
     prediction_run_id: int | None = None,
     table_name: str = "setlist_prediction_songs",
@@ -543,9 +548,13 @@ def replace_setlist_prediction_projection(
             "band": band,
             "model_version": model_version,
             "target_show_key": target_show_key,
+            "target_show_date": target_show_date,
+            "reference_date": reference_date,
+            "generated_at": generated_at,
             "rank": prediction["rank"],
             "song_name": prediction["song_name"],
             "score": _prediction_score(prediction),
+            "top_k": len(predictions),
             "prediction_payload": prediction,
         }
         for prediction in predictions

@@ -29,6 +29,7 @@ export type PredictionRow = {
 
 export type PredictionSnapshot = {
   targetShowDate: string | null;
+  targetShowKey: string | null;
   referenceDate: string | null;
   predictedAt: string | null;
   modelVersion: string | null;

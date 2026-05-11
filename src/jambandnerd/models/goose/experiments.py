@@ -9,16 +9,20 @@ defined in this module.
 
 from __future__ import annotations
 
+from datetime import timedelta
 from typing import Any
 
 import pandas as pd
 
+from jambandnerd.config.bands import get_excluded_songs
+from jambandnerd.models.deal.model import DealPrediction
 from jambandnerd.models.experiment import ExperimentConfig
 from jambandnerd.models.goose.ablation import _plays_past_year_array
 from jambandnerd.models.goose.fast_predictor import (
     GOOSE_FAST_FEATURE_COLS,
     GooseFastPredictor,
 )
+from jambandnerd.transformations.gaps import ModelData
 
 # ── HP (hyperparameter) sweep ────────────────────────────────────────────────
 
@@ -163,6 +167,199 @@ class GooseFastPlusNotebookRank(GooseFastPlusPlaysPastYear):
         return frame
 
 
+def _is_not_part_of_tour(target_show_context: Any) -> bool:
+    if target_show_context is None or not hasattr(target_show_context, "get"):
+        return False
+    value = target_show_context.get("tour_name")
+    if value is None or pd.isna(value):
+        return False
+    return str(value).strip().lower() == "not part of a tour"
+
+
+class GooseFastRankRelaxedSpecialShows(GooseFastPlusNotebookRank):
+    """Allow immediate repeats only for Goose special/non-tour targets."""
+
+    MODEL_VERSION = "goose_fast_rank_v1_candidate_relaxed_special"
+
+    def _candidate_recent_gap_floor(self, target_show_context: Any) -> int:
+        if _is_not_part_of_tour(target_show_context):
+            return 0
+        return super()._candidate_recent_gap_floor(target_show_context)
+
+
+class GooseFastRankRelaxedRecentGlobal(GooseFastPlusNotebookRank):
+    """Allow immediate repeats for all Goose targets as a risk-control experiment."""
+
+    MODEL_VERSION = "goose_fast_rank_v1_candidate_relaxed_global"
+
+    def _candidate_recent_gap_floor(self, target_show_context: Any) -> int:
+        return 0
+
+
+class GooseFastRankMinPlayOneSpecialShows(GooseFastPlusNotebookRank):
+    """Lower prior-play threshold to 1 only for Goose special/non-tour targets."""
+
+    MODEL_VERSION = "goose_fast_rank_v1_candidate_minplay1_special"
+
+    def _candidate_min_plays(self, target_show_context: Any) -> int:
+        if _is_not_part_of_tour(target_show_context):
+            return 1
+        return super()._candidate_min_plays(target_show_context)
+
+
+def _notebook_guard_predictions(
+    model_data: ModelData,
+    *,
+    band: str,
+    top_k: int,
+) -> list[DealPrediction]:
+    features = model_data.master_feature_set
+    plays = model_data.historical_plays
+    if features.empty or plays.empty:
+        return []
+
+    features = features.copy()
+    plays = plays.copy()
+    features["last_played_date"] = pd.to_datetime(
+        features["last_played_date"], errors="coerce"
+    )
+    plays["show_date"] = pd.to_datetime(plays["show_date"], errors="coerce")
+
+    last_completed_show_date = features["last_played_date"].max()
+    if pd.isna(last_completed_show_date):
+        return []
+
+    window_start = last_completed_show_date - timedelta(days=365)
+    plays_past_year_count = (
+        plays[plays["show_date"] >= window_start]
+        .groupby("song_name")["show_index"]
+        .nunique()
+        .rename("plays_past_year")
+    )
+    candidates = features.merge(plays_past_year_count, on="song_name", how="inner")
+    if candidates.empty:
+        return []
+
+    candidates["current_gap"] = (
+        model_data.reference_index - candidates["last_played_index"] - 1
+    ).clip(lower=0)
+    candidates = candidates[
+        ~candidates["song_name"].isin(set(model_data.recently_played_songs))
+    ]
+
+    excluded = get_excluded_songs(band)
+    if excluded:
+        candidates = candidates[
+            ~candidates["song_name"].str.lower().str.strip().isin(excluded)
+        ]
+    if candidates.empty:
+        return []
+
+    max_show_index = int(plays["show_index"].max())
+    recent_start = max(0, max_show_index - 49)
+    recent_plays_50 = (
+        plays[plays["show_index"] >= recent_start]
+        .groupby("song_name")["show_index"]
+        .nunique()
+        .rename("recent_plays_50")
+    )
+    ranked = candidates.merge(recent_plays_50, on="song_name", how="left")
+    ranked["recent_plays_50"] = ranked["recent_plays_50"].fillna(0)
+    ranked = ranked.sort_values(
+        by=["plays_past_year", "current_gap", "song_name"],
+        ascending=[False, False, True],
+    ).head(top_k)
+
+    predictions: list[DealPrediction] = []
+    for _, row in ranked.iterrows():
+        last_played_date = row.get("last_played_date")
+        predictions.append(
+            DealPrediction(
+                song_name=str(row["song_name"]),
+                probability=0.0,
+                current_gap=int(row["current_gap"]),
+                plays_past_year=int(row["plays_past_year"]),
+                recent_plays_50=int(row["recent_plays_50"]),
+                LTP=(
+                    pd.Timestamp(last_played_date).date().isoformat()
+                    if pd.notna(last_played_date)
+                    else None
+                ),
+            )
+        )
+    return predictions
+
+
+def _merge_rank_guard_predictions(
+    *,
+    guarded: list[DealPrediction],
+    primary: list[DealPrediction],
+    guard_count: int,
+    top_k: int,
+) -> list[DealPrediction]:
+    merged: list[DealPrediction] = []
+    seen: set[str] = set()
+    for prediction in [*guarded[:guard_count], *primary]:
+        song_name = str(prediction.song_name)
+        if song_name in seen:
+            continue
+        seen.add(song_name)
+        merged.append(prediction)
+        if len(merged) >= top_k:
+            break
+
+    denominator = max(1, len(merged) - 1)
+    return [
+        DealPrediction(
+            song_name=prediction.song_name,
+            probability=float(1.0 - (rank / denominator)),
+            current_gap=prediction.current_gap,
+            plays_past_year=prediction.plays_past_year,
+            recent_plays_50=prediction.recent_plays_50,
+            LTP=prediction.LTP,
+        )
+        for rank, prediction in enumerate(merged)
+    ]
+
+
+class _NotebookTop10GuardMixin:
+    """Use Notebook's top 10 as a precision guard, then fill from the experiment."""
+
+    _NOTEBOOK_GUARD_COUNT = 10
+
+    def predict(self, model_data: ModelData, top_k: int = 50) -> list[DealPrediction]:
+        primary = super().predict(model_data, top_k=top_k)  # type: ignore[misc]
+        guarded = _notebook_guard_predictions(
+            model_data,
+            band=self.band,
+            top_k=max(top_k, self._NOTEBOOK_GUARD_COUNT),
+        )
+        return _merge_rank_guard_predictions(
+            guarded=guarded,
+            primary=primary,
+            guard_count=self._NOTEBOOK_GUARD_COUNT,
+            top_k=top_k,
+        )
+
+
+class GooseFastRankRelaxedSpecialNotebookTop10(
+    _NotebookTop10GuardMixin,
+    GooseFastRankRelaxedSpecialShows,
+):
+    """Special-show recent-repeat policy with Notebook top-10 precision guard."""
+
+    MODEL_VERSION = "goose_fast_rank_v1_candidate_relaxed_special_nbtop10"
+
+
+class GooseFastRankRelaxedGlobalNotebookTop10(
+    _NotebookTop10GuardMixin,
+    GooseFastRankRelaxedRecentGlobal,
+):
+    """Global recent-repeat relaxation with Notebook top-10 risk-control guard."""
+
+    MODEL_VERSION = "goose_fast_rank_v1_candidate_relaxed_global_nbtop10"
+
+
 class GooseFastPlusTourFatigue(GooseFastPlusNotebookRank):
     """C: Add tour_fatigue and run_pressure interaction features."""
 
@@ -221,6 +418,61 @@ GOOSE_FEATURE_SWEEP: list[ExperimentConfig] = [
         predictor_path="jambandnerd.models.goose.experiments.GooseFastPlusTourFatigue",
     ),
 ]
+
+
+GOOSE_CANDIDATE_POLICY_SWEEP: list[ExperimentConfig] = [
+    ExperimentConfig(
+        slug="candidate_relaxed_special",
+        description="Allow immediate repeats only on Not Part of a Tour targets",
+        predictor_path=(
+            "jambandnerd.models.goose.experiments." "GooseFastRankRelaxedSpecialShows"
+        ),
+    ),
+    ExperimentConfig(
+        slug="candidate_relaxed_global",
+        description="Allow immediate repeats on all targets as a risk-control variant",
+        predictor_path=(
+            "jambandnerd.models.goose.experiments." "GooseFastRankRelaxedRecentGlobal"
+        ),
+    ),
+    ExperimentConfig(
+        slug="candidate_minplay1_special",
+        description=(
+            "Lower minimum prior plays to 1 only on Not Part of a Tour targets"
+        ),
+        predictor_path=(
+            "jambandnerd.models.goose.experiments."
+            "GooseFastRankMinPlayOneSpecialShows"
+        ),
+    ),
+]
+
+
+GOOSE_CANDIDATE_RANK_GUARD_SWEEP: list[ExperimentConfig] = [
+    ExperimentConfig(
+        slug="candidate_relaxed_special_nbtop10",
+        description=(
+            "Allow immediate repeats only on Not Part of a Tour targets, "
+            "with Notebook top-10 guard"
+        ),
+        predictor_path=(
+            "jambandnerd.models.goose.experiments."
+            "GooseFastRankRelaxedSpecialNotebookTop10"
+        ),
+    ),
+    ExperimentConfig(
+        slug="candidate_relaxed_global_nbtop10",
+        description=(
+            "Allow immediate repeats on all targets with Notebook top-10 "
+            "risk-control guard"
+        ),
+        predictor_path=(
+            "jambandnerd.models.goose.experiments."
+            "GooseFastRankRelaxedGlobalNotebookTop10"
+        ),
+    ),
+]
+
 
 # ── WSP-proven long-rotation feature class ────────────────────────────────────
 
@@ -281,12 +533,8 @@ class GooseFastPlusRotation(GooseFastPlusNotebookRank):
 
 # ── V2 combo sweep (HP x feature combos on 17/20-feature baselines) ────────
 
-_GOOSE_V2_BASE_PATH = (
-    "jambandnerd.models.goose.experiments.GooseFastPlusNotebookRank"
-)
-_GOOSE_V2_ROTATION_PATH = (
-    "jambandnerd.models.goose.experiments.GooseFastPlusRotation"
-)
+_GOOSE_V2_BASE_PATH = "jambandnerd.models.goose.experiments.GooseFastPlusNotebookRank"
+_GOOSE_V2_ROTATION_PATH = "jambandnerd.models.goose.experiments.GooseFastPlusRotation"
 
 GOOSE_V2_SWEEP: list[ExperimentConfig] = [
     # ── HP experiments on 17-feature (production) baseline ──
@@ -378,5 +626,7 @@ GOOSE_V2_SWEEP: list[ExperimentConfig] = [
 GOOSE_SWEEPS: dict[str, list[ExperimentConfig]] = {
     "hp_sweep": GOOSE_HP_SWEEP,
     "feature_sweep": GOOSE_FEATURE_SWEEP,
+    "candidate_policy_sweep": GOOSE_CANDIDATE_POLICY_SWEEP,
+    "candidate_rank_guard_sweep": GOOSE_CANDIDATE_RANK_GUARD_SWEEP,
     "v2_sweep": GOOSE_V2_SWEEP,
 }

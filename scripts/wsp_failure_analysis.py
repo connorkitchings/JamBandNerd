@@ -110,8 +110,7 @@ def _load_song_stats(setlist_rows: list[dict]) -> dict[str, dict[str, Any]]:
     for r in setlist_rows:
         counts[r["song_name"]] += 1
     return {
-        song: {"plays": c, "pct": c / max(1, total) * 100}
-        for song, c in counts.items()
+        song: {"plays": c, "pct": c / max(1, total) * 100} for song, c in counts.items()
     }
 
 
@@ -154,9 +153,7 @@ def _classify_rarity(pct: float) -> str:
     return "rare"
 
 
-def _identify_failure_shows(
-    jsonl_path: str, bottom: int
-) -> list[dict]:
+def _identify_failure_shows(jsonl_path: str, bottom: int) -> list[dict]:
     records: list[dict] = []
     with open(jsonl_path) as fh:
         for line in fh:
@@ -370,16 +367,28 @@ def print_summary(records: list[dict]) -> None:
     print("CANDIDATE STATUS OF MISSED SONGS")
     print(f"{'─' * 70}")
     print(f"  Total missed songs (not in top-25):           {total_misses}")
-    print(f"  Pruned (not in candidate set):                {total_pruned} ({pct(total_pruned):.0f}%)")
-    print(f"  Candidate, ranked 26-50 (close):              {total_ranked_26_50} ({pct(total_ranked_26_50):.0f}%)")
-    print(f"  Candidate, ranked below 50 (far):             {total_ranked_below_50} ({pct(total_ranked_below_50):.0f}%)")
+    print(
+        f"  Pruned (not in candidate set):                {total_pruned} ({pct(total_pruned):.0f}%)"
+    )
+    print(
+        f"  Candidate, ranked 26-50 (close):              {total_ranked_26_50} ({pct(total_ranked_26_50):.0f}%)"
+    )
+    print(
+        f"  Candidate, ranked below 50 (far):             {total_ranked_below_50} ({pct(total_ranked_below_50):.0f}%)"
+    )
 
     print(f"\n{'─' * 70}")
     print("COVER ANALYSIS")
     print(f"{'─' * 70}")
-    print(f"  Covers in failure shows:                      {total_covers_in_actual}/{total_songs_actual} ({total_covers_in_actual / max(1, total_songs_actual) * 100:.1f}%)")
-    print(f"  Covers missed (not in top-25):                {total_covers_missed}/{total_covers_in_actual} ({total_covers_missed / max(1, total_covers_in_actual) * 100:.0f}%)")
-    print(f"  Covers pruned from candidates:                {total_covers_pruned}/{total_covers_missed} ({total_covers_pruned / max(1, total_covers_missed) * 100:.0f}%)")
+    print(
+        f"  Covers in failure shows:                      {total_covers_in_actual}/{total_songs_actual} ({total_covers_in_actual / max(1, total_songs_actual) * 100:.1f}%)"
+    )
+    print(
+        f"  Covers missed (not in top-25):                {total_covers_missed}/{total_covers_in_actual} ({total_covers_missed / max(1, total_covers_in_actual) * 100:.0f}%)"
+    )
+    print(
+        f"  Covers pruned from candidates:                {total_covers_pruned}/{total_covers_missed} ({total_covers_pruned / max(1, total_covers_missed) * 100:.0f}%)"
+    )
 
     print(f"\n{'─' * 70}")
     print("RARITY BREAKDOWN (missed songs)")
@@ -405,7 +414,9 @@ def print_summary(records: list[dict]) -> None:
     print(f"\n{'─' * 70}")
     print("PER-SHOW BREAKDOWN")
     print(f"{'─' * 70}")
-    print(f"  {'Date':<12} {'Venue':<30} {'Songs':>5} {'Covers':>6} {'F1@25':>6} {'Core Miss':>9}")
+    print(
+        f"  {'Date':<12} {'Venue':<30} {'Songs':>5} {'Covers':>6} {'F1@25':>6} {'Core Miss':>9}"
+    )
     for r in records:
         a = r["analysis"]
         core = [m for m in a["misses_k25"] if m["rarity"] == "core"]
@@ -423,15 +434,23 @@ def print_summary(records: list[dict]) -> None:
                 else:
                     rank_str = "rank>50 (below predictions)"
                 gap_str = str(c["gap_shows"]) if c["gap_shows"] is not None else "n/a"
-                print(f"    -> {c['song_name']}: {rank_str}, gap={gap_str}, career={c['career_pct']:.1f}%")
+                print(
+                    f"    -> {c['song_name']}: {rank_str}, gap={gap_str}, career={c['career_pct']:.1f}%"
+                )
 
     print(f"\n{'─' * 70}")
     print("ACTIONABLE IMPROVEMENT SURFACE")
     print(f"{'─' * 70}")
     print(f"  Core rotation songs missed:     {total_core_misses} total")
-    print(f"    Of those, ranked below top-50: {total_core_below_50} (model gives them near-zero probability)")
-    print(f"    Of those, ranked 26-50:        {total_core_26_50} (close — small score boost could help)")
-    print(f"    Of those, pruned:              {total_core_pruned} (wider candidate window needed)")
+    print(
+        f"    Of those, ranked below top-50: {total_core_below_50} (model gives them near-zero probability)"
+    )
+    print(
+        f"    Of those, ranked 26-50:        {total_core_26_50} (close — small score boost could help)"
+    )
+    print(
+        f"    Of those, pruned:              {total_core_pruned} (wider candidate window needed)"
+    )
     print("  Maximum F1@25 gain from core songs requires fixing rank>50 issue.")
 
 
@@ -471,7 +490,10 @@ def main() -> None:
     shows_df, sets_df = prepare_band_data(shows_df, sets_df, band=BAND)
     completed = list_completed_shows(shows_df, sets_df)
 
-    jsonl_path = Path(args.out_dir) / f"{BAND}_wsp_fast_gbm_v2_{len(completed.tail(100))}shows.jsonl"
+    jsonl_path = (
+        Path(args.out_dir)
+        / f"{BAND}_wsp_fast_gbm_v2_{len(completed.tail(100))}shows.jsonl"
+    )
 
     if args.show_dates:
         target_dates = set(args.show_dates.split(","))
@@ -486,7 +508,9 @@ def main() -> None:
         failure_records = _identify_failure_shows(str(jsonl_path), args.bottom)
         failure_dates = {r["target_show_date"] for r in failure_records}
         target_shows = completed[completed["show_date"].astype(str).isin(failure_dates)]
-        print(f"Identified {len(failure_records)} failure shows (F1@25 < {failure_records[-1]['_f1_25']:.3f})")
+        print(
+            f"Identified {len(failure_records)} failure shows (F1@25 < {failure_records[-1]['_f1_25']:.3f})"
+        )
 
     if target_shows.empty:
         raise RuntimeError("No target shows found.")

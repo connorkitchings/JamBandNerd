@@ -1,5 +1,7 @@
 export type PredictionSeedRow = {
   reference_date: string | null;
+  target_show_date: string | null;
+  target_show_key: string | null;
   predicted_at: string | null;
   model_version: string | null;
 };
@@ -18,7 +20,10 @@ export function selectLivePredictionSeedRow(
 ): PredictionSeedRow | null {
   const { todayIso } = options;
   const validRows = rows.filter(
-    (row) => Boolean(row.reference_date) && Boolean(row.model_version),
+    (row) =>
+      Boolean(row.target_show_date) &&
+      Boolean(row.target_show_key) &&
+      Boolean(row.model_version),
   );
 
   if (validRows.length === 0) {
@@ -26,14 +31,14 @@ export function selectLivePredictionSeedRow(
   }
 
   const futureRows = validRows
-    .filter((row) => (row.reference_date ?? "") >= todayIso)
+    .filter((row) => (row.target_show_date ?? "") >= todayIso)
     .toSorted((left, right) => {
-      const refComparison = compareNullableStringsAsc(
-        left.reference_date,
-        right.reference_date,
+      const targetComparison = compareNullableStringsAsc(
+        left.target_show_date,
+        right.target_show_date,
       );
-      if (refComparison !== 0) {
-        return refComparison;
+      if (targetComparison !== 0) {
+        return targetComparison;
       }
 
       return compareNullableStringsDesc(left.predicted_at, right.predicted_at);
@@ -53,7 +58,10 @@ export function selectLivePredictionSeedRow(
         return predictedComparison;
       }
 
-      return compareNullableStringsDesc(left.reference_date, right.reference_date);
+      return compareNullableStringsDesc(
+        left.target_show_date,
+        right.target_show_date,
+      );
     })[0] ?? null
   );
 }

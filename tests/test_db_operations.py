@@ -35,6 +35,67 @@ def test_prepare_dataframe_for_upsert_fails_on_nullable_violations(monkeypatch):
         operations.prepare_dataframe_for_upsert("goose_setlists_raw", df)
 
 
+def test_prepare_dataframe_for_upsert_drops_extra_columns(monkeypatch):
+    schema = [
+        {"column_name": "song_name", "data_type": "text", "is_nullable": "NO"},
+        {"column_name": "song_slug", "data_type": "text", "is_nullable": "NO"},
+    ]
+    monkeypatch.setattr(
+        operations, "get_table_schema", lambda *_args, **_kwargs: schema
+    )
+
+    df = pd.DataFrame(
+        [
+            {
+                "song_name": "In The Kitchen",
+                "song_slug": "in-the-kitchen",
+                "avg_show_gap": 5.5,
+            }
+        ]
+    )
+
+    prepared = operations.prepare_dataframe_for_upsert("um_songs_raw", df)
+
+    assert list(prepared.columns) == ["song_name", "song_slug"]
+
+
+def test_validate_and_upsert_dataframe_does_not_send_extra_columns(monkeypatch):
+    schema = [
+        {"column_name": "song_name", "data_type": "text", "is_nullable": "NO"},
+        {"column_name": "song_slug", "data_type": "text", "is_nullable": "NO"},
+    ]
+    monkeypatch.setattr(
+        operations, "get_table_schema", lambda *_args, **_kwargs: schema
+    )
+
+    captured: dict[str, pd.DataFrame] = {}
+    monkeypatch.setattr(
+        operations,
+        "upsert_dataframe",
+        lambda table_name, df, conflict_columns, chunk_size=500: captured.update(  # noqa: ARG005
+            {"df": df.copy()}
+        ),
+    )
+
+    df = pd.DataFrame(
+        [
+            {
+                "song_name": "In The Kitchen",
+                "song_slug": "in-the-kitchen",
+                "avg_show_gap": 5.5,
+            }
+        ]
+    )
+
+    operations.validate_and_upsert_dataframe(
+        "um_songs_raw",
+        df,
+        conflict_columns=["song_name"],
+    )
+
+    assert list(captured["df"].columns) == ["song_name", "song_slug"]
+
+
 def test_dedupe_dataframe_on_conflict_removes_duplicate_rows():
     df = pd.DataFrame(
         [
@@ -538,6 +599,36 @@ def test_replace_next_show_prediction_projection_rejects_empty_predictions(monke
         )
 
     client.table.assert_not_called()
+
+
+def test_replace_setlist_prediction_projection_writes_show_metadata(monkeypatch):
+    captured: dict[str, pd.DataFrame] = {}
+    client = MagicMock()
+    monkeypatch.setattr(operations, "get_supabase_client", lambda: client)
+    monkeypatch.setattr(
+        operations,
+        "bulk_insert_dataframe",
+        lambda table_name, df: captured.update({"table": table_name, "df": df}),
+    )
+
+    operations.replace_setlist_prediction_projection(
+        band="goose",
+        model_version="goose_fast_rank_v1",
+        target_show_key="show-1",
+        target_show_date="2026-04-25",
+        reference_date="2026-04-24",
+        generated_at="2026-04-24T12:00:00+00:00",
+        predictions=[{"rank": 1, "song_name": "Arcadia", "probability": 0.42}],
+        prediction_run_id=123,
+    )
+
+    row = captured["df"].iloc[0].to_dict()
+    assert captured["table"] == "setlist_prediction_songs"
+    assert row["prediction_run_id"] == 123
+    assert row["target_show_date"] == "2026-04-25"
+    assert row["reference_date"] == "2026-04-24"
+    assert row["generated_at"] == "2026-04-24T12:00:00+00:00"
+    assert row["top_k"] == 1
 
 
 def test_prune_completed_show_corpus_rejects_empty_retained_keys(monkeypatch):

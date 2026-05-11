@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 import { DashboardSideNav } from "@/components/dashboard-side-nav";
 import { DataState } from "@/components/data-state";
@@ -23,7 +24,11 @@ import {
   formatTimestampLabel,
 } from "@/lib/format";
 import { formatTop10Text } from "@/lib/format-predictions-text";
-import { getPredictionStatusLabel, isShowTonight } from "@/lib/show-status";
+import {
+  getPredictionDisplayState,
+  getPredictionStatusLabel,
+  isShowTonight,
+} from "@/lib/show-status";
 
 export const dynamic = "force-dynamic";
 
@@ -127,23 +132,24 @@ export default async function PredictionsPage({ searchParams }: Props) {
 
   const [nextShowState, specificShowState, accuracyState] = await Promise.all([
     getNextShowDetails(predictionState.band),
-    getShowDetailsByDate(predictionState.band, predictionState.snapshot.referenceDate),
+    getShowDetailsByDate(predictionState.band, predictionState.snapshot.targetShowDate),
     getRecentAccuracy(predictionState.band, 50),
   ]);
   const nextShow = nextShowState.status === "ready" ? nextShowState.show : null;
   const specificShow = specificShowState.status === "ready" ? specificShowState.show : null;
 
-  const targetShow = nextShow?.showDate === predictionState.snapshot.referenceDate
+  const targetShow = nextShow?.showDate === predictionState.snapshot.targetShowDate
     ? nextShow
     : specificShow;
 
-  const heroDate = predictionState.snapshot.referenceDate;
+  const heroDate = predictionState.snapshot.targetShowDate;
   const dateLabel = formatDateLabel(heroDate);
   const locationLabel = buildLocationLabel([
     targetShow?.city ?? null,
     targetShow?.state ?? targetShow?.country ?? null,
   ]);
   const isLiveShow = isShowTonight(heroDate);
+  const displayState = getPredictionDisplayState(heroDate);
   const statusLabel = getPredictionStatusLabel(heroDate);
   const snapshotLabel = formatTimestampLabel(predictionState.snapshot.predictedAt);
   const accuracyRows = accuracyState.status === "ready" ? accuracyState.rows : [];
@@ -193,10 +199,25 @@ export default async function PredictionsPage({ searchParams }: Props) {
       {heroDate && isLiveShow && process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY && (
         <LiveTracker
           band={predictionState.band}
-          referenceDate={heroDate}
+          targetShowKey={predictionState.snapshot.targetShowKey}
+          targetShowDate={heroDate}
           supabaseUrl={process.env.SUPABASE_URL}
           supabaseAnonKey={process.env.SUPABASE_ANON_KEY}
         />
+      )}
+
+      {displayState === "previous" && (
+        <div className="mb-5 rounded-lg border border-outline-variant/30 bg-surface-container-low px-4 py-3 text-sm leading-6 text-on-surface-variant">
+          This board is for the previous known target show. It remains visible
+          until the next upcoming show prediction is available.{" "}
+          <Link
+            href={`/last-show?band=${predictionState.band}`}
+            className="font-semibold text-primary underline-offset-4 hover:underline"
+          >
+            View the latest completed show
+          </Link>
+          .
+        </div>
       )}
 
       <PredictionHero

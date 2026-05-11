@@ -33,6 +33,7 @@ class TestUmNormalization:
         result = normalize_setlists(df)
         assert result["set_sequence"].dtype.name == "Int64"
         assert result["song_position"].dtype.name == "Int64"
+        assert "transition" in result.columns
         assert "source_hash" in result.columns
 
     def test_normalize_setlists_adds_set_number_from_set_label(self):

@@ -127,7 +127,8 @@ def main() -> None:
             print(f"{r['variant']:<22} {r['n_features']:>4}   ERROR: {r['error'][:40]}")
 
     print(
-        f"\nBaseline: Notebook 1yr = 0.408, GooseFast v1 = 0.378, Goose phase_b v1 (logistic) = 0.399"
+        "\nBaseline: Notebook 1yr = 0.408, GooseFast v1 = 0.378, "
+        "Goose phase_b v1 (logistic) = 0.399"
     )
     print(f"Full results: {out_path}")
 

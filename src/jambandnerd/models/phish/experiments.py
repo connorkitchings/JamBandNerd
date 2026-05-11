@@ -11,6 +11,7 @@ from __future__ import annotations
 from typing import Any
 
 import lightgbm as lgb
+import numpy as np
 import pandas as pd
 
 from jambandnerd.models.experiment import ExperimentConfig
@@ -374,6 +375,211 @@ class PhishFastPlusNotebookRankVenueRun(PhishFastPlusNotebookRank):
         return extra
 
 
+_FESTIVAL_CONTEXT_KEYWORDS: tuple[str, ...] = (
+    "festival",
+    "fest",
+    "mondegreen",
+    "mexico",
+    "woodlands",
+)
+_ATYPICAL_CONTEXT_KEYWORDS: tuple[str, ...] = (
+    "acoustic",
+    "soundcheck",
+    "tiny desk",
+    "npr",
+)
+_SHORT_SHOW_THRESHOLD = 12
+_TYPICAL_PHISH_SONG_COUNT = 18.0
+
+
+def _lower_context_text(value: Any) -> str:
+    if value is None or pd.isna(value):
+        return ""
+    return str(value).strip().lower()
+
+
+def _context_contains(context: dict[str, Any], keywords: tuple[str, ...]) -> bool:
+    text = " ".join(
+        _lower_context_text(context.get(key))
+        for key in ("tour_name", "venue_name", "city", "state", "country")
+    )
+    return any(keyword in text for keyword in keywords)
+
+
+def _prior_show_counts(plays: pd.DataFrame) -> pd.Series:
+    if plays.empty:
+        return pd.Series(dtype=float)
+    return plays.groupby("show_index")["song_name"].nunique().sort_index().astype(float)
+
+
+def _prior_venue_short_show_rate(
+    *,
+    plays: pd.DataFrame,
+    target_show_context: dict[str, Any],
+) -> float:
+    venue_key = normalized_venue_key(target_show_context)
+    if not venue_key or plays.empty:
+        return 0.0
+
+    show_context_columns = [
+        column
+        for column in ("show_index", "venue_name", "city", "state", "country")
+        if column in plays.columns
+    ]
+    if (
+        "show_index" not in show_context_columns
+        or "venue_name" not in show_context_columns
+    ):
+        return 0.0
+
+    show_context = (
+        plays[show_context_columns]
+        .drop_duplicates("show_index")
+        .set_index("show_index")
+    )
+    matching_show_indices = [
+        idx
+        for idx, row in show_context.iterrows()
+        if normalized_venue_key(row) == venue_key
+    ]
+    if not matching_show_indices:
+        return 0.0
+
+    counts = _prior_show_counts(plays).reindex(matching_show_indices).dropna()
+    if counts.empty:
+        return 0.0
+    return float((counts <= _SHORT_SHOW_THRESHOLD).mean())
+
+
+def _prior_tour_song_count_ratio(
+    *,
+    plays: pd.DataFrame,
+    target_show_context: dict[str, Any],
+) -> float:
+    tour_name = _lower_context_text(target_show_context.get("tour_name"))
+    if not tour_name or plays.empty or "tour_name" not in plays.columns:
+        return 1.0
+
+    show_context = (
+        plays[["show_index", "tour_name"]]
+        .drop_duplicates("show_index")
+        .set_index("show_index")
+    )
+    matching_show_indices = [
+        idx
+        for idx, row in show_context.iterrows()
+        if _lower_context_text(row.get("tour_name")) == tour_name
+    ]
+    counts = _prior_show_counts(plays).reindex(matching_show_indices).dropna()
+    if counts.empty:
+        return 1.0
+    return float(np.clip(counts.median() / _TYPICAL_PHISH_SONG_COUNT, 0.25, 1.5))
+
+
+class PhishFastPlusShowType(PhishFastPlusNotebookRankVenueRun):
+    """Add Phish show-type context interactions to the incumbent model.
+
+    The raw show-type indicators are intentionally paired with song-level signals
+    so the ranker can change candidate ordering within a target show.
+    """
+
+    MODEL_VERSION = "phish_fast_gbm_v2_feat_show_type"
+    _FEATURE_COLS: list[str] = [
+        *PhishFastPlusNotebookRankVenueRun._FEATURE_COLS,
+        "is_not_part_of_tour",
+        "is_festival_context",
+        "is_atypical_context",
+        "prior_venue_short_show_rate",
+        "prior_tour_song_count_ratio",
+        "show_type_notebook_score",
+        "show_type_career_score",
+        "show_type_recent_score",
+        "short_venue_notebook_score",
+        "short_venue_career_score",
+    ]
+
+    @staticmethod
+    def _show_type_features(
+        *,
+        eligible_songs: pd.Index,
+        plays: pd.DataFrame,
+        target_show_context: Any,
+        career_pct: pd.Series,
+        p50: pd.Series,
+        notebook_rank_score: Any,
+    ) -> dict[str, Any]:
+        context = normalize_target_show_context(target_show_context)
+        tour_name = _lower_context_text(context.get("tour_name"))
+        is_not_part = float(tour_name == "not part of a tour")
+        is_festival = float(_context_contains(context, _FESTIVAL_CONTEXT_KEYWORDS))
+        is_atypical = float(_context_contains(context, _ATYPICAL_CONTEXT_KEYWORDS))
+        short_venue_rate = _prior_venue_short_show_rate(
+            plays=plays,
+            target_show_context=context,
+        )
+        tour_count_ratio = _prior_tour_song_count_ratio(
+            plays=plays,
+            target_show_context=context,
+        )
+        context_score = max(
+            is_not_part,
+            is_festival,
+            is_atypical,
+            short_venue_rate,
+            max(0.0, 1.0 - tour_count_ratio),
+        )
+        notebook = pd.Series(notebook_rank_score, index=eligible_songs).astype(float)
+        recent_pct = p50.astype(float) / max(1.0, float(p50.max() or 1.0))
+
+        zeros_or_const = pd.Series(1.0, index=eligible_songs)
+        return {
+            "is_not_part_of_tour": (zeros_or_const * is_not_part).values,
+            "is_festival_context": (zeros_or_const * is_festival).values,
+            "is_atypical_context": (zeros_or_const * is_atypical).values,
+            "prior_venue_short_show_rate": (zeros_or_const * short_venue_rate).values,
+            "prior_tour_song_count_ratio": (zeros_or_const * tour_count_ratio).values,
+            "show_type_notebook_score": (notebook * context_score).values,
+            "show_type_career_score": (career_pct * context_score).values,
+            "show_type_recent_score": (recent_pct * context_score).values,
+            "short_venue_notebook_score": (notebook * short_venue_rate).values,
+            "short_venue_career_score": (career_pct * short_venue_rate).values,
+        }
+
+    def _extra_training_row_features(self, **kwargs: Any) -> dict:
+        extra = super()._extra_training_row_features(**kwargs)
+        target_show_index = kwargs["target_show_index"]
+        sub_plays = kwargs["plays"][kwargs["plays"]["show_index"] < target_show_index]
+        target_rows = kwargs["plays"][
+            kwargs["plays"]["show_index"] == target_show_index
+        ]
+        target_context = target_rows.iloc[0] if not target_rows.empty else {}
+        extra.update(
+            self._show_type_features(
+                eligible_songs=kwargs["eligible_songs"],
+                plays=sub_plays,
+                target_show_context=target_context,
+                career_pct=kwargs["career_pct"],
+                p50=kwargs["p50"],
+                notebook_rank_score=extra["notebook_rank_score"],
+            )
+        )
+        return extra
+
+    def _extra_predict_features(self, **kwargs: Any) -> dict:
+        extra = super()._extra_predict_features(**kwargs)
+        extra.update(
+            self._show_type_features(
+                eligible_songs=kwargs["eligible_songs"],
+                plays=kwargs["plays"],
+                target_show_context=kwargs["target_show_context"],
+                career_pct=kwargs["career_pct"],
+                p50=kwargs["p50"],
+                notebook_rank_score=extra["notebook_rank_score"],
+            )
+        )
+        return extra
+
+
 # ── PhishFastPredictorV3 (Cleaned Feature Set) ────────────────────────────────
 
 
@@ -588,8 +794,34 @@ PHISH_COMBO_SWEEP: list[ExperimentConfig] = [
 ]
 
 
+PHISH_SHOW_TYPE_SWEEP: list[ExperimentConfig] = [
+    ExperimentConfig(
+        slug="feat_show_type",
+        description=(
+            "Add Phish show-type metadata and prior song-count interaction "
+            "features to incumbent stacked model"
+        ),
+        predictor_path="jambandnerd.models.phish.experiments.PhishFastPlusShowType",
+    ),
+]
+
+
+PHISH_CLEANUP_ABLATION_SWEEP: list[ExperimentConfig] = [
+    ExperimentConfig(
+        slug="cleanup_v3_dead_features",
+        description=(
+            "Remove previously diagnosed weak Phish features: plays_past_10, "
+            "month_play_rate, and sparse same-venue prior-play count/share flags"
+        ),
+        predictor_path="jambandnerd.models.phish.experiments.PhishFastPredictorV3",
+    ),
+]
+
+
 PHISH_SWEEPS: dict[str, list[ExperimentConfig]] = {
     "hp_sweep": PHISH_HP_SWEEP,
     "feature_sweep": PHISH_FEATURE_SWEEP,
     "combo_sweep": PHISH_COMBO_SWEEP,
+    "show_type_sweep": PHISH_SHOW_TYPE_SWEEP,
+    "cleanup_ablation": PHISH_CLEANUP_ABLATION_SWEEP,
 }

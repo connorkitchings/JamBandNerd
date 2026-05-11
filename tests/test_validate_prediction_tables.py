@@ -1,5 +1,5 @@
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from scripts.validate_prediction_tables import validate_predictions
 
@@ -69,14 +69,15 @@ def _rows(
     if generated_at is _DEFAULT_GENERATED_AT:
         generated_at = datetime.now(timezone.utc)
     predictions = predictions or [{"rank": 1, "song_name": "Fresh Song"}]
+    target_show_date = (date.today() + timedelta(days=1)).isoformat()
     return {
         "setlist_predictions": [
             {
                 "band": "goose",
-                "model_version": "goose_phase_b_v1",
+                "model_version": "goose_fast_rank_v1",
                 "target_show_key": "show-1",
-                "target_show_date": "2026-04-25",
-                "reference_date": "2026-04-25",
+                "target_show_date": target_show_date,
+                "reference_date": target_show_date,
                 "generated_at": (
                     generated_at.isoformat() if generated_at is not None else None
                 ),
@@ -87,13 +88,19 @@ def _rows(
         "setlist_prediction_songs": [
             {
                 "band": "goose",
-                "model_version": "goose_phase_b_v1",
+                "model_version": "goose_fast_rank_v1",
                 "target_show_key": "show-1",
+                "target_show_date": target_show_date,
+                "reference_date": target_show_date,
+                "generated_at": (
+                    generated_at.isoformat() if generated_at is not None else None
+                ),
+                "top_k": len(predictions),
                 "rank": 1,
                 "song_name": projection_song,
             }
         ],
-        "goose_shows_raw": [{"show_date": "2026-04-25"}],
+        "goose_shows_raw": [{"show_date": target_show_date}],
     }
 
 

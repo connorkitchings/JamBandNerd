@@ -149,6 +149,7 @@ class TestWSPExperiments:
 
     def test_sweeps_are_registered(self):
         from jambandnerd.models.wsp.experiments import WSP_SWEEPS
+
         assert set(WSP_SWEEPS) == {
             "candidate_sweep",
             "hp_sweep",
@@ -170,6 +171,7 @@ class TestWSPExperiments:
 
     def test_feature_sweep_uses_explicit_predictors(self):
         from jambandnerd.models.wsp.experiments import WSP_SWEEPS
+
         predictor_paths = [
             config.predictor_path for config in WSP_SWEEPS["feature_sweep"]
         ]
@@ -179,6 +181,7 @@ class TestWSPExperiments:
 
     def test_candidate_sweep_uses_explicit_predictors(self):
         from jambandnerd.models.wsp.experiments import WSP_SWEEPS
+
         predictor_paths = [
             config.predictor_path for config in WSP_SWEEPS["candidate_sweep"]
         ]
@@ -188,17 +191,19 @@ class TestWSPExperiments:
 
     def test_combo_sweep_uses_base_predictor_path(self):
         from jambandnerd.models.wsp.experiments import WSP_SWEEPS
+
         base = "jambandnerd.models.wsp.fast_predictor.WSPFastPredictor"
         for config in WSP_SWEEPS["combo_sweep"]:
-            assert config.base_predictor_path == base, (
-                f"{config.slug}: expected base_predictor_path={base!r}"
-            )
-            assert config.predictor_path == "", (
-                f"{config.slug}: should not have explicit predictor_path"
-            )
+            assert (
+                config.base_predictor_path == base
+            ), f"{config.slug}: expected base_predictor_path={base!r}"
+            assert (
+                config.predictor_path == ""
+            ), f"{config.slug}: should not have explicit predictor_path"
 
     def test_es_sweep_uses_base_predictor_path(self):
         from jambandnerd.models.wsp.experiments import WSP_SWEEPS
+
         base = "jambandnerd.models.wsp.fast_predictor.WSPFastPredictor"
         for config in WSP_SWEEPS["es_sweep"]:
             assert config.base_predictor_path == base
@@ -206,6 +211,7 @@ class TestWSPExperiments:
 
     def test_es_sweep_attr_overrides_valid(self):
         from jambandnerd.models.wsp.experiments import WSP_SWEEPS
+
         allowed = {"_EARLY_STOPPING_ROUNDS", "_VALIDATION_FRACTION"}
         for config in WSP_SWEEPS["es_sweep"]:
             assert set(config.attr_overrides.keys()).issubset(allowed), (
@@ -215,22 +221,25 @@ class TestWSPExperiments:
 
     def test_fixed_round_sweep_no_early_stopping(self):
         from jambandnerd.models.wsp.experiments import WSP_SWEEPS
+
         for config in WSP_SWEEPS["fixed_round_sweep"]:
-            assert config.attr_overrides.get("_EARLY_STOPPING_ROUNDS") is None, (
-                f"{config.slug}: should disable early stopping"
-            )
-            assert config.base_predictor_path.startswith(
-                "jambandnerd.models.wsp."
-            )
+            assert (
+                config.attr_overrides.get("_EARLY_STOPPING_ROUNDS") is None
+            ), f"{config.slug}: should disable early stopping"
+            assert config.base_predictor_path.startswith("jambandnerd.models.wsp.")
             assert config.predictor_path == ""
             assert config.round_overrides is not None
 
     def test_make_experiment_predictor_applies_attr_overrides(self):
         from jambandnerd.models.experiment import make_experiment_predictor
+
         cls = make_experiment_predictor(
             WSPFastPredictor,
             slug_suffix="test_es",
-            attr_overrides={"_EARLY_STOPPING_ROUNDS": None, "_VALIDATION_FRACTION": 0.1},
+            attr_overrides={
+                "_EARLY_STOPPING_ROUNDS": None,
+                "_VALIDATION_FRACTION": 0.1,
+            },
         )
         assert cls._EARLY_STOPPING_ROUNDS is None
         assert cls._VALIDATION_FRACTION == 0.1
@@ -238,6 +247,7 @@ class TestWSPExperiments:
 
     def test_gap_decoupled_sweep_uses_explicit_predictors(self):
         from jambandnerd.models.wsp.experiments import WSP_SWEEPS
+
         predictor_paths = [
             config.predictor_path for config in WSP_SWEEPS["gap_decoupled_sweep"]
         ]
@@ -247,11 +257,13 @@ class TestWSPExperiments:
 
     def test_gap_decoupled_sweep_slugs(self):
         from jambandnerd.models.wsp.experiments import WSP_SWEEPS
+
         slugs = [c.slug for c in WSP_SWEEPS["gap_decoupled_sweep"]]
         assert slugs == ["gd_default", "gd_fr50", "gd_clean_fr50"]
 
     def test_venue_run_sweep_uses_explicit_predictors(self):
         from jambandnerd.models.wsp.experiments import WSP_SWEEPS
+
         predictor_paths = [
             config.predictor_path for config in WSP_SWEEPS["venue_run_sweep"]
         ]
@@ -261,6 +273,7 @@ class TestWSPExperiments:
 
     def test_venue_run_sweep_slugs(self):
         from jambandnerd.models.wsp.experiments import WSP_SWEEPS
+
         slugs = [c.slug for c in WSP_SWEEPS["venue_run_sweep"]]
         assert slugs == ["vr_default", "vr_fr50", "vr_fr50_lam01"]
 
@@ -316,6 +329,7 @@ class TestRegistryIntegration:
             build_band_predictor,
             get_band_model_version,
         )
+
         wsp = build_band_predictor("wsp", persist_artifacts=False)
         assert isinstance(wsp, WSPFastPredictor)
         assert get_band_model_version("wsp") == "wsp_fast_gbm_v2"

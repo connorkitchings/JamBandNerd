@@ -143,7 +143,7 @@ def _clean_plays(plays: pd.DataFrame) -> pd.DataFrame:
     base_columns = ["song_name", "show_index", "show_date"]
     context_columns = [
         column
-        for column in ("venue_name", "city", "state", "country")
+        for column in ("tour_name", "venue_name", "city", "state", "country")
         if column in plays.columns
     ]
     set_columns = [
@@ -474,8 +474,6 @@ class PhishFastPredictor(PredictionModel):
         show_cols = cache["show_cols"]
         show_date_map = cache["show_date_map"]
         col_dates = cache["col_dates"]
-        col_venues = cache["col_venues"]
-        all_songs = presence.index
         n_shows = len(show_cols)
 
         start_col = max(_MIN_TRAINING_SHOWS, n_shows - self._training_window())
@@ -491,7 +489,9 @@ class PhishFastPredictor(PredictionModel):
 
             # Get candidate songs with pruning
             candidates = _get_candidate_songs(
-                presence, cum, ref_col,
+                presence,
+                cum,
+                ref_col,
                 recent_shows=self._candidate_recent_shows(),
                 top_career=self._candidate_top_career(),
             )
@@ -619,7 +619,6 @@ class PhishFastPredictor(PredictionModel):
         show_cols = cache["show_cols"]
         show_date_map = cache["show_date_map"]
         col_dates = cache["col_dates"]
-        all_songs = presence.index
         n_shows = len(show_cols)
 
         start_col = max(_MIN_TRAINING_SHOWS, n_shows - self._training_window())
@@ -632,7 +631,9 @@ class PhishFastPredictor(PredictionModel):
 
             # Get candidate songs with pruning
             candidates = _get_candidate_songs(
-                presence, cum, ref_col,
+                presence,
+                cum,
+                ref_col,
                 recent_shows=self._candidate_recent_shows(),
                 top_career=self._candidate_top_career(),
             )
@@ -794,7 +795,6 @@ class PhishFastPredictor(PredictionModel):
         gap_mat = cache["gap_mat"]
         month_cums = cache["month_cums"]
         col_dates = cache["col_dates"]
-        all_songs = presence.index
         n_shows = presence.shape[1]
         ref_col = n_shows - 1
 
@@ -808,7 +808,9 @@ class PhishFastPredictor(PredictionModel):
 
         # Get candidate songs with pruning
         candidates = _get_candidate_songs(
-            presence, cum, ref_col,
+            presence,
+            cum,
+            ref_col,
             recent_shows=self._candidate_recent_shows(),
             top_career=self._candidate_top_career(),
         )

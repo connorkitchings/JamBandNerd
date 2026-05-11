@@ -220,6 +220,16 @@ The live canonical row includes:
 - `generated_at`
 - JSON `predictions` payload
 
+`target_show_date` is the product-facing date: the website uses it to decide
+whether a prediction is for the next show, tonight, or a previous show.
+`reference_date` is the model cutoff used to enforce anti-leakage. These values
+may differ for completed-show scoring and should not be treated as
+interchangeable. `generated_at` is the freshness timestamp.
+
+If no future board exists, the website may continue to show the latest stale
+live board as a previous-show board with explicit labeling. Completed-show
+history remains separate in `setlist_results`.
+
 The completed-show canonical row additionally includes `actual_songs` and
 `actual_song_count`.
 
@@ -300,7 +310,8 @@ from `setlist_predictions`.
 
 Schema:
 - `band`, `model_version`, `target_show_key`: prediction context
-- `predicted_at`: when the prediction was generated
+- `target_show_date`, `reference_date`, `generated_at`: denormalized live run
+  metadata used by website and realtime update scopes
 - `rank`, `song_name`, `top_k`: song position in the prediction board
 - `prediction_payload`: model-specific JSON object for that ranked song
 

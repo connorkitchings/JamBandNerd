@@ -9,6 +9,7 @@ import pandas as pd
 TARGET_SHOW_CONTEXT_KEYS: tuple[str, ...] = (
     "show_id",
     "show_date",
+    "tour_name",
     "venue_name",
     "city",
     "state",

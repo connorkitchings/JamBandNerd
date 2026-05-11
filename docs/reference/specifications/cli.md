@@ -30,6 +30,9 @@ While the optimized pipeline is recommended for end-to-end runs, the core logic 
 
 Generates and saves active next-show predictions for a given band.
 If no upcoming show is discoverable, no live board is written.
+The live row stores `target_show_date` as the show being predicted and
+`reference_date` as the model cutoff. On the website, `target_show_date`
+controls whether the board is labeled as next show, tonight, or previous show.
 
 - `--band <active-band-slug>`: (Required) The band to process. The script accepts active single-model bands from `src/jambandnerd/models/metadata.py`.
 - `--exclusion-window {N}`: (Optional) The number of recent shows to exclude songs from. Defaults to 3.

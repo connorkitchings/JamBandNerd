@@ -8,25 +8,34 @@ import { matchesPredictionUpdateScope } from "@/lib/live-updates";
 
 type Props = {
   band: string;
-  referenceDate: string;
+  targetShowKey?: string | null;
+  targetShowDate?: string | null;
   supabaseUrl: string;
   supabaseAnonKey: string;
 };
 
 export function LiveTracker({
   band,
-  referenceDate,
+  targetShowKey,
+  targetShowDate,
   supabaseUrl,
   supabaseAnonKey,
 }: Props) {
   const router = useRouter();
 
   useEffect(() => {
-    if (!supabaseUrl || !supabaseAnonKey || !band || !referenceDate) return;
+    if (
+      !supabaseUrl ||
+      !supabaseAnonKey ||
+      !band ||
+      (!targetShowKey && !targetShowDate)
+    ) {
+      return;
+    }
 
     const supabase = createClient(supabaseUrl, supabaseAnonKey);
     const channel = supabase
-      .channel(`live-updates-${band}-${referenceDate}`)
+      .channel(`live-updates-${band}-${targetShowKey ?? targetShowDate}`)
       .on(
         "postgres_changes",
         {
@@ -37,8 +46,16 @@ export function LiveTracker({
         },
         (payload) => {
           const scopedUpdate =
-            matchesPredictionUpdateScope(payload.new, { band, referenceDate }) ||
-            matchesPredictionUpdateScope(payload.old, { band, referenceDate });
+            matchesPredictionUpdateScope(payload.new, {
+              band,
+              targetShowKey,
+              targetShowDate,
+            }) ||
+            matchesPredictionUpdateScope(payload.old, {
+              band,
+              targetShowKey,
+              targetShowDate,
+            });
           if (scopedUpdate) {
             router.refresh();
           }
@@ -49,7 +66,7 @@ export function LiveTracker({
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [band, referenceDate, supabaseUrl, supabaseAnonKey, router]);
+  }, [band, targetShowKey, targetShowDate, supabaseUrl, supabaseAnonKey, router]);
 
   return null;
 }

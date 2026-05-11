@@ -33,8 +33,11 @@ from src.jambandnerd.data_collection.um.upcoming import (  # noqa: E402
 from src.jambandnerd.data_collection.utils import CollectionTimer  # noqa: E402
 from src.jambandnerd.db.connection import get_supabase_client  # noqa: E402
 from src.jambandnerd.db.operations import (  # noqa: E402
+    bulk_insert_dataframe,
     dedupe_dataframe_on_conflict,
     fetch_existing_values,
+    fetch_rows_by_column_values,
+    prepare_dataframe_for_upsert,
     validate_and_upsert_dataframe,
 )
 
@@ -74,6 +77,216 @@ def _upsert(
         required_columns=required_columns,
         skip_validation=skip_validation,
     )
+
+
+def _sync_um_songs_raw(songs_df: pd.DataFrame, *, skip_validation: bool) -> None:
+    """Persist UM songs when production uses a generated song_id primary key."""
+
+    if songs_df.empty:
+        return
+
+    deduped = dedupe_dataframe_on_conflict(
+        songs_df,
+        conflict_columns=["song_name"],
+        table_name="um_songs_raw",
+    )
+    prepared = prepare_dataframe_for_upsert(
+        "um_songs_raw",
+        deduped,
+        skip_validation=skip_validation,
+    )
+    if prepared.empty:
+        return
+
+    song_names = prepared["song_name"].dropna().astype(str).tolist()
+    existing_names = fetch_existing_values(
+        "um_songs_raw",
+        value_column="song_name",
+        candidate_values=song_names,
+    )
+
+    existing_df = prepared[prepared["song_name"].astype(str).isin(existing_names)]
+    new_df = prepared[~prepared["song_name"].astype(str).isin(existing_names)]
+
+    if not existing_df.empty:
+        client = get_supabase_client()
+        for record in existing_df.to_dict(orient="records"):
+            record = {
+                key: None if pd.isna(value) else value for key, value in record.items()
+            }
+            song_name = record.get("song_name")
+            if song_name is None:
+                continue
+            client.table("um_songs_raw").update(record).eq(
+                "song_name", str(song_name)
+            ).execute()
+
+    if not new_df.empty:
+        next_song_id = _next_um_song_id()
+        new_df = new_df.copy()
+        new_df["song_id"] = range(next_song_id, next_song_id + len(new_df))
+        bulk_insert_dataframe("um_songs_raw", new_df)
+
+
+def _next_um_song_id() -> int:
+    """Return the next available UM song_id for schemas without identity defaults."""
+
+    return _next_numeric_id("um_songs_raw", "song_id")
+
+
+def _venue_key(record: Dict[str, Any]) -> tuple[str, str, str, str]:
+    return (
+        str(record.get("venue_name") or ""),
+        str(record.get("venue_city") or ""),
+        str(record.get("venue_state") or ""),
+        str(record.get("venue_country") or ""),
+    )
+
+
+def _sync_um_venues_raw(venues_df: pd.DataFrame, *, skip_validation: bool) -> None:
+    """Persist UM venues when production uses a generated venue_id primary key."""
+
+    if venues_df.empty:
+        return
+
+    deduped = dedupe_dataframe_on_conflict(
+        venues_df,
+        conflict_columns=[
+            "venue_name",
+            "venue_city",
+            "venue_state",
+            "venue_country",
+        ],
+        table_name="um_venues_raw",
+    ).copy()
+    venue_names = deduped["venue_name"].dropna().astype(str).tolist()
+    existing_rows = fetch_rows_by_column_values(
+        "um_venues_raw",
+        select_columns=[
+            "venue_id",
+            "venue_name",
+            "venue_city",
+            "venue_state",
+            "venue_country",
+        ],
+        filter_column="venue_name",
+        values=venue_names,
+    )
+    existing_ids = {_venue_key(row): int(row["venue_id"]) for row in existing_rows}
+
+    next_venue_id = _next_numeric_id("um_venues_raw", "venue_id")
+    venue_ids: list[int] = []
+    is_existing: list[bool] = []
+    for record in deduped.to_dict(orient="records"):
+        existing_id = existing_ids.get(_venue_key(record))
+        if existing_id is not None:
+            venue_ids.append(existing_id)
+            is_existing.append(True)
+        else:
+            venue_ids.append(next_venue_id)
+            next_venue_id += 1
+            is_existing.append(False)
+
+    deduped["venue_id"] = venue_ids
+    deduped["_is_existing"] = is_existing
+    prepared = prepare_dataframe_for_upsert(
+        "um_venues_raw",
+        deduped,
+        skip_validation=skip_validation,
+    )
+    existing_df = prepared[deduped["_is_existing"].to_numpy()]
+    new_df = prepared[~deduped["_is_existing"].to_numpy()]
+
+    if not existing_df.empty:
+        client = get_supabase_client()
+        for record in existing_df.to_dict(orient="records"):
+            record = {
+                key: None if pd.isna(value) else value for key, value in record.items()
+            }
+            client.table("um_venues_raw").update(record).eq(
+                "venue_id", record["venue_id"]
+            ).execute()
+
+    if not new_df.empty:
+        bulk_insert_dataframe("um_venues_raw", new_df)
+
+
+def _sync_um_shows_raw(shows_df: pd.DataFrame, *, skip_validation: bool) -> None:
+    """Persist UM shows when production uses a generated show_id primary key."""
+
+    if shows_df.empty:
+        return
+
+    deduped = dedupe_dataframe_on_conflict(
+        shows_df,
+        conflict_columns=["source_url"],
+        table_name="um_shows_raw",
+    ).copy()
+    source_urls = deduped["source_url"].dropna().astype(str).tolist()
+    existing_rows = fetch_rows_by_column_values(
+        "um_shows_raw",
+        select_columns=["show_id", "source_url"],
+        filter_column="source_url",
+        values=source_urls,
+    )
+    existing_ids = {
+        str(row["source_url"]): int(row["show_id"])
+        for row in existing_rows
+        if row.get("source_url") and row.get("show_id") is not None
+    }
+
+    next_show_id = _next_numeric_id("um_shows_raw", "show_id")
+    show_ids: list[int] = []
+    is_existing: list[bool] = []
+    for source_url in source_urls:
+        existing_id = existing_ids.get(str(source_url))
+        if existing_id is not None:
+            show_ids.append(existing_id)
+            is_existing.append(True)
+        else:
+            show_ids.append(next_show_id)
+            next_show_id += 1
+            is_existing.append(False)
+
+    deduped["show_id"] = show_ids
+    deduped["_is_existing"] = is_existing
+    prepared = prepare_dataframe_for_upsert(
+        "um_shows_raw",
+        deduped,
+        skip_validation=skip_validation,
+    )
+    existing_df = prepared[deduped["_is_existing"].to_numpy()]
+    new_df = prepared[~deduped["_is_existing"].to_numpy()]
+
+    if not existing_df.empty:
+        client = get_supabase_client()
+        for record in existing_df.to_dict(orient="records"):
+            record = {
+                key: None if pd.isna(value) else value for key, value in record.items()
+            }
+            client.table("um_shows_raw").update(record).eq(
+                "show_id", record["show_id"]
+            ).execute()
+
+    if not new_df.empty:
+        bulk_insert_dataframe("um_shows_raw", new_df)
+
+
+def _next_numeric_id(table_name: str, id_column: str) -> int:
+    """Return the next available integer ID for schemas without identity defaults."""
+
+    client = get_supabase_client()
+    response = (
+        client.table(table_name)
+        .select(id_column)
+        .order(id_column, desc=True)
+        .limit(1)
+        .execute()
+    )
+    rows = response.data or []
+    if not rows or rows[0].get(id_column) is None:
+        return 1
+    return int(rows[0][id_column]) + 1
 
 
 def _batched(sequence: Sequence[Any], size: int) -> Iterable[Sequence[Any]]:
@@ -176,12 +389,7 @@ def run_um_collection(
         songs_df = pd.DataFrame(songs_data)
         songs_df = songs_df.drop_duplicates(subset=["song_name"]).reset_index(drop=True)
         songs_df = attach_source_hash(songs_df)
-        _upsert(
-            "um_songs_raw",
-            songs_df,
-            conflict_columns=["song_name"],
-            skip_validation=skip_validation,
-        )
+        _sync_um_songs_raw(songs_df, skip_validation=skip_validation)
         print(f"Upserted {len(songs_df)} songs into um_songs_raw.")
     else:
         print("No UM songs scraped; skipping um_songs_raw upsert.")
@@ -191,17 +399,7 @@ def run_um_collection(
     if venues_data:
         venues_df = pd.DataFrame(venues_data)
         venues_df = attach_source_hash(venues_df)
-        _upsert(
-            "um_venues_raw",
-            venues_df,
-            conflict_columns=[
-                "venue_name",
-                "venue_city",
-                "venue_state",
-                "venue_country",
-            ],
-            skip_validation=skip_validation,
-        )
+        _sync_um_venues_raw(venues_df, skip_validation=skip_validation)
         print(f"Upserted {len(venues_df)} venues into um_venues_raw.")
     else:
         print("No UM venues scraped; skipping um_venues_raw upsert.")
@@ -225,12 +423,7 @@ def run_um_collection(
 
     shows_df = pd.DataFrame(shows_data)
     shows_df = attach_source_hash(shows_df)
-    _upsert(
-        "um_shows_raw",
-        shows_df,
-        conflict_columns=["source_url"],
-        skip_validation=skip_validation,
-    )
+    _sync_um_shows_raw(shows_df, skip_validation=skip_validation)
     print(f"Upserted {len(shows_df)} shows into um_shows_raw.")
 
     shows_to_process = _shows_to_process(shows_df, full_backfill=full_backfill)
