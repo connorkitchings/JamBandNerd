@@ -136,7 +136,7 @@ def test_run_backtest_persists_string_show_ids(monkeypatch):
     ]
     assert captured["df"]["show_id"].tolist() == ["goose-show-3"]
     assert captured["df"]["show_id"].map(type).eq(str).all()
-    assert "target_show_date" not in captured["df"].columns
+    assert captured["df"]["target_show_date"].tolist() == ["2024-01-20"]
     assert captured["df"]["show_date"].tolist() == ["2024-01-20"]
     assert captured["df"]["prediction_run_id"].tolist() == [987]
     assert len(completed_runs) == 1
@@ -485,6 +485,100 @@ def test_run_backtest_writes_github_output_false_when_new_shows(monkeypatch, tmp
 
     assert result == 0
     assert output_file.read_text() == "backtest_incremental_all_scored=false\n"
+
+
+def test_run_backtest_incremental_prune_keeps_full_retained_window(monkeypatch):
+    shows_df = pd.DataFrame(
+        [
+            {"show_id": "goose-show-1", "show_date": "2024-01-20"},
+            {"show_id": "goose-show-2", "show_date": "2024-01-25"},
+        ]
+    )
+    sets_df = pd.DataFrame(
+        [
+            {"show_id": "goose-show-1", "song_name": "Song A"},
+            {"show_id": "goose-show-1", "song_name": "Song B"},
+            {"show_id": "goose-show-1", "song_name": "Song C"},
+            {"show_id": "goose-show-2", "song_name": "Song D"},
+            {"show_id": "goose-show-2", "song_name": "Song E"},
+            {"show_id": "goose-show-2", "song_name": "Song F"},
+        ]
+    )
+    scored_records = [
+        {
+            "band": "goose",
+            "model_version": "goose_fast_rank_v1_candidate_relaxed_special_nbtop10",
+            "show_id": "goose-show-2",
+            "target_show_key": "goose-show-2",
+            "target_show_date": "2024-01-25",
+            "show_date": "2024-01-25",
+            "reference_date": "2024-01-24",
+            "actual_song_count": 3,
+            "metrics": {
+                f"k{k}": {
+                    "hit": True,
+                    "matches": 1,
+                    "precision": 1 / k,
+                    "recall": 1 / 3,
+                    "f1": 0.1,
+                    "ndcg": 1.0,
+                }
+                for k in (10, 25, 50)
+            },
+        }
+    ]
+    captured_prune: dict[str, object] = {}
+
+    monkeypatch.setattr(
+        run_backtest_module,
+        "load_backtest_frames",
+        lambda band, snapshot_root=None: (shows_df, sets_df),
+    )
+    monkeypatch.setattr(
+        run_backtest_module,
+        "list_completed_shows",
+        lambda loaded_shows, loaded_sets: loaded_shows,
+    )
+    monkeypatch.setattr(
+        run_backtest_module,
+        "select_target_shows",
+        lambda completed_shows, **kwargs: completed_shows,
+    )
+    monkeypatch.setattr(
+        run_backtest_module,
+        "fetch_scored_target_show_keys",
+        lambda *a, **kw: {"goose-show-1"},
+    )
+    monkeypatch.setattr(
+        run_backtest_module,
+        "build_scored_run_records",
+        lambda **kwargs: scored_records,
+    )
+    monkeypatch.setattr(
+        run_backtest_module,
+        "persist_scored_run_records",
+        lambda *a, **kw: pd.DataFrame(scored_records),
+    )
+    monkeypatch.setattr(
+        run_backtest_module,
+        "prune_setlist_corpus",
+        lambda **kwargs: captured_prune.update(kwargs) or 0,
+    )
+
+    result = run_backtest_module.run_backtest(
+        band="goose",
+        model=None,
+        start=None,
+        end=None,
+        shows=2,
+        exclusion_window=3,
+    )
+
+    assert result == 1
+    assert captured_prune["retained_target_show_keys"] == [
+        "goose-show-1",
+        "goose-show-2",
+    ]
 
 
 def test_run_backtest_no_github_output_when_env_not_set(monkeypatch, tmp_path):

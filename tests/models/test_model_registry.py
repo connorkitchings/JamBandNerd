@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 
 from jambandnerd.models.billy.fast_predictor import BillyFastBaselinePredictor
-from jambandnerd.models.goose.model import GooseFastRankPredictor
+from jambandnerd.models.goose.model import GooseFastRankSpecialNotebookTop10Predictor
 from jambandnerd.models.phish.fast_predictor import PhishFastPredictor
 from jambandnerd.models.um.fast_predictor import UMFastPredictorV2
 from jambandnerd.models.wsp.fast_predictor import WSPFastPredictor
@@ -14,6 +14,7 @@ from src.jambandnerd.models.registry import (
     get_model_definition,
     is_model_promoted_to_web,
     list_accuracy_validation_models,
+    list_active_bands,
     list_backfill_models,
     list_model_slugs,
     list_models,
@@ -61,22 +62,29 @@ def test_build_predictor_constructs_model_for_band() -> None:
     assert predictor is not None
 
 
-def test_band_predictor_dispatches_goose_to_fast_rank_model() -> None:
-    goose = build_band_predictor("goose", persist_artifacts=False)
-    billy = build_band_predictor("billy", persist_artifacts=False)
-    phish = build_band_predictor("phish", persist_artifacts=False)
-    wsp = build_band_predictor("wsp", persist_artifacts=False)
-    um = build_band_predictor("um", persist_artifacts=False)
+def test_active_band_predictors_dispatch_to_registered_single_models() -> None:
+    expected = {
+        "goose": (
+            GooseFastRankSpecialNotebookTop10Predictor,
+            "goose_fast_rank_v1_candidate_relaxed_special_nbtop10",
+        ),
+        "phish": (
+            PhishFastPredictor,
+            "phish_fast_gbm_v2_feat_notebook_rank_venue_run",
+        ),
+        "wsp": (WSPFastPredictor, "wsp_fast_gbm_v2"),
+        "billy": (BillyFastBaselinePredictor, "billy_fast_gbm_v10_hp_tuned"),
+        "um": (UMFastPredictorV2, "um_fast_gbm_v2"),
+    }
 
-    assert isinstance(goose, GooseFastRankPredictor)
-    assert isinstance(billy, BillyFastBaselinePredictor)
-    assert isinstance(phish, PhishFastPredictor)
-    assert isinstance(wsp, WSPFastPredictor)
-    assert isinstance(um, UMFastPredictorV2)
-    assert get_band_model_version("goose") == "goose_fast_rank_v1"
-    assert get_band_model_version("billy") == "billy_fast_gbm_v10_hp_tuned"
-    assert get_band_model_version("wsp") == "wsp_fast_gbm_v2"
-    assert get_band_model_version("um") == "um_fast_gbm_v2"
+    assert list_active_bands() == ["goose", "phish", "wsp", "billy", "um"]
+
+    for band, (predictor_cls, model_version) in expected.items():
+        predictor = build_band_predictor(band, persist_artifacts=False)
+
+        assert isinstance(predictor, predictor_cls)
+        assert predictor.MODEL_VERSION == model_version
+        assert get_band_model_version(band) == model_version
 
 
 def test_registry_invariants_for_serializer_and_capabilities() -> None:

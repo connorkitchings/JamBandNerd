@@ -255,6 +255,7 @@ def build_accuracy_results_dataframe(
             "show_id": record["show_id"],
             "target_show_key": record["show_id"],
             "show_date": record["target_show_date"],
+            "target_show_date": record["target_show_date"],
             "reference_date": record["reference_date"],
             "actual_song_count": record["actual_song_count"],
             "prediction_run_id": prediction_run_id,
@@ -459,6 +460,7 @@ def run_backtest(
         if require_results:
             raise RuntimeError(message)
         return 0
+    retained_window_keys = target_shows["show_id"].astype(str).tolist()
 
     # 3. Score target shows and persist results
     supports_backtest = True if model is None else model_context.supports_backtest
@@ -528,11 +530,10 @@ def run_backtest(
                 accuracy_table=SETLIST_ACCURACY_TABLE,
             )
         if prune_to_window and not dry_run:
-            retained_keys = target_shows["show_id"].astype(str).tolist()
             deleted = prune_setlist_corpus(
                 band=band,
                 model_version=model_version,
-                retained_target_show_keys=retained_keys,
+                retained_target_show_keys=retained_window_keys,
                 results_table=SETLIST_RESULTS_TABLE,
                 accuracy_table=SETLIST_ACCURACY_TABLE,
             )

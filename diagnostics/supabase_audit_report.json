@@ -1,0 +1,266 @@
+{
+  "bands": [
+    {
+      "band": "goose",
+      "blockers": [],
+      "freshness": {
+        "band": "goose",
+        "freshness_reason": "all supported model predictions and accuracy are within 72h",
+        "freshness_state": "fresh",
+        "max_accuracy_age_hours": 3.114691708888889,
+        "max_age_hours": 72,
+        "max_prediction_age_hours": 3.278340429722222,
+        "skip_accuracy": false,
+        "stale_accuracy_models": [],
+        "stale_prediction_models": []
+      },
+      "models": [
+        {
+          "band": "goose",
+          "blockers": [],
+          "canonical_prediction_rows": 1,
+          "expected_top_k": 25,
+          "historical_run_rows": 100,
+          "latest_prediction_age_hours": 3.278584320277778,
+          "latest_prediction_top_k": 25,
+          "latest_prediction_top_song": "Hungersite",
+          "latest_projection_rows": 25,
+          "latest_projection_top_song": "Hungersite",
+          "latest_reference_date": "2026-05-22",
+          "model_version": "goose_fast_rank_v1_candidate_relaxed_special_nbtop10",
+          "per_show_accuracy_rows": 100,
+          "replay_lineage_missing_dates": [],
+          "replay_lineage_rows_checked": 100,
+          "replay_overlap": {},
+          "required_window": 100,
+          "stale_projection_reference_dates": [],
+          "unique_historical_target_dates": 100,
+          "warnings": []
+        }
+      ],
+      "raw_data": {
+        "band": "goose",
+        "cutoff": "2026-05-05",
+        "end_date": "2026-05-11",
+        "missing_show_count": 0,
+        "missing_show_ids": [],
+        "ok": true,
+        "recent_show_count": 5
+      },
+      "state": "ok",
+      "warnings": []
+    },
+    {
+      "band": "phish",
+      "blockers": [],
+      "freshness": {
+        "band": "phish",
+        "freshness_reason": "all supported model predictions and accuracy are within 72h",
+        "freshness_state": "fresh",
+        "max_accuracy_age_hours": 2.8358249102777777,
+        "max_age_hours": 72,
+        "max_prediction_age_hours": 1.9125206308333333,
+        "skip_accuracy": false,
+        "stale_accuracy_models": [],
+        "stale_prediction_models": []
+      },
+      "models": [
+        {
+          "band": "phish",
+          "blockers": [],
+          "canonical_prediction_rows": 1,
+          "expected_top_k": 25,
+          "historical_run_rows": 100,
+          "latest_prediction_age_hours": 1.9126731863888888,
+          "latest_prediction_top_k": 25,
+          "latest_prediction_top_song": "Harry Hood",
+          "latest_projection_rows": 25,
+          "latest_projection_top_song": "Harry Hood",
+          "latest_reference_date": "2026-07-07",
+          "model_version": "phish_fast_gbm_v2_feat_notebook_rank_venue_run",
+          "per_show_accuracy_rows": 100,
+          "replay_lineage_missing_dates": [],
+          "replay_lineage_rows_checked": 100,
+          "replay_overlap": {},
+          "required_window": 100,
+          "stale_projection_reference_dates": [],
+          "unique_historical_target_dates": 100,
+          "warnings": []
+        }
+      ],
+      "raw_data": {
+        "band": "phish",
+        "cutoff": "2026-05-05",
+        "end_date": "2026-05-11",
+        "missing_show_count": 0,
+        "missing_show_ids": [],
+        "ok": true,
+        "recent_show_count": 0
+      },
+      "state": "ok",
+      "warnings": []
+    },
+    {
+      "band": "wsp",
+      "blockers": [],
+      "freshness": {
+        "band": "wsp",
+        "freshness_reason": "all supported model predictions and accuracy are within 72h",
+        "freshness_state": "fresh",
+        "max_accuracy_age_hours": 3.027437497222222,
+        "max_age_hours": 72,
+        "max_prediction_age_hours": 3.278979598055556,
+        "skip_accuracy": false,
+        "stale_accuracy_models": [],
+        "stale_prediction_models": []
+      },
+      "models": [
+        {
+          "band": "wsp",
+          "blockers": [],
+          "canonical_prediction_rows": 1,
+          "expected_top_k": 25,
+          "historical_run_rows": 100,
+          "latest_prediction_age_hours": 3.2791579833333335,
+          "latest_prediction_top_k": 25,
+          "latest_prediction_top_song": "Little By Little",
+          "latest_projection_rows": 25,
+          "latest_projection_top_song": "Little By Little",
+          "latest_reference_date": "2026-06-13",
+          "model_version": "wsp_fast_gbm_v2",
+          "per_show_accuracy_rows": 100,
+          "replay_lineage_missing_dates": [],
+          "replay_lineage_rows_checked": 100,
+          "replay_overlap": {},
+          "required_window": 100,
+          "stale_projection_reference_dates": [],
+          "unique_historical_target_dates": 100,
+          "warnings": []
+        }
+      ],
+      "raw_data": {
+        "band": "wsp",
+        "cutoff": "2026-05-05",
+        "end_date": "2026-05-11",
+        "missing_show_count": 0,
+        "missing_show_ids": [],
+        "ok": true,
+        "recent_show_count": 3
+      },
+      "state": "ok",
+      "warnings": []
+    },
+    {
+      "band": "billy",
+      "blockers": [],
+      "freshness": {
+        "band": "billy",
+        "freshness_reason": "all supported model predictions and accuracy are within 72h",
+        "freshness_state": "fresh",
+        "max_accuracy_age_hours": 3.0296482594444445,
+        "max_age_hours": 72,
+        "max_prediction_age_hours": 3.2796881350000002,
+        "skip_accuracy": false,
+        "stale_accuracy_models": [],
+        "stale_prediction_models": []
+      },
+      "models": [
+        {
+          "band": "billy",
+          "blockers": [],
+          "canonical_prediction_rows": 1,
+          "expected_top_k": 25,
+          "historical_run_rows": 100,
+          "latest_prediction_age_hours": 3.2798294058333335,
+          "latest_prediction_top_k": 25,
+          "latest_prediction_top_song": "Hellbender",
+          "latest_projection_rows": 25,
+          "latest_projection_top_song": "Hellbender",
+          "latest_reference_date": "2026-07-14",
+          "model_version": "billy_fast_gbm_v10_hp_tuned",
+          "per_show_accuracy_rows": 100,
+          "replay_lineage_missing_dates": [],
+          "replay_lineage_rows_checked": 100,
+          "replay_overlap": {},
+          "required_window": 100,
+          "stale_projection_reference_dates": [],
+          "unique_historical_target_dates": 100,
+          "warnings": []
+        }
+      ],
+      "raw_data": {
+        "band": "billy",
+        "cutoff": "2026-05-05",
+        "end_date": "2026-05-11",
+        "missing_show_count": 0,
+        "missing_show_ids": [],
+        "ok": true,
+        "recent_show_count": 0
+      },
+      "state": "ok",
+      "warnings": []
+    },
+    {
+      "band": "um",
+      "blockers": [],
+      "freshness": {
+        "band": "um",
+        "freshness_reason": "all supported model predictions and accuracy are within 72h",
+        "freshness_state": "fresh",
+        "max_accuracy_age_hours": 2.895865099444445,
+        "max_age_hours": 72,
+        "max_prediction_age_hours": 0.004911611944444444,
+        "skip_accuracy": false,
+        "stale_accuracy_models": [],
+        "stale_prediction_models": []
+      },
+      "models": [
+        {
+          "band": "um",
+          "blockers": [],
+          "canonical_prediction_rows": 1,
+          "expected_top_k": 25,
+          "historical_run_rows": 100,
+          "latest_prediction_age_hours": 0.005053028333333333,
+          "latest_prediction_top_k": 25,
+          "latest_prediction_top_song": "The Floor",
+          "latest_projection_rows": 25,
+          "latest_projection_top_song": "The Floor",
+          "latest_reference_date": "2026-05-22",
+          "model_version": "um_fast_gbm_v2",
+          "per_show_accuracy_rows": 100,
+          "replay_lineage_missing_dates": [],
+          "replay_lineage_rows_checked": 100,
+          "replay_overlap": {},
+          "required_window": 100,
+          "stale_projection_reference_dates": [],
+          "unique_historical_target_dates": 100,
+          "warnings": []
+        }
+      ],
+      "raw_data": {
+        "band": "um",
+        "cutoff": "2026-05-05",
+        "end_date": "2026-05-11",
+        "missing_show_count": 0,
+        "missing_show_ids": [],
+        "ok": true,
+        "recent_show_count": 0
+      },
+      "state": "ok",
+      "warnings": []
+    }
+  ],
+  "blockers": [],
+  "max_age_hours": 72,
+  "promoted_models": [
+    "goose_fast_rank_v1_candidate_relaxed_special_nbtop10",
+    "phish_fast_gbm_v2_feat_notebook_rank_venue_run",
+    "wsp_fast_gbm_v2",
+    "billy_fast_gbm_v10_hp_tuned",
+    "um_fast_gbm_v2"
+  ],
+  "replay_window_override": null,
+  "state": "ok",
+  "warnings": []
+}

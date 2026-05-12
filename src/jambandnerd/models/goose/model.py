@@ -236,6 +236,150 @@ def _rank_blended_candidate_features(
     )
 
 
+def _is_not_part_of_tour(target_show_context: Any) -> bool:
+    if target_show_context is None or not hasattr(target_show_context, "get"):
+        return False
+    value = target_show_context.get("tour_name")
+    if value is None or pd.isna(value):
+        return False
+    return str(value).strip().lower() == "not part of a tour"
+
+
+def _notebook_guard_predictions(
+    model_data: ModelData,
+    *,
+    band: str,
+    top_k: int,
+) -> list[DealPrediction]:
+    features = model_data.master_feature_set
+    plays = model_data.historical_plays
+    if features.empty or plays.empty:
+        return []
+
+    features = features.copy()
+    plays = plays.copy()
+    features["last_played_date"] = pd.to_datetime(
+        features["last_played_date"], errors="coerce"
+    )
+    plays["show_date"] = pd.to_datetime(plays["show_date"], errors="coerce")
+
+    last_completed_show_date = features["last_played_date"].max()
+    if pd.isna(last_completed_show_date):
+        return []
+
+    window_start = last_completed_show_date - timedelta(days=365)
+    plays_past_year_count = (
+        plays[plays["show_date"] >= window_start]
+        .groupby("song_name")["show_index"]
+        .nunique()
+        .rename("plays_past_year")
+    )
+    candidates = features.merge(plays_past_year_count, on="song_name", how="inner")
+    if candidates.empty:
+        return []
+
+    candidates["current_gap"] = (
+        model_data.reference_index - candidates["last_played_index"] - 1
+    ).clip(lower=0)
+    candidates = candidates[
+        ~candidates["song_name"].isin(set(model_data.recently_played_songs))
+    ]
+
+    excluded = get_excluded_songs(band)
+    if excluded:
+        candidates = candidates[
+            ~candidates["song_name"].str.lower().str.strip().isin(excluded)
+        ]
+    if candidates.empty:
+        return []
+
+    max_show_index = int(plays["show_index"].max())
+    recent_start = max(0, max_show_index - 49)
+    recent_plays_50 = (
+        plays[plays["show_index"] >= recent_start]
+        .groupby("song_name")["show_index"]
+        .nunique()
+        .rename("recent_plays_50")
+    )
+    ranked = candidates.merge(recent_plays_50, on="song_name", how="left")
+    ranked["recent_plays_50"] = ranked["recent_plays_50"].fillna(0)
+    ranked = ranked.sort_values(
+        by=["plays_past_year", "current_gap", "song_name"],
+        ascending=[False, False, True],
+    ).head(top_k)
+
+    predictions: list[DealPrediction] = []
+    for _, row in ranked.iterrows():
+        last_played_date = row.get("last_played_date")
+        predictions.append(
+            DealPrediction(
+                song_name=str(row["song_name"]),
+                probability=0.0,
+                current_gap=int(row["current_gap"]),
+                plays_past_year=int(row["plays_past_year"]),
+                recent_plays_50=int(row["recent_plays_50"]),
+                LTP=(
+                    pd.Timestamp(last_played_date).date().isoformat()
+                    if pd.notna(last_played_date)
+                    else None
+                ),
+            )
+        )
+    return predictions
+
+
+def _merge_rank_guard_predictions(
+    *,
+    guarded: list[DealPrediction],
+    primary: list[DealPrediction],
+    guard_count: int,
+    top_k: int,
+) -> list[DealPrediction]:
+    merged: list[DealPrediction] = []
+    seen: set[str] = set()
+    for prediction in [*guarded[:guard_count], *primary]:
+        song_name = str(prediction.song_name)
+        if song_name in seen:
+            continue
+        seen.add(song_name)
+        merged.append(prediction)
+        if len(merged) >= top_k:
+            break
+
+    denominator = max(1, len(merged) - 1)
+    return [
+        DealPrediction(
+            song_name=prediction.song_name,
+            probability=float(1.0 - (rank / denominator)),
+            current_gap=prediction.current_gap,
+            plays_past_year=prediction.plays_past_year,
+            recent_plays_50=prediction.recent_plays_50,
+            LTP=prediction.LTP,
+        )
+        for rank, prediction in enumerate(merged)
+    ]
+
+
+class _NotebookTop10GuardMixin:
+    """Use Notebook's top 10 as a precision guard, then fill from the ranker."""
+
+    _NOTEBOOK_GUARD_COUNT = 10
+
+    def predict(self, model_data: ModelData, top_k: int = 50) -> list[DealPrediction]:
+        primary = super().predict(model_data, top_k=top_k)  # type: ignore[misc]
+        guarded = _notebook_guard_predictions(
+            model_data,
+            band=self.band,
+            top_k=max(top_k, self._NOTEBOOK_GUARD_COUNT),
+        )
+        return _merge_rank_guard_predictions(
+            guarded=guarded,
+            primary=primary,
+            guard_count=self._NOTEBOOK_GUARD_COUNT,
+            top_k=top_k,
+        )
+
+
 class GoosePredictor(DealPredictor):
     """Goose Phase B v1 precision model built on the Deal ranking core.
 
@@ -421,3 +565,22 @@ class GooseFastRankPredictor(GooseFastPlusNotebookRank):
     """
 
     MODEL_VERSION = "goose_fast_rank_v1"
+
+
+class GooseFastRankSpecialNotebookTop10Predictor(
+    _NotebookTop10GuardMixin,
+    GooseFastRankPredictor,
+):
+    """Goose production predictor with special-show candidate repair.
+
+    Ranks 1-10 are guarded by the deterministic Notebook floor. Ranks 11-50 are
+    filled from the full-history LightGBM ranker, with immediate repeats allowed
+    only for targets whose `tour_name` is `Not Part of a Tour`.
+    """
+
+    MODEL_VERSION = "goose_fast_rank_v1_candidate_relaxed_special_nbtop10"
+
+    def _candidate_recent_gap_floor(self, target_show_context: Any) -> int:
+        if _is_not_part_of_tour(target_show_context):
+            return 0
+        return super()._candidate_recent_gap_floor(target_show_context)

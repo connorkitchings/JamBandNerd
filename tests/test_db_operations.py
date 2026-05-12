@@ -631,6 +631,109 @@ def test_replace_setlist_prediction_projection_writes_show_metadata(monkeypatch)
     assert row["top_k"] == 1
 
 
+def test_replace_setlist_prediction_projection_filters_missing_legacy_columns(
+    monkeypatch,
+):
+    captured: dict[str, pd.DataFrame] = {}
+    client = MagicMock()
+    monkeypatch.setattr(operations, "get_supabase_client", lambda: client)
+    monkeypatch.setattr(
+        operations,
+        "get_table_schema",
+        lambda table_name: [
+            {"column_name": "prediction_run_id"},
+            {"column_name": "band"},
+            {"column_name": "model_version"},
+            {"column_name": "target_show_key"},
+            {"column_name": "rank"},
+            {"column_name": "song_name"},
+            {"column_name": "score"},
+            {"column_name": "prediction_payload"},
+        ],
+    )
+    monkeypatch.setattr(
+        operations,
+        "bulk_insert_dataframe",
+        lambda table_name, df: captured.update({"table": table_name, "df": df}),
+    )
+
+    operations.replace_setlist_prediction_projection(
+        band="goose",
+        model_version="goose_fast_rank_v1",
+        target_show_key="show-1",
+        target_show_date="2026-04-25",
+        reference_date="2026-04-24",
+        generated_at="2026-04-24T12:00:00+00:00",
+        predictions=[{"rank": 1, "song_name": "Arcadia", "probability": 0.42}],
+        prediction_run_id=123,
+    )
+
+    row = captured["df"].iloc[0].to_dict()
+    assert captured["table"] == "setlist_prediction_songs"
+    assert row["prediction_run_id"] == 123
+    assert row["target_show_key"] == "show-1"
+    assert "target_show_date" not in row
+    assert "reference_date" not in row
+    assert "generated_at" not in row
+    assert "top_k" not in row
+
+
+def test_upsert_setlist_accuracy_dataframe_filters_missing_legacy_columns(
+    monkeypatch,
+):
+    captured: dict[str, object] = {}
+    monkeypatch.setattr(
+        operations,
+        "get_table_schema",
+        lambda table_name: [
+            {"column_name": "band"},
+            {"column_name": "model_version"},
+            {"column_name": "show_id"},
+            {"column_name": "target_show_key"},
+            {"column_name": "show_date"},
+            {"column_name": "reference_date"},
+            {"column_name": "prediction_run_id"},
+            {"column_name": "actual_song_count"},
+            {"column_name": "evaluated_at"},
+        ],
+    )
+    monkeypatch.setattr(
+        operations,
+        "upsert_dataframe",
+        lambda table_name, df, conflict_columns: captured.update(
+            {
+                "table": table_name,
+                "df": df,
+                "conflict_columns": conflict_columns,
+            }
+        ),
+    )
+    df = pd.DataFrame(
+        [
+            {
+                "band": "goose",
+                "model_version": "goose_v1",
+                "show_id": "show-1",
+                "target_show_key": "show-1",
+                "show_date": "2026-04-25",
+                "target_show_date": "2026-04-25",
+                "reference_date": "2026-04-24",
+                "prediction_run_id": 123,
+                "actual_song_count": 12,
+                "evaluated_at": "2026-04-24T12:00:00+00:00",
+            }
+        ]
+    )
+
+    operations.upsert_setlist_accuracy_dataframe(df)
+
+    written = captured["df"]
+    assert captured["table"] == "setlist_accuracy"
+    assert captured["conflict_columns"] == ["band", "model_version", "target_show_key"]
+    assert "target_show_date" not in written.columns
+    assert written.iloc[0]["show_date"] == "2026-04-25"
+
+
 def test_prune_completed_show_corpus_rejects_empty_retained_keys(monkeypatch):
     client = MagicMock()
     monkeypatch.setattr(operations, "get_supabase_client", lambda: client)
