@@ -28,11 +28,12 @@ from pathlib import Path
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, project_root)
 
-from src.jambandnerd.data_collection.correction_detector import (
+from src.jambandnerd.data_collection.correction_detector import (  # noqa: E402
     format_correction_report,
     run_correction_sweep,
 )
-from src.jambandnerd.db.connection import get_supabase_client
+
+from src.jambandnerd.db.connection import get_supabase_client  # noqa: E402
 
 
 def main():
