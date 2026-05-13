@@ -5,6 +5,7 @@ import { cache } from "react";
 import type { BandSlug } from "@/lib/config";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { selectLivePredictionSeedRow } from "@/lib/prediction-selection";
+import { getEasternTodayIso } from "@/lib/show-status";
 
 import { getClientOrState, getBandContext } from "./bands";
 import { asRecord, buildPredictionSnapshotFromCanonicalRow } from "./parsers";
@@ -21,6 +22,10 @@ function toSeedRows(data: unknown[]) {
     .map((row) => ({
       reference_date:
         typeof row.reference_date === "string" ? row.reference_date : null,
+      target_show_date:
+        typeof row.target_show_date === "string" ? row.target_show_date : null,
+      target_show_key:
+        typeof row.target_show_key === "string" ? row.target_show_key : null,
       predicted_at:
         typeof row.generated_at === "string"
           ? row.generated_at
@@ -65,7 +70,7 @@ export const getLatestPredictions = cache(
       const { data: seedRows, error: seedError } = await client
         .from("setlist_predictions")
         .select(
-          "reference_date, generated_at, model_version, target_show_key",
+          "reference_date, target_show_date, generated_at, model_version, target_show_key",
         )
         .eq("band", band)
         .order("generated_at", { ascending: false })
@@ -76,16 +81,16 @@ export const getLatestPredictions = cache(
       }
 
       const seedRow = selectLivePredictionSeedRow(toSeedRows(seedRows ?? []), {
-        todayIso: new Date().toISOString().slice(0, 10),
+        todayIso: getEasternTodayIso(),
       });
 
-      if (!seedRow?.model_version || !seedRow.reference_date) {
+      if (!seedRow?.model_version || !seedRow.target_show_key) {
         return { status: "empty" };
       }
 
       const matchedSeed = (seedRows ?? []).find(
         (r) =>
-          r.reference_date === seedRow.reference_date &&
+          r.target_show_key === seedRow.target_show_key &&
           r.model_version === seedRow.model_version,
       );
 
@@ -127,7 +132,7 @@ export const getLatestPredictions = cache(
 export const getPredictionsForDate = cache(
   async (
     bandInput: string | undefined,
-    referenceDate: string,
+    targetShowDate: string,
   ): Promise<RouteState<{ band: BandSlug; snapshot: PredictionSnapshot }>> => {
     const missingEnv = getClientOrState<{
       band: BandSlug;
@@ -153,19 +158,34 @@ export const getPredictionsForDate = cache(
     }
 
     try {
-      const { data, error } = await client
-        .from("setlist_predictions")
+      const { data: resultData, error: resultError } = await client
+        .from("setlist_results")
         .select("*")
         .eq("band", band)
-        .eq("reference_date", referenceDate)
+        .eq("target_show_date", targetShowDate)
         .order("generated_at", { ascending: false })
         .limit(1);
 
-      if (error) {
-        return { status: "error", message: error.message };
+      if (resultError) {
+        return { status: "error", message: resultError.message };
       }
 
-      const row = data?.[0];
+      let row = resultData?.[0];
+      if (!row) {
+        const { data: liveData, error: liveError } = await client
+          .from("setlist_predictions")
+          .select("*")
+          .eq("band", band)
+          .eq("target_show_date", targetShowDate)
+          .order("generated_at", { ascending: false })
+          .limit(1);
+
+        if (liveError) {
+          return { status: "error", message: liveError.message };
+        }
+
+        row = liveData?.[0];
+      }
       if (!row) {
         return { status: "empty" };
       }
@@ -216,7 +236,7 @@ export const getPredictionDates = cache(
         .from("setlist_predictions")
         .select("reference_date, target_show_date, target_show_key")
         .eq("band", band)
-        .order("reference_date", { ascending: false })
+        .order("target_show_date", { ascending: false })
         .limit(200);
 
       if (error) {
@@ -226,7 +246,7 @@ export const getPredictionDates = cache(
       const dates = [
         ...new Set(
           (data ?? [])
-            .map((row) => asRecord(row)?.reference_date)
+            .map((row) => asRecord(row)?.target_show_date)
             .filter((d): d is string => typeof d === "string"),
         ),
       ];

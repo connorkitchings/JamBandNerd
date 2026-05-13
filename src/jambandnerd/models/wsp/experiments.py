@@ -1,7 +1,7 @@
 """Widespread Panic experiment sweep configs.
 
 Base incumbent: WSPFastPredictor V2 (19 features: 16 PhishFast V2 +
-long-rotation; lr=0.03, rounds=700; dual=0.448).
+long-rotation; lr=0.03, rounds=700; dual=0.448, F1@25=0.3248).
 """
 
 from __future__ import annotations
@@ -94,10 +94,203 @@ WSP_FEATURE_SWEEP: list[ExperimentConfig] = [
     ),
 ]
 
+_WSP_BASE = "jambandnerd.models.wsp.fast_predictor.WSPFastPredictor"
+
+WSP_COMBO_SWEEP: list[ExperimentConfig] = [
+    ExperimentConfig(
+        slug="combo_v2_lambda01",
+        description="reg_lambda=0.1 on V2 incumbent",
+        base_predictor_path=_WSP_BASE,
+        param_overrides={"reg_lambda": 0.1},
+    ),
+    ExperimentConfig(
+        slug="combo_v2_minleaf10",
+        description="min_data_in_leaf=10 on V2 incumbent",
+        base_predictor_path=_WSP_BASE,
+        param_overrides={"min_data_in_leaf": 10},
+    ),
+    ExperimentConfig(
+        slug="combo_v2_minleaf20",
+        description="min_data_in_leaf=20 on V2 incumbent",
+        base_predictor_path=_WSP_BASE,
+        param_overrides={"min_data_in_leaf": 20},
+    ),
+    ExperimentConfig(
+        slug="combo_v2_leaves15",
+        description="num_leaves=15 on V2 incumbent",
+        base_predictor_path=_WSP_BASE,
+        param_overrides={"num_leaves": 15},
+    ),
+    ExperimentConfig(
+        slug="combo_v2_lambda01_minleaf10",
+        description="reg_lambda=0.1 + min_data_in_leaf=10 on V2 incumbent",
+        base_predictor_path=_WSP_BASE,
+        param_overrides={"reg_lambda": 0.1, "min_data_in_leaf": 10},
+    ),
+    ExperimentConfig(
+        slug="combo_v2_lambda01_leaves15",
+        description="reg_lambda=0.1 + num_leaves=15 on V2 incumbent",
+        base_predictor_path=_WSP_BASE,
+        param_overrides={"reg_lambda": 0.1, "num_leaves": 15},
+    ),
+]
+
+WSP_ES_SWEEP: list[ExperimentConfig] = [
+    ExperimentConfig(
+        slug="es_patience50",
+        description="early_stopping_rounds=50 (2x current patience)",
+        base_predictor_path=_WSP_BASE,
+        attr_overrides={"_EARLY_STOPPING_ROUNDS": 50},
+    ),
+    ExperimentConfig(
+        slug="es_val10",
+        description="validation_fraction=0.1 (smaller val set)",
+        base_predictor_path=_WSP_BASE,
+        attr_overrides={"_VALIDATION_FRACTION": 0.1},
+    ),
+    ExperimentConfig(
+        slug="es_val10_pat50",
+        description="validation_fraction=0.1 + early_stopping_rounds=50",
+        base_predictor_path=_WSP_BASE,
+        attr_overrides={"_VALIDATION_FRACTION": 0.1, "_EARLY_STOPPING_ROUNDS": 50},
+    ),
+    ExperimentConfig(
+        slug="es_none_r50",
+        description="no early stopping, fixed 50 rounds",
+        base_predictor_path=_WSP_BASE,
+        attr_overrides={"_EARLY_STOPPING_ROUNDS": None},
+        round_overrides=50,
+    ),
+    ExperimentConfig(
+        slug="es_none_r100",
+        description="no early stopping, fixed 100 rounds",
+        base_predictor_path=_WSP_BASE,
+        attr_overrides={"_EARLY_STOPPING_ROUNDS": None},
+        round_overrides=100,
+    ),
+    ExperimentConfig(
+        slug="es_none_r200",
+        description="no early stopping, fixed 200 rounds",
+        base_predictor_path=_WSP_BASE,
+        attr_overrides={"_EARLY_STOPPING_ROUNDS": None},
+        round_overrides=200,
+    ),
+]
+
+_ES_NONE = {"_EARLY_STOPPING_ROUNDS": None}
+
+WSP_GAP_DECOUPLED_SWEEP: list[ExperimentConfig] = [
+    ExperimentConfig(
+        slug="gd_default",
+        description="gap_percentile + gap_vs_median (21 feats, default ES)",
+        predictor_path="jambandnerd.models.wsp.fast_predictor.WSPFastGapDecoupled",
+    ),
+    ExperimentConfig(
+        slug="gd_fr50",
+        description="gap decoupled (21 feats, fixed 50 rounds)",
+        predictor_path="jambandnerd.models.wsp.fast_predictor.WSPFastGapDecoupled",
+        attr_overrides=_ES_NONE,
+        round_overrides=50,
+    ),
+    ExperimentConfig(
+        slug="gd_clean_fr50",
+        description="gap decoupled clean (19 feats, no coupled, fixed 50 rounds)",
+        predictor_path="jambandnerd.models.wsp.fast_predictor.WSPFastGapDecoupledClean",
+        attr_overrides=_ES_NONE,
+        round_overrides=50,
+    ),
+]
+
+WSP_FIXED_ROUND_SWEEP: list[ExperimentConfig] = [
+    ExperimentConfig(
+        slug="fr_r30",
+        description="no ES, fixed 30 rounds",
+        base_predictor_path=_WSP_BASE,
+        attr_overrides=_ES_NONE,
+        round_overrides=30,
+    ),
+    ExperimentConfig(
+        slug="fr_r40",
+        description="no ES, fixed 40 rounds",
+        base_predictor_path=_WSP_BASE,
+        attr_overrides=_ES_NONE,
+        round_overrides=40,
+    ),
+    ExperimentConfig(
+        slug="fr_r50",
+        description="no ES, fixed 50 rounds (confirm es_none_r50)",
+        base_predictor_path=_WSP_BASE,
+        attr_overrides=_ES_NONE,
+        round_overrides=50,
+    ),
+    ExperimentConfig(
+        slug="fr_r40_lr05",
+        description="no ES, fixed 40 rounds, lr=0.05",
+        base_predictor_path=_WSP_BASE,
+        attr_overrides=_ES_NONE,
+        param_overrides={"learning_rate": 0.05},
+        round_overrides=40,
+    ),
+    ExperimentConfig(
+        slug="fr_r50_lr05",
+        description="no ES, fixed 50 rounds, lr=0.05",
+        base_predictor_path=_WSP_BASE,
+        attr_overrides=_ES_NONE,
+        param_overrides={"learning_rate": 0.05},
+        round_overrides=50,
+    ),
+    ExperimentConfig(
+        slug="fr_r40_lr05_lam01",
+        description="no ES, fixed 40 rounds, lr=0.05, lambda=0.1",
+        base_predictor_path=_WSP_BASE,
+        attr_overrides=_ES_NONE,
+        param_overrides={"learning_rate": 0.05, "reg_lambda": 0.1},
+        round_overrides=40,
+    ),
+    ExperimentConfig(
+        slug="fr_r50_lr05_lam01",
+        description="no ES, fixed 50 rounds, lr=0.05, lambda=0.1",
+        base_predictor_path=_WSP_BASE,
+        attr_overrides=_ES_NONE,
+        param_overrides={"learning_rate": 0.05, "reg_lambda": 0.1},
+        round_overrides=50,
+    ),
+]
+
+_WSP_VENUE_RUN = "jambandnerd.models.wsp.fast_predictor.WSPFastVenueRun"
+
+WSP_VENUE_RUN_SWEEP: list[ExperimentConfig] = [
+    ExperimentConfig(
+        slug="vr_default",
+        description="venue-run features (22 feats, default ES)",
+        predictor_path=_WSP_VENUE_RUN,
+    ),
+    ExperimentConfig(
+        slug="vr_fr50",
+        description="venue-run features (22 feats, fixed 50 rounds)",
+        predictor_path=_WSP_VENUE_RUN,
+        attr_overrides=_ES_NONE,
+        round_overrides=50,
+    ),
+    ExperimentConfig(
+        slug="vr_fr50_lam01",
+        description="venue-run features (22 feats, fixed 50 rounds, lambda=0.1)",
+        predictor_path=_WSP_VENUE_RUN,
+        attr_overrides=_ES_NONE,
+        param_overrides={"reg_lambda": 0.1},
+        round_overrides=50,
+    ),
+]
+
 # ── Full sweep index ──────────────────────────────────────────────────────────
 
 WSP_SWEEPS: dict[str, list[ExperimentConfig]] = {
     "candidate_sweep": WSP_CANDIDATE_SWEEP,
     "hp_sweep": WSP_HP_SWEEP,
     "feature_sweep": WSP_FEATURE_SWEEP,
+    "combo_sweep": WSP_COMBO_SWEEP,
+    "es_sweep": WSP_ES_SWEEP,
+    "fixed_round_sweep": WSP_FIXED_ROUND_SWEEP,
+    "gap_decoupled_sweep": WSP_GAP_DECOUPLED_SWEEP,
+    "venue_run_sweep": WSP_VENUE_RUN_SWEEP,
 }

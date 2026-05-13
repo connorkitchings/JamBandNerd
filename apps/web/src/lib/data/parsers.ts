@@ -211,6 +211,8 @@ export function buildPredictionSnapshotFromCanonicalRow(
   return {
     targetShowDate:
       typeof row.target_show_date === "string" ? row.target_show_date : null,
+    targetShowKey:
+      typeof row.target_show_key === "string" ? row.target_show_key : null,
     referenceDate:
       typeof row.reference_date === "string" ? row.reference_date : null,
     predictedAt:
@@ -231,7 +233,14 @@ export function buildPredictionSnapshotFromProjectionRows(rows: ProjectionRow[])
   const firstRow = rows[0] ?? null;
 
   return {
-    targetShowDate: null,
+    targetShowDate:
+      firstRow && typeof firstRow.target_show_date === "string"
+        ? firstRow.target_show_date
+        : null,
+    targetShowKey:
+      firstRow && typeof firstRow.target_show_key === "string"
+        ? firstRow.target_show_key
+        : null,
     referenceDate:
       firstRow && typeof firstRow.reference_date === "string"
         ? firstRow.reference_date
@@ -248,6 +257,14 @@ export function buildPredictionSnapshotFromProjectionRows(rows: ProjectionRow[])
     raw: {
       source: "prediction_songs",
       rowCount: rows.length,
+      targetShowDate:
+        firstRow && typeof firstRow.target_show_date === "string"
+          ? firstRow.target_show_date
+          : null,
+      targetShowKey:
+        firstRow && typeof firstRow.target_show_key === "string"
+          ? firstRow.target_show_key
+          : null,
       referenceDate:
         firstRow && typeof firstRow.reference_date === "string"
           ? firstRow.reference_date

@@ -77,12 +77,12 @@ def _recent_replay_eligible_rows(
     )
 
     deduped: list[Dict[str, object]] = []
-    seen_dates: set[str] = set()
+    seen_keys: set[str] = set()
     for row in eligible:
-        show_date = str(row.get("show_date") or "")
-        if not show_date or show_date in seen_dates:
+        dedupe_key = str(row.get("target_show_key") or row.get("show_date") or "")
+        if not dedupe_key or dedupe_key in seen_keys:
             continue
-        seen_dates.add(show_date)
+        seen_keys.add(dedupe_key)
         deduped.append(row)
         if len(deduped) >= limit:
             break

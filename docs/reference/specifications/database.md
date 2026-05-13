@@ -48,8 +48,13 @@ by writing derived tables back to Supabase.
 `setlist_predictions` stores one active live row per
 `(band, model_version, target_show_key)` with a JSON predictions payload.
 `setlist_prediction_songs` stores one derived row per live predicted song for
-SQL-friendly reads and realtime refresh. `setlist_results` preserves exact
-prediction boards for the active last-100 completed-show corpus.
+SQL-friendly reads and realtime refresh. It duplicates `target_show_date`,
+`reference_date`, `generated_at`, and `top_k` from the canonical run so the
+website can scope by target show. `setlist_results` preserves exact prediction
+boards for the active last-100 completed-show corpus.
+
+`target_show_date` is the product/display selector. `reference_date` is the
+model cutoff. `generated_at` is the freshness timestamp.
 
 ### Accuracy tables
 
@@ -135,6 +140,8 @@ server-side contexts.
 - raw writes should preserve enough source information for reprocessing and
   traceability
 - live prediction freshness should be validated using `generated_at`
+- website prediction selection should use `target_show_date`, not
+  `reference_date`
 - completed-show metrics should be derived only from the retained last-100 corpus
 
 ## Related Documents

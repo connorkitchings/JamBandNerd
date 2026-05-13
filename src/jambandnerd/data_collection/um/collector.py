@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import re
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from io import StringIO
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 from urllib.parse import urljoin
@@ -23,6 +23,12 @@ logger = logging.getLogger(__name__)
 _MONTH_PATTERN = re.compile(
     r"^(January|February|March|April|May|June|July|August|September|October|November|December) \d{1,2}, \d{4}$"
 )
+
+
+def _slugify(value: str) -> str:
+    """Create a stable lowercase slug for UM source values."""
+    slug = re.sub(r"[^a-z0-9]+", "-", value.strip().lower())
+    return slug.strip("-")
 
 
 @dataclass
@@ -137,6 +143,18 @@ class UmCollector(BandCollector):
         if "avg_show_gap" in df.columns:
             df["avg_show_gap"] = pd.to_numeric(df["avg_show_gap"], errors="coerce")
 
+        df["song_slug"] = df["song_name"].map(_slugify)
+        if "original_artist" in df.columns:
+            df["is_original"] = (
+                df["original_artist"].fillna("").astype(str).str.strip().str.lower()
+                == self.ARTIST_NAME.lower()
+            )
+        else:
+            df["is_original"] = False
+        ingested_at = datetime.now(timezone.utc).isoformat()
+        df["api_created_at"] = ingested_at
+        df["api_updated_at"] = ingested_at
+
         df = df.where(pd.notnull(df), None)
         records = df.to_dict(orient="records")
         logger.info("✅ %s: Collected %s songs.", self.ARTIST_NAME, len(records))
@@ -196,6 +214,9 @@ class UmCollector(BandCollector):
         df["venue_city"] = df["venue_city"].astype(str).str.strip()
         df["venue_state"] = df["venue_state"].astype(str).str.strip()
         df["venue_country"] = df["venue_country"].astype(str).str.strip()
+        df["venue_slug"] = df["venue_name"].map(_slugify)
+        df["venue_zip"] = None
+        df["capacity"] = None
 
         df = df.where(pd.notnull(df), None)
         records = df.to_dict(orient="records")
@@ -231,6 +252,7 @@ class UmCollector(BandCollector):
                     "show_year": show.show_date.year,
                     "show_month": show.show_date.month,
                     "show_day": show.show_date.day,
+                    "tour_name": None,
                 }
             )
             records.append(payload)

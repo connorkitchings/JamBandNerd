@@ -685,6 +685,14 @@ class GooseFastPredictor(PredictionModel):
             "same_venue_run_position": same_venue_run_position,
         }
 
+    def _candidate_min_plays(self, target_show_context: Any) -> int:
+        """Minimum historical plays required for candidate eligibility."""
+        return self.min_plays_threshold
+
+    def _candidate_recent_gap_floor(self, target_show_context: Any) -> int:
+        """Minimum show gap required for candidate eligibility."""
+        return self.exclusion_window
+
     def _feature_frame_for_target(
         self,
         *,
@@ -778,20 +786,6 @@ class GooseFastPredictor(PredictionModel):
             ref_col = col - 1
             total_before = cum.iloc[:, ref_col]
             gap_at_target = gap_mat.iloc[:, col]
-            recent_plays = _window_plays(cum, col, self.exclusion_window)
-            eligible_mask = (
-                (total_before >= self.min_plays_threshold)
-                & (gap_at_target >= self.exclusion_window)
-                & (gap_at_target <= self.retired_gap_threshold)
-                & (recent_plays == 0)
-            )
-            if excluded_songs:
-                song_index = all_songs.astype(str).str.lower().str.strip()
-                eligible_mask &= ~song_index.isin(excluded_songs)
-            if not eligible_mask.any():
-                continue
-
-            eligible_songs = all_songs[eligible_mask]
             target_show_index = int(show_cols[col])
             target_date_raw = show_date_map.get(target_show_index)
             target_date = (
@@ -805,6 +799,22 @@ class GooseFastPredictor(PredictionModel):
                 if not target_rows.empty
                 else {}
             )
+            min_plays = self._candidate_min_plays(target_context)
+            recent_gap_floor = self._candidate_recent_gap_floor(target_context)
+            recent_plays = _window_plays(cum, col, recent_gap_floor)
+            eligible_mask = (
+                (total_before >= min_plays)
+                & (gap_at_target >= recent_gap_floor)
+                & (gap_at_target <= self.retired_gap_threshold)
+                & (recent_plays == 0)
+            )
+            if excluded_songs:
+                song_index = all_songs.astype(str).str.lower().str.strip()
+                eligible_mask &= ~song_index.isin(excluded_songs)
+            if not eligible_mask.any():
+                continue
+
+            eligible_songs = all_songs[eligible_mask]
             frame = self._feature_frame_for_target(
                 eligible_songs=eligible_songs,
                 upper_col=col,
@@ -868,14 +878,18 @@ class GooseFastPredictor(PredictionModel):
         ref_col = n_shows - 1
         total_plays = cum.iloc[:, ref_col]
         current_gap = _current_gap_for_prediction(presence)
+        target_context = normalize_target_show_context(model_data.target_show_context)
+        min_plays = self._candidate_min_plays(target_context)
+        recent_gap_floor = self._candidate_recent_gap_floor(target_context)
 
         recent_set = set(model_data.recently_played_songs)
         eligible_mask = (
-            (total_plays >= self.min_plays_threshold)
-            & (current_gap >= self.exclusion_window)
+            (total_plays >= min_plays)
+            & (current_gap >= recent_gap_floor)
             & (current_gap <= self.retired_gap_threshold)
-            & (~all_songs.isin(recent_set))
         )
+        if recent_gap_floor > 0:
+            eligible_mask &= ~all_songs.isin(recent_set)
         excluded_songs = get_excluded_songs(self.band)
         if excluded_songs:
             song_index = all_songs.astype(str).str.lower().str.strip()

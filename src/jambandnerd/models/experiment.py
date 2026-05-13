@@ -20,13 +20,15 @@ def make_experiment_predictor(
     param_overrides: dict[str, Any] | None = None,
     round_overrides: int | None = None,
     feature_cols: list[str] | None = None,
+    attr_overrides: dict[str, Any] | None = None,
 ) -> type[PredictionModel]:
     """Create an ephemeral predictor subclass for a single experiment.
 
     ``param_overrides`` keys are merged into the base class's ``_LGB_PARAMS``
     dict.  ``round_overrides`` replaces ``_LGB_ROUNDS``.  ``feature_cols``
-    replaces ``_FEATURE_COLS``.  ``MODEL_VERSION`` is set to
-    ``{base.MODEL_VERSION}_{slug_suffix}``.
+    replaces ``_FEATURE_COLS``.  ``attr_overrides`` sets arbitrary class
+    attributes (e.g. ``_EARLY_STOPPING_ROUNDS``, ``_VALIDATION_FRACTION``).
+    ``MODEL_VERSION`` is set to ``{base.MODEL_VERSION}_{slug_suffix}``.
 
     Returns a new class that can be passed directly to
     ``run_phase_b_backtest(predictor_class=...)``.
@@ -42,6 +44,8 @@ def make_experiment_predictor(
         overrides["_LGB_ROUNDS"] = round_overrides
     if feature_cols is not None:
         overrides["_FEATURE_COLS"] = list(feature_cols)
+    if attr_overrides:
+        overrides.update(attr_overrides)
 
     name = f"{base_cls.__name__}_{slug_suffix}"
     return type(name, (base_cls,), overrides)
@@ -64,6 +68,7 @@ class ExperimentConfig:
     param_overrides: dict[str, Any] = field(default_factory=dict)
     round_overrides: int | None = None
     feature_cols: list[str] | None = None
+    attr_overrides: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass

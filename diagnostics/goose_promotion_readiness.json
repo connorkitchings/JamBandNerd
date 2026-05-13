@@ -1,0 +1,276 @@
+{
+  "deltas": [
+    {
+      "comparison": "candidate_vs_registered",
+      "delta_dual_proxy": 0.03412543828720299,
+      "delta_f1_25": 0.015336817874382614,
+      "delta_p10": 0.01,
+      "delta_p25": 0.011199999999999998,
+      "delta_r50": 0.05825087657440599,
+      "n_shows": 100,
+      "segment": "all"
+    },
+    {
+      "comparison": "candidate_vs_registered",
+      "delta_dual_proxy": 0.16908125414317365,
+      "delta_f1_25": 0.08072009407569797,
+      "delta_p10": 0.031578947368421054,
+      "delta_p25": 0.05894736842105262,
+      "delta_r50": 0.30658356091792627,
+      "n_shows": 19,
+      "segment": "special"
+    },
+    {
+      "comparison": "candidate_vs_registered",
+      "delta_dual_proxy": 0.002469135802469136,
+      "delta_f1_25": 0.0,
+      "delta_p10": 0.0049382716049382715,
+      "delta_p25": 0.0,
+      "delta_r50": 0.0,
+      "n_shows": 81,
+      "segment": "normal"
+    },
+    {
+      "comparison": "candidate_vs_notebook",
+      "delta_dual_proxy": 0.035238991400756106,
+      "delta_f1_25": 0.01650270334796355,
+      "delta_p10": 0.0,
+      "delta_p25": 0.012,
+      "delta_r50": 0.07047798280151221,
+      "n_shows": 100,
+      "segment": "all"
+    },
+    {
+      "comparison": "candidate_vs_notebook",
+      "delta_dual_proxy": 0.14930103436295386,
+      "delta_f1_25": 0.08039644112046605,
+      "delta_p10": 0.0,
+      "delta_p25": 0.05894736842105262,
+      "delta_r50": 0.2986020687259077,
+      "n_shows": 19,
+      "segment": "special"
+    },
+    {
+      "comparison": "candidate_vs_notebook",
+      "delta_dual_proxy": 0.00848369737258626,
+      "delta_f1_25": 0.001515283376635802,
+      "delta_p10": 0.0,
+      "delta_p25": 0.0009876543209876537,
+      "delta_r50": 0.016967394745172525,
+      "n_shows": 81,
+      "segment": "normal"
+    },
+    {
+      "comparison": "candidate_vs_global_control",
+      "delta_dual_proxy": -0.03754388666888667,
+      "delta_f1_25": -0.016624642707029652,
+      "delta_p10": 0.0,
+      "delta_p25": -0.012400000000000005,
+      "delta_r50": -0.07508777333777333,
+      "n_shows": 100,
+      "segment": "all"
+    },
+    {
+      "comparison": "candidate_vs_global_control",
+      "delta_dual_proxy": 0.009233858247016155,
+      "delta_f1_25": -0.010560474205288517,
+      "delta_p10": 0.0,
+      "delta_p25": -0.008421052631578952,
+      "delta_r50": 0.01846771649403228,
+      "n_shows": 19,
+      "segment": "special"
+    },
+    {
+      "comparison": "candidate_vs_global_control",
+      "delta_dual_proxy": -0.048516444118295976,
+      "delta_f1_25": -0.018047101985215846,
+      "delta_p10": 0.0,
+      "delta_p25": -0.013333333333333338,
+      "delta_r50": -0.09703288823659195,
+      "n_shows": 81,
+      "segment": "normal"
+    }
+  ],
+  "overall": [
+    {
+      "dual": 0.4086645699072169,
+      "f1_25": 0.2801233618420792,
+      "key": "registered",
+      "label": "Registered Goose",
+      "model_version": "goose_fast_rank_v1",
+      "n_shows": 100,
+      "p10": 0.27399999999999997,
+      "p25": 0.2164,
+      "promotable": false,
+      "r50": 0.5433291398144339
+    },
+    {
+      "dual": 0.4075510167936638,
+      "f1_25": 0.27895747636849827,
+      "key": "notebook",
+      "label": "Notebook floor",
+      "model_version": "goose_notebook_floor_v1",
+      "n_shows": 100,
+      "p10": 0.284,
+      "p25": 0.21559999999999999,
+      "promotable": false,
+      "r50": 0.5311020335873277
+    },
+    {
+      "dual": 0.44279000819441994,
+      "f1_25": 0.29546017971646177,
+      "key": "candidate",
+      "label": "Special relaxed + Notebook top 10",
+      "model_version": "goose_fast_rank_v1_candidate_relaxed_special_nbtop10",
+      "n_shows": 100,
+      "p10": 0.284,
+      "p25": 0.22760000000000002,
+      "promotable": true,
+      "r50": 0.60158001638884
+    },
+    {
+      "dual": 0.4803338948633066,
+      "f1_25": 0.31208482242349145,
+      "key": "global_control",
+      "label": "Global relaxed + Notebook top 10 control",
+      "model_version": "goose_fast_rank_v1_candidate_relaxed_global_nbtop10",
+      "n_shows": 100,
+      "p10": 0.284,
+      "p25": 0.24,
+      "promotable": false,
+      "r50": 0.6766677897266132
+    }
+  ],
+  "rationale": [
+    "Candidate beats the registered Goose model and Notebook floor on dual, p@25, r@50, and F1@25 while matching Notebook p@10.",
+    "Segment gains are strongest on Not Part of a Tour shows.",
+    "Normal-tour segment has no p@10, p@25, or F1@25 degradation versus registered Goose.",
+    "Candidate p@10 matches the Notebook floor on every aligned show and in aggregate. The JSONL artifacts do not store prediction song lists, so exact top-10 song-order confirmation remains covered by tests/models/test_goose_model.py::test_candidate_rank_guard_keeps_notebook_top_10. The product tradeoff is that ranks 1-10 remain rule-guarded by the Notebook floor while ranks 11-50 carry the relaxed candidate repair."
+  ],
+  "recommendation": "promote_after_separate_production_wiring_task",
+  "segments": {
+    "candidate": [
+      {
+        "dual_proxy": 0.44279000819442,
+        "f1_25": 0.29546017971646177,
+        "n_shows": 100,
+        "p10": 0.284,
+        "p25": 0.22760000000000002,
+        "r50": 0.60158001638884,
+        "segment": "all"
+      },
+      {
+        "dual_proxy": 0.4584729576409143,
+        "f1_25": 0.290129808725768,
+        "n_shows": 19,
+        "p10": 0.25263157894736843,
+        "p25": 0.22526315789473686,
+        "r50": 0.6643143363344602,
+        "segment": "special"
+      },
+      {
+        "dual_proxy": 0.439111291657588,
+        "f1_25": 0.29671051365255047,
+        "n_shows": 81,
+        "p10": 0.291358024691358,
+        "p25": 0.22814814814814816,
+        "r50": 0.5868645586238178,
+        "segment": "normal"
+      }
+    ],
+    "global_control": [
+      {
+        "dual_proxy": 0.48033389486330663,
+        "f1_25": 0.31208482242349145,
+        "n_shows": 100,
+        "p10": 0.284,
+        "p25": 0.24,
+        "r50": 0.6766677897266132,
+        "segment": "all"
+      },
+      {
+        "dual_proxy": 0.4492390993938981,
+        "f1_25": 0.30069028293105654,
+        "n_shows": 19,
+        "p10": 0.25263157894736843,
+        "p25": 0.2336842105263158,
+        "r50": 0.6458466198404279,
+        "segment": "special"
+      },
+      {
+        "dual_proxy": 0.4876277357758839,
+        "f1_25": 0.31475761563776633,
+        "n_shows": 81,
+        "p10": 0.291358024691358,
+        "p25": 0.24148148148148152,
+        "r50": 0.6838974468604099,
+        "segment": "normal"
+      }
+    ],
+    "notebook": [
+      {
+        "dual_proxy": 0.40755101679366385,
+        "f1_25": 0.27895747636849827,
+        "n_shows": 100,
+        "p10": 0.284,
+        "p25": 0.21559999999999999,
+        "r50": 0.5311020335873277,
+        "segment": "all"
+      },
+      {
+        "dual_proxy": 0.3091719232779604,
+        "f1_25": 0.20973336760530192,
+        "n_shows": 19,
+        "p10": 0.25263157894736843,
+        "p25": 0.16631578947368422,
+        "r50": 0.36571226760855247,
+        "segment": "special"
+      },
+      {
+        "dual_proxy": 0.4306275942850017,
+        "f1_25": 0.29519523027591466,
+        "n_shows": 81,
+        "p10": 0.291358024691358,
+        "p25": 0.22716049382716053,
+        "r50": 0.5698971638786454,
+        "segment": "normal"
+      }
+    ],
+    "registered": [
+      {
+        "dual_proxy": 0.40866456990721695,
+        "f1_25": 0.2801233618420792,
+        "n_shows": 100,
+        "p10": 0.27399999999999997,
+        "p25": 0.2164,
+        "r50": 0.5433291398144339,
+        "segment": "all"
+      },
+      {
+        "dual_proxy": 0.2893917034977407,
+        "f1_25": 0.20940971465007002,
+        "n_shows": 19,
+        "p10": 0.2210526315789474,
+        "p25": 0.16631578947368422,
+        "r50": 0.3577307754165339,
+        "segment": "special"
+      },
+      {
+        "dual_proxy": 0.43664215585511884,
+        "f1_25": 0.29671051365255047,
+        "n_shows": 81,
+        "p10": 0.28641975308641976,
+        "p25": 0.22814814814814816,
+        "r50": 0.5868645586238178,
+        "segment": "normal"
+      }
+    ]
+  },
+  "top10_guard": {
+    "aggregate_p10_matches_notebook": true,
+    "compared_shows": 100,
+    "interpretation": "Candidate p@10 matches the Notebook floor on every aligned show and in aggregate. The JSONL artifacts do not store prediction song lists, so exact top-10 song-order confirmation remains covered by tests/models/test_goose_model.py::test_candidate_rank_guard_keeps_notebook_top_10. The product tradeoff is that ranks 1-10 remain rule-guarded by the Notebook floor while ranks 11-50 carry the relaxed candidate repair.",
+    "matching_metric_shows": 100,
+    "mismatched_show_ids": []
+  }
+}

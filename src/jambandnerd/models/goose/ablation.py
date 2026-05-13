@@ -135,13 +135,13 @@ class GooseFastAblationPredictor(GooseFastPredictor):
         if self._model is None:
             return []
 
+        from jambandnerd.config.bands import get_excluded_songs
+
         from .fast_predictor import (
             _clean_plays,
-            _build_presence,
             _current_gap_for_prediction,
             _window_plays,
         )
-        from jambandnerd.config.bands import get_excluded_songs
 
         plays = _clean_plays(model_data.historical_plays)
         if plays.empty:

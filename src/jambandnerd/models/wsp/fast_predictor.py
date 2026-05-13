@@ -9,8 +9,10 @@ from __future__ import annotations
 
 from typing import Any
 
+import numpy as np
 import pandas as pd
 
+from jambandnerd.models.billy.fast_predictor import _gap_percentile_arr
 from jambandnerd.models.phish.fast_predictor import (
     _LGB_PARAMS,
     PHISH_FAST_V2_FEATURE_COLS,
@@ -390,6 +392,105 @@ class WSPFastVenueRun(WSPFastPredictor):
                 eligible_songs=kwargs["eligible_songs"],
                 plays=kwargs["plays"],
                 target_show_context=kwargs["target_show_context"],
+            )
+        )
+        return extra
+
+
+def _gap_vs_median_arr(
+    eligible_songs: pd.Index,
+    gap_e: pd.Series,
+    gap_dist: dict[str, np.ndarray],
+) -> np.ndarray:
+    result = np.zeros(len(eligible_songs), dtype=float)
+    for i, (s, g) in enumerate(zip(eligible_songs, gap_e.values)):
+        dist = gap_dist.get(str(s), np.array([]))
+        if len(dist) >= 2:
+            result[i] = g / max(1.0, float(np.median(dist)))
+        else:
+            result[i] = 1.0
+    return result
+
+
+class WSPFastGapDecoupled(WSPFastPredictor):
+    """Add gap_percentile and gap_vs_median to decouple gap from rotation strength.
+
+    21 features: 19 V2 features + gap_percentile + gap_vs_median.
+    Keeps coupled features (overdue_ratio, long_rotation_pressure).
+    """
+
+    MODEL_VERSION = "wsp_fast_gbm_v2_gap_decoupled"
+    _FEATURE_COLS: list[str] = [
+        *WSPFastPredictor._FEATURE_COLS,
+        "gap_percentile",
+        "gap_vs_median",
+    ]
+
+    def _gap_decoupled_features(
+        self, eligible_songs: pd.Index, gap_e: pd.Series, cache: dict
+    ) -> dict[str, Any]:
+        gap_dist = cache["gap_dist"]
+        return {
+            "gap_percentile": _gap_percentile_arr(eligible_songs, gap_e, gap_dist),
+            "gap_vs_median": _gap_vs_median_arr(eligible_songs, gap_e, gap_dist),
+        }
+
+    def _extra_training_row_features(self, **kwargs: Any) -> dict:
+        extra = super()._extra_training_row_features(**kwargs)
+        extra.update(
+            self._gap_decoupled_features(
+                kwargs["eligible_songs"], kwargs["gap_e"], kwargs["cache"]
+            )
+        )
+        return extra
+
+    def _extra_predict_features(self, **kwargs: Any) -> dict:
+        extra = super()._extra_predict_features(**kwargs)
+        extra.update(
+            self._gap_decoupled_features(
+                kwargs["eligible_songs"], kwargs["gap_e"], kwargs["cache"]
+            )
+        )
+        return extra
+
+
+class WSPFastGapDecoupledClean(WSPFastPredictor):
+    """Replace coupled gap features with decoupled versions.
+
+    19 features: removes overdue_ratio and long_rotation_pressure,
+    adds gap_percentile and gap_vs_median.
+    """
+
+    MODEL_VERSION = "wsp_fast_gbm_v2_gap_decoupled_clean"
+    _FEATURE_COLS: list[str] = [
+        f
+        for f in WSPFastPredictor._FEATURE_COLS
+        if f not in ("overdue_ratio", "long_rotation_pressure")
+    ] + ["gap_percentile", "gap_vs_median"]
+
+    def _gap_decoupled_features(
+        self, eligible_songs: pd.Index, gap_e: pd.Series, cache: dict
+    ) -> dict[str, Any]:
+        gap_dist = cache["gap_dist"]
+        return {
+            "gap_percentile": _gap_percentile_arr(eligible_songs, gap_e, gap_dist),
+            "gap_vs_median": _gap_vs_median_arr(eligible_songs, gap_e, gap_dist),
+        }
+
+    def _extra_training_row_features(self, **kwargs: Any) -> dict:
+        extra = super()._extra_training_row_features(**kwargs)
+        extra.update(
+            self._gap_decoupled_features(
+                kwargs["eligible_songs"], kwargs["gap_e"], kwargs["cache"]
+            )
+        )
+        return extra
+
+    def _extra_predict_features(self, **kwargs: Any) -> dict:
+        extra = super()._extra_predict_features(**kwargs)
+        extra.update(
+            self._gap_decoupled_features(
+                kwargs["eligible_songs"], kwargs["gap_e"], kwargs["cache"]
             )
         )
         return extra

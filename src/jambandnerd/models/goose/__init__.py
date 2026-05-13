@@ -19,6 +19,7 @@ from .fast_predictor import (
 from .model import (
     GOOSE_FEATURE_COLUMNS,
     GooseFastRankPredictor,
+    GooseFastRankSpecialNotebookTop10Predictor,
     GooseGbmNotebookBlendPredictor,
     GooseNotebookFloorPredictor,
     GoosePredictor,
@@ -39,6 +40,7 @@ __all__ = [
     "GooseDistilledPredictor",
     "GooseFastPredictor",
     "GooseFastRankPredictor",
+    "GooseFastRankSpecialNotebookTop10Predictor",
     "GooseMatrixPredictor",
     "GooseMatrixPredictorV2",
     "GooseGbmNotebookBlendPredictor",

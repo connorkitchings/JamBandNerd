@@ -7,7 +7,11 @@ from datetime import date
 import pandas as pd
 import pytest
 
-from jambandnerd.models.phish.experiments import PHISH_SWEEPS
+from jambandnerd.models.phish.experiments import (
+    PHISH_SWEEPS,
+    PhishFastPlusShowType,
+    PhishFastPredictorV3,
+)
 from jambandnerd.models.phish.fast_predictor import (
     PHISH_FAST_FEATURE_COLS,
     PhishFastPredictor,
@@ -81,11 +85,16 @@ class TestHelperFunctions:
                 "song_name": ["Song A", "Song B"],
                 "show_index": [1, 1],
                 "show_date": ["2024-01-01", "2024-01-01"],
+                "tour_name": ["Not Part of a Tour", "Not Part of a Tour"],
             }
         )
         cleaned = _clean_plays(plays)
         assert len(cleaned) == 2
         assert cleaned["show_index"].dtype == int
+        assert cleaned["tour_name"].tolist() == [
+            "Not Part of a Tour",
+            "Not Part of a Tour",
+        ]
 
     def test_build_presence(self):
         """Test presence matrix building."""
@@ -212,9 +221,18 @@ class TestPhishExperiments:
     """Test Phish experiment sweep registration."""
 
     def test_sweeps_are_registered(self):
-        assert set(PHISH_SWEEPS) == {"hp_sweep", "feature_sweep"}
+        assert set(PHISH_SWEEPS) == {
+            "hp_sweep",
+            "feature_sweep",
+            "combo_sweep",
+            "show_type_sweep",
+            "cleanup_ablation",
+        }
         assert len(PHISH_SWEEPS["hp_sweep"]) >= 1
         assert len(PHISH_SWEEPS["feature_sweep"]) >= 1
+        assert len(PHISH_SWEEPS["combo_sweep"]) == 7
+        assert len(PHISH_SWEEPS["show_type_sweep"]) == 1
+        assert len(PHISH_SWEEPS["cleanup_ablation"]) == 1
 
     def test_feature_sweep_uses_explicit_predictors(self):
         predictor_paths = [
@@ -223,6 +241,77 @@ class TestPhishExperiments:
         assert all(
             path.startswith("jambandnerd.models.phish.") for path in predictor_paths
         )
+
+    def test_combo_sweep_uses_stacked_base_predictor(self):
+        for config in PHISH_SWEEPS["combo_sweep"]:
+            assert (
+                config.base_predictor_path
+                == "jambandnerd.models.phish.experiments.PhishFastPlusNotebookRankVenueRun"
+            )
+            assert not config.predictor_path
+
+    def test_show_type_sweep_uses_explicit_predictor(self):
+        config = PHISH_SWEEPS["show_type_sweep"][0]
+        assert config.slug == "feat_show_type"
+        assert (
+            config.predictor_path
+            == "jambandnerd.models.phish.experiments.PhishFastPlusShowType"
+        )
+
+    def test_cleanup_ablation_uses_cleaned_predictor_without_registry_promotion(self):
+        config = PHISH_SWEEPS["cleanup_ablation"][0]
+        predictor = PhishFastPredictorV3()
+
+        assert config.slug == "cleanup_v3_dead_features"
+        assert (
+            config.predictor_path
+            == "jambandnerd.models.phish.experiments.PhishFastPredictorV3"
+        )
+        assert predictor.MODEL_VERSION == "phish_fast_gbm_v3"
+        assert "month_play_rate" not in predictor._FEATURE_COLS
+        assert "plays_past_10" not in predictor._FEATURE_COLS
+        assert "same_venue_run_prior_play_count" not in predictor._FEATURE_COLS
+
+    def test_show_type_features_include_song_level_interactions(self):
+        eligible_songs = pd.Index(["Tweezer", "Theme From the Bottom"])
+        plays = pd.DataFrame(
+            {
+                "song_name": [
+                    "Tweezer",
+                    "Song A",
+                    "Theme From the Bottom",
+                    "Song B",
+                ],
+                "show_index": [1, 1, 2, 2],
+                "show_date": pd.to_datetime(
+                    ["2024-01-01", "2024-01-01", "2024-01-02", "2024-01-02"]
+                ),
+                "tour_name": ["Not Part of a Tour"] * 4,
+                "venue_name": ["NPR Headquarters"] * 4,
+                "city": ["Washington"] * 4,
+                "state": ["DC"] * 4,
+                "country": ["USA"] * 4,
+            }
+        )
+        features = PhishFastPlusShowType._show_type_features(
+            eligible_songs=eligible_songs,
+            plays=plays,
+            target_show_context={
+                "tour_name": "Not Part of a Tour",
+                "venue_name": "NPR Headquarters",
+                "city": "Washington",
+                "state": "DC",
+                "country": "USA",
+            },
+            career_pct=pd.Series([0.5, 0.2], index=eligible_songs),
+            p50=pd.Series([10.0, 2.0], index=eligible_songs),
+            notebook_rank_score=[0.9, 0.1],
+        )
+
+        assert features["is_not_part_of_tour"].tolist() == [1.0, 1.0]
+        assert features["is_atypical_context"].tolist() == [1.0, 1.0]
+        assert features["show_type_notebook_score"].tolist() == [0.9, 0.1]
+        assert features["show_type_career_score"].tolist() == [0.5, 0.2]
 
 
 class TestIntegration:

@@ -129,6 +129,39 @@ uv run python scripts/audit_shared_model_inputs.py --band all
 Only fields that can be normalized for every active band should move into the
 shared model core.
 
+## Current Phase B Follow-Up
+
+The active single-model baselines are frozen as the comparison set:
+Goose `goose_fast_rank_v1`, Phish
+`phish_fast_gbm_v2_feat_notebook_rank_venue_run`, WSP `wsp_fast_gbm_v2`,
+Billy `billy_fast_gbm_v10_hp_tuned`, and UM `um_fast_gbm_v2`.
+
+Do not resume broad feature or hyperparameter sweeps for the current LightGBM
+family. Recent Phase B sessions found local optima for Goose, WSP, Billy, and
+UM. The next allowed model experiment is the narrow Phish cleanup ablation:
+
+```bash
+uv run python scripts/run_phase_b_backtest.py --band phish --predictor jambandnerd.models.phish.experiments.PhishFastPlusNotebookRankVenueRun --shows 100 --snapshot-root .snapshots/phish_phase_b
+uv run python scripts/run_experiment.py --band phish --sweep cleanup_ablation --shows 100 --snapshot-root .snapshots/phish_phase_b
+```
+
+The cleanup ablation tests the existing `PhishFastPredictorV3` cleaned feature
+set against the registered Phish incumbent. `PhishFastPlusShowType` remains an
+experiment-only artifact and must not be registered unless a future promotion
+packet reverses the current failed-promotion evidence.
+
+Use the offline headroom report before proposing architecture work:
+
+```bash
+uv run python scripts/report_model_headroom.py --backtests-dir backtests --out-dir diagnostics
+```
+
+This report reads existing backtest artifacts, lists incumbent metrics and
+worst-show segments, and records the current recommendation per band. WSP stays
+on hold until Everyday Companion has the missing recent setlists; Billy stays on
+hold until `bmfsdb.com` source reachability recovers. Goose architecture spikes
+should only follow if diagnostics show an actionable miss pattern.
+
 ## Final Web Promotion
 
 Backend readiness and public site exposure are intentionally separate.

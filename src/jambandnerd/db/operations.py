@@ -157,6 +157,8 @@ def prepare_dataframe_for_upsert(
         extra_columns=report.extra_columns,
         type_mismatches=report.type_mismatches,
     )
+    if report.extra_columns:
+        prepared = prepared.drop(columns=report.extra_columns)
     return prepared
 
 
@@ -512,11 +514,24 @@ def _prediction_score(prediction: dict[str, Any]) -> float | None:
     return None
 
 
+def _schema_columns(table_name: str) -> set[str] | None:
+    schema = get_table_schema(table_name)
+    columns = {
+        str(row.get("column_name"))
+        for row in schema
+        if isinstance(row, dict) and row.get("column_name")
+    }
+    return columns or None
+
+
 def replace_setlist_prediction_projection(
     *,
     band: str,
     model_version: str,
     target_show_key: str,
+    target_show_date: str,
+    reference_date: str,
+    generated_at: str,
     predictions: Sequence[dict[str, Any]],
     prediction_run_id: int | None = None,
     table_name: str = "setlist_prediction_songs",
@@ -543,13 +558,23 @@ def replace_setlist_prediction_projection(
             "band": band,
             "model_version": model_version,
             "target_show_key": target_show_key,
+            "target_show_date": target_show_date,
+            "reference_date": reference_date,
+            "generated_at": generated_at,
             "rank": prediction["rank"],
             "song_name": prediction["song_name"],
             "score": _prediction_score(prediction),
+            "top_k": len(predictions),
             "prediction_payload": prediction,
         }
         for prediction in predictions
     ]
+    present_columns = _schema_columns(table_name)
+    if present_columns is not None:
+        rows = [
+            {key: value for key, value in row.items() if key in present_columns}
+            for row in rows
+        ]
     bulk_insert_dataframe(table_name, pd.DataFrame(rows))
 
 
@@ -605,6 +630,9 @@ def upsert_setlist_accuracy_dataframe(
     table_name: str = "setlist_accuracy",
 ) -> None:
     """Upsert single-model per-show accuracy rows."""
+    present_columns = _schema_columns(table_name)
+    if present_columns is not None:
+        df = df[[column for column in df.columns if column in present_columns]]
     upsert_dataframe(
         table_name=table_name,
         df=df,

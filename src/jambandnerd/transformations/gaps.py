@@ -144,7 +144,7 @@ def _compute_base_features(
 
     plays["show_index"] = plays["show_id"].map(show_idx_map)
     show_context_columns = ["show_id", "show_date"]
-    for optional_column in ["venue_name", "city", "state", "country"]:
+    for optional_column in ["tour_name", "venue_name", "city", "state", "country"]:
         if optional_column in historical_shows.columns:
             show_context_columns.append(optional_column)
 

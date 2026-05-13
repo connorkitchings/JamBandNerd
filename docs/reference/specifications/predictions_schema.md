@@ -49,7 +49,20 @@ band-model-specific.
 
 `setlist_prediction_songs` is the live per-song projection consumed by the
 website prediction board and realtime refresh logic. It is derived from
-`setlist_predictions`.
+`setlist_predictions`. Projection rows intentionally duplicate
+`target_show_date`, `reference_date`, `generated_at`, and `top_k` from the
+canonical run row so realtime/site reads can scope updates by the show being
+predicted.
+
+Field semantics:
+
+- `target_show_date`: product/display date and route-selection anchor
+- `reference_date`: leakage-safe model cutoff used to build features
+- `generated_at`: freshness timestamp for the prediction payload
+
+The predictions page may show a previous-show board after `target_show_date`
+passes, but the UI must label it as a previous show until a new next-show board
+exists.
 
 ## Retained Completed-Show Storage
 
@@ -165,6 +178,7 @@ Reasons:
 - live prediction reads cannot fall back to completed-show history
 - all model metrics share the same retained 100-show corpus
 - replay rows carry exact stored boards and actual setlists
+- site reads use `target_show_date`; `reference_date` remains model metadata
 
 ### Deferred alternative
 

@@ -1,0 +1,97 @@
+{
+  "band_models": [
+    {
+      "band": "goose",
+      "model_version": "goose_fast_rank_v1_candidate_relaxed_special_nbtop10",
+      "setlist_accuracy": 100,
+      "setlist_prediction_songs": 25,
+      "setlist_predictions": 1,
+      "setlist_results": 100
+    },
+    {
+      "band": "phish",
+      "model_version": "phish_fast_gbm_v2_feat_notebook_rank_venue_run",
+      "setlist_accuracy": 100,
+      "setlist_prediction_songs": 25,
+      "setlist_predictions": 1,
+      "setlist_results": 100
+    },
+    {
+      "band": "wsp",
+      "model_version": "wsp_fast_gbm_v2",
+      "setlist_accuracy": 100,
+      "setlist_prediction_songs": 25,
+      "setlist_predictions": 1,
+      "setlist_results": 100
+    },
+    {
+      "band": "billy",
+      "model_version": "billy_fast_gbm_v10_hp_tuned",
+      "setlist_accuracy": 100,
+      "setlist_prediction_songs": 25,
+      "setlist_predictions": 1,
+      "setlist_results": 100
+    },
+    {
+      "band": "um",
+      "model_version": "um_fast_gbm_v2",
+      "setlist_accuracy": 100,
+      "setlist_prediction_songs": 25,
+      "setlist_predictions": 1,
+      "setlist_results": 100
+    }
+  ],
+  "bands": [
+    "goose",
+    "phish",
+    "wsp",
+    "billy",
+    "um"
+  ],
+  "blockers": [],
+  "expected_state": "populated",
+  "model_versions": [
+    "goose_fast_rank_v1_candidate_relaxed_special_nbtop10",
+    "phish_fast_gbm_v2_feat_notebook_rank_venue_run",
+    "wsp_fast_gbm_v2",
+    "billy_fast_gbm_v10_hp_tuned",
+    "um_fast_gbm_v2"
+  ],
+  "production_audit_state": "ok",
+  "state": "ok",
+  "tables": [
+    {
+      "error": null,
+      "missing_columns": [],
+      "readable": true,
+      "row_count": 6,
+      "schema_checked": true,
+      "table": "setlist_predictions"
+    },
+    {
+      "error": null,
+      "missing_columns": [],
+      "readable": true,
+      "row_count": 150,
+      "schema_checked": true,
+      "table": "setlist_prediction_songs"
+    },
+    {
+      "error": null,
+      "missing_columns": [],
+      "readable": true,
+      "row_count": 550,
+      "schema_checked": true,
+      "table": "setlist_results"
+    },
+    {
+      "error": null,
+      "missing_columns": [],
+      "readable": true,
+      "row_count": 550,
+      "schema_checked": true,
+      "table": "setlist_accuracy"
+    }
+  ],
+  "warnings": []
+}

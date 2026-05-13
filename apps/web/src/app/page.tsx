@@ -145,7 +145,7 @@ export default async function HomePage({ searchParams }: Props) {
                   <p className="mt-1.5 font-headline text-xl font-bold text-primary md:text-2xl">
                     {formatDateLabel(
                       teaserNextShow?.showDate ??
-                        teaserPredictionState.snapshot.referenceDate,
+                        teaserPredictionState.snapshot.targetShowDate,
                     )}
                   </p>
                   <p className="mt-1 font-headline text-base text-on-surface">

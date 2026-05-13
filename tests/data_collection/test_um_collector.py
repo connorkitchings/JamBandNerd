@@ -50,8 +50,12 @@ class TestUmCollector:
             # Assert
             assert len(songs) == 1
             assert songs[0]["song_name"] == "In The Kitchen"
+            assert songs[0]["song_slug"] == "in-the-kitchen"
             assert songs[0]["original_artist"] == "Umphrey's McGee"
+            assert songs[0]["is_original"] is True
             assert songs[0]["times_played_live"] == 500
+            assert songs[0]["api_created_at"]
+            assert songs[0]["api_updated_at"]
 
     def test_collect_shows_parses_archive(self, collector):
         # Arrange
@@ -92,6 +96,7 @@ class TestUmCollector:
             assert shows[0]["venue_name"] == "Riviera Theatre"
             assert shows[0]["venue_city"] == "Chicago"
             assert shows[0]["venue_state"] == "IL"
+            assert "tour_name" in shows[0]
 
     def test_collect_setlists_uses_cached_data(self, collector):
         # Arrange

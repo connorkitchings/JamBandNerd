@@ -9,6 +9,7 @@ import { cache } from "react";
 import type { BandSlug } from "@/lib/config";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { buildShowDetails, selectUmUpcomingShowRow, type ShowDetails } from "@/lib/next-show";
+import { getEasternTodayIso } from "@/lib/show-status";
 
 import { getClientOrState, getBandContext, bandEntryBySlug, getBands } from "./bands";
 import { asRecord, parseNumber, parseStringArray } from "./parsers";
@@ -198,7 +199,7 @@ export const getNextShowDetails = cache(
     }
 
     try {
-      const todayIso = new Date().toISOString().slice(0, 10);
+      const todayIso = getEasternTodayIso();
       if (bandState.band === "um") {
         const { data: upcomingData, error: upcomingError } = await client
           .from("um_upcoming_shows")
@@ -277,7 +278,7 @@ export const getLastShowSetlist = cache(
 
     try {
       const { showsTable } = bandState.bandEntry;
-      const todayIso = new Date().toISOString().slice(0, 10);
+      const todayIso = getEasternTodayIso();
 
       const { data: recentShows, error } = await client
         .from(showsTable)
