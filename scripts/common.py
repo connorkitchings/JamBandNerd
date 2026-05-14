@@ -7,6 +7,7 @@ import os
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
+from urllib.parse import urlparse
 
 import pandas as pd
 
@@ -45,6 +46,17 @@ def batched_values(values: Iterable[Any], batch_size: int = 50) -> List[List[Any
     return [items[idx : idx + batch_size] for idx in range(0, len(items), batch_size)]
 
 
+def _source_health_url(band: str, config, *, today: date | None = None) -> str:
+    """Return a URL suitable for a shallow source reachability check."""
+    if band != "um":
+        return config.base_url
+
+    parsed = urlparse(config.base_url)
+    root = f"{parsed.scheme}://{parsed.netloc}" if parsed.netloc else config.base_url
+    year = (today or date.today()).year
+    return f"{root}/api/v2/setlists/showyear/{year}.json?order_by=showdate"
+
+
 def ensure_source_reachable(band: str, *, timeout: int = 15) -> None:
     """Perform a shallow health check for a band's data source.
 
@@ -60,7 +72,7 @@ def ensure_source_reachable(band: str, *, timeout: int = 15) -> None:
     from src.jambandnerd.data_collection.config import get_collector_config
 
     config = get_collector_config(band)
-    url = config.base_url
+    url = _source_health_url(band, config)
     try:
         response = requests.get(
             url,
