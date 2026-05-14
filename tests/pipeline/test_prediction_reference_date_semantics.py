@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from datetime import date
+from types import SimpleNamespace
 
 import pandas as pd
 
+import scripts.run_backtest as run_backtest_module
 from scripts.common import prepare_band_data
 from scripts.run_backtest import build_scored_run_records
 from src.jambandnerd.models.registry import (
@@ -111,3 +113,64 @@ def test_backtest_rows_use_previous_day_reference_date_for_completed_show() -> N
         row["song_name"] for row in scored_runs[0]["predictions"]
     ] == direct_for_previous_day
     assert direct_for_same_day != direct_for_previous_day
+
+
+def test_backtest_passes_target_show_context_without_target_setlist(
+    monkeypatch,
+) -> None:
+    shows_df, setlists_df = build_notebook_semantics_fixture()
+    shows_df = shows_df.copy()
+    shows_df["venue_name"] = "Test Theatre"
+    shows_df["city"] = "New York"
+    shows_df["state"] = "NY"
+    shows_df["country"] = "USA"
+    target_shows = shows_df[shows_df["show_date"] == date(2024, 1, 11)].copy()
+    captured: dict[str, object] = {}
+
+    def fake_generate_model_data(*_args, **kwargs):
+        context = dict(kwargs["target_show_context"])
+        captured["context"] = context
+        return SimpleNamespace(
+            reference_date=kwargs["target_show_context"]["show_date"]
+        )
+
+    class FakePredictor:
+        def predict(self, **_kwargs):
+            return [SimpleNamespace(song_name="Alpha")]
+
+    monkeypatch.setattr(
+        run_backtest_module, "generate_model_data", fake_generate_model_data
+    )
+    monkeypatch.setattr(
+        run_backtest_module,
+        "get_model_definition",
+        lambda _model: SimpleNamespace(
+            version="test_v1",
+            default_top_k=50,
+            supports_training=False,
+        ),
+    )
+    monkeypatch.setattr(
+        run_backtest_module,
+        "build_predictor",
+        lambda *_args, **_kwargs: FakePredictor(),
+    )
+    monkeypatch.setattr(
+        run_backtest_module,
+        "serialize_model_predictions",
+        lambda _model, _preds: [{"song_name": "Alpha"}],
+    )
+
+    scored_runs = build_scored_run_records(
+        band="goose",
+        model="notebook",
+        shows_df=shows_df,
+        sets_df=setlists_df,
+        target_shows=target_shows,
+        exclusion_window=3,
+    )
+
+    assert len(scored_runs) == 1
+    assert captured["context"]["venue_name"] == "Test Theatre"
+    assert captured["context"]["show_date"] == date(2024, 1, 11)
+    assert "song_name" not in captured["context"]

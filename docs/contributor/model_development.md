@@ -3,6 +3,10 @@
 This guide explains how to add or remove backend prediction models using the
 registry-based model platform.
 
+> **Branch note (`feat/single-model-per-band`)**: New public model work should
+> happen as Phase B per-band model iteration. The public website exposes one
+> prediction board per band, not a selectable list of model slugs.
+
 ## Canonical Source of Truth
 
 Backend model registration is defined in:
@@ -11,24 +15,25 @@ Backend model registration is defined in:
 
 The registry controls:
 
-- model slug and display name
+- per-band model version and display metadata
 - predictor class instantiation
 - model version and canonical prediction storage metadata
 - pipeline/backfill/validation/web inclusion flags
 - lifecycle stage, readiness windows, and web visibility state
 - prediction serialization function
 
-Website config in `apps/web/src/lib/config.ts` is presentation metadata only.
-It is not backend model registration.
+Website config in `apps/web/src/lib/config.ts` contains band and presentation
+helpers only. It is not backend model registration, and it does not expose a
+model picker.
 
 `src/jambandnerd/config/models.py` and `src/jambandnerd/config/database.py`
 remain compatibility shims for legacy callers and are derived from registry
 metadata.
 
-## Add a New Backend Model
+## Add or Update a Per-Band Model
 
-1. Create a model package:
-`src/jambandnerd/models/<slug>/model.py`.
+1. Create or update a band model package:
+`src/jambandnerd/models/<band>/model.py`.
 
 2. Implement a predictor class that inherits `PredictionModel` and consumes
 `ModelData`.
@@ -37,8 +42,8 @@ metadata.
 `src/jambandnerd/models/<slug>/serialization.py` with
 `serialize_predictions(predictions) -> list[dict]`.
 
-4. Add one `ModelDefinition` entry in
-`src/jambandnerd/models/registry.py`.
+4. Update that band's registry entry in
+`src/jambandnerd/models/registry.py` with a new `model_version`.
 
 5. Add registry lifecycle metadata for staged rollout:
    - `lifecycle_stage`
@@ -46,9 +51,8 @@ metadata.
    - `readiness_windows`
    - `readiness_baselines`
 
-6. Optionally add website presentation metadata in
-`apps/web/src/lib/config.ts`. Keep new models hidden there until the final
-promotion step.
+6. Do not add frontend model-picker metadata; the website reads the registered
+band model output from `setlist_*` tables.
 
 ## Remove or Disable a Model
 
@@ -94,7 +98,7 @@ This workflow is responsible for:
 - comparison evidence generation
 - local snapshot export for offline historical scoring
 - historical canonical prediction + replay lineage publishing
-- per-show accuracy publication through `completed_show_accuracy`
+- per-show accuracy publication through `accuracy_per_show`
 - backend readiness validation
 
 Use `--phase report-only` to inspect the current state without publishing.
@@ -108,10 +112,13 @@ uv run python scripts/compare_models.py --candidate-model <slug> --band all --fr
 
 Promotion evidence should include:
 
-- current standard window: `last_50`
+- current standard window: `last_100`
 - metric bundle at `K=10/25/50`: `hit_rate`, `avg_matches`, `precision`, `recall`, `f1`
 - per-band results, cross-band averages, and candidate-minus-baseline deltas
-- explicit promotion-gate outcomes versus CK+
+- explicit promotion-gate outcomes versus the incumbent
+- for Phase B per-band candidates, F1@25 improvement is the primary offline
+  promotion signal; p@25 remains a user-facing board accuracy metric and a
+  non-regression guardrail
 
 Experimental feature work should also start with a shared-input audit:
 
@@ -122,16 +129,49 @@ uv run python scripts/audit_shared_model_inputs.py --band all
 Only fields that can be normalized for every active band should move into the
 shared model core.
 
+## Current Phase B Follow-Up
+
+The active single-model baselines are frozen as the comparison set:
+Goose `goose_fast_rank_v1`, Phish
+`phish_fast_gbm_v2_feat_notebook_rank_venue_run`, WSP `wsp_fast_gbm_v2`,
+Billy `billy_fast_gbm_v10_hp_tuned`, and UM `um_fast_gbm_v2`.
+
+Do not resume broad feature or hyperparameter sweeps for the current LightGBM
+family. Recent Phase B sessions found local optima for Goose, WSP, Billy, and
+UM. The next allowed model experiment is the narrow Phish cleanup ablation:
+
+```bash
+uv run python scripts/run_phase_b_backtest.py --band phish --predictor jambandnerd.models.phish.experiments.PhishFastPlusNotebookRankVenueRun --shows 100 --snapshot-root .snapshots/phish_phase_b
+uv run python scripts/run_experiment.py --band phish --sweep cleanup_ablation --shows 100 --snapshot-root .snapshots/phish_phase_b
+```
+
+The cleanup ablation tests the existing `PhishFastPredictorV3` cleaned feature
+set against the registered Phish incumbent. `PhishFastPlusShowType` remains an
+experiment-only artifact and must not be registered unless a future promotion
+packet reverses the current failed-promotion evidence.
+
+Use the offline headroom report before proposing architecture work:
+
+```bash
+uv run python scripts/report_model_headroom.py --backtests-dir backtests --out-dir diagnostics
+```
+
+This report reads existing backtest artifacts, lists incumbent metrics and
+worst-show segments, and records the current recommendation per band. WSP stays
+on hold until Everyday Companion has the missing recent setlists; Billy stays on
+hold until `bmfsdb.com` source reachability recovers. Goose architecture spikes
+should only follow if diagnostics show an actionable miss pattern.
+
 ## Final Web Promotion
 
 Backend readiness and public site exposure are intentionally separate.
 
 After readiness is verified:
 
-1. keep the model hidden in `apps/web/src/lib/config.ts`
-2. confirm `/performance`, `/compare`, and `/replay` can read the model with
-   the current promoted set
-3. flip the web visibility metadata in a focused promotion change
+1. keep the new model version scoped to its band registry entry
+2. confirm `/predictions`, `/performance`, and `/last-show` read the new
+   `setlist_*` rows
+3. promote the registry metadata in a focused change
 
 This makes it possible to fully backfill and validate a model in Supabase
 before users can select it on the site.

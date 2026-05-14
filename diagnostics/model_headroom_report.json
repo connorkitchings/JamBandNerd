@@ -1,0 +1,202 @@
+[
+  {
+    "band": "goose",
+    "candidate_miss_proxy": 0.45667086018556613,
+    "delta_dual": null,
+    "delta_f1_25": null,
+    "dual": 0.4086645699072169,
+    "f1_25": 0.2801233618420792,
+    "model_version": "goose_fast_rank_v1",
+    "n_shows": 100,
+    "p10": 0.27399999999999997,
+    "p25": 0.2164,
+    "previous_baseline": "goose_notebook_1yr",
+    "r50": 0.5433291398144339,
+    "rationale": "Current ranker is only narrowly ahead of the Notebook floor; avoid more feature/HP sweeps unless diagnostics show a miss pattern.",
+    "recommendation": "architecture_spike_if_diagnostics_support",
+    "summary_found": true,
+    "worst_shows": [
+      {
+        "actual_song_count": 4,
+        "f1_25": 0.0,
+        "recall_50": 0.0,
+        "show_id": "1745515491",
+        "target_show_date": "2025-07-25"
+      },
+      {
+        "actual_song_count": 8,
+        "f1_25": 0.0,
+        "recall_50": 0.0,
+        "show_id": "1754580823",
+        "target_show_date": "2025-08-15"
+      },
+      {
+        "actual_song_count": 12,
+        "f1_25": 0.05405405405405406,
+        "recall_50": 0.4166666666666667,
+        "show_id": "1737731867",
+        "target_show_date": "2025-06-22"
+      }
+    ]
+  },
+  {
+    "band": "phish",
+    "candidate_miss_proxy": 0.45581696957787754,
+    "delta_dual": 0.013787092201219708,
+    "delta_f1_25": 0.00844816089341116,
+    "dual": 0.4185561616757077,
+    "f1_25": 0.28313763207199943,
+    "model_version": "phish_fast_gbm_v2_feat_notebook_rank_venue_run",
+    "n_shows": 99,
+    "p10": 0.29292929292929293,
+    "p25": 0.24525252525252528,
+    "previous_baseline": "phish_fast_gbm_v2",
+    "r50": 0.5441830304221225,
+    "rationale": "Only band with a documented cleanup path after show-type failed promotion.",
+    "recommendation": "cleanup_ablation",
+    "summary_found": true,
+    "worst_shows": [
+      {
+        "actual_song_count": 8,
+        "f1_25": 0.0,
+        "recall_50": 0.0,
+        "show_id": "1723666648",
+        "target_show_date": "2024-08-14"
+      },
+      {
+        "actual_song_count": 3,
+        "f1_25": 0.0,
+        "recall_50": 0.0,
+        "show_id": "1738096515",
+        "target_show_date": "2025-01-28"
+      },
+      {
+        "actual_song_count": 19,
+        "f1_25": 0.0,
+        "recall_50": 0.2631578947368421,
+        "show_id": "1764702334",
+        "target_show_date": "2026-04-17"
+      }
+    ]
+  },
+  {
+    "band": "wsp",
+    "candidate_miss_proxy": 0.43221035182511014,
+    "delta_dual": 0.014117380148499503,
+    "delta_f1_25": 0.01667244132177159,
+    "dual": 0.4483948240874449,
+    "f1_25": 0.32479559185491985,
+    "model_version": "wsp_fast_gbm_v2",
+    "n_shows": 100,
+    "p10": 0.32899999999999996,
+    "p25": 0.298,
+    "previous_baseline": "wsp_fast_gbm_v1",
+    "r50": 0.5677896481748899,
+    "rationale": "Current WSP V2 is at local optimum and live validation is blocked by recent Everyday Companion source gaps.",
+    "recommendation": "hold_upstream_recovery",
+    "summary_found": true,
+    "worst_shows": [
+      {
+        "actual_song_count": 6,
+        "f1_25": 0.06451612903225806,
+        "recall_50": 0.5,
+        "show_id": "13959",
+        "target_show_date": "2024-06-20"
+      },
+      {
+        "actual_song_count": 19,
+        "f1_25": 0.0909090909090909,
+        "recall_50": 0.2631578947368421,
+        "show_id": "13964",
+        "target_show_date": "2025-02-15"
+      },
+      {
+        "actual_song_count": 21,
+        "f1_25": 0.13043478260869565,
+        "recall_50": 0.38095238095238093,
+        "show_id": "13978",
+        "target_show_date": "2025-06-28"
+      }
+    ]
+  },
+  {
+    "band": "billy",
+    "candidate_miss_proxy": 0.5572201325420014,
+    "delta_dual": 0.011033360247815871,
+    "delta_f1_25": 0.006303911455240729,
+    "dual": 0.38788993372899927,
+    "f1_25": 0.284785796611417,
+    "model_version": "billy_fast_gbm_v10_hp_tuned",
+    "n_shows": 100,
+    "p10": 0.33299999999999996,
+    "p25": 0.2848,
+    "previous_baseline": "billy_fast_gbm_v3",
+    "r50": 0.44277986745799863,
+    "rationale": "Current Billy V10 is at local optimum and live validation is blocked by bmfsdb.com reachability.",
+    "recommendation": "hold_upstream_recovery",
+    "summary_found": true,
+    "worst_shows": [
+      {
+        "actual_song_count": 34,
+        "f1_25": 0.0,
+        "recall_50": 0.0,
+        "show_id": "61",
+        "target_show_date": "2025-03-02"
+      },
+      {
+        "actual_song_count": 28,
+        "f1_25": 0.0,
+        "recall_50": 0.03571428571428571,
+        "show_id": "10",
+        "target_show_date": "2025-09-17"
+      },
+      {
+        "actual_song_count": 31,
+        "f1_25": 0.0,
+        "recall_50": 0.06451612903225806,
+        "show_id": "17",
+        "target_show_date": "2025-09-05"
+      }
+    ]
+  },
+  {
+    "band": "um",
+    "candidate_miss_proxy": 0.512769360173486,
+    "delta_dual": 0.02005563090907686,
+    "delta_f1_25": 0.008568368141986415,
+    "dual": 0.34311531991325706,
+    "f1_25": 0.2137055929769793,
+    "model_version": "um_fast_gbm_v2",
+    "n_shows": 100,
+    "p10": 0.19899999999999998,
+    "p25": 0.1704,
+    "previous_baseline": "um_fast_gbm_v1",
+    "r50": 0.4872306398265141,
+    "rationale": "Current UM V2 cleared the Phase B gain; hold unless production schema-sync fixes reveal drift.",
+    "recommendation": "hold_monitor_prod_drift",
+    "summary_found": true,
+    "worst_shows": [
+      {
+        "actual_song_count": 11,
+        "f1_25": 0.0,
+        "recall_50": 0.09090909090909091,
+        "show_id": "1773756239",
+        "target_show_date": "2026-04-30"
+      },
+      {
+        "actual_song_count": 8,
+        "f1_25": 0.0,
+        "recall_50": 0.25,
+        "show_id": "1749864080",
+        "target_show_date": "2025-06-13"
+      },
+      {
+        "actual_song_count": 6,
+        "f1_25": 0.0,
+        "recall_50": 0.3333333333333333,
+        "show_id": "1745437069",
+        "target_show_date": "2025-04-19"
+      }
+    ]
+  }
+]

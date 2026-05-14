@@ -23,7 +23,9 @@ class RankedPrediction:
 class NotebookPredictor(PredictionModel):
     """Baseline notebook predictor using past-year features."""
 
-    def __init__(self, band: str | None = None):
+    MODEL_VERSION = "notebook_v1"
+
+    def __init__(self, band: str | None = None, **kwargs: Any):
         self.band = band
 
     def predict(
@@ -76,18 +78,24 @@ class NotebookPredictor(PredictionModel):
         if song_candidates.empty:
             return [], model_data.diagnostics
 
-        # 6. Rank and Predict
+        # 6. Apply centralized exclusion filter before slicing to preserve top_k.
+        excluded_songs = get_excluded_songs(self.band or "")
+        if excluded_songs:
+            song_candidates = song_candidates[
+                ~song_candidates["song_name"]
+                .str.lower()
+                .str.strip()
+                .isin(excluded_songs)
+            ]
+
+        if song_candidates.empty:
+            return [], model_data.diagnostics
+
+        # 7. Rank and Predict
         ranked = song_candidates.sort_values(
             by=["plays_past_year", "current_gap", "song_name"],
             ascending=[False, False, True],
         ).head(top_k)
-
-        # 7. Apply centralized exclusion filter
-        excluded_songs = get_excluded_songs(self.band or "")
-        if excluded_songs:
-            ranked = ranked[
-                ~ranked["song_name"].str.lower().str.strip().isin(excluded_songs)
-            ]
 
         # Format output
         result: List[RankedPrediction] = []

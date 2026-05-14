@@ -164,7 +164,6 @@ export function normalizePredictionRows(rows: JsonPrediction[]): PredictionRow[]
       recentAvgGap: parseNumber(row.recent_avg_gap),
       gapRatio: parseNumber(row.gap_ratio),
       gapZScore: parseNumber(row.gap_z_score),
-      ckplusScore: parseNumber(row.ckplus_score),
       probability,
       tier: computeTier(rank),
     };
@@ -196,7 +195,6 @@ export function normalizeProjectedPredictionRows(rows: ProjectionRow[]): Predict
       recentAvgGap: parseNumber(payload.recent_avg_gap),
       gapRatio: parseNumber(payload.gap_ratio),
       gapZScore: parseNumber(payload.gap_z_score),
-      ckplusScore: parseNumber(payload.ckplus_score),
       probability,
       tier: computeTier(rank),
     };
@@ -212,11 +210,9 @@ export function buildPredictionSnapshotFromCanonicalRow(
 ): PredictionSnapshot {
   return {
     targetShowDate:
-      typeof row.target_show_date === "string"
-        ? row.target_show_date
-        : typeof row.show_date === "string"
-          ? row.show_date
-          : null,
+      typeof row.target_show_date === "string" ? row.target_show_date : null,
+    targetShowKey:
+      typeof row.target_show_key === "string" ? row.target_show_key : null,
     referenceDate:
       typeof row.reference_date === "string" ? row.reference_date : null,
     predictedAt:
@@ -241,6 +237,10 @@ export function buildPredictionSnapshotFromProjectionRows(rows: ProjectionRow[])
       firstRow && typeof firstRow.target_show_date === "string"
         ? firstRow.target_show_date
         : null,
+    targetShowKey:
+      firstRow && typeof firstRow.target_show_key === "string"
+        ? firstRow.target_show_key
+        : null,
     referenceDate:
       firstRow && typeof firstRow.reference_date === "string"
         ? firstRow.reference_date
@@ -248,8 +248,6 @@ export function buildPredictionSnapshotFromProjectionRows(rows: ProjectionRow[])
     predictedAt:
       firstRow && typeof firstRow.predicted_at === "string"
         ? firstRow.predicted_at
-        : firstRow && typeof firstRow.generated_at === "string"
-          ? firstRow.generated_at
         : null,
     modelVersion:
       firstRow && typeof firstRow.model_version === "string"
@@ -257,8 +255,16 @@ export function buildPredictionSnapshotFromProjectionRows(rows: ProjectionRow[])
         : null,
     predictions: normalizeProjectedPredictionRows(rows),
     raw: {
-      source: "next_show_prediction_songs",
+      source: "prediction_songs",
       rowCount: rows.length,
+      targetShowDate:
+        firstRow && typeof firstRow.target_show_date === "string"
+          ? firstRow.target_show_date
+          : null,
+      targetShowKey:
+        firstRow && typeof firstRow.target_show_key === "string"
+          ? firstRow.target_show_key
+          : null,
       referenceDate:
         firstRow && typeof firstRow.reference_date === "string"
           ? firstRow.reference_date
@@ -266,8 +272,6 @@ export function buildPredictionSnapshotFromProjectionRows(rows: ProjectionRow[])
       predictedAt:
         firstRow && typeof firstRow.predicted_at === "string"
           ? firstRow.predicted_at
-          : firstRow && typeof firstRow.generated_at === "string"
-            ? firstRow.generated_at
           : null,
       modelVersion:
         firstRow && typeof firstRow.model_version === "string"

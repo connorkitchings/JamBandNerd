@@ -7,8 +7,10 @@ Current route split:
 
 - `/` is the public homepage and product entry page
 - `/predictions` is the primary live dashboard for repeat use
-- `/performance`, `/compare`, and `/replay` are the three historical analysis surfaces
-- `/?band=...&model=...` redirects to `/predictions?...` for compatibility
+- `/performance` is the historical accuracy surface
+- `/last-show` is the most recent completed-show detail surface
+- `/about`, `/contact`, and `/data-use` are public informational routes
+- `/?band=...` redirects to `/predictions?band=...` for compatibility
 
 ## Target Architecture
 
@@ -26,8 +28,8 @@ Current route split:
 - **Safe-area aware**: bottom navigation and page content must respect mobile safe-area insets.
 - **Overflow safe**: data tables and dense views must remain usable on phones through scroll-safe wrappers rather than clipped content.
 - **Shared dense-data pattern**: tables and long data grids should use a single responsive wrapper/padding pattern instead of route-specific one-offs.
-- **Search-param navigation**: prefer URL-driven band/model/date state so pages are shareable and hydration stays light.
-- **Freshness over static caching**: prediction and replay routes should favor dynamic server rendering while the marketing shell can stay static later.
+- **Search-param navigation**: prefer URL-driven band state so pages are shareable and hydration stays light.
+- **Freshness over static caching**: prediction and performance routes should favor dynamic server rendering while the marketing shell can stay static later.
 - **Hermetic builds**: prefer local assets and system fallbacks over build-time network fetches.
 
 ## Web Module Ownership
@@ -38,7 +40,6 @@ Current route split:
 - `apps/web/src/lib/data/bands.ts`: band discovery and selection helpers
 - `apps/web/src/lib/data/predictions.ts`: latest/current prediction reads
 - `apps/web/src/lib/data/accuracy.ts`: historical accuracy reads
-- `apps/web/src/lib/data/replay.ts`: replay timeline assembly
 - `apps/web/src/lib/data/shows.ts`: show detail, next show, and setlist reads
 
 Client component rule:
@@ -48,7 +49,7 @@ Client component rule:
 
 - **Primary design input**: Google Stitch exports are the current visual source of truth for the website dashboard.
 - **Integration rule**: translate Stitch HTML/Tailwind exports into typed React components rather than pasting opaque static markup directly into route files.
-- **Product rule**: replace Stitch placeholder entities with real JamBandNerd-supported bands, models, and routes before shipping UI work.
+- **Product rule**: replace Stitch placeholder entities with real JamBandNerd-supported bands and routes before shipping UI work.
 - **Mobile rule**: preserve Stitch layout intent, but adapt navigation and dense modules for touch targets, fixed-bottom nav, and horizontal-scroll-safe tables.
 
 ## Product Direction
@@ -56,8 +57,6 @@ Client component rule:
 The website should become the primary public surface for:
 
 - Multi-band prediction browsing
-- Model comparison
-- Replay workflows
 - Accuracy and performance views
 - Last-show details and explanatory content
 
@@ -67,7 +66,7 @@ work is deployment hardening, hosted verification, and product refinement on the
 ## Operating Constraints
 
 - Keep `scripts/run_optimized_pipeline.py` as the canonical pipeline entrypoint.
-- Preserve existing Supabase prediction and accuracy tables unless the website exposes a real gap.
+- Preserve the single-model `setlist_*` Supabase prediction and accuracy contract unless the website exposes a real gap.
 - Avoid introducing a public API unless external-consumer requirements justify it later.
 - Do not reintroduce Streamlit-specific guidance into primary onboarding or operations docs.
 
@@ -98,7 +97,7 @@ npm run verify:web
 
 JamBandNerd should use a single public product version across the repo and website.
 
-- Current public version: `0.2.1`
+- Current public version: `0.3.0`
 - Versioning style: Semantic Versioning (`MAJOR.MINOR.PATCH`)
 - Scope rule: keep `pyproject.toml`, `src/jambandnerd/__init__.py`, `apps/web/package.json`, and the website footer version in sync
 
@@ -108,7 +107,7 @@ Use these bump rules:
 - Minor (`0.x.0`): new user-facing pages/features, notable analytics additions, or meaningful model/product improvements that do not break expected workflows
 - Major (`x.0.0`): breaking product changes, major route/navigation resets, incompatible data contracts, or the first stable public `1.0.0`
 
-Until the product is stable, stay on the `0.x` line. Treat `0.2.1` as the current visible website version rather than a finished general-availability release.
+Until the product is stable, stay on the `0.x` line. Treat `0.3.0` as the current visible website version rather than a finished general-availability release.
 
 ## Environment Variables
 
@@ -117,13 +116,7 @@ The website currently expects the same two server-side variables in all environm
 - `SUPABASE_URL`
 - `SUPABASE_ANON_KEY`
 
-For local review, the web app reads real Supabase data when those variables are
-set. Seeded preview data is only available when `JAMBNERD_PREVIEW_MODE=1` is
-set explicitly.
-
 For local development, copy `apps/web/.env.local.example` to `apps/web/.env.local`.
-If your local Next.js root is the repository root, you can also mirror the same
-two variables in `./.env.local`; the website loader checks both locations.
 
 Do not use a service-role key in the website environment.
 
@@ -142,9 +135,6 @@ The admin route now authenticates into an httpOnly cookie-backed session instead
 ## Vercel Project Setup
 
 Use Vercel’s native GitHub integration rather than a repo-driven deploy action.
-The production product URL is `https://jambandnerd.com`; legacy reference
-projects or design influences should not be documented as JamBandNerd product
-surfaces.
 
 Recommended project settings:
 
@@ -201,13 +191,15 @@ GitHub secret.
 After smoke verification, manually verify:
 
 - `/`
-- `/replay`
-- `/compare`
+- `/predictions`
 - `/performance`
 - `/last-show`
+- `/about`
+- `/contact`
+- `/data-use`
 
 Also confirm that pages render with server-side Supabase reads instead of the missing-env fallback state.
 
-The smoke test suite also covers `/about` and `/predictions` alongside the routes above.
+The smoke test suite also confirms removed multi-model routes stay unavailable.
 
 See [Main Branch Elevation](./main_branch_elevation.md) for the documented `main` branch promotion gate.

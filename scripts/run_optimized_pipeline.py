@@ -38,8 +38,7 @@ from scripts.run_um_collection import run_um_collection
 from scripts.run_wsp_collection import run_wsp_collection
 from scripts.validate_accuracy_tables import validate_accuracy
 from scripts.validate_prediction_tables import validate_predictions
-from src.jambandnerd.config.bands import get_repo_supported_bands
-from src.jambandnerd.models.registry import list_pipeline_models
+from src.jambandnerd.models.registry import list_active_bands
 
 logging.basicConfig(
     level=logging.INFO,
@@ -47,6 +46,7 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 logger = logging.getLogger(__name__)
+RETAINED_CORPUS_WINDOW = 50
 
 # Suppress noisy httpx logs
 logging.getLogger("httpx").setLevel(logging.WARNING)
@@ -87,7 +87,11 @@ def _validate_band_predictions(*, band: str, max_age_hours: int = 72) -> None:
 
 
 def _validate_band_accuracy(*, band: str, max_age_hours: int = 72) -> None:
-    failures = validate_accuracy(bands=[band], max_age_hours=max_age_hours)
+    failures = validate_accuracy(
+        bands=[band],
+        max_age_hours=max_age_hours,
+        replay_window=RETAINED_CORPUS_WINDOW,
+    )
 
     if failures:
         raise RuntimeError(
@@ -101,6 +105,7 @@ def _validate_band_accuracy_skip_freshness(
     failures = validate_accuracy(
         bands=[band],
         max_age_hours=max_age_hours,
+        replay_window=RETAINED_CORPUS_WINDOW,
         skip_freshness=True,
     )
 
@@ -119,6 +124,7 @@ def _audit_band_supabase(
     report = run_supabase_audit(
         bands=[band],
         max_age_hours=max_age_hours,
+        replay_window=RETAINED_CORPUS_WINDOW,
         skip_accuracy=skip_accuracy,
     )
     if report.state == "failed":
@@ -127,23 +133,22 @@ def _audit_band_supabase(
         )
 
 
-def _generate_band_predictions(*, band: str, model: str) -> None:
+def _generate_band_predictions(*, band: str) -> None:
     generate_live_predictions(
         band=band,
-        model=model,
         exclusion_window=None,
     )
 
 
-def _run_band_backtest(*, band: str, model: str) -> int:
+def _run_band_backtest(*, band: str) -> int:
     from scripts.run_backtest import run_backtest
 
     return run_backtest(
         band=band,
-        model=model,
+        model=None,
         start=None,
         end=None,
-        shows=50,
+        shows=RETAINED_CORPUS_WINDOW,
         exclusion_window=None,
         incremental=True,
         require_results=True,
@@ -215,37 +220,30 @@ def run_band_pipeline(
 
         return False
 
-    # Step 2: Generate Predictions, Backtest, and Calculate Accuracy for each model
-    models = [definition.slug for definition in list_pipeline_models()]
+    # Step 2: Generate Predictions, Backtest, and Calculate Accuracy
     backtest_incremental_all_scored = True
-    for model in models:
-        if not run_step(
-            _generate_band_predictions,
-            band,
-            f"{model.title()} Predictions",
-            model=model,
-        ):
-            return False
+    if not run_step(_generate_band_predictions, band, "Live Predictions"):
+        return False
 
-        if not skip_accuracy:
-            log_with_timestamp(f"[{band.upper()}] Starting: {model.title()} Backtest")
-            try:
-                scored_count = _run_band_backtest(band=band, model=model)
-            except Exception as e:
-                log_with_timestamp(
-                    f"[{band.upper()}] FAILED: {model.title()} Backtest with error: {e}"
-                )
-                traceback.print_exc()
-                return False
-            if scored_count:
-                backtest_incremental_all_scored = False
-            log_with_timestamp(f"[{band.upper()}] Finished: {model.title()} Backtest")
+    if not skip_accuracy:
+        log_with_timestamp(f"[{band.upper()}] Starting: Retained Corpus Backtest")
+        try:
+            scored_count = _run_band_backtest(band=band)
+        except Exception as e:
+            log_with_timestamp(
+                f"[{band.upper()}] FAILED: Retained Corpus Backtest with error: {e}"
+            )
+            traceback.print_exc()
+            return False
+        if scored_count:
+            backtest_incremental_all_scored = False
+        log_with_timestamp(f"[{band.upper()}] Finished: Retained Corpus Backtest")
 
     audit_skip_accuracy = skip_accuracy or backtest_incremental_all_scored
 
     if not skip_accuracy and backtest_incremental_all_scored:
         log_with_timestamp(
-            f"{log_prefix} All models had already-scored backtest windows; "
+            f"{log_prefix} Active model had an already-scored backtest window; "
             "accuracy freshness will be treated as immutable drift."
         )
 
@@ -289,7 +287,7 @@ def main():
     )
     parser.add_argument(
         "--band",
-        choices=[*get_repo_supported_bands(), "all"],
+        choices=[*list_active_bands(), "all"],
         default="all",
         help="Band to process (default: all)",
     )
@@ -308,7 +306,7 @@ def main():
     overall_start_time = time.time()
     log_with_timestamp("🚀 Starting JamBandNerd Pipeline Orchestrator")
 
-    all_bands = list(get_repo_supported_bands())
+    all_bands = list_active_bands()
     bands_to_process = all_bands if args.band == "all" else [args.band]
     results = {}
 

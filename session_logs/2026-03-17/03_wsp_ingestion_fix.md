@@ -20,7 +20,8 @@ uv run python scripts/generate_predictions.py --band wsp --model notebook
 uv run python scripts/generate_predictions.py --band wsp --model ckplus
 uv run python scripts/validate_prediction_tables.py --band wsp --max-age-hours 2
 BAND=wsp uv run python scripts/verify_data_freshness.py
-# Reviewed maintainer-owned reference docs for data-source policy and architecture.
+curl -sS https://raw.githubusercontent.com/connorkitchings/panicstats/main/docs/legal/data_source_policy.md
+curl -sS https://raw.githubusercontent.com/connorkitchings/panicstats/main/docs/architecture/system_overview.md
 ```
 
 ## Files And Artifacts

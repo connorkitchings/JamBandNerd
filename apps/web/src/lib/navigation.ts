@@ -28,20 +28,6 @@ export const DESKTOP_NAV_ITEMS: NavItem[] = [
     icon: "◬",
     matches: ["/performance"],
   },
-  {
-    href: "/compare",
-    label: "Compare",
-    mobileLabel: "Compare",
-    icon: "◎",
-    matches: ["/compare"],
-  },
-  {
-    href: "/replay",
-    label: "Replay",
-    mobileLabel: "Replay",
-    icon: "◧",
-    matches: ["/replay", "/explorer"],
-  },
 ];
 
 export const MOBILE_NAV_ITEMS: NavItem[] = [
@@ -65,20 +51,6 @@ export const MOBILE_NAV_ITEMS: NavItem[] = [
     mobileLabel: "Predict",
     icon: "◈",
     matches: ["/predictions"],
-  },
-  {
-    href: "/compare",
-    label: "Compare",
-    mobileLabel: "Compare",
-    icon: "◎",
-    matches: ["/compare"],
-  },
-  {
-    href: "/replay",
-    label: "Replay",
-    mobileLabel: "Replay",
-    icon: "◧",
-    matches: ["/replay", "/explorer"],
   },
 ];
 

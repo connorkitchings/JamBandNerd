@@ -3,11 +3,23 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any, Dict, Iterable, List
+from typing import Any, Dict, Iterable, List, Optional
 
 import pandas as pd
 
-from jambandnerd.data_collection.utils import compute_source_hash, parse_date
+from jambandnerd.data_collection.utils import compute_source_hash
+
+
+def _parse_date(value: Optional[str]) -> Optional[str]:
+    """Parse a date-like string to ISO format or return None."""
+    if not value:
+        return None
+    for fmt in ("%Y-%m-%d", "%Y/%m/%d", "%m/%d/%Y", "%d-%m-%Y"):
+        try:
+            return datetime.strptime(str(value), fmt).date().isoformat()
+        except (ValueError, TypeError):
+            continue
+    return None
 
 
 def normalize_songs(raw: Iterable[Dict[str, Any]]) -> pd.DataFrame:
@@ -44,7 +56,7 @@ def normalize_shows(raw: Iterable[Dict[str, Any]]) -> pd.DataFrame:
             continue
         record = {
             "show_id": str(show_id),
-            "show_date": parse_date(item.get("showdate") or item.get("show_date")),
+            "show_date": _parse_date(item.get("showdate") or item.get("show_date")),
             "venue_name": item.get("venuename") or item.get("venue_name"),
             "venue_city": item.get("city"),
             "venue_state": item.get("state"),

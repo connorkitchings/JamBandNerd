@@ -42,30 +42,22 @@ A cloud-based data platform for collecting, transforming, and predicting jam ban
     SUPABASE_ANON_KEY=your_supabase_anon_key
     ```
 
-    When those website variables are present, the app reads real Supabase data
-    locally. If your local Next.js root is the repository root, you can also put
-    the same two variables in `./.env.local`; the website loader checks both
-    locations. Seeded preview data is available only when
-    `JAMBNERD_PREVIEW_MODE=1` is set explicitly.
-
 ## Usage
 
 ### Optimized Pipeline (Recommended)
 
 The primary local helper for running the data pipeline is `run_optimized_pipeline.py`.
-It mirrors the promoted daily workflow sequence for the repo-supported bands.
+It mirrors the promoted daily workflow sequence for the active single-model
+bands. Eggy remains excluded from this first rollout slice.
 The canonical automation contract itself lives in
 `.github/workflows/daily-pipeline.yml`.
 
 ```bash
-# Run the complete pipeline for all supported bands
+# Run the complete pipeline for all active single-model bands
 uv run python scripts/run_optimized_pipeline.py --band all
 
 # Run the pipeline for a single band (e.g., Goose)
 uv run python scripts/run_optimized_pipeline.py --band goose
-
-# Run the pipeline for Eggy
-uv run python scripts/run_optimized_pipeline.py --band eggy
 
 # Skip accuracy calculations for a faster run
 uv run python scripts/run_optimized_pipeline.py --band all --skip-accuracy
@@ -73,11 +65,11 @@ uv run python scripts/run_optimized_pipeline.py --band all --skip-accuracy
 
 ### Advanced Usage
 
-While the optimized pipeline is recommended, you can also run individual components for debugging or granular control. The main scripts accept `--band` and `--model` arguments.
+While the optimized pipeline is recommended, you can also run individual components for debugging or granular control.
 
 ```bash
-# Generate live next-show predictions for a single band and model
-uv run python scripts/generate_live_predictions.py --band phish --model deal
+# Generate live next-show predictions for a single band
+uv run python scripts/generate_live_predictions.py --band phish
 
 # Sync the retained last-50 completed-show prediction and metric corpus
 uv run python scripts/sync_retained_prediction_corpus.py --band goose --window 50
@@ -87,7 +79,6 @@ uv run python scripts/run_eggy_collection.py --skip-validation
 
 # Convenience wrappers for Billy Strings predictions
 uv run predict-billy -- --date 2025-10-24
-uv run predict-billy -- --date 2025-10-24 --model deal
 ```
 
 For detailed usage, please refer to the full documentation.
@@ -99,11 +90,9 @@ JamBandNerd now ships a website-first product surface in `apps/web`. The target 
 The target website experience includes:
 
 - **Multi-band selection**: Switch between all dynamically discovered bands.
-- **Model comparison**: Toggle between Notebook and Deal models.
-- **Live predictions**: View latest predictions with detailed metrics.
-- **Replay**: Browse recent retained shows to review both model boards against the actual setlist.
+- **Live predictions**: One precision-optimized prediction board per band — the single best answer to "what's likely tonight?"
 - **Accuracy visualization**: Historical performance charts with configurable K values (K=10/25/50; selected K highlighted).
-- **Show details**: Prominent Next Show header with venue, plus model and prediction timestamp.
+- **Show details**: Prominent Next Show header with venue and prediction timestamp.
 
 The primary local UI workflow is:
 
@@ -199,7 +188,7 @@ follow the collector script pattern, update the repo band config, add a
 - Band-specific raw collectors with unified downstream contracts.
 - Show-centric normalization of shows, setlists, and songs before modeling.
 - In-memory transformation pipeline (no intermediate transformed tables).
-- Pluggable prediction models (Notebook, Deal).
+- Single per-band prediction model, precision-optimized for top-25 setlist accuracy.
 - Unified cross-band prediction and accuracy storage.
 - Supabase backend with automated validation.
 - Website-first product delivery through the live `apps/web` surface.
@@ -208,7 +197,7 @@ follow the collector script pattern, update the repo band config, add a
 
 ### Widespread Panic Data & Fallback
 
-The WSP data collector scrapes `everydaycompanion.com`. This process is enhanced with browser automation (Playwright) to ensure high reliability even against sophisticated bot detection. If a recent historical setlist is missing from EC, the pipeline attempts fallback sources in order: first PanicStream, then TourWrangler. A centralized song name canonicalizer normalizes all WSP source song names to EC catalog forms. When EC later publishes the setlist, the EC data will automatically replace the fallback data, ensuring the highest quality data is used.
+The WSP data collector scrapes `everydaycompanion.com`. This process is enhanced with browser automation (Playwright) to ensure high reliability even against sophisticated bot detection. If a recent historical setlist is missing from EC, the pipeline attempts a backup read from `TourWrangler.com` using a cleaned parser. When EC later publishes the setlist, the EC data will automatically replace the TourWrangler data, ensuring the highest quality data is used.
 
 ### Automation
 
@@ -216,7 +205,7 @@ The platform features comprehensive automation through GitHub Actions:
 
 - **Daily Pipeline**: Runs automatically at 3 PM ET every day.
 - **Fantasy Goose**: A dedicated GitHub Actions workflow can auto-submit Goose notebook picks when Fantasy Goose exposes an eligible show and the required secrets are configured.
-- **Dynamic Matrix**: The pipeline runs the repo-authoritative automation band list through `scripts/get_all_bands.py`.
+- **Dynamic Matrix**: The pipeline runs a repo-authoritative band list (goose, phish, wsp, billy, um) defined in the daily workflow setup job.
 - **Manual Triggers**: On-demand execution with band selection via the GitHub UI.
 - **Error Resilience**: Parallel matrix execution with graceful failure handling and explicit degraded-mode reporting for volatile upstreams such as WSP.
 - **Secret Management**: Secure API key and database credential handling.

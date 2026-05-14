@@ -3,12 +3,13 @@ import type { Metadata } from "next";
 import { ContactActions } from "@/components/contact-actions";
 import { PageHero } from "@/components/page-hero";
 import { SectionCard } from "@/components/section-card";
-import { CONTACT_EMAIL } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Contact | JamBandNerd",
   description: "Get in touch with JamBandNerd about feedback, corrections, and collaboration.",
 };
+
+const CONTACT_EMAIL = "jambandnerd2026@gmail.com";
 
 export default function ContactPage() {
   return (

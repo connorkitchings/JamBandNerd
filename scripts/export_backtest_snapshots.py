@@ -44,6 +44,7 @@ def export_backtest_snapshots(
     *,
     bands: list[str],
     snapshot_root: str,
+    snapshot_format: str = "json",
 ) -> dict[str, object]:
     """Export the raw-table snapshots required for the requested bands."""
 
@@ -53,7 +54,11 @@ def export_backtest_snapshots(
             if table_name not in table_names:
                 table_names.append(table_name)
 
-    return export_tables_to_snapshot(table_names, snapshot_root=snapshot_root)
+    return export_tables_to_snapshot(
+        table_names,
+        snapshot_root=snapshot_root,
+        snapshot_format=snapshot_format,
+    )
 
 
 def main() -> None:
@@ -70,16 +75,23 @@ def main() -> None:
         required=True,
         help="Directory where local snapshot JSON files should be written.",
     )
+    parser.add_argument(
+        "--format",
+        choices=["json", "parquet"],
+        default="json",
+        help="Snapshot file format to write (default: json).",
+    )
     args = parser.parse_args()
 
     bands = parse_bands(args.band)
     manifest = export_backtest_snapshots(
         bands=bands,
         snapshot_root=args.snapshot_root,
+        snapshot_format=args.format,
     )
     print(
         f"Exported snapshots for {len(bands)} band(s) to {Path(args.snapshot_root)} "
-        f"({len(manifest.get('tables', {}))} table files)."
+        f"({len(manifest.get('tables', {}))} {args.format} table files)."
     )
 
 

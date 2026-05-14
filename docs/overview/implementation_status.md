@@ -1,14 +1,14 @@
 # JamBandNerd Implementation Status
 
-**Last Updated**: 2026-04-14
-**Project Version**: 0.2.1
+**Last Updated**: 2026-05-11
+**Project Version**: 0.3.0
 
 ## Overall Status
 
 JamBandNerd has a production-ready website-first product surface and a production-capable data platform with explicit degraded-mode handling for volatile upstreams.
 
 - **Pipeline status**: stable and production-capable, with WSP degraded-mode handling in CI
-- **Prediction status**: stable across supported models and bands, with strict workflow failures for supported-model no-output cases and bounded degraded-data reuse
+- **Prediction status**: single-model-per-band platform cutover in progress, with strict workflow failures for no-output cases and bounded degraded-data reuse
 - **Automation status**: daily GitHub Actions workflows in place, including per-band health reporting
 - **Frontend status**: `apps/web` is the sole product surface
 
@@ -17,19 +17,19 @@ JamBandNerd has a production-ready website-first product surface and a productio
 ### Data and Modeling
 
 - Band-specific collectors for 6 bands: Goose, Phish, Eggy, Billy Strings, Widespread Panic, Umphrey's McGee
-- Supabase raw tables plus unified prediction and accuracy storage
+- Supabase raw tables plus single-model `setlist_*` prediction and accuracy storage
 - In-memory transforms with `reference_date` protection
-- Notebook and Deal promoted prediction models
-- CK+ retained as a retired historical baseline with stored historical outputs
-- Backtesting with replay lineage through `historical_prediction_runs`
+- One registered active model version per Phase A band
+- Legacy Notebook/Deal/CK+ retained for baseline comparison and rollback context
+- Backtesting with retained completed-show lineage through `setlist_results`
 - Unified `show_id` convention across all bands (Phish migration complete)
 
 ### Prediction Storage
 
-- Canonical JSON prediction rows in unified `predictions`
-- Derived per-song projection (`prediction_songs`) for website reads
-- Automatic stale-row cleanup in `replace_prediction_projection()`
-- Rebuildable projection via `scripts/rebuild_prediction_songs.py`
+- Canonical live prediction rows in `setlist_predictions`
+- Derived per-song projection in `setlist_prediction_songs` for website reads
+- Retained completed-show boards in `setlist_results`
+- Per-show metrics in `setlist_accuracy`
 
 ### Operations
 
@@ -50,9 +50,9 @@ JamBandNerd has a production-ready website-first product surface and a productio
 
 ### Website
 
-- 10 public routes: `/`, `/predictions`, `/performance`, `/compare`, `/replay`, `/explorer` (redirect), `/last-show`, `/about`, `/contact`, `/data-use`
+- 7 public routes: `/`, `/predictions`, `/performance`, `/last-show`, `/about`, `/contact`, `/data-use`
 - Admin setlist submission at `/admin/setlist`
-- Dynamic band and model discovery from Supabase
+- Dynamic band discovery from Supabase
 - Vercel deployment with native GitHub integration
 - Mobile-responsive design
 
@@ -64,6 +64,17 @@ JamBandNerd has a production-ready website-first product surface and a productio
 - HTML fixture regression tests
 
 ## Active Priorities
+
+### Current Upstream Blockers
+
+- WSP full-audit readiness is blocked by recent Everyday Companion pages that
+  expose show pages but no setlist table for May 8 and May 9, 2026. Treat this
+  as an upstream data-availability blocker, not a model-promotion blocker.
+- Billy full-audit readiness is blocked by `bmfsdb.com` returning HTTP 500
+  during source reachability preflight.
+- Until both upstreams can publish current website-facing rows again, defer the
+  full five-band Supabase audit and preserve the already-validated Goose,
+  Phish, and UM readiness fixes.
 
 ### Website Operations
 
@@ -81,7 +92,7 @@ JamBandNerd has a production-ready website-first product surface and a productio
 
 - The website at `apps/web` is the sole maintained product surface.
 - WSP remains part of the supported catalog, but CI now handles Everyday Companion blocking as an explicit degraded state instead of treating it as a full cross-band outage.
-- WSP Notebook remains supported alongside Deal. Daily workflow commands now require fresh output for both models so silent no-op runs fail fast instead of leaving stale rows behind.
+- Daily workflow commands now require fresh output for each active band's registered model version so silent no-op runs fail fast instead of leaving stale rows behind.
 - Degraded-mode reuse is no longer unbounded: supported predictions and accuracy are audited against a `48h` freshness window, and stale supported predictions now escalate the band job even when collection degraded gracefully.
 - Manual `skip_accuracy=true` dispatches still record stale supported accuracy, but they do not fail solely because accuracy regeneration was explicitly skipped.
 - Pipeline and schema stability remain the priority during ongoing website operations.

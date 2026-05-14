@@ -315,7 +315,7 @@ def test_wsp_process_uses_paginated_existing_setlist_reads(monkeypatch):
     monkeypatch.setattr(
         wsp_orchestration,
         "normalize_setlists",
-        lambda rows, canonical_lookup=None: pd.DataFrame(rows),
+        lambda rows: pd.DataFrame(rows),
     )
     monkeypatch.setattr(
         wsp_orchestration,

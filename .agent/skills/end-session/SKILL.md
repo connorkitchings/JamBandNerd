@@ -10,7 +10,8 @@ Use before finishing a meaningful development session.
 2. Update docs affected by the session.
 3. Create or update `session_logs/YYYY-MM-DD/NN.md`.
 4. Add a reusable lesson to `.agent/PLAYBOOK.md` if the session exposed a durable pattern.
-5. Leave a one-line next step in the log.
+5. Commit all changes with a concise message summarizing the session's work.
+6. Leave a one-line next step in the log.
 
 ## Required Log Content
 
@@ -26,3 +27,4 @@ Use before finishing a meaningful development session.
 - Finishing without a session log
 - Leaving entrypoint docs stale after changing workflow
 - Hiding skipped validation
+- Forgetting to commit before ending the session

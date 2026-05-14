@@ -1,7 +1,7 @@
 type PredictionUpdateScope = {
   band: string;
-  model: string;
-  referenceDate: string;
+  targetShowKey?: string | null;
+  targetShowDate?: string | null;
 };
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -29,12 +29,17 @@ export function matchesPredictionUpdateScope(
   }
 
   const band = readTextField(record, ["band"]);
-  const model = readTextField(record, ["model_slug", "modelSlug", "model"]);
-  const referenceDate = readTextField(record, ["reference_date", "referenceDate"]);
+  const targetShowKey = readTextField(record, ["target_show_key", "targetShowKey"]);
+  const targetShowDate = readTextField(record, [
+    "target_show_date",
+    "targetShowDate",
+  ]);
 
   return (
     band === scope.band &&
-    model === scope.model &&
-    referenceDate === scope.referenceDate
+    (
+      Boolean(scope.targetShowKey && targetShowKey === scope.targetShowKey) ||
+      Boolean(scope.targetShowDate && targetShowDate === scope.targetShowDate)
+    )
   );
 }

@@ -133,8 +133,21 @@ def _slug_matches_city_state(
 
 
 def _normalize_song_name(song_name: str) -> str:
-    """Strip whitespace from a song name."""
-    return song_name.strip()
+    """Apply specific normalizations to song names."""
+    cleaned = song_name.strip()
+    lowered = cleaned.lower()
+
+    if lowered == "walkin'":
+        return "Walkin' (For Your Love)"
+
+    if lowered in {
+        "bowlegged woman knock kneed man",
+        "bowlegged woman, knock kneed man",
+        "knock kneed man",
+    }:
+        return "Bowlegged Woman"
+
+    return cleaned
 
 
 def _remove_parenthesized_text(text: str) -> str:

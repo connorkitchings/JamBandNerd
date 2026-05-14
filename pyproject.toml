@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "jambandnerd"
-version = "0.2.1"
+version = "0.3.0"
 description = "Modular data science platform for jam band setlists, pipelines, and analytics."
 authors = [
   { name = "Connor Kitchings" }
@@ -15,6 +15,7 @@ license = { text = "MIT" }
 
 dependencies = [
     "pandas",
+    "pyarrow",
     "requests",
     "python-dotenv",
     "lxml==6.1.0",
@@ -23,7 +24,10 @@ dependencies = [
     "psycopg2-binary",
     "typer",
     "tqdm",
-    "playwright>=1.59.0",
+    "playwright>=1.40.0",
+    "lightgbm>=4.0.0",
+    "duckdb>=1.0.0",
+    "scikit-learn>=1.8.0",
 ]
 
 [project.optional-dependencies]
@@ -33,7 +37,6 @@ dev = [
   "pytest>=9.0.3",
   "mypy",
   "pytest-cov",
-  "types-requests>=2.33.0.20260503",
 ]
 docs = [
   "mkdocs",
@@ -93,4 +96,3 @@ python_version = "3.12"
 warn_return_any = true
 warn_unused_configs = true
 ignore_missing_imports = true
-explicit_package_bases = true

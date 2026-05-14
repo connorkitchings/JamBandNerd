@@ -1,4 +1,4 @@
-"""Audit supported-model prediction and accuracy freshness for one band.
+"""Audit active single-band prediction and accuracy freshness for one band.
 
 This script is intended for GitHub Actions and operator diagnostics. It reports
 freshness for the currently supported model surfaces without failing simply
@@ -19,15 +19,13 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, project_root)
 
 from jambandnerd.config import (
-    COMPLETED_SHOW_ACCURACY_TABLE,
-    NEXT_SHOW_PREDICTION_RUNS_TABLE,
+    SETLIST_ACCURACY_TABLE,
+    SETLIST_PREDICTIONS_TABLE,
 )
 from jambandnerd.db.connection import get_supabase_client
 from jambandnerd.models.registry import (
-    list_accuracy_validation_models,
-    list_models,
+    get_band_metadata,
 )
-from scripts.common import parse_timestamp
 from scripts.validate_prediction_tables import _has_upcoming_show
 
 
@@ -66,6 +64,15 @@ def _format_hours_output(value: float | None) -> str:
     return "" if value is None else f"{value:.1f}"
 
 
+def _parse_timestamp(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
 def _latest_timestamp_row(
     client,
     *,
@@ -73,7 +80,6 @@ def _latest_timestamp_row(
     band: str,
     model_version: str,
     timestamp_field: str,
-    model_slug: str | None = None,
 ):
     query = (
         client.table(table)
@@ -81,8 +87,6 @@ def _latest_timestamp_row(
         .eq("band", band)
         .eq("model_version", model_version)
     )
-    if model_slug:
-        query = query.eq("model_slug", model_slug)
     rows = query.order(timestamp_field, desc=True).limit(1).execute().data or []
     return rows[0] if rows else None
 
@@ -100,7 +104,7 @@ def _evaluate_timestamp_row(
     if not row:
         return True, None, missing_reason
 
-    timestamp = parse_timestamp(str(row.get(timestamp_field) or ""))
+    timestamp = _parse_timestamp(str(row.get(timestamp_field) or ""))
     if timestamp is None:
         return True, None, invalid_reason
 
@@ -109,14 +113,6 @@ def _evaluate_timestamp_row(
         return True, age_hours, f"{stale_reason_prefix} age={age_hours:.1f}h"
 
     return False, age_hours, ""
-
-
-def _list_supported_prediction_models():
-    return [
-        definition
-        for definition in list_models()
-        if definition.enabled_for_pipeline or definition.enabled_for_web
-    ]
 
 
 def audit_supported_model_freshness(
@@ -130,13 +126,9 @@ def audit_supported_model_freshness(
     client = client or get_supabase_client()
     now = datetime.now(timezone.utc)
 
-    prediction_models = {
-        definition.slug: definition
-        for definition in _list_supported_prediction_models()
-    }
-    accuracy_models = {
-        definition.slug: definition for definition in list_accuracy_validation_models()
-    }
+    metadata = get_band_metadata(band)
+    model_version = metadata.model_version
+    model_label = model_version
 
     stale_prediction_models: list[str] = []
     stale_accuracy_models: list[str] = []
@@ -147,42 +139,39 @@ def audit_supported_model_freshness(
     surface_lines: list[str] = []
     live_prediction_required = _has_upcoming_show(client, band=band)
 
-    for slug in sorted(prediction_models):
-        definition = prediction_models[slug]
-        if not live_prediction_required:
-            surface_lines.append(
-                _render_surface_line(
-                    slug=slug,
-                    surface="predictions",
-                    age_hours=None,
-                    is_stale=False,
-                    fallback_reason="no upcoming show; live prediction not required",
-                )
+    if not live_prediction_required:
+        surface_lines.append(
+            _render_surface_line(
+                slug=model_label,
+                surface="predictions",
+                age_hours=None,
+                is_stale=False,
+                fallback_reason="no upcoming show; live prediction not required",
             )
-            continue
+        )
+    else:
         row = _latest_timestamp_row(
             client,
-            table=NEXT_SHOW_PREDICTION_RUNS_TABLE,
+            table=SETLIST_PREDICTIONS_TABLE,
             band=band,
-            model_version=definition.version,
+            model_version=model_version,
             timestamp_field="generated_at",
-            model_slug=definition.slug,
         )
         is_stale, age_hours, reason = _evaluate_timestamp_row(
             row=row,
             timestamp_field="generated_at",
             max_age_hours=max_age_hours,
             now=now,
-            missing_reason=f"{slug} predictions missing",
-            invalid_reason=f"{slug} predictions missing valid generated_at",
-            stale_reason_prefix=f"{slug} predictions stale",
+            missing_reason=f"{model_label} predictions missing",
+            invalid_reason=f"{model_label} predictions missing valid generated_at",
+            stale_reason_prefix=f"{model_label} predictions stale",
         )
         if age_hours is not None:
             prediction_ages.append(age_hours)
 
         surface_lines.append(
             _render_surface_line(
-                slug=slug,
+                slug=model_label,
                 surface="predictions",
                 age_hours=age_hours,
                 is_stale=is_stale,
@@ -190,47 +179,44 @@ def audit_supported_model_freshness(
             )
         )
         if is_stale:
-            stale_prediction_models.append(slug)
+            stale_prediction_models.append(model_label)
             prediction_reasons.append(reason)
 
-    for slug in sorted(accuracy_models):
-        definition = accuracy_models[slug]
+    per_show_row = _latest_timestamp_row(
+        client,
+        table=SETLIST_ACCURACY_TABLE,
+        band=band,
+        model_version=model_version,
+        timestamp_field="evaluated_at",
+    )
 
-        per_show_row = _latest_timestamp_row(
-            client,
-            table=COMPLETED_SHOW_ACCURACY_TABLE,
-            band=band,
-            model_version=definition.version,
-            timestamp_field="evaluated_at",
+    per_show_stale, per_show_age, per_show_reason = _evaluate_timestamp_row(
+        row=per_show_row,
+        timestamp_field="evaluated_at",
+        max_age_hours=max_age_hours,
+        now=now,
+        missing_reason=f"{model_label} per-show accuracy missing",
+        invalid_reason=f"{model_label} per-show accuracy missing valid evaluated_at",
+        stale_reason_prefix=f"{model_label} per-show accuracy stale",
+    )
+
+    if per_show_age is not None:
+        accuracy_ages.append(per_show_age)
+
+    is_stale = per_show_stale
+    reasons = [per_show_reason] if per_show_reason else []
+    surface_lines.append(
+        _render_surface_line(
+            slug=model_label,
+            surface="accuracy",
+            age_hours=per_show_age,
+            is_stale=is_stale,
+            fallback_reason="; ".join(reasons) if reasons else "",
         )
-
-        per_show_stale, per_show_age, per_show_reason = _evaluate_timestamp_row(
-            row=per_show_row,
-            timestamp_field="evaluated_at",
-            max_age_hours=max_age_hours,
-            now=now,
-            missing_reason=f"{slug} per-show accuracy missing",
-            invalid_reason=f"{slug} per-show accuracy missing valid evaluated_at",
-            stale_reason_prefix=f"{slug} per-show accuracy stale",
-        )
-
-        if per_show_age is not None:
-            accuracy_ages.append(per_show_age)
-
-        is_stale = per_show_stale
-        reasons = [per_show_reason] if per_show_reason else []
-        surface_lines.append(
-            _render_surface_line(
-                slug=slug,
-                surface="accuracy",
-                age_hours=per_show_age,
-                is_stale=is_stale,
-                fallback_reason="; ".join(reasons) if reasons else "",
-            )
-        )
-        if is_stale:
-            stale_accuracy_models.append(slug)
-            accuracy_reasons.extend(reasons)
+    )
+    if is_stale:
+        stale_accuracy_models.append(model_label)
+        accuracy_reasons.extend(reasons)
 
     max_prediction_age_hours = max(prediction_ages) if prediction_ages else None
     max_accuracy_age_hours = max(accuracy_ages) if accuracy_ages else None
@@ -239,10 +225,8 @@ def audit_supported_model_freshness(
         freshness_state = "stale"
     elif stale_accuracy_models:
         freshness_state = "warning"
-    elif prediction_models or accuracy_models:
-        freshness_state = "fresh"
     else:
-        freshness_state = "unknown"
+        freshness_state = "fresh"
 
     if freshness_state == "fresh":
         freshness_reason = (
@@ -259,7 +243,7 @@ def audit_supported_model_freshness(
             reasons.extend(accuracy_reasons)
         freshness_reason = "; ".join(reasons) or "supported-model freshness stale"
     else:
-        freshness_reason = "no supported models resolved for freshness audit"
+        freshness_reason = "active single-band model freshness state is unknown"
 
     if emit_text:
         print(
@@ -306,7 +290,7 @@ def _render_surface_line(
     return f"- {slug} {surface}: {status}"
 
 
-def write_github_outputs(result: SupportedModelFreshnessResult) -> None:
+def _write_github_outputs(result: SupportedModelFreshnessResult) -> None:
     github_output = os.environ.get("GITHUB_OUTPUT")
     if not github_output:
         return
@@ -346,7 +330,7 @@ def main() -> None:
         skip_accuracy=args.skip_accuracy,
         emit_text=args.format == "text",
     )
-    write_github_outputs(result)
+    _write_github_outputs(result)
 
     if args.format == "json":
         print(json.dumps(result.as_dict()))

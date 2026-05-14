@@ -72,7 +72,7 @@ COLLECTOR_CONFIGS = {
         cache_dir=CACHE_DIR,
     ),
     "um": CollectorConfig(
-        base_url="https://allthings.umphreys.com/api",
+        base_url="https://allthings.umphreys.com",
         timeout=60,
         max_retries=5,
         backoff_factor=2.0,

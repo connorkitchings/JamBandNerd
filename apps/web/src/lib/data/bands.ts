@@ -5,10 +5,10 @@
 import "server-only";
 
 import { cache } from "react";
+
 import { DEFAULT_BAND_SLUG, type BandSlug, normalizeBand } from "@/lib/config";
 import { getSupabaseServerClient, hasSupabaseEnv } from "@/lib/supabase/server";
 
-import { getPreviewBands, shouldUseLocalPreview } from "./preview";
 import type { BandEntry, RouteState } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -16,7 +16,7 @@ import type { BandEntry, RouteState } from "./types";
 // ---------------------------------------------------------------------------
 
 export function getClientOrState<T>(): RouteState<T> | null {
-  if (!hasSupabaseEnv() && !shouldUseLocalPreview()) {
+  if (!hasSupabaseEnv()) {
     return { status: "missing_env" };
   }
 
@@ -29,51 +29,48 @@ export function getClientOrState<T>(): RouteState<T> | null {
 
 export const getBands = cache(
   async (): Promise<RouteState<{ bands: BandEntry[] }>> => {
-  if (shouldUseLocalPreview()) {
-    return { status: "ready", bands: getPreviewBands() };
-  }
-
-  const missingEnv = getClientOrState<{ bands: BandEntry[] }>();
-  if (missingEnv) {
-    return missingEnv;
-  }
-
-  const client = getSupabaseServerClient();
-  if (!client) {
-    return { status: "missing_env" };
-  }
-
-  try {
-    const { data, error } = await client
-      .from("bands")
-      .select("slug, display_name, shows_table, id_column")
-      .eq("is_active", true)
-      .order("display_name", { ascending: true });
-
-    if (error) {
-      return { status: "error", message: error.message };
+    const missingEnv = getClientOrState<{ bands: BandEntry[] }>();
+    if (missingEnv) {
+      return missingEnv;
     }
 
-    const bands: BandEntry[] =
-      data?.map((row) => ({
-        slug: String(row.slug),
-        displayName: String(row.display_name),
-        showsTable: String(row.shows_table),
-        idColumn: String(row.id_column),
-      })) ?? [];
-
-    if (bands.length === 0) {
-      return { status: "empty" };
+    const client = getSupabaseServerClient();
+    if (!client) {
+      return { status: "missing_env" };
     }
 
-    return { status: "ready", bands };
-  } catch (error) {
-    return {
-      status: "error",
-      message: error instanceof Error ? error.message : "Unknown error",
-    };
+    try {
+      const { data, error } = await client
+        .from("bands")
+        .select("slug, display_name, shows_table, id_column")
+        .eq("is_active", true)
+        .order("display_name", { ascending: true });
+
+      if (error) {
+        return { status: "error", message: error.message };
+      }
+
+      const bands: BandEntry[] =
+        data?.map((row) => ({
+          slug: String(row.slug),
+          displayName: String(row.display_name),
+          showsTable: String(row.shows_table),
+          idColumn: String(row.id_column),
+        })) ?? [];
+
+      if (bands.length === 0) {
+        return { status: "empty" };
+      }
+
+      return { status: "ready", bands };
+    } catch (error) {
+      return {
+        status: "error",
+        message: error instanceof Error ? error.message : "Unknown error",
+      };
+    }
   }
-});
+);
 
 // ---------------------------------------------------------------------------
 // Band selection helpers

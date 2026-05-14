@@ -1,23 +1,9 @@
-/**
- * Barrel re-export for the data layer.
- *
- * All domain logic has been decomposed into focused modules under `data/`.
- * This file re-exports everything so existing import paths (`@/lib/data`)
- * continue to work without changes.
- *
- * New code should prefer importing from the specific domain module
- * (e.g. `@/lib/data/predictions`) for better tree-shaking.
- */
-
 // --- Types ---
 export type {
   AccuracyRow,
   BandEntry,
-  ExplorerSnapshot,
   PredictionRow,
   PredictionSnapshot,
-  ReplayShowOption,
-  ReplaySnapshot,
   RouteState,
   SetlistSong,
   SetlistSnapshot,
@@ -52,12 +38,9 @@ export {
 
 // --- Predictions ---
 export {
-  getCurrentModelVersion,
-  getExplorerSnapshot,
   getLatestPredictions,
   getPredictionDates,
   getPredictionsForDate,
-  resolveReplayModels,
 } from "./data/predictions";
 
 // --- Accuracy ---
@@ -71,10 +54,3 @@ export {
   getSetlistForDate,
   getShowDetailsByDate,
 } from "./data/shows";
-
-// --- Replay ---
-export { getReplaySnapshot } from "./data/replay";
-
-// --- Model agreement (pass-through) ---
-export type { ModelAgreement, ModelAgreementTier } from "@/lib/model-agreement";
-export { calculateModelAgreement } from "@/lib/model-agreement";

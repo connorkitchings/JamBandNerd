@@ -12,12 +12,11 @@ import argparse
 import os
 import sys
 from datetime import datetime
-from typing import List
+from typing import Iterable, List
 
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 sys.path.insert(0, project_root)
 
-from scripts.common import batched_values
 from src.jambandnerd.db.connection import get_supabase_client  # noqa: E402
 
 PAGE_SIZE = 1000
@@ -27,6 +26,17 @@ DELETE_BATCH_SIZE = 100
 def _validate_date(raw: str) -> str:
     datetime.strptime(raw, "%Y-%m-%d")
     return raw
+
+
+def _chunked(values: Iterable[int], chunk_size: int) -> Iterable[List[int]]:
+    batch: List[int] = []
+    for value in values:
+        batch.append(value)
+        if len(batch) >= chunk_size:
+            yield batch
+            batch = []
+    if batch:
+        yield batch
 
 
 def _fetch_show_ids(client, date_from: str, date_to: str) -> List[int]:
@@ -47,7 +57,7 @@ def _fetch_show_ids(client, date_from: str, date_to: str) -> List[int]:
 
 def _count_setlist_rows(client, show_ids: List[int]) -> int:
     total = 0
-    for batch in batched_values(show_ids, DELETE_BATCH_SIZE):
+    for batch in _chunked(show_ids, DELETE_BATCH_SIZE):
         offset = 0
         while True:
             response = (
@@ -67,7 +77,7 @@ def _count_setlist_rows(client, show_ids: List[int]) -> int:
 
 def _delete_setlist_rows(client, show_ids: List[int]) -> int:
     deleted = 0
-    for batch in batched_values(show_ids, DELETE_BATCH_SIZE):
+    for batch in _chunked(show_ids, DELETE_BATCH_SIZE):
         response = (
             client.table("wsp_setlists_raw").delete().in_("show_id", batch).execute()
         )

@@ -20,7 +20,7 @@ graph TD
     C[Supabase Raw Tables]
     D[Shared Normalization]
     E[ModelData]
-    F[Notebook and Deal Models]
+    F[Per-Band Prediction Models]
     G[Predictions and Accuracy Tables]
     H[Website]
 
@@ -42,7 +42,8 @@ graph TD
   `{band}_songs_raw`.
 - Supporting tables such as venues or upcoming shows are allowed when the
   source requires them.
-- WSP remains a special-case collector because CI reliability can require browser automation. A centralized song name canonicalizer (`src/jambandnerd/data_collection/wsp/song_canonicalizer.py`) normalizes song names from all WSP sources (EC, PanicStream, TourWrangler) to EC catalog forms using a hybrid static-alias + dynamic-lookup approach.
+- WSP remains a special-case collector because CI reliability can require
+  browser automation.
 
 ### Normalization and Transformations
 
@@ -56,40 +57,52 @@ graph TD
 
 ### Models and Evaluation
 
-- `ModelData` is the canonical handoff from transforms into models.
-- Notebook and Deal are the promoted website-facing models. CK+ is retired and
-  retained only as a historical baseline because legacy prediction and accuracy
-  rows still exist in storage.
-- All three registered models rely on the same ordered historical show sequence and
-  the same `reference_date` anti-leakage rule.
-- `completed_show_accuracy` is the canonical granular evaluation source used by
-  the workflow, audits, and website-facing diagnostics. It is retained to the
-  last 50 eligible completed shows per band/model.
+> **Branch note (feat/single-model-per-band)**: This branch is transitioning
+> from multi-model (Notebook/Deal per band) to one precision-optimized model per
+> band. See `docs/contributor/adr/0001-single-model-per-band.md`. Legacy tables
+> continue serving `main`/`dev` until cutover.
+
+- `ModelData` is the canonical handoff from transforms into models. It remains
+  shared across all band models.
+- The target architecture has **one promoted model per band**. Each band's
+  predictor class lives under `src/jambandnerd/models/{band}/` and implements
+  the `PredictionModel` ABC. Architectures may differ across bands.
+- All models respect the `reference_date` anti-leakage rule.
+- **Phase B promotion metric**: F1@25 is the primary offline promotion signal
+  because precision@25 is capped by actual setlist size. Precision@25 remains
+  the product-facing board accuracy metric and a non-regression guardrail.
+  Legacy p@10/r@50 checks remain active during the metric transition.
+- `setlist_accuracy` is the target canonical evaluation table, keyed
+  `(band, model_version, target_show_key)`, retained to the last 50 eligible
+  completed shows per band.
+- Legacy tables (`completed_show_accuracy`, `accuracy_per_show`) remain
+  canonical on `main`/`dev` until new tables are fully populated and validated.
 
 ### Delivery
 
 - The website in `apps/web` is the current public surface.
 - Supabase remains the shared storage and read layer for predictions and
   accuracy data.
-- `apps/web/src/lib/data.ts` remains the compatibility import surface while domain ownership is split across `apps/web/src/lib/data/{bands,predictions,accuracy,replay,shows}.ts` with shared types in `types.ts` and parsing helpers in `parsers.ts`.
+- `apps/web/src/lib/data.ts` remains the compatibility import surface while domain ownership is split across `apps/web/src/lib/data/{bands,predictions,accuracy,shows}.ts`.
 - Route files should compose server-side results rather than reimplement query logic.
 - Client components are reserved for interactive islands, navigation hooks, and live subscriptions.
 
-Current website routes:
+Current website routes (target state for this branch):
 - `/` - Homepage with band overview and upcoming shows
-- `/predictions` - Live predictions with model comparison and show outlook
+- `/predictions` - Live single-model prediction board with show outlook
 - `/performance` - Historical accuracy charts with K-value selection
-- `/compare` - Model board comparison against actual setlists
-- `/replay` - Canonical historical prediction replay with both model boards and
-  the actual setlist for one completed show
-- `/explorer` - Compatibility redirect to `/replay`
 - `/last-show` - Most recent completed show details
 - `/about`, `/contact`, `/data-use` - Public informational pages
+
+Removed from multi-model era (not present on this branch):
+- `/compare` - Model board comparison (removed; no longer two models to compare)
+- `/replay` - Side-by-side historical replay (removed; collapses to single board)
+- `/explorer` - Compatibility redirect to `/replay` (removed with `/replay`)
 
 Key shared components:
 - `page-hero`, `site-header`, `site-footer`, `dashboard-side-nav`
 - `prediction-hero`, `song-board`, `recall-chart`, `accuracy-table`
-- `show-outlook-popover`, `live-tracker`, `model-agreement`
+- `show-outlook-popover`, `live-tracker`
 
 ### Orchestration
 
@@ -106,38 +119,48 @@ Key shared components:
 
 ### Model Platform
 
-The backend model platform is registry-based. The canonical model source of
-truth is `src/jambandnerd/models/registry.py`, which defines predictor class,
-table/version mapping, serializer, and orchestration capability flags.
+> **Branch note (feat/single-model-per-band)**: The model platform is being
+> redesigned on this branch. See `docs/contributor/adr/0001-single-model-per-band.md`.
+> The description below reflects the **target architecture**.
 
-Three models are registered:
+The backend model platform is registry-based. The canonical source of truth is
+`src/jambandnerd/models/registry.py`, keyed by **band slug** — one registered
+model per supported band. Each entry carries `band`, `model_version`, lifecycle
+flags, and `default_top_k`.
 
-| Model | Slug | Status | Canonical Storage |
-|-------|------|--------|-------------------|
-| Notebook | `notebook` | Web promoted | `next_show_prediction_runs` (live) + `completed_show_prediction_runs` (retained) |
-| CK+ | `ckplus` | Retired baseline | Historical rows retained in legacy `predictions` + `prediction_songs` |
-| Deal | `deal` | Web promoted | `next_show_prediction_runs` (live) + `completed_show_prediction_runs` (retained) |
+Per-band predictor classes live under `src/jambandnerd/models/{band}/` and
+implement `PredictionModel` from `src/jambandnerd/models/base.py`. Legacy
+multi-model classes (Notebook, Deal, CK+) are retained in
+`src/jambandnerd/models/legacy/` for offline backtest comparison until
+per-band models clear the active Phase B promotion gate.
 
-New prediction models are added through the registry workflow (see
-`docs/contributor/model_development.md`):
-1. Add a model package that consumes the shared `ModelData` contract
-2. Add a model-specific serializer module
-3. Add one `ModelDefinition` entry in the registry
-4. Optionally add frontend presentation metadata in website config
+Billy's accepted baseline is `BillyFastBaselinePredictor`, an alias for
+`BillyFastPredictorV10` with model version `billy_fast_gbm_v10_hp_tuned`. V3
+remains the feature-family base, while V4, V5, V6, and the V10 experiment
+subclasses remain importable experiment classes but are not registered
+production predictors.
 
-Live model runs write canonical rows to `next_show_prediction_runs` and derived
-rows to `next_show_prediction_songs`. Completed-show evaluation writes retained
-rows to `completed_show_prediction_runs` and `completed_show_accuracy`, making
-the live prediction surface independent from Replay and metrics.
+Adding or updating a per-band model:
+1. Implement `PredictionModel` in `src/jambandnerd/models/{band}/model.py`.
+2. Update the band's registry entry with a new `model_version`.
+3. Run `scripts/run_backtest.py --band {band}` and compare against the
+   incumbent metrics in the session logs.
+4. Promote once the per-band gate is met (see ADR 0001).
+
+Live model runs write to `setlist_predictions` and `setlist_prediction_songs`.
+Completed-show evaluation writes to `setlist_results` and `setlist_accuracy`.
 
 ## Non-Negotiable Rules
 
-- Shared prediction code must remain band-agnostic.
+- **Shared infra stays band-agnostic**: `ModelData`, `PredictionModel` ABC,
+  training/eval harness, storage contract, and CI scaffolding are shared.
+  Per-band predictor classes belong in `src/jambandnerd/models/{band}/`.
 - Collector-specific logic belongs in the collector and config layers.
 - `reference_date` must gate all transforms and backtests.
 - New data architecture work must preserve the two-stage contract:
   source-faithful raw storage, shared normalized modeling inputs.
 - Band metadata lives in the `bands` Supabase table — the website reads it
   dynamically. Do not hardcode band lists in frontend code.
-- Backend model registration lives in `models/registry.py`; frontend
-  `MODEL_CONFIG` is product presentation metadata only.
+- Backend model registration lives in `models/registry.py`. There is no
+  frontend model-picker config — `MODEL_CONFIG` and `ACTIVE_MODELS` are
+  removed on this branch.

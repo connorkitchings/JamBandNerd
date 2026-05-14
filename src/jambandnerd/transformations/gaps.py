@@ -15,6 +15,7 @@ from typing import Any, Dict, List, Tuple
 import pandas as pd
 
 from .normalization import sort_normalized_shows
+from .run_context import normalize_target_show_context
 
 logger = logging.getLogger(__name__)
 
@@ -70,6 +71,9 @@ class ModelData:
     # Diagnostic metadata.
     diagnostics: Dict[str, Any]
 
+    # Optional target show metadata used by band-specific feature engineering.
+    target_show_context: Dict[str, Any] | None = None
+
 
 def _compute_base_features(
     shows_df: pd.DataFrame,
@@ -109,8 +113,22 @@ def _compute_base_features(
     if debug:
         logger.debug("Computed reference_index: %s", reference_index)
 
-    # 3. Merge plays
-    plays = setlists_df[["show_id", "song_name"]].copy()
+    # 3. Merge plays — carry optional set-position columns when present
+    setlist_cols = ["show_id", "song_name"]
+    for _opt in ["set_number", "song_position", "encore"]:
+        if _opt in setlists_df.columns:
+            setlist_cols.append(_opt)
+    plays = setlists_df[setlist_cols].copy()
+    if "set_number" in plays.columns:
+        plays["set_number"] = pd.to_numeric(
+            plays["set_number"], errors="coerce"
+        ).astype("Int64")
+    if "song_position" in plays.columns:
+        plays["song_position"] = pd.to_numeric(
+            plays["song_position"], errors="coerce"
+        ).astype("Int64")
+    if "encore" in plays.columns:
+        plays["encore"] = plays["encore"].fillna(False).astype(bool)
     plays["show_id"] = plays["show_id"].astype(str).str.strip()
     map_keys = set(historical_shows["show_id"].unique())
 
@@ -126,7 +144,7 @@ def _compute_base_features(
 
     plays["show_index"] = plays["show_id"].map(show_idx_map)
     show_context_columns = ["show_id", "show_date"]
-    for optional_column in ["venue_name", "city", "state", "country"]:
+    for optional_column in ["tour_name", "venue_name", "city", "state", "country"]:
         if optional_column in historical_shows.columns:
             show_context_columns.append(optional_column)
 
@@ -168,6 +186,7 @@ def generate_model_data(
     debug: bool = False,
     exclusion_window: int | None = None,
     band: str | None = None,
+    target_show_context: pd.Series | dict[str, Any] | None = None,
 ) -> ModelData:
     """
     Orchestrates the full feature generation pipeline.
@@ -212,6 +231,11 @@ def generate_model_data(
         "total_songs_in_history": len(master_features),
         "recently_played_count": len(recent_songs),
     }
+    normalized_target_context = normalize_target_show_context(target_show_context)
+    if normalized_target_context:
+        diagnostics["target_show_context"] = {
+            key: str(value) for key, value in normalized_target_context.items()
+        }
 
     return ModelData(
         historical_plays=historical_plays,
@@ -220,4 +244,5 @@ def generate_model_data(
         reference_index=ref_index,
         recently_played_songs=recent_songs,
         diagnostics=diagnostics,
+        target_show_context=normalized_target_context or None,
     )

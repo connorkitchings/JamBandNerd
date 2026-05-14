@@ -1,6 +1,6 @@
 """Runs the Umphrey's McGee data collection pipeline.
 
-This script coordinates the `UmCollector` to fetch songs, venues, shows,
+This script coordinates the `UmCollector` to scrape songs, venues, shows,
 and setlists from allthings.umphreys.com, normalizes the results, and upserts
 them into the Supabase raw tables (`um_*_raw`).
 """
@@ -11,7 +11,7 @@ import argparse
 import os
 import sys
 from datetime import date, datetime, timedelta
-from typing import Optional, Sequence
+from typing import Any, Dict, Iterable, List, Optional, Sequence
 
 import pandas as pd
 
@@ -20,27 +20,24 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
-from scripts.common import (  # type: ignore  # noqa: E402
-    ensure_source_reachable,
-    write_github_output,
-)
-from src.jambandnerd.config.bands import get_collection_policy  # noqa: E402
+from scripts.common import ensure_source_reachable  # type: ignore  # noqa: E402
 from src.jambandnerd.data_collection.um.collector import UmCollector  # noqa: E402
 from src.jambandnerd.data_collection.um.normalizer import (  # noqa: E402
+    attach_source_hash,
     normalize_setlists,
 )
 from src.jambandnerd.data_collection.um.upcoming import (  # noqa: E402
     UpcomingShowsError,
     collect_upcoming_shows,
 )
-from src.jambandnerd.data_collection.utils import (  # noqa: E402
-    CollectionTimer,
-    attach_source_hash_column,
-)
+from src.jambandnerd.data_collection.utils import CollectionTimer  # noqa: E402
+from src.jambandnerd.db.connection import get_supabase_client  # noqa: E402
 from src.jambandnerd.db.operations import (  # noqa: E402
+    bulk_insert_dataframe,
     dedupe_dataframe_on_conflict,
     fetch_existing_values,
-    fetch_last_collection_timestamp,
+    fetch_rows_by_column_values,
+    prepare_dataframe_for_upsert,
     validate_and_upsert_dataframe,
 )
 
@@ -82,39 +79,294 @@ def _upsert(
     )
 
 
-def _refresh_upcoming_shows(*, skip_validation: bool) -> None:
-    """Refresh UM upcoming-show support data."""
-    try:
-        upcoming_records = collect_upcoming_shows()
-    except UpcomingShowsError as exc:
-        print(f"Warning: could not fetch upcoming UM shows ({exc}).")
+def _sync_um_songs_raw(songs_df: pd.DataFrame, *, skip_validation: bool) -> None:
+    """Persist UM songs when production uses a generated song_id primary key."""
+
+    if songs_df.empty:
         return
 
-    if not upcoming_records:
-        print("No upcoming UM shows found from Seated API.")
-        return
-
-    upcoming_df = pd.DataFrame(upcoming_records)
-    upcoming_df = attach_source_hash_column(upcoming_df)
-    _upsert(
-        "um_upcoming_shows",
-        upcoming_df,
-        conflict_columns=["source_uuid"],
+    deduped = dedupe_dataframe_on_conflict(
+        songs_df,
+        conflict_columns=["song_name"],
+        table_name="um_songs_raw",
+    )
+    prepared = prepare_dataframe_for_upsert(
+        "um_songs_raw",
+        deduped,
         skip_validation=skip_validation,
     )
-    print(f"Upserted {len(upcoming_df)} upcoming shows into um_upcoming_shows.")
+    if prepared.empty:
+        return
+
+    song_names = prepared["song_name"].dropna().astype(str).tolist()
+    existing_names = fetch_existing_values(
+        "um_songs_raw",
+        value_column="song_name",
+        candidate_values=song_names,
+    )
+
+    existing_df = prepared[prepared["song_name"].astype(str).isin(existing_names)]
+    new_df = prepared[~prepared["song_name"].astype(str).isin(existing_names)]
+
+    if not existing_df.empty:
+        client = get_supabase_client()
+        for record in existing_df.to_dict(orient="records"):
+            record = {
+                key: None if pd.isna(value) else value for key, value in record.items()
+            }
+            song_name = record.get("song_name")
+            if song_name is None:
+                continue
+            client.table("um_songs_raw").update(record).eq(
+                "song_name", str(song_name)
+            ).execute()
+
+    if not new_df.empty:
+        next_song_id = _next_um_song_id()
+        new_df = new_df.copy()
+        new_df["song_id"] = range(next_song_id, next_song_id + len(new_df))
+        bulk_insert_dataframe("um_songs_raw", new_df)
 
 
-def _finish_collection(timer: CollectionTimer, *, skip_validation: bool) -> None:
-    _refresh_upcoming_shows(skip_validation=skip_validation)
-    timer.log("um")
-    print("UM collection complete.")
+def _next_um_song_id() -> int:
+    """Return the next available UM song_id for schemas without identity defaults."""
+
+    return _next_numeric_id("um_songs_raw", "song_id")
 
 
-def _emit_github_output(**kwargs: str) -> None:
-    """Write key=value pairs to GITHUB_OUTPUT if available."""
-    for key, value in kwargs.items():
-        write_github_output(key, value)
+def _venue_key(record: Dict[str, Any]) -> tuple[str, str, str, str]:
+    return (
+        str(record.get("venue_name") or ""),
+        str(record.get("venue_city") or ""),
+        str(record.get("venue_state") or ""),
+        str(record.get("venue_country") or ""),
+    )
+
+
+def _sync_um_venues_raw(venues_df: pd.DataFrame, *, skip_validation: bool) -> None:
+    """Persist UM venues when production uses a generated venue_id primary key."""
+
+    if venues_df.empty:
+        return
+
+    deduped = dedupe_dataframe_on_conflict(
+        venues_df,
+        conflict_columns=[
+            "venue_name",
+            "venue_city",
+            "venue_state",
+            "venue_country",
+        ],
+        table_name="um_venues_raw",
+    ).copy()
+    venue_names = deduped["venue_name"].dropna().astype(str).tolist()
+    existing_rows = fetch_rows_by_column_values(
+        "um_venues_raw",
+        select_columns=[
+            "venue_id",
+            "venue_name",
+            "venue_city",
+            "venue_state",
+            "venue_country",
+        ],
+        filter_column="venue_name",
+        values=venue_names,
+    )
+    existing_ids = {_venue_key(row): int(row["venue_id"]) for row in existing_rows}
+
+    next_venue_id = _next_numeric_id("um_venues_raw", "venue_id")
+    venue_ids: list[int] = []
+    is_existing: list[bool] = []
+    for record in deduped.to_dict(orient="records"):
+        existing_id = existing_ids.get(_venue_key(record))
+        if existing_id is not None:
+            venue_ids.append(existing_id)
+            is_existing.append(True)
+        else:
+            venue_ids.append(next_venue_id)
+            next_venue_id += 1
+            is_existing.append(False)
+
+    deduped["venue_id"] = venue_ids
+    deduped["_is_existing"] = is_existing
+    prepared = prepare_dataframe_for_upsert(
+        "um_venues_raw",
+        deduped,
+        skip_validation=skip_validation,
+    )
+    existing_df = prepared[deduped["_is_existing"].to_numpy()]
+    new_df = prepared[~deduped["_is_existing"].to_numpy()]
+
+    if not existing_df.empty:
+        client = get_supabase_client()
+        for record in existing_df.to_dict(orient="records"):
+            record = {
+                key: None if pd.isna(value) else value for key, value in record.items()
+            }
+            client.table("um_venues_raw").update(record).eq(
+                "venue_id", record["venue_id"]
+            ).execute()
+
+    if not new_df.empty:
+        bulk_insert_dataframe("um_venues_raw", new_df)
+
+
+def _sync_um_shows_raw(shows_df: pd.DataFrame, *, skip_validation: bool) -> None:
+    """Persist UM shows when production uses a generated show_id primary key."""
+
+    if shows_df.empty:
+        return
+
+    deduped = dedupe_dataframe_on_conflict(
+        shows_df,
+        conflict_columns=["source_url"],
+        table_name="um_shows_raw",
+    ).copy()
+    source_urls = deduped["source_url"].dropna().astype(str).tolist()
+    existing_rows = fetch_rows_by_column_values(
+        "um_shows_raw",
+        select_columns=["show_id", "source_url"],
+        filter_column="source_url",
+        values=source_urls,
+    )
+    existing_ids = {
+        str(row["source_url"]): int(row["show_id"])
+        for row in existing_rows
+        if row.get("source_url") and row.get("show_id") is not None
+    }
+
+    next_show_id = _next_numeric_id("um_shows_raw", "show_id")
+    show_ids: list[int] = []
+    is_existing: list[bool] = []
+    for source_url in source_urls:
+        existing_id = existing_ids.get(str(source_url))
+        if existing_id is not None:
+            show_ids.append(existing_id)
+            is_existing.append(True)
+        else:
+            show_ids.append(next_show_id)
+            next_show_id += 1
+            is_existing.append(False)
+
+    deduped["show_id"] = show_ids
+    deduped["_is_existing"] = is_existing
+    prepared = prepare_dataframe_for_upsert(
+        "um_shows_raw",
+        deduped,
+        skip_validation=skip_validation,
+    )
+    existing_df = prepared[deduped["_is_existing"].to_numpy()]
+    new_df = prepared[~deduped["_is_existing"].to_numpy()]
+
+    if not existing_df.empty:
+        client = get_supabase_client()
+        for record in existing_df.to_dict(orient="records"):
+            record = {
+                key: None if pd.isna(value) else value for key, value in record.items()
+            }
+            client.table("um_shows_raw").update(record).eq(
+                "show_id", record["show_id"]
+            ).execute()
+
+    if not new_df.empty:
+        bulk_insert_dataframe("um_shows_raw", new_df)
+
+
+def _next_numeric_id(table_name: str, id_column: str) -> int:
+    """Return the next available integer ID for schemas without identity defaults."""
+
+    client = get_supabase_client()
+    response = (
+        client.table(table_name)
+        .select(id_column)
+        .order(id_column, desc=True)
+        .limit(1)
+        .execute()
+    )
+    rows = response.data or []
+    if not rows or rows[0].get(id_column) is None:
+        return 1
+    return int(rows[0][id_column]) + 1
+
+
+def _batched(sequence: Sequence[Any], size: int) -> Iterable[Sequence[Any]]:
+    for start in range(0, len(sequence), size):
+        yield sequence[start : start + size]
+
+
+def _fetch_show_id_map(source_urls: Sequence[str]) -> Dict[str, Any]:
+    if not source_urls:
+        return {}
+
+    client = get_supabase_client()
+    mapping: Dict[str, Any] = {}
+    for chunk in _batched(list(dict.fromkeys(source_urls)), 50):
+        try:
+            resp = (
+                client.table("um_shows_raw")
+                .select("show_id, source_url")
+                .in_("source_url", list(chunk))
+                .execute()
+            )
+        except Exception as exc:  # pragma: no cover - Supabase connectivity
+            print(f"Warning: could not lookup UM show IDs ({exc}).")
+            continue
+        for item in resp.data or []:
+            source_url = item.get("source_url")
+            show_id = item.get("show_id")
+            if source_url and show_id is not None:
+                mapping[str(source_url)] = show_id
+    return mapping
+
+
+def _shows_to_process(
+    shows_df: pd.DataFrame, *, full_backfill: bool
+) -> List[Dict[str, Any]]:
+    """Determine which shows still require setlist scraping."""
+
+    if shows_df.empty:
+        return []
+
+    if "source_url" not in shows_df.columns:
+        return []
+
+    source_urls = shows_df["source_url"].dropna().astype(str).unique().tolist()
+    if not source_urls:
+        return []
+
+    show_id_map = _fetch_show_id_map(source_urls)
+    if not show_id_map:
+        print("Warning: could not resolve UM show IDs for scraped shows.")
+        return []
+
+    pending_show_ids: set[str]
+    if full_backfill:
+        pending_show_ids = {str(show_id) for show_id in show_id_map.values()}
+    else:
+        existing_ids = fetch_existing_values(
+            "um_setlists_raw",
+            value_column="show_id",
+            candidate_values=[str(sid) for sid in show_id_map.values()],
+        )
+        pending_show_ids = {
+            str(show_id)
+            for show_id in show_id_map.values()
+            if str(show_id) not in existing_ids
+        }
+
+    print(
+        f"UM shows pending setlist scrape: {len(pending_show_ids)}/{len(show_id_map)}"
+    )
+
+    shows: List[Dict[str, Any]] = []
+    for source_url in source_urls:
+        show_id = show_id_map.get(source_url)
+        if show_id is None:
+            continue
+        if not full_backfill and str(show_id) not in pending_show_ids:
+            continue
+        shows.append({"show_id": show_id, "source_url": source_url})
+    return shows
 
 
 def run_um_collection(
@@ -123,164 +375,65 @@ def run_um_collection(
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
     full_backfill: bool = False,
-    incremental: bool = True,
 ) -> None:
-    """Run the Umphrey's McGee data collection workflow.
-
-    Args:
-        skip_validation: Skip Supabase schema validation before upserting.
-        start_date: Earliest show date to collect (YYYY-MM-DD).
-        end_date: Latest show date to collect (YYYY-MM-DD).
-        full_backfill: Re-fetch setlists for all shows regardless of existing rows.
-        incremental: Use timestamp-based incremental collection (default: True).
-    """
+    """Run the Umphrey's McGee data collection workflow."""
     timer = CollectionTimer()
 
     print("Starting Umphrey's McGee data collection...")
-    try:
-        ensure_source_reachable("um")
-    except RuntimeError as exc:
-        _emit_github_output(
-            workflow_state="degraded",
-            outcome_code="degraded_upstream_blocked",
-            should_retry_collection="false",
-            recent_data_usable="true",
-            prediction_action="reused_existing",
-            failure_reason=str(exc),
-        )
-        raise
+    ensure_source_reachable("um")
     collector = UmCollector()
 
-    # Determine collection mode
-    use_incremental = incremental and not full_backfill
-    since_timestamp = None
-
-    if use_incremental:
-        from jambandnerd.db.connection import get_supabase_client
-
-        client = get_supabase_client()
-        since_timestamp = fetch_last_collection_timestamp("um", client=client)
-        if since_timestamp:
-            print(f"Using incremental mode (since: {since_timestamp.isoformat()})")
-        else:
-            print("No previous collection found, falling back to full window mode")
-            use_incremental = False
-
     # Songs -----------------------------------------------------------------
-    if use_incremental and since_timestamp:
-        songs_data = collector.collect_songs_incremental(since_timestamp)
-    else:
-        songs_data = collector.collect_songs()
-
+    songs_data = collector.collect_songs()
     if songs_data:
         songs_df = pd.DataFrame(songs_data)
-        songs_df = songs_df.drop_duplicates(subset=["song_id"]).reset_index(drop=True)
-        songs_df = attach_source_hash_column(songs_df)
-        _upsert(
-            "um_songs_raw",
-            songs_df,
-            conflict_columns=["song_id"],
-            skip_validation=skip_validation,
-        )
+        songs_df = songs_df.drop_duplicates(subset=["song_name"]).reset_index(drop=True)
+        songs_df = attach_source_hash(songs_df)
+        _sync_um_songs_raw(songs_df, skip_validation=skip_validation)
         print(f"Upserted {len(songs_df)} songs into um_songs_raw.")
     else:
-        print("No UM songs returned by API; skipping um_songs_raw upsert.")
+        print("No UM songs scraped; skipping um_songs_raw upsert.")
 
     # Venues ----------------------------------------------------------------
-    # Venues don't have timestamp fields, so always do full fetch (small dataset)
     venues_data = collector.collect_venues()
     if venues_data:
         venues_df = pd.DataFrame(venues_data)
-        venues_df = attach_source_hash_column(venues_df)
-        _upsert(
-            "um_venues_raw",
-            venues_df,
-            conflict_columns=["venue_id"],
-            skip_validation=skip_validation,
-        )
+        venues_df = attach_source_hash(venues_df)
+        _sync_um_venues_raw(venues_df, skip_validation=skip_validation)
         print(f"Upserted {len(venues_df)} venues into um_venues_raw.")
     else:
-        print("No UM venues returned by API; skipping um_venues_raw upsert.")
+        print("No UM venues scraped; skipping um_venues_raw upsert.")
 
     # Shows -----------------------------------------------------------------
     start_dt = _parse_date(start_date)
     end_dt = _parse_date(end_date)
+    if not full_backfill:
+        today = date.today()
+        if start_dt is None:
+            start_dt = max(
+                today - timedelta(days=730), date(collector.EARLIEST_YEAR, 1, 1)
+            )
+        if end_dt is None or end_dt < today:
+            end_dt = today + timedelta(days=90)
 
-    if use_incremental and since_timestamp:
-        # Incremental mode: use timestamp + optional date range
-        shows_data = collector.collect_shows_incremental(
-            since_timestamp, start_date=start_dt, end_date=end_dt
-        )
-    else:
-        # Window mode: use date range only
-        if not full_backfill:
-            today = date.today()
-            if start_dt is None:
-                # Use rolling window from collection policy (default: 90 days)
-                policy = get_collection_policy("um")
-                window_days = policy.rolling_window_days or 90
-                start_dt = max(
-                    today - timedelta(days=window_days),
-                    date(collector.EARLIEST_YEAR, 1, 1),
-                )
-            if end_dt is None or end_dt < today:
-                end_dt = today + timedelta(days=90)
-
-        shows_data = collector.collect_shows(start_date=start_dt, end_date=end_dt)
-
+    shows_data = collector.collect_shows(start_date=start_dt, end_date=end_dt)
     if not shows_data:
-        print("No UM shows returned by API; skipping show upsert.")
-        _finish_collection(timer, skip_validation=skip_validation)
+        print("No UM shows scraped; skipping show upsert.")
         return
 
     shows_df = pd.DataFrame(shows_data)
-    shows_df = attach_source_hash_column(shows_df)
-    _upsert(
-        "um_shows_raw",
-        shows_df,
-        conflict_columns=["show_id"],
-        skip_validation=skip_validation,
-    )
+    shows_df = attach_source_hash(shows_df)
+    _sync_um_shows_raw(shows_df, skip_validation=skip_validation)
     print(f"Upserted {len(shows_df)} shows into um_shows_raw.")
 
-    # Setlists -------------------------------------------------------------
-    if use_incremental and since_timestamp:
-        # Incremental: fetch setlists updated since timestamp
-        print(
-            f"Collecting setlists incrementally since {since_timestamp.isoformat()}..."
-        )
-        setlists_data = collector.collect_setlists_incremental(
-            since_timestamp, shows_to_process=shows_data
-        )
-    elif full_backfill:
-        shows_to_process = shows_data
-        print(f"Collecting setlists for {len(shows_to_process)} shows...")
-        setlists_data = collector.collect_setlists(shows_to_process)
-    else:
-        # Determine which shows still require setlist collection
-        candidate_ids = [str(s["show_id"]) for s in shows_data]
-        existing_ids = fetch_existing_values(
-            "um_setlists_raw",
-            value_column="show_id",
-            candidate_values=candidate_ids,
-        )
-        shows_to_process = [
-            s for s in shows_data if str(s["show_id"]) not in existing_ids
-        ]
+    shows_to_process = _shows_to_process(shows_df, full_backfill=full_backfill)
+    if not shows_to_process:
+        print("All UM setlists already ingested; no additional scraping required.")
+        return
 
-        if not shows_to_process:
-            print(
-                "All UM setlists already ingested; no additional collection required."
-            )
-            _finish_collection(timer, skip_validation=skip_validation)
-            return
-
-        print(f"Collecting setlists for {len(shows_to_process)} shows...")
-        setlists_data = collector.collect_setlists(shows_to_process)
-
+    setlists_data = collector.collect_setlists(shows_to_process)
     if not setlists_data:
-        print("No UM setlists collected.")
-        _finish_collection(timer, skip_validation=skip_validation)
+        print("No UM setlists scraped.")
         return
 
     setlists_df = normalize_setlists(pd.DataFrame(setlists_data))
@@ -289,15 +442,36 @@ def run_um_collection(
         setlists_df,
         conflict_columns=["show_id", "show_position"],
         skip_validation=skip_validation,
+        required_columns=["set_number", "song_position"],
     )
     print(f"Upserted {len(setlists_df)} setlist rows into um_setlists_raw.")
 
-    _finish_collection(timer, skip_validation=skip_validation)
+    # Upcoming shows from Seated widget
+    try:
+        upcoming_records = collect_upcoming_shows()
+    except UpcomingShowsError as exc:
+        print(f"Warning: could not fetch upcoming UM shows ({exc}).")
+    else:
+        if upcoming_records:
+            upcoming_df = pd.DataFrame(upcoming_records)
+            upcoming_df = attach_source_hash(upcoming_df)
+            _upsert(
+                "um_upcoming_shows",
+                upcoming_df,
+                conflict_columns=["source_uuid"],
+                skip_validation=skip_validation,
+            )
+            print(f"Upserted {len(upcoming_df)} upcoming shows into um_upcoming_shows.")
+        else:
+            print("No upcoming UM shows found from Seated API.")
+
+    timer.log("um")
+    print("UM collection complete.")
 
 
 def _build_argument_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Run the Umphrey's McGee API pipeline."
+        description="Run the Umphrey's McGee web scraping pipeline."
     )
     parser.add_argument(
         "--start-date",
@@ -315,12 +489,7 @@ def _build_argument_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--full-backfill",
         action="store_true",
-        help="Re-fetch setlists for all shows regardless of existing rows.",
-    )
-    parser.add_argument(
-        "--no-incremental",
-        action="store_true",
-        help="Disable incremental collection (force full window refresh).",
+        help="Re-scrape setlists for all shows regardless of existing rows.",
     )
     return parser
 
@@ -333,7 +502,6 @@ def main() -> None:
         start_date=args.start_date,
         end_date=args.end_date,
         full_backfill=args.full_backfill,
-        incremental=not args.no_incremental,
     )
 
 
