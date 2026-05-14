@@ -109,7 +109,9 @@ def test_ensure_source_reachable_allows_um_when_concrete_endpoint_is_ok(monkeypa
 
 
 def test_ensure_source_reachable_fails_when_um_concrete_endpoint_fails(monkeypatch):
-    monkeypatch.setattr("requests.get", lambda *_args, **_kwargs: _HttpResponseStub(500))
+    monkeypatch.setattr(
+        "requests.get", lambda *_args, **_kwargs: _HttpResponseStub(500)
+    )
 
     with pytest.raises(RuntimeError, match="Received status 500"):
         ensure_source_reachable("um")

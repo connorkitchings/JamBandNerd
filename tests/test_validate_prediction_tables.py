@@ -1,7 +1,10 @@
 import json
 from datetime import date, datetime, timedelta, timezone
 
+from jambandnerd.models.registry import get_band_metadata
 from scripts.validate_prediction_tables import validate_predictions
+
+GOOSE_MODEL_VERSION = get_band_metadata("goose").model_version
 
 
 class _ResponseStub:
@@ -74,7 +77,7 @@ def _rows(
         "setlist_predictions": [
             {
                 "band": "goose",
-                "model_version": "goose_fast_rank_v1",
+                "model_version": GOOSE_MODEL_VERSION,
                 "target_show_key": "show-1",
                 "target_show_date": target_show_date,
                 "reference_date": target_show_date,
@@ -88,7 +91,7 @@ def _rows(
         "setlist_prediction_songs": [
             {
                 "band": "goose",
-                "model_version": "goose_fast_rank_v1",
+                "model_version": GOOSE_MODEL_VERSION,
                 "target_show_key": "show-1",
                 "target_show_date": target_show_date,
                 "reference_date": target_show_date,
