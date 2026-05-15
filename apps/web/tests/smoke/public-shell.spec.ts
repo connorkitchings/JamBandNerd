@@ -41,7 +41,13 @@ test("desktop routes render the public shell", async ({ page }, testInfo) => {
   await expect(page.getByRole("navigation", { name: "Primary navigation" })).toBeVisible();
   await expect(page.getByRole("navigation", { name: "Primary navigation" }).getByRole("link", { name: "Predictions" })).toBeVisible();
   await expect(page.getByRole("navigation", { name: "Primary navigation" }).getByRole("link", { name: "Performance" })).toBeVisible();
-  await expect(page.locator("main h1")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Active band overview" })).toBeVisible();
+  await expect(page.getByText("Band dashboards").or(page.getByText("Data status"))).toBeVisible();
+
+  const bandPredictionLinks = page.locator('main a[href^="/predictions?band="]');
+  if ((await bandPredictionLinks.count()) > 0) {
+    await expect(bandPredictionLinks.first()).toHaveAttribute("href", /\/predictions\?band=/);
+  }
 
   await page.goto("/performance");
   await expectPrimaryHeadingOrMissingEnv(page);

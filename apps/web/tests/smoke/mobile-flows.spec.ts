@@ -66,6 +66,7 @@ test.describe("mobile flows", () => {
     }
 
     await expect(bandSelect).toBeVisible();
+    await expect(bandSelect).toHaveValue(/\/predictions\?band=goose/);
 
     const bandBox = await bandSelect.boundingBox();
     expect(bandBox).not.toBeNull();
