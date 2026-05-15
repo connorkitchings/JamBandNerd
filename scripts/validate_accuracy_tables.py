@@ -95,6 +95,26 @@ def _recent_replay_eligible_rows(
     return deduped
 
 
+def _row_count(
+    client,
+    *,
+    table: str,
+    band: str,
+    model_version: str,
+) -> int:
+    response = (
+        client.table(table)
+        .select("target_show_key", count="exact")
+        .eq("band", band)
+        .eq("model_version", model_version)
+        .execute()
+    )
+    count = getattr(response, "count", None)
+    if count is not None:
+        return int(count)
+    return len(response.data or [])
+
+
 def _validate_row(
     *,
     band: str,
@@ -159,6 +179,7 @@ def validate_accuracy(
     validate_replay: bool = True,
     replay_window: int | None = None,
     skip_freshness: bool = False,
+    require_exact_retained_window: bool = False,
 ) -> int:
     client = get_supabase_client()
 
@@ -224,6 +245,24 @@ def validate_accuracy(
                         f"[OK] {band}: replay lineage ready across {len(replay_rows)} recent shows via {SETLIST_RESULTS_TABLE}"
                     )
 
+        if require_exact_retained_window:
+            for table in (SETLIST_ACCURACY_TABLE, SETLIST_RESULTS_TABLE):
+                count = _row_count(
+                    client,
+                    table=table,
+                    band=band,
+                    model_version=model_version,
+                )
+                if count != required_replay_window:
+                    print(
+                        f"[FAIL] {band}: {table} retains {count}/{required_replay_window} rows for {model_version}"
+                    )
+                    failures += 1
+                else:
+                    print(
+                        f"[OK] {band}: {table} retains exactly {required_replay_window} rows for {model_version}"
+                    )
+
     return failures
 
 
@@ -259,6 +298,14 @@ def main() -> None:
         action="store_true",
         help="Skip the evaluated_at age check. Still validates row presence and replay lineage.",
     )
+    parser.add_argument(
+        "--require-exact-retained-window",
+        action="store_true",
+        help=(
+            "Require setlist_accuracy and setlist_results to retain exactly the "
+            "requested replay window for each active band model_version."
+        ),
+    )
     args = parser.parse_args()
 
     failures = validate_accuracy(
@@ -267,6 +314,7 @@ def main() -> None:
         validate_replay=not args.skip_replay_check,
         replay_window=args.replay_window,
         skip_freshness=args.skip_freshness,
+        require_exact_retained_window=args.require_exact_retained_window,
     )
     if failures:
         raise SystemExit(f"Accuracy validation failed with {failures} issue(s)")

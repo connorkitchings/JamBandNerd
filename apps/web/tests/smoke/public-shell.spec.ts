@@ -92,9 +92,8 @@ test("mobile navigation uses thumb-first ordering", async ({ page }, testInfo) =
   await expect(mobileNav).toBeVisible();
 
   const labels = await mobileNav.getByRole("link").locator("span:last-child").allTextContents();
-  expect(labels.length).toBeGreaterThanOrEqual(3);
-  expect(labels).toContain("Stats");
-  expect(labels).toContain("Predict");
+  expect(labels).toEqual(["Home", "Stats", "Predict"]);
+  expect(labels).not.toContain("Compare");
 });
 
 test("mobile detail routes show a back affordance", async ({ page }, testInfo) => {

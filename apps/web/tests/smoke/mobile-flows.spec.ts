@@ -46,9 +46,8 @@ test.describe("mobile flows", () => {
     await expect(mobileNav).toBeVisible();
 
     const labels = await mobileNav.getByRole("link").locator("span:last-child").allTextContents();
-    expect(labels.length).toBeGreaterThanOrEqual(3);
-    expect(labels).toContain("Stats");
-    expect(labels).toContain("Predict");
+    expect(labels).toEqual(["Home", "Stats", "Predict"]);
+    expect(labels).not.toContain("Compare");
   });
 
   test("mobile top controls use compact dropdown selectors", async ({ page }, testInfo) => {
