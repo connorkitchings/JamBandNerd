@@ -26,7 +26,8 @@ from src.jambandnerd.data_collection.billy.normalizer import (
     normalize_shows,
     normalize_songs,
 )
-from src.jambandnerd.data_collection.utils import CollectionTimer
+from src.jambandnerd.data_collection.utils import CollectionTimer, compute_source_hash
+from src.jambandnerd.db.connection import get_supabase_client
 from src.jambandnerd.db.operations import (
     fetch_existing_values,
     fetch_rows_by_column_values,
@@ -41,6 +42,98 @@ def _parse_date(date_str: Optional[str]) -> Optional[date]:
         return datetime.strptime(date_str, "%Y-%m-%d").date()
     except ValueError:
         raise argparse.ArgumentTypeError(f"Invalid date '{date_str}'. Use YYYY-MM-DD.")
+
+
+def _sync_existing_song_names_by_uuid(songs_df):
+    """Update existing Billy song labels when bmfsdb keeps UUIDs but changes casing."""
+    if songs_df.empty or "song_uuid" not in songs_df or "song_name" not in songs_df:
+        return songs_df
+
+    uuid_to_name = {
+        str(row["song_uuid"]): str(row["song_name"])
+        for _, row in songs_df[["song_uuid", "song_name"]].dropna().iterrows()
+        if str(row["song_uuid"]).strip() and str(row["song_name"]).strip()
+    }
+    if not uuid_to_name:
+        return songs_df
+
+    existing_rows = fetch_rows_by_column_values(
+        "billy_songs_raw",
+        select_columns=["song_uuid", "song_name"],
+        filter_column="song_uuid",
+        values=list(uuid_to_name),
+    )
+    existing_name_by_uuid = {
+        str(row["song_uuid"]): str(row.get("song_name") or "")
+        for row in existing_rows
+        if row.get("song_uuid")
+    }
+    updates = [
+        (
+            str(row["song_uuid"]),
+            existing_name_by_uuid[str(row["song_uuid"])],
+            uuid_to_name[str(row["song_uuid"])],
+        )
+        for row in existing_rows
+        if row.get("song_uuid")
+        and existing_name_by_uuid.get(str(row["song_uuid"]))
+        != uuid_to_name.get(str(row["song_uuid"]))
+    ]
+    if not updates:
+        return songs_df
+
+    desired_names = [desired_name for _, _, desired_name in updates]
+    name_to_uuid = {desired_name: song_uuid for song_uuid, _, desired_name in updates}
+    if len(name_to_uuid) != len(updates):
+        raise RuntimeError(
+            "Cannot reconcile Billy song UUID labels because multiple UUIDs map "
+            "to the same scraped song_name."
+        )
+    existing_name_rows = fetch_rows_by_column_values(
+        "billy_songs_raw",
+        select_columns=["song_uuid", "song_name"],
+        filter_column="song_name",
+        values=desired_names,
+    )
+    conflicting_name_to_uuid = {
+        str(row["song_name"]): str(row["song_uuid"])
+        for row in existing_name_rows
+        if row.get("song_name")
+        and row.get("song_uuid")
+        and str(row["song_uuid"]) != name_to_uuid.get(str(row["song_name"]))
+    }
+
+    adjusted = songs_df.copy()
+    safe_updates = []
+    for song_uuid, existing_name, desired_name in updates:
+        conflicting_uuid = conflicting_name_to_uuid.get(desired_name)
+        if conflicting_uuid:
+            row_mask = adjusted["song_uuid"].astype(str) == song_uuid
+            adjusted.loc[row_mask, "song_name"] = existing_name
+            if "source_hash" in adjusted.columns:
+                for index in adjusted.loc[row_mask].index:
+                    payload = {
+                        key: value
+                        for key, value in adjusted.loc[index].to_dict().items()
+                        if key not in {"created_at", "updated_at", "source_hash"}
+                    }
+                    adjusted.at[index, "source_hash"] = compute_source_hash(payload)
+            print(
+                "Keeping existing Billy song label "
+                f"'{existing_name}' for UUID {song_uuid}; scraped label "
+                f"'{desired_name}' is already owned by UUID {conflicting_uuid}."
+            )
+            continue
+        safe_updates.append((song_uuid, desired_name))
+
+    client = get_supabase_client()
+    for song_uuid, song_name in safe_updates:
+        client.table("billy_songs_raw").update({"song_name": song_name}).eq(
+            "song_uuid", song_uuid
+        ).execute()
+    if safe_updates:
+        print(f"Updated {len(safe_updates)} Billy song label(s) by stable song_uuid.")
+    return adjusted
 
 
 def run_billy_collection(
@@ -80,6 +173,7 @@ def run_billy_collection(
     songs_data = collector.collect_songs()
     if songs_data:
         songs_df = normalize_songs(songs_data)
+        songs_df = _sync_existing_song_names_by_uuid(songs_df)
         validate_and_upsert_dataframe(
             "billy_songs_raw",
             songs_df,
