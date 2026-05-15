@@ -9,15 +9,9 @@ import { cache } from "react";
 import type { BandSlug } from "@/lib/config";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { buildShowDetails, selectUmUpcomingShowRow, type ShowDetails } from "@/lib/next-show";
+import { getEasternTodayIso } from "@/lib/show-status";
 
 import { getClientOrState, getBandContext, bandEntryBySlug, getBands } from "./bands";
-import {
-  getPreviewLastShowSetlist,
-  getPreviewNextShowDetails,
-  getPreviewSetlistForDate,
-  getPreviewShowDetailsByDate,
-  shouldUseLocalPreview,
-} from "./preview";
 import { asRecord, parseNumber, parseStringArray } from "./parsers";
 import type { RouteState, SetlistSnapshot, SetlistSong } from "./types";
 
@@ -29,10 +23,6 @@ export async function getSetlistForDate(
   band: BandSlug,
   showDate: string,
 ): Promise<SetlistSnapshot | null> {
-  if (shouldUseLocalPreview()) {
-    return getPreviewSetlistForDate(band, showDate);
-  }
-
   const client = getSupabaseServerClient();
   if (!client) {
     return null;
@@ -148,10 +138,6 @@ export const getShowDetailsByDate = cache(
       return bandState as RouteState<{ band: BandSlug; show: ShowDetails }>;
     }
 
-    if (shouldUseLocalPreview()) {
-      return getPreviewShowDetailsByDate(bandInput, showDate);
-    }
-
     const band = bandState.band;
     if (!showDate) {
       return { status: "empty" };
@@ -207,17 +193,13 @@ export const getNextShowDetails = cache(
       return bandState as RouteState<{ band: BandSlug; show: ShowDetails }>;
     }
 
-    if (shouldUseLocalPreview()) {
-      return getPreviewNextShowDetails(bandInput);
-    }
-
     const client = getSupabaseServerClient();
     if (!client) {
       return { status: "missing_env" };
     }
 
     try {
-      const todayIso = new Date().toISOString().slice(0, 10);
+      const todayIso = getEasternTodayIso();
       if (bandState.band === "um") {
         const { data: upcomingData, error: upcomingError } = await client
           .from("um_upcoming_shows")
@@ -287,10 +269,6 @@ export const getLastShowSetlist = cache(
       return bandState as RouteState<{ band: BandSlug; setlist: SetlistSnapshot }>;
     }
 
-    if (shouldUseLocalPreview()) {
-      return getPreviewLastShowSetlist(bandInput);
-    }
-
     const band = bandState.band;
     const client = getSupabaseServerClient();
 
@@ -299,10 +277,8 @@ export const getLastShowSetlist = cache(
     }
 
     try {
-      const { idColumn, showsTable } = bandState.bandEntry;
-      const todayIso = new Date().toISOString().slice(0, 10);
-      const positionColumn = band === "phish" ? "position" : "song_position";
-      const setlistTable = `${band}_setlists_raw`;
+      const { showsTable } = bandState.bandEntry;
+      const todayIso = getEasternTodayIso();
 
       const { data: recentShows, error } = await client
         .from(showsTable)
@@ -315,66 +291,17 @@ export const getLastShowSetlist = cache(
         return { status: "error", message: error.message };
       }
 
-      const lastShow = recentShows?.[0];
-      if (!lastShow) {
+      const selectedDate = recentShows?.[0]?.show_date;
+      if (typeof selectedDate !== "string") {
         return { status: "empty" };
       }
 
-      const showId = lastShow[idColumn];
-      const selectedDate = lastShow.show_date;
-
-      if (typeof selectedDate !== "string" || !showId) {
+      const setlist = await getSetlistForDate(band, selectedDate);
+      if (!setlist) {
         return { status: "empty" };
       }
 
-      const [setlistResponse, detailResponse] = await Promise.all([
-        client
-          .from(setlistTable)
-          .select("*")
-          .eq(idColumn, showId)
-          .order("set_number", { ascending: true })
-          .order(positionColumn, { ascending: true }),
-        client.from(showsTable).select("*").eq(idColumn, showId).limit(1),
-      ]);
-
-      if (setlistResponse.error || detailResponse.error) {
-        return { status: "error", message: setlistResponse.error?.message ?? detailResponse.error?.message ?? "Unknown error" };
-      }
-
-      const seen = new Set<string>();
-      const songs: SetlistSnapshot["songs"] =
-        setlistResponse.data?.flatMap((item) => {
-          const row = asRecord(item);
-          if (!row) {
-            return [];
-          }
-
-          const key = `${row.set_number}-${row[positionColumn]}`;
-          if (seen.has(key)) {
-            return [];
-          }
-          seen.add(key);
-          return [
-            {
-              setNumber: parseNumber(row.set_number),
-              position: parseNumber(row[positionColumn]),
-              songName: String(row.song_name ?? "Unknown Song"),
-            },
-          ];
-        }) ?? [];
-
-      if (songs.length === 0) {
-        return { status: "empty" };
-      }
-
-      return {
-        status: "ready",
-        band,
-        setlist: {
-          showDetails: detailResponse.data?.[0] ?? null,
-          songs,
-        },
-      };
+      return { status: "ready", band, setlist };
     } catch (error) {
       return {
         status: "error",

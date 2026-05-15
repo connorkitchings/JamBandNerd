@@ -28,11 +28,12 @@ from pathlib import Path
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, project_root)
 
-from src.jambandnerd.data_collection.correction_detector import (
+from src.jambandnerd.data_collection.correction_detector import (  # noqa: E402
     format_correction_report,
     run_correction_sweep,
 )
-from src.jambandnerd.db.connection import get_supabase_client
+
+from src.jambandnerd.db.connection import get_supabase_client  # noqa: E402
 
 
 def main():
@@ -65,8 +66,8 @@ def main():
     parser.add_argument(
         "--output",
         type=str,
-        default="correction_sweep_report.json",
-        help="Output file for the correction report",
+        default=None,
+        help="Output file for the correction report (default: correction_sweep_report_{band}.json)",
     )
     parser.add_argument(
         "--tables",
@@ -78,7 +79,9 @@ def main():
 
     args = parser.parse_args()
 
-    # Determine if this is a dry run
+    if args.output is None:
+        args.output = f"correction_sweep_report_{args.band}.json"
+
     dry_run = args.dry_run and not args.no_dry_run
 
     print(f"Starting correction sweep for {args.band}")

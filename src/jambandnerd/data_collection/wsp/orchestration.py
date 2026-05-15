@@ -14,10 +14,7 @@ import pandas as pd
 import requests
 from bs4 import BeautifulSoup
 
-from jambandnerd.data_collection.utils import (
-    CollectionTimer,
-    attach_source_hash_column,
-)
+from jambandnerd.data_collection.utils import CollectionTimer, compute_source_hash
 from jambandnerd.db.connection import get_supabase_client
 from jambandnerd.db.operations import (
     fetch_existing_values,
@@ -41,7 +38,6 @@ from .parser_profile import (
     validate_fingerprint,
 )
 from .session import cleanup_playwright, create_enhanced_session, decode_ec_response
-from .song_canonicalizer import build_canonical_lookup_from_db
 from .status import CollectionStatus
 from .tourwrangler import fetch_setlist_from_tourwrangler
 
@@ -212,21 +208,8 @@ def _resolve_recent_wsp_fallback(
             lookup_errors.append(
                 f"{_format_fallback_source(source_name)} lookup failed: {exc}"
             )
-            logging.warning(
-                "Fallback source %s raised for show %s (%s): %s",
-                source_name,
-                show_id,
-                show_date,
-                exc,
-            )
             continue
         if not rows:
-            logging.info(
-                "Fallback source %s returned no rows for show %s (%s)",
-                source_name,
-                show_id,
-                show_date,
-            )
             continue
 
         normalized_rows: list[dict[str, object]] = []
@@ -406,8 +389,6 @@ def process_wsp_data(
     skip_existing_setlists: bool = True,
     year_start: int | None = None,
     year_end: int | None = None,
-    start_date: date | None = None,
-    end_date: date | None = None,
     full_backfill: bool = False,
 ) -> CollectionStatus:
     """Collect all WSP data and store it in Supabase raw tables."""
@@ -428,34 +409,17 @@ def process_wsp_data(
         validate_and_upsert_dataframe(
             table_name="wsp_songs_raw",
             df=songs_df,
-            conflict_columns=["song_name"],
+            conflict_columns=["api_song_id"],
         )
         logging.info(f"Upserted {len(songs_df)} songs into wsp_songs_raw.")
     status.songs_collected = len(songs_data)
     logging.info("--- Finished WSP Song Collection ---")
 
-    # 1b. Build canonical song name lookup from wsp_songs_raw
-    canonical_lookup: dict[str, str] = {}
-    try:
-        canonical_lookup = build_canonical_lookup_from_db(client)
-        logging.info(
-            "Built WSP canonical song lookup (%s entries).", len(canonical_lookup)
-        )
-    except Exception as exc:
-        logging.warning("Could not build canonical lookup from DB: %s", exc)
-
     # 2. Collect and Upsert Shows
     logging.info("--- Starting WSP Show Collection ---")
-
-    # Determine date range: explicit dates take precedence over years
-    if start_date is None and year_start is not None:
-        start_date = datetime(year_start, 1, 1).date()
-    if end_date is None and year_end is not None:
-        end_date = datetime(year_end, 12, 31).date()
-
     shows_data = collector.collect_shows(
-        start_date=start_date,
-        end_date=end_date,
+        start_date=datetime(year_start, 1, 1).date() if year_start else None,
+        end_date=datetime(year_end, 12, 31).date() if year_end else None,
     )
 
     if shows_data:
@@ -517,21 +481,9 @@ def process_wsp_data(
         logging.info(f"Upserted {len(venues_df)} venues into wsp_venues_raw.")
     logging.info("--- Finished WSP Venue Collection ---")
 
-    # 4. Fetch shows from DB for the specified date range
+    # 4. Fetch shows from DB for the specified year range
     if not full_backfill:
-        if start_date and end_date:
-            logging.info(
-                f"Fetching shows from database for date range {start_date.isoformat()} to {end_date.isoformat()}..."
-            )
-            shows_response = (
-                client.table("wsp_shows_raw")
-                .select("*")
-                .gte("show_date", start_date.isoformat())
-                .lte("show_date", end_date.isoformat())
-                .execute()
-            )
-            shows_to_process_df = pd.DataFrame(shows_response.data)
-        elif year_start and year_end:
+        if year_start and year_end:
             logging.info(
                 f"Fetching shows from database for years {year_start}-{year_end}..."
             )
@@ -581,7 +533,7 @@ def process_wsp_data(
         )
         setlists_data = collector.collect_setlists(records_for_scrape)
         if setlists_data:
-            setlists_df = normalize_setlists(setlists_data, canonical_lookup)
+            setlists_df = normalize_setlists(setlists_data)
             validate_and_upsert_dataframe(
                 table_name="wsp_setlists_raw",
                 df=setlists_df,
@@ -644,7 +596,7 @@ def process_wsp_data(
         logging.warning(f"EC-over-TW promotion step encountered an error: {exc}")
 
     # 7. PanicStream / TourWrangler fallback for missing recent historical setlists
-    fallback_rows, fallback_shows = tourwrangler_fallback(client, canonical_lookup)
+    fallback_rows, fallback_shows = tourwrangler_fallback(client)
     status.fallback_setlists_collected = fallback_rows
     status.fallback_shows_filled = fallback_shows
     status.setlists_collected += fallback_rows
@@ -734,9 +686,7 @@ def process_wsp_data(
     return status
 
 
-def tourwrangler_fallback(
-    client, canonical_lookup: dict[str, str] | None = None
-) -> tuple[int, int]:
+def tourwrangler_fallback(client) -> tuple[int, int]:
     """Fetch missing recent historical WSP setlists from fallback sources.
 
     This function checks for shows in the configured backup window that are missing
@@ -745,7 +695,6 @@ def tourwrangler_fallback(
 
     Args:
         client: Supabase client instance.
-        canonical_lookup: Optional lowercase->canonical song name mapping.
     """
     try:
         today = date.today()
@@ -821,14 +770,6 @@ def tourwrangler_fallback(
                         )
 
             if backup_rows:
-                for row in backup_rows:
-                    raw_name = row.get("song_name", "")
-                    if raw_name:
-                        from .song_canonicalizer import canonicalize_song_name
-
-                        row["song_name"] = canonicalize_song_name(
-                            raw_name, canonical_lookup
-                        )
                 backup_df = pd.DataFrame(backup_rows)
                 has_source_col = _setlist_table_has_source_column()
                 if has_source_col:
@@ -836,7 +777,9 @@ def tourwrangler_fallback(
                 elif "source" in backup_df.columns:
                     backup_df = backup_df.drop(columns=["source"])
 
-                backup_df = attach_source_hash_column(backup_df)
+                backup_df["source_hash"] = backup_df.apply(
+                    lambda row: compute_source_hash(row.to_dict()), axis=1
+                )
 
                 validate_and_upsert_dataframe(
                     table_name="wsp_setlists_raw",

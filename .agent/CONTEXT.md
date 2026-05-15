@@ -6,7 +6,7 @@ This is the startup router for AI tools. Do not treat it as a full architecture 
 
 - JamBandNerd is a Python 3.12 data platform for jam band setlist collection, transformation, prediction, and visualization.
 - Core flow: sources -> collectors -> Supabase raw tables -> in-memory transforms -> models -> predictions/backtests -> website delivery surface.
-- The website in `apps/web` is the sole maintained product surface. Streamlit is retired and remains only in historical docs/logs.
+- The public product target is a full website; the existing Streamlit UI remains in the repo as a legacy transition surface until cutover.
 - The recommended end-to-end entrypoint is `scripts/run_optimized_pipeline.py`.
 - Active AI workflow lives under `.agent/` and `session_logs/`.
 - Historical AI/dev logs remain in `docs/logs/` as archive only.
@@ -25,7 +25,7 @@ After that, load only what the task needs.
 - Command source of truth: `README.md` and `docs/user/pipeline_usage.md`
 - Anti-leakage rule: `reference_date` is mandatory in feature generation and backtesting
 - In-memory transforms only: no intermediate Supabase tables
-- Band-agnostic core: shared transforms/models stay generic; collector-specific logic stays under `src/jambandnerd/data_collection/{band}/`
+- Band-agnostic core (partial): shared transforms, `ModelData`, `PredictionModel` ABC, and storage contract stay generic; collector logic stays in `data_collection/{band}/`; per-band predictor classes are allowed in `models/{band}/` (see ADR 0001)
 - Dynamic band discovery comes from `scripts/run_*_collection.py`
 
 ## Core Paths

@@ -8,39 +8,54 @@ import { matchesPredictionUpdateScope } from "@/lib/live-updates";
 
 type Props = {
   band: string;
-  model: string;
-  referenceDate: string;
+  targetShowKey?: string | null;
+  targetShowDate?: string | null;
   supabaseUrl: string;
   supabaseAnonKey: string;
 };
 
 export function LiveTracker({
   band,
-  model,
-  referenceDate,
+  targetShowKey,
+  targetShowDate,
   supabaseUrl,
   supabaseAnonKey,
 }: Props) {
   const router = useRouter();
 
   useEffect(() => {
-    if (!supabaseUrl || !supabaseAnonKey || !band || !model || !referenceDate) return;
+    if (
+      !supabaseUrl ||
+      !supabaseAnonKey ||
+      !band ||
+      (!targetShowKey && !targetShowDate)
+    ) {
+      return;
+    }
 
     const supabase = createClient(supabaseUrl, supabaseAnonKey);
     const channel = supabase
-      .channel(`live-updates-${band}-${model}-${referenceDate}`)
+      .channel(`live-updates-${band}-${targetShowKey ?? targetShowDate}`)
       .on(
         "postgres_changes",
         {
           event: "*",
           schema: "public",
-          table: "next_show_prediction_songs",
+          table: "setlist_prediction_songs",
           filter: `band=eq.${band}`,
         },
         (payload) => {
           const scopedUpdate =
-            matchesPredictionUpdateScope(payload.new, { band, model, referenceDate }) ||
-            matchesPredictionUpdateScope(payload.old, { band, model, referenceDate });
+            matchesPredictionUpdateScope(payload.new, {
+              band,
+              targetShowKey,
+              targetShowDate,
+            }) ||
+            matchesPredictionUpdateScope(payload.old, {
+              band,
+              targetShowKey,
+              targetShowDate,
+            });
           if (scopedUpdate) {
             router.refresh();
           }
@@ -51,7 +66,7 @@ export function LiveTracker({
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [band, model, referenceDate, supabaseUrl, supabaseAnonKey, router]);
+  }, [band, targetShowKey, targetShowDate, supabaseUrl, supabaseAnonKey, router]);
 
   return null;
 }

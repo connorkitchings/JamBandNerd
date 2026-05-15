@@ -17,8 +17,11 @@ BAND_EXCLUSION_WINDOWS: Final[dict[str, int]] = {
     "um": 4,  # UM uses 4-show exclusion window instead of default 3
 }
 
-# Minimum number of plays required for a song to be considered by Deal model
+# Minimum number of plays required for a song to be considered by CK+ model
 MIN_PLAYS_THRESHOLD_DEFAULT: Final[int] = 5
+
+# Alpha parameter for CK+ model (weight for gap ratio vs z-score)
+CKPLUS_ALPHA_DEFAULT: Final[float] = 0.7
 
 # Retirement gap thresholds by band (shows without a play before considered "retired")
 RETIREMENT_GAPS: Final[dict[str, int]] = {
@@ -52,3 +55,22 @@ DEAL_L2_REGULARIZATION: Final[float] = 0.01
 
 # Deal retraining interval (days)
 DEAL_RETRAIN_INTERVAL_DAYS: Final[int] = 7
+
+# ── Single-model-per-band config ─────────────────────────────────────────────
+
+ACTIVE_BANDS: Final[tuple[str, ...]] = ("goose", "phish", "wsp", "billy", "um")
+
+# Per-band top_n lives on BandMetadata.default_top_k in models/metadata.py.
+# Eggy is excluded from Phase A; onboard with adjusted top_n before Phase B.
+
+WEIGHTED_PRECISION_WEIGHTS: Final[dict[str, float]] = {
+    "p10": 0.2,
+    "p25": 0.7,
+    "p50": 0.1,
+}
+
+# Dual-objective scoring: α·p@10 + (1−α)·r@50.  Default 0.5 (equal weight).
+DUAL_OBJECTIVE_ALPHA: Final[float] = 0.5
+
+# Per-band overrides for DUAL_OBJECTIVE_ALPHA (bands not listed use the default).
+BAND_DUAL_OBJECTIVE_ALPHA: Final[dict[str, float]] = {}

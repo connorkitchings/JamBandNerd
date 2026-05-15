@@ -102,37 +102,19 @@ def test_run_band_pipeline_executes_full_orchestrator_path(band, pipeline_record
         f"{band}:collect",
         "generate_live_predictions",
         "run_backtest",
-        "generate_live_predictions",
-        "run_backtest",
         "validate_predictions",
         "validate_accuracy",
         "audit_supabase",
     ]
 
-    notebook_prediction = pipeline_recorder[1][1]["kwargs"]
-    deal_prediction = pipeline_recorder[3][1]["kwargs"]
-    notebook_backtest = pipeline_recorder[2][1]["kwargs"]
-    deal_backtest = pipeline_recorder[4][1]["kwargs"]
+    prediction = pipeline_recorder[1][1]["kwargs"]
+    backtest = pipeline_recorder[2][1]["kwargs"]
 
-    assert notebook_prediction == {
-        "band": band,
-        "model": "notebook",
-    }
-    assert deal_prediction == {
-        "band": band,
-        "model": "deal",
-    }
-    assert notebook_backtest == {
-        "band": band,
-        "model": "notebook",
-    }
-    assert deal_backtest == {
-        "band": band,
-        "model": "deal",
-    }
-    assert pipeline_recorder[5][1]["kwargs"] == {"band": band, "max_age_hours": 72}
-    assert pipeline_recorder[6][1]["kwargs"] == {"band": band, "max_age_hours": 72}
-    assert pipeline_recorder[7][1]["kwargs"] == {
+    assert prediction == {"band": band}
+    assert backtest == {"band": band}
+    assert pipeline_recorder[3][1]["kwargs"] == {"band": band, "max_age_hours": 72}
+    assert pipeline_recorder[4][1]["kwargs"] == {"band": band, "max_age_hours": 72}
+    assert pipeline_recorder[5][1]["kwargs"] == {
         "band": band,
         "max_age_hours": 72,
         "skip_accuracy": False,
@@ -153,7 +135,6 @@ def test_run_band_pipeline_skip_accuracy_preserves_predictions_and_validation(
     assert success is True
     assert [event[0] for event in pipeline_recorder] == [
         f"{band}:collect",
-        "generate_live_predictions",
         "generate_live_predictions",
         "validate_predictions",
         "audit_supabase",
@@ -225,8 +206,6 @@ def test_run_band_pipeline_force_overrides_verify_only_preflight(
 
     assert success is True
     assert [event[0] for event in pipeline_recorder] == [
-        "generate_live_predictions",
-        "run_backtest",
         "generate_live_predictions",
         "run_backtest",
         "validate_predictions",
@@ -301,10 +280,8 @@ def test_run_band_pipeline_stops_after_prediction_failure(
     )
 
     def fail_generate(*_args, **kwargs):
-        model = kwargs["model"]
-        events.append(("generate", model))
-        if model == "notebook":
-            raise RuntimeError("prediction failed")
+        events.append(("generate", kwargs["band"]))
+        raise RuntimeError("prediction failed")
 
     monkeypatch.setattr(
         run_optimized_pipeline,
@@ -314,7 +291,7 @@ def test_run_band_pipeline_stops_after_prediction_failure(
     monkeypatch.setattr(
         run_optimized_pipeline,
         "_run_band_backtest",
-        lambda *args, **kwargs: events.append(("backtest", kwargs["model"])),
+        lambda *args, **kwargs: events.append(("backtest", kwargs["band"])),
     )
     monkeypatch.setattr(
         run_optimized_pipeline,
@@ -330,4 +307,4 @@ def test_run_band_pipeline_stops_after_prediction_failure(
     success = run_optimized_pipeline.run_band_pipeline(band)
 
     assert success is False
-    assert events == [("collect", band), ("generate", "notebook")]
+    assert events == [("collect", band), ("generate", band)]

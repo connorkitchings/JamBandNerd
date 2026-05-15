@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-const FALLBACK_BANDS = [
+const ACTIVE_BANDS = [
   { value: "wsp", label: "Widespread Panic" },
   { value: "goose", label: "Goose" },
   { value: "phish", label: "Phish" },
@@ -11,24 +11,7 @@ const FALLBACK_BANDS = [
   { value: "um", label: "Umphrey's McGee" },
 ];
 
-function resolveActiveBands(): Array<{ value: string; label: string }> {
-  if (typeof document === "undefined") return FALLBACK_BANDS;
-  const el = document.getElementById("admin-bands");
-  if (!el?.textContent) return FALLBACK_BANDS;
-  try {
-    const data = JSON.parse(el.textContent) as Array<{ slug: string; displayName: string }>;
-    return data.map((b) => ({ value: b.slug, label: b.displayName }));
-  } catch {
-    return FALLBACK_BANDS;
-  }
-}
-
-function useActiveBands() {
-  return useState(resolveActiveBands)[0];
-}
-
 export default function AdminSetlistPage() {
-  const activeBands = useActiveBands();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isCheckingSession, setIsCheckingSession] = useState(true);
   const [isConfigured, setIsConfigured] = useState(true);
@@ -308,7 +291,7 @@ export default function AdminSetlistPage() {
               onChange={(e) => setBand(e.target.value)}
               className="mt-1 w-full rounded-xl border border-outline-variant bg-surface px-3 py-2 text-on-surface focus:border-primary focus:outline-none"
             >
-              {activeBands.map((b) => (
+              {ACTIVE_BANDS.map((b) => (
                 <option key={b.value} value={b.value}>
                   {b.label}
                 </option>

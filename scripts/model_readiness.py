@@ -15,7 +15,6 @@ import pandas as pd
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, project_root)
 
-from scripts.common import write_json_atomic
 from scripts.compare_models import generate_report as generate_comparison_report
 from scripts.export_backtest_snapshots import export_backtest_snapshots, parse_bands
 from scripts.run_backtest import (
@@ -39,6 +38,13 @@ from src.jambandnerd.models.registry import (
 )
 
 DEFAULT_ARTIFACT_ROOT = Path("artifacts/model_readiness")
+
+
+def _write_json_atomic(path: Path, payload: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temp_path = path.with_suffix(f"{path.suffix}.tmp")
+    temp_path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+    temp_path.replace(path)
 
 
 def _artifact_root(model_slug: str, artifact_root: Path | None) -> Path:
@@ -165,7 +171,7 @@ def _run_compare_phase(
         include_candidate_diagnostics=True,
     )
     report_path = artifact_root / "comparison_report.json"
-    write_json_atomic(report_path, report)
+    _write_json_atomic(report_path, report)
     return {"path": str(report_path), "report": report}
 
 
@@ -176,7 +182,7 @@ def _run_snapshot_phase(*, bands: list[str], artifact_root: Path) -> dict[str, A
         snapshot_root=str(snapshot_root),
     )
     manifest_path = artifact_root / "snapshot_manifest.json"
-    write_json_atomic(manifest_path, manifest)
+    _write_json_atomic(manifest_path, manifest)
     return {"path": str(manifest_path), "manifest": manifest}
 
 
@@ -207,7 +213,7 @@ def _run_backfill_history_phase(
                 snapshot_root=snapshot_root,
                 recovery_root=recovery_root,
             )
-            write_json_atomic(bundle_path, bundle)
+            _write_json_atomic(bundle_path, bundle)
 
         if not dry_run:
             _publish_band_bundle(bundle)
@@ -219,7 +225,7 @@ def _run_backfill_history_phase(
         }
 
     history_path = artifact_root / "history_publish_report.json"
-    write_json_atomic(history_path, results)
+    _write_json_atomic(history_path, results)
     return {"path": str(history_path), "report": results}
 
 
@@ -231,7 +237,7 @@ def _run_validate_phase(
 ) -> dict[str, Any]:
     report = build_model_readiness_report(model_slug, bands=bands)
     report_path = artifact_root / "backend_readiness_report.json"
-    write_json_atomic(report_path, report)
+    _write_json_atomic(report_path, report)
     return {"path": str(report_path), "report": report}
 
 

@@ -1,194 +1,38 @@
-/**
- * Prediction data fetching — latest, by-date, available dates, and projections.
- */
-
 import "server-only";
 
 import { cache } from "react";
-import type { SupabaseClient } from "@supabase/supabase-js";
 
-import {
-  ACTIVE_MODELS,
-  type BandSlug,
-  type ModelSlug,
-  normalizeModel,
-} from "@/lib/config";
+import type { BandSlug } from "@/lib/config";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { selectLivePredictionSeedRow } from "@/lib/prediction-selection";
+import { getEasternTodayIso } from "@/lib/show-status";
+
 import { getClientOrState, getBandContext } from "./bands";
-import {
-  getPreviewCurrentModelVersion,
-  getPreviewExplorerSnapshot,
-  getPreviewLatestPredictions,
-  getPreviewPredictionDates,
-  getPreviewPredictionsForDate,
-  shouldUseLocalPreview,
-} from "./preview";
-import {
-  asRecord,
-  buildPredictionSnapshotFromCanonicalRow,
-  buildPredictionSnapshotFromProjectionRows,
-} from "./parsers";
-import type {
-  PredictionSnapshot,
-  ProjectionRow,
-  RouteState,
-  ExplorerSnapshot,
-} from "./types";
-import { getSetlistForDate } from "./shows";
+import { asRecord, buildPredictionSnapshotFromCanonicalRow } from "./parsers";
+import type { PredictionSnapshot, RouteState } from "./types";
 
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
 
-import {
-  selectPreferredPredictionSeed,
-  type PredictionSeedRow,
-} from "@/lib/preferred-prediction-seed";
-
-async function fetchProjectedPredictionSnapshot(
-  client: SupabaseClient,
-  {
-    band,
-    model,
-    referenceDate,
-  }: {
-    band: BandSlug;
-    model: ModelSlug;
-    referenceDate?: string;
-  },
-): Promise<PredictionSnapshot | null> {
-  const todayIso = new Date().toISOString().slice(0, 10);
-
-  let seedQuery = client
-    .from("next_show_prediction_songs")
-    .select("target_show_date, reference_date, generated_at, model_version")
-    .eq("band", band)
-    .eq("model_slug", model)
-    .eq("rank", 1);
-
-  if (referenceDate) {
-    seedQuery = seedQuery.eq("reference_date", referenceDate);
-  }
-
-  const { data: allSeedRows, error: seedError } = await seedQuery
-    .order("generated_at", { ascending: false })
-    .order("target_show_date", { ascending: true })
-    .limit(100);
-
-  if (seedError) {
-    throw seedError;
-  }
-
-  const parsedRows = (allSeedRows ?? [])
+function toSeedRows(data: unknown[]) {
+  return data
     .map((item) => asRecord(item))
-    .filter(
-      (row): row is PredictionSeedRow =>
-        row !== null &&
-        typeof row.target_show_date === "string" &&
-        typeof row.reference_date === "string" &&
-        typeof row.generated_at === "string" &&
-        typeof row.model_version === "string",
-    );
-
-  const seedRow = selectPreferredPredictionSeed(parsedRows, { todayIso });
-  const seedReferenceDate =
-    seedRow && typeof seedRow.reference_date === "string"
-      ? seedRow.reference_date
-      : null;
-  const seedModelVersion =
-    seedRow && typeof seedRow.model_version === "string"
-      ? seedRow.model_version
-      : null;
-
-  if (!seedReferenceDate || !seedModelVersion) {
-    return null;
-  }
-
-  const { data, error } = await client
-    .from("next_show_prediction_songs")
-    .select(
-      "target_show_date, reference_date, generated_at, model_version, rank, song_name, prediction_payload",
-    )
-    .eq("band", band)
-    .eq("model_slug", model)
-    .eq("reference_date", seedReferenceDate)
-    .eq("model_version", seedModelVersion)
-    .order("rank", { ascending: true });
-
-  if (error) {
-    throw error;
-  }
-
-  const rows = (data ?? [])
-    .map((item) => asRecord(item))
-    .filter((item): item is ProjectionRow => item !== null);
-
-  if (rows.length === 0) {
-    return null;
-  }
-
-  return buildPredictionSnapshotFromProjectionRows(rows);
-}
-
-export const getCurrentModelVersion = cache(
-  async (
-    client: SupabaseClient,
-    band: BandSlug,
-    model: ModelSlug,
-  ): Promise<string> => {
-  if (shouldUseLocalPreview()) {
-    return getPreviewCurrentModelVersion(model);
-  }
-
-  try {
-    const projectionSnapshot = await fetchProjectedPredictionSnapshot(client, {
-      band,
-      model,
-    });
-    if (projectionSnapshot?.modelVersion) {
-      return projectionSnapshot.modelVersion;
-    }
-  } catch (error) {
-    console.error(
-      "Failed to resolve model version from next_show_prediction_songs",
-      error,
-    );
-  }
-
-  const { data } = await client
-    .from("completed_show_prediction_runs")
-    .select("model_version")
-    .eq("band", band)
-    .eq("model_slug", model)
-    .order("target_show_date", { ascending: false })
-    .order("generated_at", { ascending: false })
-    .limit(1);
-
-  const row = asRecord(data?.[0]);
-  if (row && typeof row.model_version === "string") {
-    return row.model_version;
-  }
-
-  return `${model}_v1`;
-});
-
-export function resolveReplayModels(
-  modelAInput: string | undefined,
-  modelBInput: string | undefined,
-): [ModelSlug, ModelSlug] {
-  const modelA = ACTIVE_MODELS.includes(modelAInput as ModelSlug)
-    ? (modelAInput as ModelSlug)
-    : (ACTIVE_MODELS[0] ?? "notebook");
-  const fallbackModelB =
-    ACTIVE_MODELS.find((item) => item !== modelA) ?? ACTIVE_MODELS[0] ?? modelA;
-  const requestedModelB = ACTIVE_MODELS.includes(modelBInput as ModelSlug)
-    ? (modelBInput as ModelSlug)
-    : fallbackModelB;
-  const modelB =
-    requestedModelB === modelA && ACTIVE_MODELS.length > 1
-      ? fallbackModelB
-      : requestedModelB;
-  return [modelA, modelB];
+    .filter((item): item is Record<string, unknown> => item !== null)
+    .map((row) => ({
+      reference_date:
+        typeof row.reference_date === "string" ? row.reference_date : null,
+      target_show_date:
+        typeof row.target_show_date === "string" ? row.target_show_date : null,
+      target_show_key:
+        typeof row.target_show_key === "string" ? row.target_show_key : null,
+      predicted_at:
+        typeof row.generated_at === "string"
+          ? row.generated_at
+          : null,
+      model_version:
+        typeof row.model_version === "string" ? row.model_version : null,
+    }));
 }
 
 // ---------------------------------------------------------------------------
@@ -198,11 +42,9 @@ export function resolveReplayModels(
 export const getLatestPredictions = cache(
   async (
     bandInput: string | undefined,
-    modelInput: string | undefined,
-  ): Promise<RouteState<{ band: BandSlug; model: ModelSlug; snapshot: PredictionSnapshot }>> => {
+  ): Promise<RouteState<{ band: BandSlug; snapshot: PredictionSnapshot }>> => {
     const missingEnv = getClientOrState<{
       band: BandSlug;
-      model: ModelSlug;
       snapshot: PredictionSnapshot;
     }>();
     if (missingEnv) {
@@ -213,17 +55,11 @@ export const getLatestPredictions = cache(
     if (bandState.status !== "ready") {
       return bandState as RouteState<{
         band: BandSlug;
-        model: ModelSlug;
         snapshot: PredictionSnapshot;
       }>;
     }
 
-    if (shouldUseLocalPreview()) {
-      return getPreviewLatestPredictions(bandInput, modelInput);
-    }
-
     const band = bandState.band;
-    const model = normalizeModel(modelInput);
     const client = getSupabaseServerClient();
 
     if (!client) {
@@ -231,90 +67,43 @@ export const getLatestPredictions = cache(
     }
 
     try {
-      try {
-        const projectionSnapshot = await fetchProjectedPredictionSnapshot(client, {
-          band,
-          model,
-        });
-        if (projectionSnapshot) {
-          return { status: "ready", band, model, snapshot: projectionSnapshot };
-        }
-      } catch (error) {
-        return {
-          status: "error",
-          message:
-            error instanceof Error
-              ? error.message
-              : "Failed to load live predictions",
-        };
+      const { data: seedRows, error: seedError } = await client
+        .from("setlist_predictions")
+        .select(
+          "reference_date, target_show_date, generated_at, model_version, target_show_key",
+        )
+        .eq("band", band)
+        .order("generated_at", { ascending: false })
+        .limit(100);
+
+      if (seedError) {
+        return { status: "error", message: seedError.message };
       }
 
-      return { status: "empty" };
-    } catch (error) {
-      return {
-        status: "error",
-        message: error instanceof Error ? error.message : "Unknown error",
-      };
-    }
-  },
-);
+      const seedRow = selectLivePredictionSeedRow(toSeedRows(seedRows ?? []), {
+        todayIso: getEasternTodayIso(),
+      });
 
-export const getPredictionsForDate = cache(
-  async (
-    bandInput: string | undefined,
-    modelInput: string | undefined,
-    referenceDate: string,
-  ): Promise<RouteState<{ band: BandSlug; model: ModelSlug; snapshot: PredictionSnapshot }>> => {
-    const missingEnv = getClientOrState<{
-      band: BandSlug;
-      model: ModelSlug;
-      snapshot: PredictionSnapshot;
-    }>();
-    if (missingEnv) {
-      return missingEnv;
-    }
+      if (!seedRow?.model_version || !seedRow.target_show_key) {
+        return { status: "empty" };
+      }
 
-    const bandState = await getBandContext(bandInput);
-    if (bandState.status !== "ready") {
-      return bandState as RouteState<{
-        band: BandSlug;
-        model: ModelSlug;
-        snapshot: PredictionSnapshot;
-      }>;
-    }
+      const matchedSeed = (seedRows ?? []).find(
+        (r) =>
+          r.target_show_key === seedRow.target_show_key &&
+          r.model_version === seedRow.model_version,
+      );
 
-    if (shouldUseLocalPreview()) {
-      return getPreviewPredictionsForDate(bandInput, modelInput, referenceDate);
-    }
-
-    const band = bandState.band;
-    const model = normalizeModel(modelInput);
-    const client = getSupabaseServerClient();
-
-    if (!client) {
-      return { status: "missing_env" };
-    }
-
-    try {
-      try {
-        const projectionSnapshot = await fetchProjectedPredictionSnapshot(client, {
-          band,
-          model,
-          referenceDate,
-        });
-        if (projectionSnapshot) {
-          return { status: "ready", band, model, snapshot: projectionSnapshot };
-        }
-      } catch (error) {
-        console.error("Failed to load projected predictions for date", error);
+      if (!matchedSeed?.target_show_key) {
+        return { status: "empty" };
       }
 
       const { data, error } = await client
-        .from("next_show_prediction_runs")
+        .from("setlist_predictions")
         .select("*")
         .eq("band", band)
-        .eq("model_slug", model)
-        .eq("reference_date", referenceDate)
+        .eq("model_version", matchedSeed.model_version)
+        .eq("target_show_key", matchedSeed.target_show_key)
         .limit(1);
 
       if (error) {
@@ -329,7 +118,81 @@ export const getPredictionsForDate = cache(
       return {
         status: "ready",
         band,
-        model,
+        snapshot: buildPredictionSnapshotFromCanonicalRow(row),
+      };
+    } catch (error) {
+      return {
+        status: "error",
+        message: error instanceof Error ? error.message : "Unknown error",
+      };
+    }
+  },
+);
+
+export const getPredictionsForDate = cache(
+  async (
+    bandInput: string | undefined,
+    targetShowDate: string,
+  ): Promise<RouteState<{ band: BandSlug; snapshot: PredictionSnapshot }>> => {
+    const missingEnv = getClientOrState<{
+      band: BandSlug;
+      snapshot: PredictionSnapshot;
+    }>();
+    if (missingEnv) {
+      return missingEnv;
+    }
+
+    const bandState = await getBandContext(bandInput);
+    if (bandState.status !== "ready") {
+      return bandState as RouteState<{
+        band: BandSlug;
+        snapshot: PredictionSnapshot;
+      }>;
+    }
+
+    const band = bandState.band;
+    const client = getSupabaseServerClient();
+
+    if (!client) {
+      return { status: "missing_env" };
+    }
+
+    try {
+      const { data: resultData, error: resultError } = await client
+        .from("setlist_results")
+        .select("*")
+        .eq("band", band)
+        .eq("target_show_date", targetShowDate)
+        .order("generated_at", { ascending: false })
+        .limit(1);
+
+      if (resultError) {
+        return { status: "error", message: resultError.message };
+      }
+
+      let row = resultData?.[0];
+      if (!row) {
+        const { data: liveData, error: liveError } = await client
+          .from("setlist_predictions")
+          .select("*")
+          .eq("band", band)
+          .eq("target_show_date", targetShowDate)
+          .order("generated_at", { ascending: false })
+          .limit(1);
+
+        if (liveError) {
+          return { status: "error", message: liveError.message };
+        }
+
+        row = liveData?.[0];
+      }
+      if (!row) {
+        return { status: "empty" };
+      }
+
+      return {
+        status: "ready",
+        band,
         snapshot: buildPredictionSnapshotFromCanonicalRow(row),
       };
     } catch (error) {
@@ -344,11 +207,9 @@ export const getPredictionsForDate = cache(
 export const getPredictionDates = cache(
   async (
     bandInput: string | undefined,
-    modelInput: string | undefined,
-  ): Promise<RouteState<{ band: BandSlug; model: ModelSlug; dates: string[] }>> => {
+  ): Promise<RouteState<{ band: BandSlug; dates: string[] }>> => {
     const missingEnv = getClientOrState<{
       band: BandSlug;
-      model: ModelSlug;
       dates: string[];
     }>();
     if (missingEnv) {
@@ -359,17 +220,11 @@ export const getPredictionDates = cache(
     if (bandState.status !== "ready") {
       return bandState as RouteState<{
         band: BandSlug;
-        model: ModelSlug;
         dates: string[];
       }>;
     }
 
-    if (shouldUseLocalPreview()) {
-      return getPreviewPredictionDates(bandInput, modelInput);
-    }
-
     const band = bandState.band;
-    const model = normalizeModel(modelInput);
     const client = getSupabaseServerClient();
 
     if (!client) {
@@ -377,30 +232,28 @@ export const getPredictionDates = cache(
     }
 
     try {
-      let dates: string[] = [];
+      const { data, error } = await client
+        .from("setlist_predictions")
+        .select("reference_date, target_show_date, target_show_key")
+        .eq("band", band)
+        .order("target_show_date", { ascending: false })
+        .limit(200);
 
-      try {
-        const { data: projectionData, error: projectionError } = await client
-          .from("next_show_prediction_songs")
-          .select("reference_date")
-          .eq("band", band)
-          .eq("model_slug", model)
-          .order("reference_date", { ascending: false })
-          .limit(100);
-
-        if (!projectionError && projectionData && projectionData.length > 0) {
-          dates = [...new Set(
-            projectionData
-              .map((row) => asRecord(row)?.reference_date)
-              .filter((d): d is string => typeof d === "string")
-          )];
-        }
-      } catch {
+      if (error) {
+        return { status: "error", message: error.message };
       }
+
+      const dates = [
+        ...new Set(
+          (data ?? [])
+            .map((row) => asRecord(row)?.target_show_date)
+            .filter((d): d is string => typeof d === "string"),
+        ),
+      ];
 
       return dates.length === 0
         ? { status: "empty" }
-        : { status: "ready", band, model, dates };
+        : { status: "ready", band, dates };
     } catch (error) {
       return {
         status: "error",
@@ -409,56 +262,3 @@ export const getPredictionDates = cache(
     }
   },
 );
-
-export async function getExplorerSnapshot(
-  bandInput: string | undefined,
-  modelInput: string | undefined,
-  selectedDateInput?: string,
-): Promise<RouteState<{ band: BandSlug; model: ModelSlug; explorer: ExplorerSnapshot }>> {
-  if (shouldUseLocalPreview()) {
-    return getPreviewExplorerSnapshot(bandInput, modelInput, selectedDateInput);
-  }
-
-  const datesState = await getPredictionDates(bandInput, modelInput);
-
-  if (datesState.status !== "ready") {
-    return datesState as RouteState<{
-      band: BandSlug;
-      model: ModelSlug;
-      explorer: ExplorerSnapshot;
-    }>;
-  }
-
-  const selectedDate =
-    selectedDateInput && datesState.dates.includes(selectedDateInput)
-      ? selectedDateInput
-      : datesState.dates[0] ?? null;
-  if (!selectedDate) {
-    return { status: "empty" };
-  }
-
-  const [predictionsState, setlist] = await Promise.all([
-    getPredictionsForDate(datesState.band, datesState.model, selectedDate),
-    getSetlistForDate(datesState.band, selectedDate),
-  ]);
-
-  if (predictionsState.status !== "ready") {
-    return predictionsState as RouteState<{
-      band: BandSlug;
-      model: ModelSlug;
-      explorer: ExplorerSnapshot;
-    }>;
-  }
-
-  return {
-    status: "ready",
-    band: datesState.band,
-    model: datesState.model,
-    explorer: {
-      availableDates: datesState.dates,
-      selectedDate,
-      predictions: predictionsState.snapshot,
-      setlist,
-    },
-  };
-}

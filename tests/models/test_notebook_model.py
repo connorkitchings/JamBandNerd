@@ -191,3 +191,71 @@ class TestNotebookPredictor:
 
         song_names = [p.song_name for p in predictions]
         assert "Drums" not in song_names
+
+    def test_wsp_filtering_backfills_top_k_after_excluding_noise(self):
+        today = date(2024, 1, 1)
+        historical_plays = pd.DataFrame(
+            [
+                {
+                    "song_name": "Drums",
+                    "show_date": today - timedelta(days=5),
+                    "show_index": 100,
+                },
+                {
+                    "song_name": "Song A",
+                    "show_date": today - timedelta(days=10),
+                    "show_index": 99,
+                },
+                {
+                    "song_name": "Song B",
+                    "show_date": today - timedelta(days=20),
+                    "show_index": 98,
+                },
+                {
+                    "song_name": "Song C",
+                    "show_date": today - timedelta(days=30),
+                    "show_index": 97,
+                },
+            ]
+        )
+        master_feature_set = pd.DataFrame(
+            [
+                {
+                    "song_name": "Drums",
+                    "last_played_date": today - timedelta(days=5),
+                    "last_played_index": 100,
+                },
+                {
+                    "song_name": "Song A",
+                    "last_played_date": today - timedelta(days=10),
+                    "last_played_index": 99,
+                },
+                {
+                    "song_name": "Song B",
+                    "last_played_date": today - timedelta(days=20),
+                    "last_played_index": 98,
+                },
+                {
+                    "song_name": "Song C",
+                    "last_played_date": today - timedelta(days=30),
+                    "last_played_index": 97,
+                },
+            ]
+        )
+        model_data = ModelData(
+            master_feature_set=master_feature_set,
+            historical_plays=historical_plays,
+            reference_index=101,
+            reference_date=today,
+            recently_played_songs=[],
+            diagnostics={},
+        )
+
+        predictor = NotebookPredictor(band="wsp")
+        predictions, _ = predictor.predict(model_data, top_k=3)
+
+        assert [prediction.song_name for prediction in predictions] == [
+            "Song C",
+            "Song B",
+            "Song A",
+        ]

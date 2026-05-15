@@ -1,17 +1,11 @@
-/**
- * Accuracy data fetching — per-show recall and precision metrics.
- */
-
 import "server-only";
 
 import { cache } from "react";
 
-import type { BandSlug, ModelSlug } from "@/lib/config";
-import { normalizeModel } from "@/lib/config";
+import type { BandSlug } from "@/lib/config";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 
 import { getClientOrState, getBandContext } from "./bands";
-import { getPreviewRecentAccuracy, shouldUseLocalPreview } from "./preview";
 import {
   asRecord,
   parseNumber,
@@ -19,18 +13,15 @@ import {
   getVenueCityFromRow,
   getVenueRegionFromRow,
 } from "./parsers";
-import { getCurrentModelVersion } from "./predictions";
 import type { AccuracyRow, RouteState } from "./types";
 
 export const getRecentAccuracy = cache(
   async (
     bandInput: string | undefined,
-    modelInput: string | undefined,
     limit = 25,
-  ): Promise<RouteState<{ band: BandSlug; model: ModelSlug; rows: AccuracyRow[] }>> => {
+  ): Promise<RouteState<{ band: BandSlug; rows: AccuracyRow[] }>> => {
     const missingEnv = getClientOrState<{
       band: BandSlug;
-      model: ModelSlug;
       rows: AccuracyRow[];
     }>();
     if (missingEnv) {
@@ -41,17 +32,11 @@ export const getRecentAccuracy = cache(
     if (bandState.status !== "ready") {
       return bandState as RouteState<{
         band: BandSlug;
-        model: ModelSlug;
         rows: AccuracyRow[];
       }>;
     }
 
-    if (shouldUseLocalPreview()) {
-      return getPreviewRecentAccuracy(bandInput, modelInput, limit);
-    }
-
     const band = bandState.band;
-    const model = normalizeModel(modelInput);
     const client = getSupabaseServerClient();
 
     if (!client) {
@@ -59,13 +44,12 @@ export const getRecentAccuracy = cache(
     }
 
     try {
-      const modelVersion = await getCurrentModelVersion(client, band, model);
       const { data, error } = await client
-        .from("completed_show_accuracy")
-        .select("show_id, show_date, k10_recall, k25_recall, k50_recall, k10_precision, k25_precision, k50_precision")
+        .from("setlist_accuracy")
+        .select(
+          "show_id, show_date, p10, p25, p50, recall_10, recall_25, recall_50, weighted_precision_score",
+        )
         .eq("band", band)
-        .eq("model_slug", model)
-        .eq("model_version", modelVersion)
         .order("show_date", { ascending: false })
         .limit(limit);
 
@@ -80,12 +64,13 @@ export const getRecentAccuracy = cache(
               ? String(row.show_id)
               : null,
           showDate: typeof row.show_date === "string" ? row.show_date : null,
-          k10Recall: parseNumber(row.k10_recall),
-          k25Recall: parseNumber(row.k25_recall),
-          k50Recall: parseNumber(row.k50_recall),
-          k10Precision: parseNumber(row.k10_precision),
-          k25Precision: parseNumber(row.k25_precision),
-          k50Precision: parseNumber(row.k50_precision),
+          recall10: parseNumber(row.recall_10),
+          recall25: parseNumber(row.recall_25),
+          recall50: parseNumber(row.recall_50),
+          p10: parseNumber(row.p10),
+          p25: parseNumber(row.p25),
+          p50: parseNumber(row.p50),
+          weightedPrecisionScore: parseNumber(row.weighted_precision_score),
         })) ?? [];
 
       if (accuracyRows.length === 0) {
@@ -166,17 +151,18 @@ export const getRecentAccuracy = cache(
             state: null,
           },
         showDate: row.showDate,
-        k10Recall: row.k10Recall,
-        k25Recall: row.k25Recall,
-        k50Recall: row.k50Recall,
-        k10Precision: row.k10Precision,
-        k25Precision: row.k25Precision,
-        k50Precision: row.k50Precision,
+        recall10: row.recall10,
+        recall25: row.recall25,
+        recall50: row.recall50,
+        p10: row.p10,
+        p25: row.p25,
+        p50: row.p50,
+        weightedPrecisionScore: row.weightedPrecisionScore,
       }));
 
       return rows.length === 0
         ? { status: "empty" }
-        : { status: "ready", band, model, rows };
+        : { status: "ready", band, rows };
     } catch (error) {
       return {
         status: "error",

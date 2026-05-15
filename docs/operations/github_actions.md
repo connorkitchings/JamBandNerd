@@ -6,13 +6,13 @@ This repository uses 9 GitHub Actions workflows for pipeline automation, CI qual
 
 | Workflow | File | Schedule | Manual | PR/Push | Bands |
 |----------|------|----------|--------|---------|-------|
-| Daily Data Pipeline | `daily-pipeline.yml` | 19:00 UTC daily | Yes | -- | All 6 |
+| Daily Data Pipeline | `daily-pipeline.yml` | 19:00 UTC daily | Yes | -- | Active single-model bands |
 | Fantasy Goose | `fantasy-goose.yml` | After daily pipeline | Yes | -- | goose |
-| Sync Retained Corpus | `backfill-predictions.yml` | -- | Yes | -- | All 6 |
-| Live Show Tracker | `live-tracker.yml` | -- | Yes | -- | goose, phish, wsp |
+| Backfill Predictions | `backfill-predictions.yml` | -- | Yes | -- | Active single-model bands |
+| Live Show Tracker | `live-tracker.yml` | -- | Yes | -- | goose, phish, wsp, billy, um |
 | Repo Quality | `repo-quality.yml` | -- | -- | PR + push main | -- |
 | Website Quality | `web-quality.yml` | -- | -- | PR + push main | -- |
-| Hosted Website Smoke | `hosted-web-smoke.yml` | 22:00 UTC daily | Yes | -- | -- |
+| Hosted Website Smoke | `hosted-web-smoke.yml` | 20:30 UTC daily | Yes | -- | -- |
 | Dependency Audit | `dependency-audit.yml` | Mon 14:00 UTC | Yes | -- | -- |
 | Test Secrets | `test_secrets.yml` | -- | Yes | -- | -- |
 
@@ -20,7 +20,7 @@ This repository uses 9 GitHub Actions workflows for pipeline automation, CI qual
 
 ## Daily Data Pipeline
 
-The primary production workflow. Collects raw data, generates predictions, runs backtests, and validates freshness for all supported bands.
+The primary production workflow. Collects raw data, generates predictions, runs backtests, and validates freshness for the active single-model bands.
 
 - **Triggers**:
   - `schedule`: `0 19 * * *` (daily at 19:00 UTC / 3:00 PM ET during DST)
@@ -30,15 +30,15 @@ The primary production workflow. Collects raw data, generates predictions, runs 
   1. Compute collection preflight via `scripts/collection_preflight.py`
   2. Run data collection via `scripts/run_{band}_collection.py` (with retry logic)
   3. Verify data freshness via `scripts/verify_data_freshness.py`
-  4. Generate live next-show predictions for Notebook and Deal via `scripts/generate_live_predictions.py`
+  4. Generate live next-show predictions via `scripts/generate_live_predictions.py`
   5. Validate live prediction tables via `scripts/validate_prediction_tables.py`
-  6. Sync the retained completed-show corpus via `scripts/sync_retained_prediction_corpus.py --window 50` (skippable via `skip_accuracy`; both models use the same last-50 window; emits `backtest_incremental_all_scored` output through the underlying scorer)
+   6. Sync the retained completed-show corpus via `scripts/sync_retained_prediction_corpus.py --window 50` (skippable via `skip_accuracy`; emits `backtest_incremental_all_scored` output through the underlying scorer)
   8. Validate accuracy tables via `scripts/validate_accuracy_tables.py` (passes `--skip-freshness` when all shows already scored)
   9. Audit supported-model freshness via `scripts/check_supported_model_freshness.py`
   10. Audit website Supabase tables via `scripts/audit_supabase_tables.py` (passes `--skip-accuracy` when all shows already scored)
   11. Write per-band status summary and enforce stale-freshness escalation after artifacts are uploaded
 
-- **Band matrix**: Dynamically built from `scripts/get_all_bands.py`, which returns the repo-authoritative automation band list. Current bands: goose, phish, eggy, billy, um, wsp.
+- **Band matrix**: Built from the active single-model bands in the workflow setup job. Current bands: goose, phish, wsp, billy, um. Eggy remains excluded from the first single-model rollout.
 - **Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`; `PHISH_API_KEY` for Phish only.
 
 ### WSP Degraded-Mode Handling
@@ -47,8 +47,7 @@ The primary production workflow. Collects raw data, generates predictions, runs 
 - Upstream blocking without recent completed-show gaps is treated as **degraded**.
 - Degraded runs skip prediction/backtest regeneration and report whether the website is reusing prior data.
 - WSP upstream blocking that leaves recent completed-show data unusable is a hard failure.
-- WSP Notebook remains an actively supported model surface. It is not deprecated for WSP.
-- The daily workflow now runs Notebook and Deal with strict output requirements. A supported model that exits without writing fresh predictions or per-show backtest rows is treated as a workflow failure instead of a silent success.
+- The daily workflow now runs one registered model version per active band with strict output requirements. A supported model that exits without writing fresh predictions or per-show backtest rows is treated as a workflow failure instead of a silent success.
 - Supported-model reuse during degraded mode is now bounded:
   - if reused prediction freshness stays within `48h`, the band can remain degraded but non-failing
   - if supported-model prediction freshness exceeds `48h`, the band job fails after the status artifact and summary are written
@@ -70,12 +69,12 @@ The primary production workflow. Collects raw data, generates predictions, runs 
 - WSP upstream blocking is degraded only when recent completed-show data is still usable.
 - Recent completed-show setlist gaps from upstream blocking remain hard failures.
 - Supported-model freshness is a separate enforcement path from collection success:
-  - `WORKFLOW_STATE` is resolved from `steps.collection.outputs.workflow_state`, with `missing_data` (from `Verify Data Freshness`) overriding to `"degraded"` when true — this ensures upstream blocking that logs warnings rather than exceptions still triggers degraded handling
-  - when `WORKFLOW_STATE == "degraded"`: stale predictions and stale accuracy emit `::warning::` only (no job failure). Degraded bands cannot regenerate predictions; staleness is expected and surfaced in the summary
-  - when `WORKFLOW_STATE != "degraded"`: stale predictions and stale accuracy are hard failures (unless `skip_accuracy=true` or `backtest_incremental_all_scored=true`). If regeneration completed but freshness is still stale, something else is wrong
+  - degraded reuse older than `48h` is a hard failure for supported predictions
+  - stale supported accuracy is also a hard failure unless the run was manually dispatched with `skip_accuracy=true`
   - when incremental backtest finds all shows in the window already scored, accuracy staleness is expected and not enforced (scores are immutable; the backtest emits `backtest_incremental_all_scored=true`)
   - the `backtest_incremental_all_scored` signal gates three steps: `Validate Accuracy Tables` (uses `--skip-freshness`), `Audit Website Supabase Tables` (uses `--skip-accuracy`), and `Enforce Supported Model Freshness` (exits early)
-  - the signal uses default-true semantics: the workflow writes `true` before running backtest, and each model call only writes `false` when it finds new shows. This ensures correct AND behavior when notebook and deal produce different results
+  - the signal uses default-true semantics: the workflow writes `true` before running backtest, and the scorer writes `false` when it finds new shows
+  - prediction freshness is always enforced regardless of backtest state
   - missing supported-model rows count as stale, not as pass
 - The workflow summary shows per-band health, execution mode, missing-setlist counts, prediction handling, and supported-model freshness.
 - GitHub Actions YAML is the canonical daily workflow contract. Local Python helpers mirror it for operator convenience, but do not override it.
@@ -84,7 +83,7 @@ The primary production workflow. Collects raw data, generates predictions, runs 
 
 ## Fantasy Goose
 
-Automatically plays Fantasy Goose using JamBandNerd notebook predictions for Goose.
+Automatically plays Fantasy Goose using JamBandNerd's Goose prediction board.
 
 - **Triggers**:
   - `workflow_run`: After a `Daily Data Pipeline` run on `main` completes (any conclusion). A gate job downloads the `band-status-goose` artifact and checks that Goose predictions were freshly generated (`prediction_action == "generated"`) before proceeding.
@@ -94,7 +93,7 @@ Automatically plays Fantasy Goose using JamBandNerd notebook predictions for Goo
   - Logs in to Fantasy Goose using stored credentials
   - Reads the authenticated show dropdown and song catalog
   - Selects the Goose show for the target date when the pick cutoff is open
-  - Fetches Goose `notebook` predictions for the exact `reference_date`
+  - Fetches Goose predictions for the exact `reference_date`
   - Maps the top 8 songs onto Fantasy Goose song ids and submits
 
 - **Failure policy**:
@@ -107,16 +106,16 @@ Automatically plays Fantasy Goose using JamBandNerd notebook predictions for Goo
 
 ---
 
-## Sync Retained Prediction Corpus
+## Backfill Predictions
 
-Regenerates the retained last-50 completed-show prediction and accuracy corpus for one or more bands. This is the canonical way to backfill website-facing prediction and accuracy data.
+Regenerates the retained completed-show corpus for one or more active single-model bands.
 
 - **Triggers**: `workflow_dispatch` only
 - **Inputs**: `band` (all or specific), `dry_run` (boolean)
 - **Flow**:
-  1. Setup job resolves the band list from `scripts/get_all_bands.py` (or uses the selected band)
-  2. Per-band job runs `scripts/sync_retained_prediction_corpus.py --band <band> --window 50 --no-incremental` to recompute and prune the retained corpus across all pipeline-enabled models
-  3. Per-band validation runs `scripts/validate_accuracy_tables.py --band <band> --skip-freshness`
+  1. Setup job builds an active-band matrix
+  2. Per-band backfill job runs `scripts/sync_retained_prediction_corpus.py --window 50 --no-incremental`
+  3. The job validates retained accuracy with `scripts/validate_accuracy_tables.py --skip-freshness`
   4. Summary job writes results
 - **Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
 
@@ -127,7 +126,7 @@ Regenerates the retained last-50 completed-show prediction and accuracy corpus f
 Tracks live shows by polling for setlist updates during a performance.
 
 - **Triggers**: `workflow_dispatch` only
-- **Inputs**: `band` (goose, phish, wsp), `date` (YYYY-MM-DD), `interval` (default 60s), `max_iterations` (default 300), `bsky_handle` (WSP only)
+- **Inputs**: `band` (goose, phish, wsp, billy, um), `date` (YYYY-MM-DD), `interval` (default 60s), `max_iterations` (default 300), `bsky_handle` (WSP only)
 - **Behavior**: Runs `scripts/run_live_tracker.py` with Playwright for WSP. Polls for setlist updates and publishes them.
 - **Concurrency**: One tracker per band+date combo; cancels in-progress runs.
 - **Timeout**: 360 minutes (6 hours)
@@ -165,10 +164,9 @@ CI quality gate for the `apps/web` Next.js website.
 ## Hosted Website Smoke
 
 Daily smoke test against the live deployed website.
-The canonical production URL is `https://jambandnerd.com`.
 
 - **Triggers**:
-  - `schedule`: `0 22 * * *` (daily at 22:00 UTC)
+  - `schedule`: `30 20 * * *` (daily at 20:30 UTC)
   - `workflow_dispatch` with input: `base_url` (default `https://jambandnerd.com`)
 - **Steps**: Runs `npm run test:web:smoke:hosted` with Playwright Chromium
 - Browser binaries are cached in `~/.cache/ms-playwright`; OS dependencies are installed per run.
@@ -216,7 +214,7 @@ For manual recovery or migration workflows:
 
 - `scripts/audit_raw_data.py` — inspect raw data before targeted re-ingestion
 - `scripts/check_supported_model_freshness.py` — audit supported prediction and accuracy freshness without failing before status artifacts are written
-- `scripts/rebuild_derived_data.py` — rebuild predictions and accuracy after schema changes
-- `scripts/generate_live_predictions.py` — write active next-show predictions into `next_show_prediction_runs` and `next_show_prediction_songs`
-- `scripts/sync_retained_prediction_corpus.py` — write and prune the active last-50 completed-show corpus in `completed_show_prediction_runs` and `completed_show_accuracy`
-- `scripts/wipe_band_data.py` — clear derived outputs per band/model
+- `scripts/rebuild_derived_data.py` — legacy multi-model rebuild helper for rollback paths
+- `scripts/generate_live_predictions.py` — write active next-show predictions into `setlist_predictions` and `setlist_prediction_songs`
+- `scripts/sync_retained_prediction_corpus.py` — write and prune the active last-50 completed-show corpus in `setlist_results` and `setlist_accuracy`
+- `scripts/wipe_band_data.py` — legacy multi-model destructive cleanup helper

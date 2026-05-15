@@ -26,7 +26,7 @@ from src.jambandnerd.data_collection.billy.normalizer import (
     normalize_shows,
     normalize_songs,
 )
-from src.jambandnerd.data_collection.utils import CollectionTimer
+from src.jambandnerd.data_collection.utils import CollectionTimer, compute_source_hash
 from src.jambandnerd.db.connection import get_supabase_client
 from src.jambandnerd.db.operations import (
     fetch_existing_values,
@@ -44,33 +44,96 @@ def _parse_date(date_str: Optional[str]) -> Optional[date]:
         raise argparse.ArgumentTypeError(f"Invalid date '{date_str}'. Use YYYY-MM-DD.")
 
 
-def _get_db_show_count_for_window(
-    start_date: Optional[date], end_date: Optional[date]
-) -> int:
-    """Get the current show count from DB for the given date window."""
-    try:
-        client = get_supabase_client()
-        query = client.table("billy_shows_raw").select("*", count="exact")
+def _sync_existing_song_names_by_uuid(songs_df):
+    """Update existing Billy song labels when bmfsdb keeps UUIDs but changes casing."""
+    if songs_df.empty or "song_uuid" not in songs_df or "song_name" not in songs_df:
+        return songs_df
 
-        if start_date:
-            query = query.gte("show_date", start_date.isoformat())
-        if end_date:
-            query = query.lte("show_date", end_date.isoformat())
+    uuid_to_name = {
+        str(row["song_uuid"]): str(row["song_name"])
+        for _, row in songs_df[["song_uuid", "song_name"]].dropna().iterrows()
+        if str(row["song_uuid"]).strip() and str(row["song_name"]).strip()
+    }
+    if not uuid_to_name:
+        return songs_df
 
-        response = query.limit(0).execute()
-        return response.count or 0
-    except Exception as exc:
-        print(f"Warning: Could not fetch DB show count ({exc})")
-        return -1
+    existing_rows = fetch_rows_by_column_values(
+        "billy_songs_raw",
+        select_columns=["song_uuid", "song_name"],
+        filter_column="song_uuid",
+        values=list(uuid_to_name),
+    )
+    existing_name_by_uuid = {
+        str(row["song_uuid"]): str(row.get("song_name") or "")
+        for row in existing_rows
+        if row.get("song_uuid")
+    }
+    updates = [
+        (
+            str(row["song_uuid"]),
+            existing_name_by_uuid[str(row["song_uuid"])],
+            uuid_to_name[str(row["song_uuid"])],
+        )
+        for row in existing_rows
+        if row.get("song_uuid")
+        and existing_name_by_uuid.get(str(row["song_uuid"]))
+        != uuid_to_name.get(str(row["song_uuid"]))
+    ]
+    if not updates:
+        return songs_df
 
+    desired_names = [desired_name for _, _, desired_name in updates]
+    name_to_uuid = {desired_name: song_uuid for song_uuid, _, desired_name in updates}
+    if len(name_to_uuid) != len(updates):
+        raise RuntimeError(
+            "Cannot reconcile Billy song UUID labels because multiple UUIDs map "
+            "to the same scraped song_name."
+        )
+    existing_name_rows = fetch_rows_by_column_values(
+        "billy_songs_raw",
+        select_columns=["song_uuid", "song_name"],
+        filter_column="song_name",
+        values=desired_names,
+    )
+    conflicting_name_to_uuid = {
+        str(row["song_name"]): str(row["song_uuid"])
+        for row in existing_name_rows
+        if row.get("song_name")
+        and row.get("song_uuid")
+        and str(row["song_uuid"]) != name_to_uuid.get(str(row["song_name"]))
+    }
 
-from scripts.common import write_github_output
+    adjusted = songs_df.copy()
+    safe_updates = []
+    for song_uuid, existing_name, desired_name in updates:
+        conflicting_uuid = conflicting_name_to_uuid.get(desired_name)
+        if conflicting_uuid:
+            row_mask = adjusted["song_uuid"].astype(str) == song_uuid
+            adjusted.loc[row_mask, "song_name"] = existing_name
+            if "source_hash" in adjusted.columns:
+                for index in adjusted.loc[row_mask].index:
+                    payload = {
+                        key: value
+                        for key, value in adjusted.loc[index].to_dict().items()
+                        if key not in {"created_at", "updated_at", "source_hash"}
+                    }
+                    adjusted.at[index, "source_hash"] = compute_source_hash(payload)
+            print(
+                "Keeping existing Billy song label "
+                f"'{existing_name}' for UUID {song_uuid}; scraped label "
+                f"'{desired_name}' is already owned by UUID {conflicting_uuid}."
+            )
+            continue
+        safe_updates.append((song_uuid, desired_name))
 
-
-def _emit_github_output(**kwargs: str) -> None:
-    """Write key=value pairs to GITHUB_OUTPUT if available."""
-    for key, value in kwargs.items():
-        write_github_output(key, value)
+    client = get_supabase_client()
+    for song_uuid, song_name in safe_updates:
+        client.table("billy_songs_raw").update({"song_name": song_name}).eq(
+            "song_uuid", song_uuid
+        ).execute()
+    if safe_updates:
+        print(f"Updated {len(safe_updates)} Billy song label(s) by stable song_uuid.")
+    return adjusted
 
 
 def run_billy_collection(
@@ -80,23 +143,10 @@ def run_billy_collection(
     skip_existing_setlists: bool = True,
     full_backfill: bool = False,
     skip_setlists: bool = False,
-    skip_if_unchanged: bool = True,
-    force: bool = False,
 ) -> None:
     print("Starting Billy Strings data collection...")
     timer = CollectionTimer()
-    try:
-        ensure_source_reachable("billy")
-    except RuntimeError as exc:
-        _emit_github_output(
-            workflow_state="degraded",
-            outcome_code="degraded_upstream_blocked",
-            should_retry_collection="false",
-            recent_data_usable="true",
-            prediction_action="reused_existing",
-            failure_reason=str(exc),
-        )
-        raise
+    ensure_source_reachable("billy")
 
     start_dt = _parse_date(start_date)
     end_dt = _parse_date(end_date)
@@ -119,35 +169,11 @@ def run_billy_collection(
 
     collector = BillyCollector()
 
-    # Check if collection is needed based on show count
-    if skip_if_unchanged and not force and not full_backfill:
-        print("Checking for new shows...")
-        db_count = _get_db_show_count_for_window(start_dt, end_dt)
-
-        if db_count >= 0:
-            upstream_count = collector.peek_show_count(
-                start_date=start_dt, end_date=end_dt
-            )
-
-            if upstream_count == db_count:
-                print(
-                    f"✓ Billy Strings show count unchanged ({db_count} shows). Skipping collection."
-                )
-                timer.log("billy")
-                return
-            else:
-                print(
-                    f"✗ Show count changed: DB={db_count}, Upstream={upstream_count}. Running collection..."
-                )
-        else:
-            print("Could not determine DB show count. Proceeding with collection...")
-    elif force:
-        print("Force flag set. Proceeding with collection...")
-
     # Songs
     songs_data = collector.collect_songs()
     if songs_data:
         songs_df = normalize_songs(songs_data)
+        songs_df = _sync_existing_song_names_by_uuid(songs_df)
         validate_and_upsert_dataframe(
             "billy_songs_raw",
             songs_df,
@@ -284,16 +310,6 @@ def _build_cli() -> argparse.ArgumentParser:
         action="store_true",
         help="Scrape the full show history (overrides the default rolling window)",
     )
-    parser.add_argument(
-        "--no-skip-unchanged",
-        action="store_true",
-        help="Disable show count comparison (always run collection).",
-    )
-    parser.add_argument(
-        "--force",
-        action="store_true",
-        help="Force collection even if show counts match.",
-    )
     return parser
 
 
@@ -306,8 +322,6 @@ def main() -> None:
         end_date=args.end_date,
         full_backfill=args.full_backfill,
         skip_setlists=args.skip_setlists,
-        skip_if_unchanged=not args.no_skip_unchanged,
-        force=args.force,
     )
 
 

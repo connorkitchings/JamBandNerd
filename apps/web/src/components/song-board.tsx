@@ -1,39 +1,75 @@
+"use client";
+
+import { useState } from "react";
+
 import type { PredictionRow } from "@/lib/data";
-import { TIER_ORDER, type LikelihoodTier, type ModelSlug } from "@/lib/config";
+import { TIER_ORDER, type LikelihoodTier } from "@/lib/config";
 import { TierBadge } from "@/components/tier-badge";
-import { TierSection } from "@/components/tier-section";
 import { formatMMDDYYYY } from "@/lib/format";
-import { groupPredictionRowsByTier, normalizeSongName } from "@/lib/song-board";
-import { DealMobileRow } from "@/components/deal-mobile-row";
-import { CheckIcon, ChevronIcon, ModelAgreeIcon } from "@/components/icons";
+import { groupPredictionRowsByTier, normalizeSongName } from "@/lib/song-board-core";
 
 type Props = {
   rows: PredictionRow[];
   highlightSongs?: Set<string>;
-  secondarySongs?: Set<string>;
   compact?: boolean;
-  modelSlug?: ModelSlug | string;
 };
 
-type TierRowState = {
-  isHighlighted: boolean;
-  agreesWithOtherModel: boolean;
+function ChevronIcon({ open }: { open: boolean }) {
+  return (
+    <svg
+      aria-hidden="true"
+      className={`size-4 transition-transform ${open ? "rotate-180" : ""}`}
+      fill="none"
+      viewBox="0 0 24 24"
+    >
+      <path
+        d="M6 9L12 15L18 9"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.75"
+      />
+    </svg>
+  );
+}
+
+function CheckIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      className="size-3.5 text-green-400"
+      fill="none"
+      viewBox="0 0 24 24"
+    >
+      <path
+        d="M5 12L10 17L19 7"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      />
+    </svg>
+  );
+}
+
+type TierSectionProps = {
+  tier: LikelihoodTier;
+  rows: PredictionRow[];
+  highlightSongs?: Set<string>;
+  defaultOpen: boolean;
+  compact?: boolean;
 };
 
-export function getTierRowState(
+function getTierRowState(
   row: PredictionRow,
   highlightSongs?: Set<string>,
-  secondarySongs?: Set<string>,
-): TierRowState {
-  const normalizedSongName = normalizeSongName(row.songName);
-
+) {
   return {
-    isHighlighted: highlightSongs?.has(normalizedSongName) ?? false,
-    agreesWithOtherModel: secondarySongs?.has(normalizedSongName) ?? false,
+    isHighlighted: highlightSongs?.has(normalizeSongName(row.songName)) ?? false,
   };
 }
 
-export function TierSectionHeader({
+function TierSectionHeader({
   tier,
   rowCount,
   isOpen,
@@ -87,19 +123,15 @@ function ProbabilityBar({ probability }: { probability: number | null }) {
   );
 }
 
-export function TierDesktopTable({
+function TierDesktopTable({
   compact,
   highlightSongs,
   rows,
-  modelSlug,
 }: {
   compact?: boolean;
   highlightSongs?: Set<string>;
   rows: PredictionRow[];
-  modelSlug?: string;
 }) {
-  const isDeal = modelSlug === "deal";
-
   return (
     <div className="hidden w-full overflow-x-auto md:block">
       <table className="w-full table-fixed border-collapse text-left text-sm">
@@ -111,15 +143,9 @@ export function TierDesktopTable({
             <th className="w-[36%] px-4 py-2.5 font-label text-[10px] font-medium uppercase tracking-[0.18rem] text-on-surface-variant">
               Song
             </th>
-            {isDeal ? (
-              <th className="w-28 px-4 py-2.5 font-label text-[10px] font-medium uppercase tracking-[0.18rem] text-on-surface-variant text-right">
-                Recent Plays
-              </th>
-            ) : (
-              <th className="w-32 px-4 py-2.5 font-label text-[10px] font-medium uppercase tracking-[0.18rem] text-on-surface-variant text-right">
-                Plays Last Year
-              </th>
-            )}
+            <th className="w-28 px-4 py-2.5 font-label text-[10px] font-medium uppercase tracking-[0.18rem] text-on-surface-variant text-right">
+              Recent Plays
+            </th>
             <th className="w-28 px-4 py-2.5 font-label text-[10px] font-medium uppercase tracking-[0.18rem] text-on-surface-variant text-right">
               Current Gap
             </th>
@@ -128,11 +154,9 @@ export function TierDesktopTable({
                 Last Played
               </th>
             ) : null}
-            {isDeal ? (
-              <th className="w-36 px-4 py-2.5 font-label text-[10px] font-medium uppercase tracking-[0.18rem] text-on-surface-variant text-right">
-                Probability
-              </th>
-            ) : null}
+            <th className="w-36 px-4 py-2.5 font-label text-[10px] font-medium uppercase tracking-[0.18rem] text-on-surface-variant text-right">
+              Probability
+            </th>
             {highlightSongs ? (
               <th className="w-24 px-4 py-2.5 font-label text-[10px] font-medium uppercase tracking-[0.18rem] text-on-surface-variant text-center">
                 Played
@@ -160,15 +184,9 @@ export function TierDesktopTable({
                     {row.songName}
                   </span>
                 </td>
-                {isDeal ? (
-                  <td className="whitespace-nowrap px-4 py-3.5 text-right text-sm tabular-nums text-on-surface-variant">
-                    {row.recentPlays50 !== null ? `${row.recentPlays50} / 50` : "—"}
-                  </td>
-                ) : (
-                  <td className="whitespace-nowrap px-4 py-3.5 text-right text-sm tabular-nums text-on-surface-variant">
-                    {row.playsPastYear !== null ? row.playsPastYear : "—"}
-                  </td>
-                )}
+                <td className="whitespace-nowrap px-4 py-3.5 text-right text-sm tabular-nums text-on-surface-variant">
+                  {row.recentPlays50 !== null ? `${row.recentPlays50} / 50` : "—"}
+                </td>
                 <td className="whitespace-nowrap px-4 py-3.5 text-right">
                   <span className="rounded-full bg-surface-container px-2.5 py-1 font-mono text-xs font-medium text-on-surface-variant">
                     {row.currentGap !== null ? row.currentGap : "—"}
@@ -179,11 +197,9 @@ export function TierDesktopTable({
                     {row.lastPlayed ? formatMMDDYYYY(row.lastPlayed) : "—"}
                   </td>
                 ) : null}
-                {isDeal ? (
-                  <td className="px-4 py-3.5">
-                    <ProbabilityBar probability={row.probability} />
-                  </td>
-                ) : null}
+                <td className="px-4 py-3.5">
+                  <ProbabilityBar probability={row.probability} />
+                </td>
                 {highlightSongs ? (
                   <td className="px-4 py-3.5 text-center">{isHighlighted ? <CheckIcon /> : null}</td>
                 ) : null}
@@ -196,38 +212,17 @@ export function TierDesktopTable({
   );
 }
 
-export function TierMobileList({
+function TierMobileList({
   rows,
   highlightSongs,
-  secondarySongs,
-  modelSlug,
 }: {
   rows: PredictionRow[];
   highlightSongs?: Set<string>;
-  secondarySongs?: Set<string>;
-  modelSlug?: string;
 }) {
-  const isDeal = modelSlug === "deal";
-
   return (
     <div className="divide-y divide-outline-variant/10 md:hidden">
       {rows.map((row) => {
-        const { isHighlighted, agreesWithOtherModel } = getTierRowState(
-          row,
-          highlightSongs,
-          secondarySongs,
-        );
-
-        if (isDeal) {
-          return (
-            <DealMobileRow
-              key={`${row.rank}-${row.songName}`}
-              row={row}
-              isHighlighted={isHighlighted}
-              agreesWithOtherModel={agreesWithOtherModel}
-            />
-          );
-        }
+        const { isHighlighted } = getTierRowState(row, highlightSongs);
 
         return (
           <div
@@ -248,36 +243,19 @@ export function TierMobileList({
                       <CheckIcon />
                     </span>
                   ) : null}
-                  {agreesWithOtherModel ? (
-                    <span className="ml-1">
-                      <ModelAgreeIcon />
-                    </span>
-                  ) : null}
                 </p>
-                {isDeal ? (
-                  <p className="text-xs text-on-surface-variant">
-                    {row.probability !== null
-                      ? `${(row.probability * 100).toFixed(1)}% probability`
-                      : ""}
-                    {row.currentGap !== null
-                      ? ` · ${row.currentGap} ${row.currentGap === 1 ? "show" : "shows"} ago`
-                      : ""}
-                    {row.lastPlayed ? ` · ${formatMMDDYYYY(row.lastPlayed)}` : ""}
-                  </p>
-                ) : (
-                  <p className="text-xs text-on-surface-variant">
-                    {row.currentGap !== null
-                      ? `${row.currentGap} ${row.currentGap === 1 ? "show" : "shows"} ago`
-                      : "Current gap unknown"}
-                    {row.playsPastYear !== null
-                      ? ` · ${row.playsPastYear} play${row.playsPastYear === 1 ? "" : "s"} last year`
-                      : ""}
-                    {row.lastPlayed ? ` · ${formatMMDDYYYY(row.lastPlayed)}` : ""}
-                  </p>
-                )}
+                <p className="text-xs text-on-surface-variant">
+                  {row.probability !== null
+                    ? `${(row.probability * 100).toFixed(1)}% probability`
+                    : ""}
+                  {row.currentGap !== null
+                    ? ` · ${row.currentGap} ${row.currentGap === 1 ? "show" : "shows"} ago`
+                    : ""}
+                  {row.lastPlayed ? ` · ${formatMMDDYYYY(row.lastPlayed)}` : ""}
+                </p>
               </div>
             </div>
-            {isDeal && row.recentPlays50 !== null ? (
+            {row.recentPlays50 !== null ? (
               <span className="ml-3 shrink-0 text-right font-mono text-xs tabular-nums text-on-surface-variant">
                 {row.recentPlays50} / 50
               </span>
@@ -289,7 +267,56 @@ export function TierMobileList({
   );
 }
 
-export function SongBoard({ rows, highlightSongs, secondarySongs, compact, modelSlug }: Props) {
+function TierSection({
+  tier,
+  rows,
+  highlightSongs,
+  defaultOpen,
+  compact,
+}: TierSectionProps) {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+
+  if (rows.length === 0) return null;
+
+  return (
+    <div className="editorial-panel overflow-hidden rounded-[1.5rem]">
+      <TierSectionHeader
+        tier={tier}
+        rowCount={rows.length}
+        isOpen={isOpen}
+        onExpand={() => setIsOpen(true)}
+      />
+
+      <div
+        id={`tier-content-${tier}`}
+        className="w-full border-t border-outline-variant/15 bg-surface-container-low/65"
+        hidden={!isOpen}
+      >
+        <TierDesktopTable
+          compact={compact}
+          highlightSongs={highlightSongs}
+          rows={rows}
+        />
+        <TierMobileList
+          rows={rows}
+          highlightSongs={highlightSongs}
+        />
+
+        <div className="border-t border-outline-variant/10 px-4 py-3">
+          <button
+            type="button"
+            onClick={() => setIsOpen(false)}
+            className="w-full rounded-full border border-outline-variant/20 bg-surface/75 px-4 py-2 text-center font-headline text-[10px] uppercase tracking-[0.14rem] text-on-surface transition hover:border-primary/35 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
+          >
+            Collapse
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function SongBoard({ rows, highlightSongs, compact }: Props) {
   const grouped = groupPredictionRowsByTier(rows);
 
   return (
@@ -300,10 +327,8 @@ export function SongBoard({ rows, highlightSongs, secondarySongs, compact, model
           tier={tier}
           rows={grouped[tier]}
           highlightSongs={highlightSongs}
-          secondarySongs={secondarySongs}
           defaultOpen
           compact={compact}
-          modelSlug={modelSlug}
         />
       ))}
       <p className="pt-2 text-center font-label text-[10px] uppercase tracking-[0.16rem] text-on-surface-variant/55">

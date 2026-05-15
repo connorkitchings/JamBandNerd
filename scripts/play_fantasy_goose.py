@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Play Fantasy Goose automatically using Goose notebook predictions."""
+"""Play Fantasy Goose automatically using Goose predictions."""
 
 from __future__ import annotations
 
@@ -23,9 +23,7 @@ from src.jambandnerd.integrations.fantasy_goose import (  # noqa: E402
 
 def main() -> None:
     """Run the Fantasy Goose automation flow."""
-    parser = argparse.ArgumentParser(
-        description="Submit Goose notebook picks to Fantasy Goose."
-    )
+    parser = argparse.ArgumentParser(description="Submit Goose picks to Fantasy Goose.")
     parser.add_argument(
         "--date",
         help="Target show date in YYYY-MM-DD format. Defaults to today in ET.",

@@ -6,7 +6,6 @@ type FormatTop10TextOptions = {
   locationLabel: string;
   venueName: string;
   predictions: PredictionRow[];
-  modelDisplayName: string;
   shareUrl: string;
 };
 

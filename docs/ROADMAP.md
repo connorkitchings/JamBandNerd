@@ -72,8 +72,6 @@ everywhere users and contributors look first.
 - **Goal:** Replace the Streamlit experience with the website.
 - **Completed website views:**
   - Current predictions
-  - Model comparison
-  - Historical explorer
   - Accuracy/performance views
   - Last-show details
   - About/explanatory content

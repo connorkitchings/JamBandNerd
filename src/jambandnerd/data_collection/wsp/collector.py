@@ -11,8 +11,10 @@ import requests
 from bs4 import BeautifulSoup
 from tqdm import tqdm
 
+from ...db.connection import get_supabase_client
 from ..base import BandCollector
 from ..config import get_collector_config
+from ..setlist_reviewer import review_setlist
 from .parser import (
     _validate_song_name,
     parse_setlist_from_text,
@@ -25,7 +27,6 @@ from .parser_profile import (
     validate_setlist_page_fingerprint,
     validate_song_catalog_columns,
 )
-from .reviewer import review_setlist
 from .session import (
     IS_GITHUB_ACTIONS,
     cleanup_playwright,
@@ -50,10 +51,9 @@ class WSPCollector(BandCollector):
 
         super().__init__(config)
 
-        # Enhanced session with proper headers and retry logic.
-        # WSP requires a custom session (with Cloudflare-aware retries and
-        # browser automation fallback) that intentionally bypasses the base
-        # class's standard requests session.
+        self.supabase_client = get_supabase_client()
+
+        # Enhanced session with proper headers and retry logic
 
         self.session = create_enhanced_session()
 
@@ -63,13 +63,32 @@ class WSPCollector(BandCollector):
         logger.info("Initialized WSPCollector")
 
     def _scrape_single_setlist(self, show_info: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """Scrapes the setlist for a single show."""
+        """Scrapes the setlist for a single show, skipping if it already exists."""
 
         show_url = show_info.get("source_url")
         show_id = show_info.get("show_id")
 
         if not show_url or not show_id:
             return []
+
+        # More efficient: check for existing setlist before making any web requests
+        try:
+            response = (
+                self.supabase_client.table("wsp_setlists_raw")
+                .select("show_id")
+                .eq("show_id", show_id)
+                .limit(1)
+                .execute()
+            )
+            if response.data:
+                logger.info(
+                    f"Setlist for show_id {show_id} already exists. Skipping scrape."
+                )
+                return []
+        except Exception as e:
+            logger.warning(
+                f"Could not check for existing setlist for show_id {show_id}: {e}"
+            )
 
         try:
             response = make_request(self.session, show_url, allow_redirects=True)
@@ -102,8 +121,9 @@ class WSPCollector(BandCollector):
                 logger.error(
                     f"HTTP {e.response.status_code if e.response else 'unknown'} error for {show_url}: {e}"
                 )
-                # Don't raise; return empty to continue processing other shows.
-                return []
+                return (
+                    []
+                )  # Don't raise, return empty to continue processing other shows
         except requests.exceptions.RequestException as e:
             logger.error(f"Failed to scrape setlist for {show_url}: {e}")
             return []  # Don't raise, return empty to continue processing other shows
@@ -349,8 +369,6 @@ class WSPCollector(BandCollector):
                             show_date = datetime.strptime(
                                 f"{month}/{day}/{full_year}", "%m/%d/%Y"
                             ).date()
-                            if show_date > date.today():
-                                continue
                         except (ValueError, IndexError) as date_error:
                             logger.debug(
                                 f"Skipping link due to date parse error: {link_text} | Error: {date_error}"
