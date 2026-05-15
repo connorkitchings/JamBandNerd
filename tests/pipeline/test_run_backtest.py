@@ -634,6 +634,11 @@ def test_run_backtest_no_github_output_when_env_not_set(monkeypatch, tmp_path):
         "fetch_scored_show_ids",
         lambda *a, **kw: {"goose-show-1"},
     )
+    monkeypatch.setattr(
+        run_backtest_module,
+        "prune_setlist_corpus",
+        lambda **kwargs: 0,
+    )
     monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
 
     candidate_file = tmp_path / "gha_output"

@@ -309,9 +309,13 @@ class BillyFastPredictor(PredictionModel):
         if band != "billy":
             raise ValueError("BillyFastPredictor only supports band='billy'.")
         self.band = band
-        songs_df_resolved = (
-            songs_df if songs_df is not None else _fetch_songs_from_supabase()
-        )
+        if songs_df is not None:
+            songs_df_resolved = songs_df
+        else:
+            try:
+                songs_df_resolved = _fetch_songs_from_supabase()
+            except ValueError:
+                songs_df_resolved = None
         self._songs_lookup: dict[str, float] = _build_is_cover_lookup(songs_df_resolved)
         self._model: lgb.Booster | None = None
         self.best_iteration: int | None = None
