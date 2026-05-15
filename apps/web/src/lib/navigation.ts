@@ -28,6 +28,13 @@ export const DESKTOP_NAV_ITEMS: NavItem[] = [
     icon: "◬",
     matches: ["/performance"],
   },
+  {
+    href: "/replay",
+    label: "Replay",
+    mobileLabel: "Replay",
+    icon: "◎",
+    matches: ["/replay"],
+  },
 ];
 
 export const MOBILE_NAV_ITEMS: NavItem[] = [
@@ -52,9 +59,16 @@ export const MOBILE_NAV_ITEMS: NavItem[] = [
     icon: "◈",
     matches: ["/predictions"],
   },
+  {
+    href: "/replay",
+    label: "Replay",
+    mobileLabel: "Replay",
+    icon: "◎",
+    matches: ["/replay"],
+  },
 ];
 
-const DETAIL_ROUTE_PREFIXES = ["/last-show"];
+const DETAIL_ROUTE_PREFIXES = ["/last-show", "/replay"];
 
 export function isActivePath(pathname: string, matches: string[]) {
   return matches.includes(pathname);

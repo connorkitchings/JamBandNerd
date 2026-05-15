@@ -34,7 +34,7 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
 
   return {
     title: `${bandName} Last Show Setlist | JamBandNerd`,
-    description: `View the setlist from the most recent ${bandName} show alongside the prediction snapshot for that same date.`,
+    description: `View the setlist from the most recent ${bandName} show and compare it to the prediction snapshot.`,
   };
 }
 
@@ -156,14 +156,14 @@ export default async function LastShowPage({ searchParams }: Props) {
                 Return to live predictions
               </p>
               <p className="mt-2 text-sm leading-6 text-on-surface-variant">
-                Open the current single-model board for this band.
+                Compare the latest board to the most recent completed show.
               </p>
             </Link>
           </div>
         </SectionCard>
       </div>
 
-      <SectionCard title="Prediction vs. Actual" eyebrow="Matched snapshot">
+      <SectionCard title="Prediction Replay" eyebrow="Matched snapshot">
         {predictionState.status === "ready" ? (
           <div className="space-y-5">
             <div className="grid gap-4 md:grid-cols-3">

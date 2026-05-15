@@ -115,8 +115,8 @@ export default async function PerformancePage({ searchParams }: Props) {
         kicker="Accuracy desk"
         eyebrow=""
         title={`${bandName} performance ledger`}
-        meta={`last ${state.rows.length} scored shows retained`}
-        description="Track how much of each setlist the band&apos;s active model captures at each K value. The public ledger is scoped to the retained last 50 scored shows for the selected band."
+        meta={`last ${state.rows.length} scored shows`}
+        description="Track how much of each setlist the model's top-ranked groups actually capture. This is the long-view read on stability, slippage, and standout nights."
         aside={
           <div className="editorial-panel p-5">
             <div className="space-y-1 text-center">
@@ -174,7 +174,7 @@ export default async function PerformancePage({ searchParams }: Props) {
       </section>
 
       <p className="px-2 text-center text-sm text-on-surface-variant">
-        Accuracy is measured as the share of the actual setlist included in each Top-X group across the retained last 50 scored shows.
+        Accuracy is measured as the share of the actual setlist included in each Top-X group.
       </p>
 
       <SectionCard title="Accuracy Over Time">

@@ -41,8 +41,13 @@ test("desktop routes render the public shell", async ({ page }, testInfo) => {
   await expect(page.getByRole("navigation", { name: "Primary navigation" })).toBeVisible();
   await expect(page.getByRole("navigation", { name: "Primary navigation" }).getByRole("link", { name: "Predictions" })).toBeVisible();
   await expect(page.getByRole("navigation", { name: "Primary navigation" }).getByRole("link", { name: "Performance" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Active band overview" })).toBeVisible();
-  await expect(page.getByText("Band dashboards").or(page.getByText("Data status"))).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Primary navigation" }).getByRole("link", { name: "Replay" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "What are they playing next?" })).toBeVisible();
+  await expect(
+    page
+      .getByRole("heading", { name: "Supported Bands" })
+      .or(page.getByRole("heading", { name: "Band registry unavailable" })),
+  ).toBeVisible();
 
   const bandPredictionLinks = page.locator('main a[href^="/predictions?band="]');
   if ((await bandPredictionLinks.count()) > 0) {
@@ -82,10 +87,13 @@ test("removed multi-model routes are unavailable", async ({ page }, testInfo) =>
 
   await bootstrapHostedPreviewBypass(page);
 
-  for (const route of ["/compare", "/replay", "/explorer"]) {
+  for (const route of ["/compare", "/explorer"]) {
     const response = await page.goto(route);
     expect(response?.status()).toBe(404);
   }
+
+  await page.goto("/replay");
+  await expectPrimaryHeadingOrMissingEnv(page);
 });
 
 test("mobile navigation uses thumb-first ordering", async ({ page }, testInfo) => {
@@ -98,7 +106,7 @@ test("mobile navigation uses thumb-first ordering", async ({ page }, testInfo) =
   await expect(mobileNav).toBeVisible();
 
   const labels = await mobileNav.getByRole("link").locator("span:last-child").allTextContents();
-  expect(labels).toEqual(["Home", "Stats", "Predict"]);
+  expect(labels).toEqual(["Home", "Stats", "Predict", "Replay"]);
   expect(labels).not.toContain("Compare");
 });
 
