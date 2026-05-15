@@ -46,17 +46,13 @@ class BillyCollector(BandCollector):
         logger.debug("Fetching Billy Strings show listing page %s", url)
         page_shows = []
 
-        self.rate_limiter.wait_if_needed()
         try:
             response = self.session.get(url, timeout=self.config.timeout)
             if response.status_code == 404:
-                self.record_success()
-                return []
+                return []  # Stop this page
             response.raise_for_status()
-            self.record_success()
         except RequestException as exc:
             logger.error("Failed to fetch show listing page %s: %s", page, exc)
-            self.record_failure()
             return []
 
         soup = BeautifulSoup(response.text, "html.parser")
@@ -81,62 +77,6 @@ class BillyCollector(BandCollector):
                 }
             )
         return page_shows
-
-    def peek_show_count(
-        self,
-        start_date: Optional[date] = None,
-        end_date: Optional[date] = None,
-    ) -> int:
-        """Quickly estimate the number of shows in the date window without full fetching.
-
-        This is used for efficient collection decisions - if the count matches DB,
-        we can skip the full collection.
-
-        Returns:
-            Estimated number of shows in the window.
-        """
-        start_date = start_date or date(1900, 1, 1)
-        if isinstance(start_date, str):
-            start_date = date.fromisoformat(start_date)
-        if isinstance(end_date, str):
-            end_date = date.fromisoformat(end_date)
-
-        count = 0
-        consecutive_empty = 0
-
-        for page in range(1, self.MAX_PAGES + 1):
-            page_shows = self._fetch_and_parse_show_page(page)
-            if not page_shows:
-                consecutive_empty += 1
-                if consecutive_empty >= 2:
-                    break
-                continue
-
-            # Check if we've gone past the start date
-            newest_date = datetime.fromisoformat(page_shows[0]["show_date"]).date()
-            if start_date and newest_date < start_date:
-                break
-
-            # Count shows in the window
-            for show in page_shows:
-                show_dt = datetime.fromisoformat(show["show_date"]).date()
-                if start_date <= show_dt and (not end_date or show_dt <= end_date):
-                    count += 1
-
-            consecutive_empty = 0
-
-        # Add upcoming shows count
-        upcoming_count = 0
-        if not end_date or end_date >= date.today():
-            try:
-                upcoming_shows = self._collect_upcoming_shows(
-                    min_date=end_date or start_date or date.today()
-                )
-                upcoming_count = len(upcoming_shows)
-            except Exception:
-                pass
-
-        return count + upcoming_count
 
     def collect_shows(
         self,
@@ -293,14 +233,11 @@ class BillyCollector(BandCollector):
         url = f"{self.BASE_URL}/songs/"
         logger.info("Fetching Billy Strings song catalog from %s", url)
 
-        self.rate_limiter.wait_if_needed()
         try:
             response = self.session.get(url, params=params, timeout=self.config.timeout)
             response.raise_for_status()
-            self.record_success()
         except RequestException as exc:
             logger.error("Failed to fetch Billy Strings songs: %s", exc)
-            self.record_failure()
             return []
 
         soup = BeautifulSoup(response.text, "html.parser")
@@ -449,7 +386,6 @@ class BillyCollector(BandCollector):
         return city, state, country
 
     def _collect_upcoming_shows(self, min_date: date) -> List[Dict[str, Any]]:
-        self.rate_limiter.wait_if_needed()
         try:
             response = self.session.get(
                 f"{self.BASE_URL}/setlists",
@@ -457,10 +393,8 @@ class BillyCollector(BandCollector):
                 timeout=self.config.timeout,
             )
             response.raise_for_status()
-            self.record_success()
         except RequestException as exc:
             logger.error("Failed to fetch upcoming shows: %s", exc)
-            self.record_failure()
             return []
 
         soup = BeautifulSoup(response.text, "html.parser")
@@ -512,11 +446,9 @@ class BillyCollector(BandCollector):
         uuid: Optional[str],
         show_date: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
-        self.rate_limiter.wait_if_needed()
         try:
             response = self.session.get(source_url, timeout=self.config.timeout)
             response.raise_for_status()
-            self.record_success()
         except RequestException as exc:
             logger.error(
                 "Failed to fetch setlist for show_id=%s (%s): %s",

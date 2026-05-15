@@ -25,27 +25,22 @@ Notes:
 
 ### Navigation and state
 - Bottom navigation stays visible above the safe area.
-- Active route styling updates correctly as you move between `/`, `/predictions`, `/compare`, `/replay`, `/performance`, `/last-show`, and `/about`.
-- Search params for band/model/date remain shareable and survive refresh.
+- Active route styling updates correctly as you move between `/`, `/predictions`, `/performance`, `/last-show`, and `/about`.
+- Band search params remain shareable and survive refresh.
 
 ### Homepage and prediction views
 - Hero copy wraps cleanly on narrow widths.
 - Dense tables remain horizontally scrollable instead of clipping.
 - Filter controls stay tap-friendly and readable.
 
-### Replay
-- The recent-show rail stays usable on phones and only shows replayable retained dates.
-- Both model boards and the actual setlist remain paired to the same selected date.
-- Summary cards stack without hiding key metadata.
-
 ### Performance and last show
 - Metric cards stack cleanly at narrow widths.
 - Last-show detail route shows the mobile back affordance and remains readable.
-- Setlist and prediction replay tables remain usable on touch screens.
+- Setlist and retained prediction tables remain usable on touch screens.
 
 ## 3) Performance sanity checks
 
-- First load per band/model can be slower (cache warmup); subsequent interactions should be fast.
+- First load per band can be slower (cache warmup); subsequent interactions should be fast.
 - Switching routes should not trigger obvious client-side layout flicker.
 - Server-rendered routes should not depend on client hydration for primary content.
 
@@ -54,7 +49,7 @@ Notes:
 Capture:
 - Device + browser (e.g., iPhone Safari 17, Pixel Chrome 131)
 - URL (including query params)
-- Band + selected date (if Replay)
+- Band + selected date when relevant
 - Screenshot (especially for layout issues)
 
 Then reproduce on desktop with responsive emulation:

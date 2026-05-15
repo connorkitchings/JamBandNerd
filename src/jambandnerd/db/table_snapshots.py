@@ -8,6 +8,8 @@ from pathlib import Path
 from typing import Any
 
 MANIFEST_NAME = "manifest.json"
+SnapshotFormat = str
+SUPPORTED_SNAPSHOT_FORMATS = {"json", "parquet"}
 
 
 def _write_json_atomic(path: Path, payload: dict[str, Any]) -> None:
@@ -21,11 +23,26 @@ def _snapshot_root(snapshot_root: str | Path) -> Path:
     return snapshot_root if isinstance(snapshot_root, Path) else Path(snapshot_root)
 
 
-def table_snapshot_path(table_name: str, snapshot_root: str | Path) -> Path:
+def _validate_snapshot_format(snapshot_format: SnapshotFormat) -> SnapshotFormat:
+    if snapshot_format not in SUPPORTED_SNAPSHOT_FORMATS:
+        valid = ", ".join(sorted(SUPPORTED_SNAPSHOT_FORMATS))
+        raise ValueError(
+            f"Unsupported snapshot format '{snapshot_format}'. Use: {valid}"
+        )
+    return snapshot_format
+
+
+def table_snapshot_path(
+    table_name: str,
+    snapshot_root: str | Path,
+    *,
+    snapshot_format: SnapshotFormat = "json",
+) -> Path:
     """Return the canonical JSON path for a table snapshot."""
 
+    snapshot_format = _validate_snapshot_format(snapshot_format)
     root = _snapshot_root(snapshot_root)
-    return root / f"{table_name}.json"
+    return root / f"{table_name}.{snapshot_format}"
 
 
 def manifest_path(snapshot_root: str | Path) -> Path:
@@ -61,9 +78,29 @@ def load_table_snapshot(
 ) -> list[dict[str, Any]]:
     """Load one table snapshot from disk."""
 
-    path = table_snapshot_path(table_name, snapshot_root)
+    manifest = load_snapshot_manifest(snapshot_root) or {}
+    table_entry = dict(manifest.get("tables", {}).get(table_name, {}))
+    manifest_path_value = table_entry.get("path")
+    if isinstance(manifest_path_value, str):
+        path = _snapshot_root(snapshot_root) / manifest_path_value
+    else:
+        path = table_snapshot_path(table_name, snapshot_root)
+        if not path.exists():
+            parquet_path = table_snapshot_path(
+                table_name, snapshot_root, snapshot_format="parquet"
+            )
+            if parquet_path.exists():
+                path = parquet_path
+
     if not path.exists():
         raise FileNotFoundError(f"Snapshot for {table_name} not found: {path}")
+
+    if path.suffix == ".parquet":
+        import pandas as pd
+
+        frame = pd.read_parquet(path)
+        frame = frame.astype(object).where(pd.notna(frame), None)
+        return frame.to_dict(orient="records")
 
     payload = json.loads(path.read_text())
     if not isinstance(payload, dict):
@@ -79,10 +116,24 @@ def write_table_snapshot(
     table_name: str,
     rows: list[dict[str, Any]],
     snapshot_root: str | Path,
+    *,
+    snapshot_format: SnapshotFormat = "json",
 ) -> Path:
     """Write a single table snapshot atomically."""
 
-    path = table_snapshot_path(table_name, snapshot_root)
+    snapshot_format = _validate_snapshot_format(snapshot_format)
+    path = table_snapshot_path(
+        table_name, snapshot_root, snapshot_format=snapshot_format
+    )
+    if snapshot_format == "parquet":
+        import pandas as pd
+
+        path.parent.mkdir(parents=True, exist_ok=True)
+        temp_path = path.with_name(f"{path.name}.tmp")
+        pd.DataFrame(rows).to_parquet(temp_path, index=False)
+        temp_path.replace(path)
+        return path
+
     payload = {
         "table_name": table_name,
         "exported_at": datetime.now(timezone.utc).isoformat(),

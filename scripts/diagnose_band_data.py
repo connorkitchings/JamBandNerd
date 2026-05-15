@@ -26,7 +26,6 @@ import pandas as pd
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, project_root)
 
-from scripts.common import batched_values
 from src.jambandnerd.config import BAND_ID_COLUMNS
 from src.jambandnerd.db.connection import get_supabase_client
 
@@ -41,6 +40,11 @@ def _completed_show_bounds(
     return cutoff.isoformat(), end_date.isoformat()
 
 
+def _batched(items: list[str], size: int = 50) -> list[list[str]]:
+    """Split IDs into stable batches for Supabase `in_` queries."""
+    return [items[idx : idx + size] for idx in range(0, len(items), size)]
+
+
 def _fetch_setlist_ids_for_shows(
     client, setlists_table: str, id_col: str, show_ids: set[str]
 ) -> set[str]:
@@ -49,7 +53,7 @@ def _fetch_setlist_ids_for_shows(
         return set()
 
     setlist_ids: set[str] = set()
-    for chunk in batched_values(sorted(show_ids)):
+    for chunk in _batched(sorted(show_ids)):
         resp = client.table(setlists_table).select(id_col).in_(id_col, chunk).execute()
         for item in resp.data or []:
             value = item.get(id_col)
@@ -87,15 +91,6 @@ def _summarize_missing_setlist_diagnostics(
         return f"{len(diagnostics)} WSP shows without setlist data ({detail})", None
 
     return f"{len(diagnostics)} shows without setlist data", None
-
-
-def _required_setlist_columns_for_band(band: str) -> list[str]:
-    """Return the raw setlist columns diagnostics should require for a band."""
-    if band == "um":
-        return ["song_name", "set_sequence", "song_position", "show_position"]
-
-    pos_col = "position" if band == "phish" else "song_position"
-    return ["song_name", "set_number", pos_col]
 
 
 def diagnose_band(band: str, verbose: bool = False) -> dict[str, any]:
@@ -211,7 +206,10 @@ def diagnose_band(band: str, verbose: bool = False) -> dict[str, any]:
         print(f"✅ ID column '{id_col}' found in setlists table")
 
         # Check for required setlist columns
-        required_setlist_cols = _required_setlist_columns_for_band(band)
+        required_setlist_cols = ["song_name", "set_number"]
+        pos_col = "position" if band == "phish" else "song_position"
+        required_setlist_cols.append(pos_col)
+
         missing_cols = [
             c for c in required_setlist_cols if c not in setlists_df.columns
         ]

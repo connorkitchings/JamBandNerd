@@ -15,6 +15,24 @@ def test_write_and_load_table_snapshot_roundtrip(tmp_path: Path) -> None:
     assert loaded == rows
 
 
+def test_write_and_load_parquet_table_snapshot_roundtrip(tmp_path: Path) -> None:
+    rows = [
+        {
+            "show_id": "goose-1",
+            "show_date": "2024-01-01",
+            "song_position": 1,
+            "encore": False,
+        }
+    ]
+
+    snapshot_module.write_table_snapshot(
+        "goose_setlists_raw", rows, tmp_path, snapshot_format="parquet"
+    )
+    loaded = snapshot_module.load_table_snapshot("goose_setlists_raw", tmp_path)
+
+    assert loaded == rows
+
+
 def test_fetch_table_prefers_local_snapshot(tmp_path: Path) -> None:
     rows = [{"show_id": "goose-1", "show_date": "2024-01-01"}]
     snapshot_module.write_table_snapshot("goose_shows_raw", rows, tmp_path)
@@ -48,3 +66,29 @@ def test_export_tables_to_snapshot_writes_manifest(monkeypatch, tmp_path: Path) 
     ]
     assert manifest["tables"]["goose_shows_raw"]["row_count"] == 1
     assert (tmp_path / "manifest.json").exists()
+
+
+def test_export_tables_to_parquet_snapshot_writes_manifest(
+    monkeypatch, tmp_path: Path
+) -> None:
+    table_rows = {
+        "goose_shows_raw": [{"show_id": "goose-1"}],
+        "goose_setlists_raw": [{"show_id": "goose-1", "song_name": "Song A"}],
+    }
+
+    def fake_fetch_table(
+        table_name: str, chunk_size: int = 10000, *, snapshot_root=None
+    ):  # noqa: ARG001
+        return table_rows[table_name]
+
+    monkeypatch.setattr(common_module, "fetch_table", fake_fetch_table)
+
+    manifest = common_module.export_tables_to_snapshot(
+        ["goose_shows_raw", "goose_setlists_raw"],
+        snapshot_root=str(tmp_path),
+        snapshot_format="parquet",
+    )
+
+    assert manifest["format"] == "parquet"
+    assert manifest["tables"]["goose_shows_raw"]["format"] == "parquet"
+    assert (tmp_path / "goose_shows_raw.parquet").exists()

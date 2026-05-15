@@ -16,7 +16,7 @@ import pandas as pd
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, project_root)
 
-from scripts.common import batched_values, write_json_atomic
+from scripts.common import batched_values
 from scripts.export_backtest_snapshots import export_backtest_snapshots, parse_bands
 from scripts.run_backtest import (
     build_prediction_rows_dataframe,
@@ -39,6 +39,13 @@ from src.jambandnerd.models.registry import (
 DEFAULT_RECOVERY_BANDS = ["phish", "billy", "um", "wsp"]
 DEFAULT_RECOVERY_ROOT = Path("/tmp/jbn-deal-last50-recovery")
 RECOVERY_MANIFEST_NAME = "deal_last50_recovery_manifest.json"
+
+
+def _write_json_atomic(path: Path, payload: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temp_path = path.with_suffix(f"{path.suffix}.tmp")
+    temp_path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+    temp_path.replace(path)
 
 
 def _load_json(path: Path) -> dict[str, Any]:
@@ -64,7 +71,7 @@ def _load_recovery_manifest(recovery_root: Path) -> dict[str, Any]:
 
 def _save_recovery_manifest(recovery_root: Path, payload: dict[str, Any]) -> None:
     path = _recovery_manifest_path(recovery_root)
-    write_json_atomic(path, payload)
+    _write_json_atomic(path, payload)
 
 
 def _bundle_path(results_root: Path, band: str) -> Path:
@@ -143,7 +150,7 @@ def write_band_bundle(results_root: Path, band: str, bundle: dict[str, Any]) -> 
     """Persist one band bundle to disk."""
 
     path = _bundle_path(results_root, band)
-    write_json_atomic(path, bundle)
+    _write_json_atomic(path, bundle)
     return path
 
 

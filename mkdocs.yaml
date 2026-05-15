@@ -61,7 +61,7 @@ nav:
       - Daily Pipeline: operations/github_actions.md
       - Data Recovery & Rebuild: operations/data_recovery_rebuild.md
       - Pipeline Optimization: operations/pipeline_optimization.md
-      - Website Delivery: operations/website_delivery.md
+      - Streamlit Deployment: operations/streamlit_deploy.md
       - TourWrangler Fallback (WSP): operations/tourwrangler_fallback.md
   - Reference:
       - Collectors:
@@ -88,6 +88,8 @@ nav:
           - Supabase API Guide: reference/guides/supabase_api_guide.md
           - Supabase Inserts: reference/guides/supabase_inserts.md
   - Troubleshooting:
+      - Data Ingestion & Streamlit Issues: troubleshooting/data_ingestion_and_streamlit_issues.md
+      - Validation Fix Log (2025-10-04): troubleshooting/VALIDATION_FIX_2025-10-04.md
       - Data Quality Checklist: troubleshooting/troubleshooting_data_quality.md
   - Project Docs:
       - Product Requirements: overview/project/prd.md

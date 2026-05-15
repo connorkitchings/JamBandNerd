@@ -1,6 +1,10 @@
 # Model Readiness Runbook
 
-Use this workflow when preparing a future model for Supabase and eventual
+> **Legacy runbook**: This workflow documents the old multi-model readiness
+> path. On `feat/single-model-per-band`, use it only for rollback context or
+> offline baseline comparison while Phase B models are evaluated.
+
+Use this workflow when preparing a legacy model for Supabase and eventual
 website rollout across the repo-supported bands.
 
 ## Goal
@@ -9,8 +13,8 @@ Reach a state where the model has:
 
 - comparison evidence
 - canonical prediction rows
-- replay lineage in `historical_prediction_runs`
-- per-show accuracy in `accuracy_per_show`
+- legacy replay lineage in `historical_prediction_runs`
+- legacy per-show accuracy in `accuracy_per_show`
 - a backend readiness report proving the site can consume it
 
 This does **not** automatically expose the model on the website.
@@ -75,13 +79,12 @@ Interpretation:
 
 - `ok` means the promoted website models have complete live predictions,
   sufficient replay history, sufficient per-show accuracy rows, and healthy
-  cross-model replay overlap.
+  retained completed-show lineage.
 - `warning` means the surface is still readable but supporting issues remain,
   such as intentionally skipped accuracy freshness or missing recent raw
   setlists.
 - `failed` means the website-facing prediction or replay contract is incomplete
-  and should be fixed before relying on `/predictions`, `/performance`, or
-  `/replay`.
+  and should be fixed before relying on `/predictions` or `/performance`.
 
 Replay completeness is measured against each promoted model's required
 readiness window. The audit expects enough unique recent
@@ -95,7 +98,7 @@ requires `10`.
 
 1. confirm the readiness report is clean
 2. confirm `audit_supabase_tables.py` is `ok` for the target bands
-3. verify `/performance`, `/compare`, and `/replay`
-4. update website model visibility metadata
+3. verify `/predictions`, `/performance`, and `/last-show`
+4. update the per-band model registry metadata
 
 This separation keeps model backfills and site exposure decoupled.

@@ -8,7 +8,6 @@ WSP collectors.
 from __future__ import annotations
 
 import json
-import logging
 import re
 from datetime import date
 from html import unescape
@@ -19,8 +18,6 @@ from bs4 import BeautifulSoup
 
 from jambandnerd.data_collection.config import JAMBANNERD_BOT_UA
 from jambandnerd.data_collection.wsp.parser import SONGS_WITH_COMMAS
-
-logger = logging.getLogger(__name__)
 
 session = requests.Session()
 session.headers.update({"User-Agent": JAMBANNERD_BOT_UA})
@@ -105,6 +102,18 @@ def _strip_track_number(text: str) -> str:
 
 def _normalize_song_name(song_name: str) -> str:
     cleaned = song_name.strip()
+    lowered = cleaned.lower()
+
+    if lowered == "walkin'":
+        return "Walkin' (For Your Love)"
+
+    if lowered in {
+        "bowlegged woman knock kneed man",
+        "bowlegged woman, knock kneed man",
+        "knock kneed man",
+    }:
+        return "Bowlegged Woman"
+
     return cleaned
 
 
@@ -309,37 +318,16 @@ def fetch_setlist_from_panicstream(
     """Fetch and parse a WSP setlist from PanicStream."""
     try:
         url = find_show_on_year_index(show_date, city, state)
-    except Exception as exc:
-        logger.warning(
-            "PanicStream fallback: failed to search year index for %s: %s",
-            show_date,
-            exc,
-        )
+    except Exception:
         return []
 
     if not url:
-        logger.info(
-            "PanicStream fallback: no matching show found on year index for %s "
-            "(city=%s state=%s)",
-            show_date,
-            city,
-            state,
-        )
         return []
 
     try:
         response = session.get(url, timeout=30)
         response.raise_for_status()
-    except Exception as exc:
-        logger.warning(
-            "PanicStream fallback: failed to fetch show page %s: %s", url, exc
-        )
+    except Exception:
         return []
 
-    result = parse_show_page_html(response.text, show_id)
-    if not result:
-        logger.warning(
-            "PanicStream fallback: show page %s had no parseable setlist text",
-            url,
-        )
-    return result
+    return parse_show_page_html(response.text, show_id)

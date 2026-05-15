@@ -20,20 +20,6 @@ Configure the window via environment variable:
 
 If all three sources fail for a recent completed show, WSP collection still hard-fails with `failed_upstream_stale`.
 
-## Song Name Canonicalization
-
-All WSP setlist rows from EC, PanicStream, and TourWrangler pass through a
-centralized song name canonicalizer
-(`src/jambandnerd/data_collection/wsp/song_canonicalizer.py`) before upsert.
-The canonicalizer uses:
-
-- A static alias map (89 entries) for known name variations
-- A dynamic lookup built from `wsp_songs_raw` for catalog-verified names
-
-This ensures that fallback source rows are compatible with EC rows and that
-song gap features are computed correctly regardless of which source produced
-the setlist.
-
 ## PanicStream Behavior
 
 - Discovers WSP show pages from the PanicStream yearly vault index.

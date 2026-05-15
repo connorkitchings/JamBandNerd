@@ -16,7 +16,7 @@ from zoneinfo import ZoneInfo
 from dotenv import load_dotenv
 from playwright.async_api import Browser, Page, async_playwright
 
-from jambandnerd.db.operations import fetch_prediction_songs_for_date
+from jambandnerd.db.operations import fetch_setlist_prediction_songs_for_date
 
 logger = logging.getLogger(__name__)
 
@@ -238,17 +238,15 @@ def has_existing_entry(mypicks_text: str, show: FantasyGooseShow) -> bool:
     return label_match or (date_match and venue_match)
 
 
-def fetch_goose_notebook_predictions(
+def fetch_goose_predictions(
     *,
     reference_date: str,
     limit: int = 8,
 ) -> list[dict[str, Any]]:
-    """Fetch Goose notebook predictions for an exact show date."""
-    return fetch_prediction_songs_for_date(
+    """Fetch Goose predictions for an exact show date."""
+    return fetch_setlist_prediction_songs_for_date(
         band="goose",
-        model_slug="notebook",
         reference_date=reference_date,
-        table_name="next_show_prediction_songs",
         limit=limit,
     )
 
@@ -450,7 +448,7 @@ async def run_fantasy_goose(
                     target_show=target_show,
                 )
 
-            predictions = fetch_goose_notebook_predictions(
+            predictions = fetch_goose_predictions(
                 reference_date=target_show.show_date.isoformat(),
                 limit=8,
             )
@@ -458,7 +456,7 @@ async def run_fantasy_goose(
                 return FantasyGooseRunResult(
                     status="missing_predictions",
                     message=(
-                        "JamBandNerd does not have a complete Goose notebook top-8 "
+                        "JamBandNerd does not have a complete Goose top-8 "
                         f"for {target_show.show_date.isoformat()}."
                     ),
                     target_show=target_show,

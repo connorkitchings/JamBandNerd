@@ -52,9 +52,9 @@ export function RecallChart({ rows, k = 10 }: Props) {
   const chronological = [...rows].reverse();
   const totalRows = chronological.length;
   const seriesEntries = [
-    { key: 10 as const, label: "Top 10", color: getStrokeColor(10), values: chronological.map((row, index) => ({ index, date: row.showDate, value: row.k10Recall })) },
-    { key: 25 as const, label: "Top 25", color: getStrokeColor(25), values: chronological.map((row, index) => ({ index, date: row.showDate, value: row.k25Recall })) },
-    { key: 50 as const, label: "Top 50", color: getStrokeColor(50), values: chronological.map((row, index) => ({ index, date: row.showDate, value: row.k50Recall })) },
+    { key: 10 as const, label: "Top 10", color: getStrokeColor(10), values: chronological.map((row, index) => ({ index, date: row.showDate, value: row.recall10 })) },
+    { key: 25 as const, label: "Top 25", color: getStrokeColor(25), values: chronological.map((row, index) => ({ index, date: row.showDate, value: row.recall25 })) },
+    { key: 50 as const, label: "Top 50", color: getStrokeColor(50), values: chronological.map((row, index) => ({ index, date: row.showDate, value: row.recall50 })) },
   ] as const;
 
   const visibleSeries = (k === "all" ? seriesEntries : seriesEntries.filter((entry) => entry.key === k))

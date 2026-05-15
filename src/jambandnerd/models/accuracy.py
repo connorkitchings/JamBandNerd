@@ -3,6 +3,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Dict, Iterable, List
 
+import numpy as np
+
+from jambandnerd.config.models import (
+    BAND_DUAL_OBJECTIVE_ALPHA,
+    DUAL_OBJECTIVE_ALPHA,
+    WEIGHTED_PRECISION_WEIGHTS,
+)
+
 
 @dataclass
 class TopKMetrics:
@@ -12,10 +20,26 @@ class TopKMetrics:
     precision: float
     recall: float
     f1: float
+    ndcg: float
 
 
 def _safe_div(n: float, d: float) -> float:
     return n / d if d else 0.0
+
+
+def _dcg_at_k(relevances: List[float], k: int) -> float:
+    return sum(rel / np.log2(i + 2) for i, rel in enumerate(relevances[:k]))
+
+
+def _ndcg_at_k(pred_songs: List[str], actual_songs: Iterable[str], k: int) -> float:
+    actual_set = set(actual_songs)
+    if not actual_set:
+        return 0.0
+    relevances = [1.0 if song in actual_set else 0.0 for song in pred_songs[:k]]
+    dcg = _dcg_at_k(relevances, k)
+    ideal_relevances = [1.0] * min(len(actual_set), k)
+    idcg = _dcg_at_k(ideal_relevances, k)
+    return _safe_div(dcg, idcg)
 
 
 def compute_per_show_metrics(
@@ -33,13 +57,74 @@ def compute_per_show_metrics(
         if (precision + recall)
         else 0.0
     )
+    ndcg = _ndcg_at_k(pred_songs, actual_set, k)
     return {
         "hit": hit,
         "matches": float(matches),
         "precision": precision,
         "recall": recall,
         "f1": f1,
+        "ndcg": ndcg,
     }
+
+
+def compute_weighted_precision_score(p10: float, p25: float, p50: float) -> float:
+    """Weighted blend of precision@k values using configured weights."""
+    return (
+        WEIGHTED_PRECISION_WEIGHTS["p10"] * p10
+        + WEIGHTED_PRECISION_WEIGHTS["p25"] * p25
+        + WEIGHTED_PRECISION_WEIGHTS["p50"] * p50
+    )
+
+
+@dataclass(frozen=True)
+class BacktestSummary:
+    """Aggregated metrics from a walk-forward backtest on a fixed show window."""
+
+    band: str
+    model_version: str
+    n_shows: int
+    p10: float
+    p25: float
+    p50: float
+    r10: float
+    r25: float
+    r50: float
+    f1_10: float
+    f1_25: float
+    f1_50: float
+    ndcg_10: float
+    ndcg_25: float
+    ndcg_50: float
+    weighted_score: float
+    dual_score: float
+    dual_f1_score: float
+
+
+def dual_objective_score(p10: float, r50: float, alpha: float | None = None) -> float:
+    """Blend p@10 and r@50 into a single scalar: α·p10 + (1−α)·r50."""
+    a = DUAL_OBJECTIVE_ALPHA if alpha is None else alpha
+    return a * p10 + (1.0 - a) * r50
+
+
+def dual_objective_score_for_band(p10: float, r50: float, band: str) -> float:
+    """dual_objective_score using the per-band alpha override when available."""
+    alpha = BAND_DUAL_OBJECTIVE_ALPHA.get(band, DUAL_OBJECTIVE_ALPHA)
+    return dual_objective_score(p10, r50, alpha=alpha)
+
+
+def dual_f1_objective_score(
+    f1_10: float, f1_50: float, alpha: float | None = None
+) -> float:
+    """Blend F1@10 and F1@50 into a single scalar: α·F1@10 + (1−α)·F1@50."""
+    a = DUAL_OBJECTIVE_ALPHA if alpha is None else alpha
+    return a * f1_10 + (1.0 - a) * f1_50
+
+
+def dual_f1_objective_score_for_band(f1_10: float, f1_50: float, band: str) -> float:
+    """dual_f1_objective_score using the per-band alpha override when available."""
+    alpha = BAND_DUAL_OBJECTIVE_ALPHA.get(band, DUAL_OBJECTIVE_ALPHA)
+    return dual_f1_objective_score(f1_10, f1_50, alpha=alpha)
 
 
 def aggregate_metrics(per_show: List[Dict[str, float]], k: int) -> TopKMetrics:
@@ -49,6 +134,7 @@ def aggregate_metrics(per_show: List[Dict[str, float]], k: int) -> TopKMetrics:
     precision = sum(m["precision"] for m in per_show) / n
     recall = sum(m["recall"] for m in per_show) / n
     f1 = sum(m["f1"] for m in per_show) / n
+    ndcg = sum(m["ndcg"] for m in per_show) / n
     return TopKMetrics(
         k=k,
         hit_rate=hit_rate,
@@ -56,4 +142,5 @@ def aggregate_metrics(per_show: List[Dict[str, float]], k: int) -> TopKMetrics:
         precision=precision,
         recall=recall,
         f1=f1,
+        ndcg=ndcg,
     )

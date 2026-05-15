@@ -79,10 +79,8 @@ The normalized setlist contract used by shared code must expose:
 
 - `show_id`
 - `song_name`
-- source set identifier such as `set_number`, `set_sequence`, or an equivalent
-  normalized field
-- song ordering field such as `song_position`, `show_position`, or an
-  equivalent normalized field
+- `set_number`
+- song ordering field such as `song_position` or an equivalent normalized field
 
 ### Songs
 
@@ -99,8 +97,6 @@ resolution, for example:
 
 - `{band}_venues_raw`
 - `um_upcoming_shows`
-- `wsp_shows_upcoming`
-- `collection_runs` (operational tracking of collection execution metadata)
 
 These remain optional support tables, not mandatory predictive inputs.
 
@@ -131,11 +127,6 @@ transformation layer:
 
 - `scripts/common.py`
 - `src/jambandnerd/transformations/gaps.py`
-
-Band-specific normalization layers also exist where source quirks require them:
-
-- `src/jambandnerd/data_collection/wsp/song_canonicalizer.py` — normalizes WSP
-  song names from all sources (EC, PanicStream, TourWrangler) to EC catalog forms
 
 Normalization is responsible for:
 
@@ -206,22 +197,21 @@ Any new model must consume the same leakage-safe ordering and cutoff rules.
 
 Prediction storage is split by product intent.
 
-Live next-show predictions use `next_show_prediction_runs` as the canonical run
-table and `next_show_prediction_songs` as the derived per-song projection. These
+Live next-show predictions use `setlist_predictions` as the canonical run
+table and `setlist_prediction_songs` as the derived per-song projection. These
 tables contain only active next-show boards. If no upcoming show is known, the
 pipeline does not write a live prediction row and the website shows no live
 board.
 
-Completed-show history uses `completed_show_prediction_runs` as the canonical
-retained run table and `completed_show_accuracy` as the retained per-show metric
-table. The active corpus is exactly the last 50 eligible completed shows per
-band/model; rows outside that corpus are hard-deleted from the derived
+Completed-show history uses `setlist_results` as the canonical retained run
+table and `setlist_accuracy` as the retained per-show metric
+table. The active corpus is exactly the last 100 eligible completed shows per
+band model version; rows outside that corpus are hard-deleted from the derived
 prediction/accuracy storage.
 
 The live canonical row includes:
 
 - `band`
-- `model_slug`
 - `target_show_key`
 - `target_show_date`
 - `reference_date`
@@ -230,46 +220,32 @@ The live canonical row includes:
 - `generated_at`
 - JSON `predictions` payload
 
+`target_show_date` is the product-facing date: the website uses it to decide
+whether a prediction is for the next show, tonight, or a previous show.
+`reference_date` is the model cutoff used to enforce anti-leakage. These values
+may differ for completed-show scoring and should not be treated as
+interchangeable. `generated_at` is the freshness timestamp.
+
+If no future board exists, the website may continue to show the latest stale
+live board as a previous-show board with explicit labeling. Completed-show
+history remains separate in `setlist_results`.
+
 The completed-show canonical row additionally includes `actual_songs` and
 `actual_song_count`.
 
 ### Accuracy storage
 
-- `completed_show_accuracy` is the canonical granular evaluation store.
-- new `completed_show_accuracy` rows link to `completed_show_prediction_runs` through
+- `setlist_accuracy` is the canonical granular evaluation store.
+- new `setlist_accuracy` rows link to `setlist_results` through
   `prediction_run_id`
-- pipeline validation checks that exactly the retained last-50 rows carry
+- pipeline validation checks that exactly the retained last-100 rows carry
   replay lineage, so replay readiness is part of normal data health.
-
-`completed_show_accuracy` full column manifest:
-
-- `id`, `created_at` — identity
-- `band`, `model_slug`, `model_version` — prediction context
-- `show_id` — normalized show identifier
-- `target_show_key` — unique show key matching the prediction run
-- `show_date`, `target_show_date` — show date fields
-- `reference_date` — when the prediction was made
-- `prediction_run_id` — foreign key to `completed_show_prediction_runs`
-- `actual_song_count` — number of songs in the actual setlist
-- `evaluated_at` — when the accuracy row was computed
-- `k10_hit`, `k10_matches`, `k10_precision`, `k10_recall`, `k10_f1`
-- `k25_hit`, `k25_matches`, `k25_precision`, `k25_recall`, `k25_f1`
-- `k50_hit`, `k50_matches`, `k50_precision`, `k50_recall`, `k50_f1`
-
-Uniqueness: `(band, model_slug, model_version, target_show_key)`
 
 ## Current Decision: Prediction Storage
 
 The active architecture uses canonical JSON run rows plus derived projections
 where the website needs song-level reads. Live and completed history are
 separate so next-show reads never fall back to retained historical rows.
-
-### Dual-Write State
-
-The Python pipeline currently writes to both the new split tables and the
-legacy tables (`predictions`, `prediction_songs`, `historical_prediction_runs`,
-`accuracy_per_show`). The website reads exclusively from the new split tables.
-Legacy table writes will be removed once the Python migration is complete.
 
 ## Band Registry
 
@@ -307,38 +283,39 @@ New band onboarding workflow:
 3. Insert a row into the `bands` table
 4. The website automatically discovers and surfaces the new band
 
-## Completed Prediction Runs (Replay Lineage)
+## Completed Prediction Runs
 
-The `completed_show_prediction_runs` table preserves exact prediction boards for
-the retained completed-show corpus, enabling the Replay feature. Each row stores:
+The `setlist_results` table preserves exact prediction boards for
+the retained completed-show corpus. Each row stores:
 
-- `band`, `model_slug`, `model_version`: prediction context
+- `band`, `model_version`: prediction context
 - `reference_date`: when the prediction was made
 - `target_show_id`, `target_show_date`: the show being predicted
 - `actual_songs`: JSON snapshot of the setlist at scoring time
 - `predictions`: exact ranked JSON payload emitted by the model
 - `run_type`: either 'backtest' or 'live'
 
-The `completed_show_accuracy` table links back to `completed_show_prediction_runs` via
+The `setlist_accuracy` table links back to `setlist_results` via
 `prediction_run_id`, creating full lineage from evaluation back to the original prediction.
 
-The website's `/replay`, `/performance`, `/compare`, and `/last-show` surfaces
-read only this retained completed-show corpus. Notebook and Deal both require
-the same 50-show retained window.
+The website's `/performance` and `/last-show` surfaces read this retained
+completed-show corpus. Each active band model version requires the same
+100-show retained window.
 
 ## Per-Song Prediction Projection
 
-`next_show_prediction_songs` is a derived table storing one row per live
+`setlist_prediction_songs` is a derived table storing one row per live
 predicted song for SQL-friendly reads and realtime updates. It is rebuildable
-from `next_show_prediction_runs`.
+from `setlist_predictions`.
 
 Schema:
-- `band`, `model_slug`, `model_version`, `reference_date`: prediction context
-- `predicted_at`: when the prediction was generated
+- `band`, `model_version`, `target_show_key`: prediction context
+- `target_show_date`, `reference_date`, `generated_at`: denormalized live run
+  metadata used by website and realtime update scopes
 - `rank`, `song_name`, `top_k`: song position in the prediction board
 - `prediction_payload`: model-specific JSON object for that ranked song
 
-Unique constraint on `(band, model_slug, model_version, target_show_key, rank)`
+Unique constraint on `(band, model_version, target_show_key, rank)`
 ensures deterministic upserts.
 
 ## Files To Treat As Current References
@@ -347,4 +324,4 @@ ensures deterministic upserts.
 - `docs/contributor/developer_guide/architecture.md`
 - `docs/reference/specifications/database.md`
 - `docs/reference/specifications/predictions_schema.md`
-- `docs/reference/schemas/unified_tables.md` (documents current split tables; includes legacy table reference for migration context)
+- `docs/reference/schemas/unified_tables.md`

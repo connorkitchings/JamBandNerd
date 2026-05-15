@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 from scripts import check_prediction_storage_rollout as module
@@ -51,19 +50,7 @@ def _empty_rows() -> dict[str, list[dict[str, object]]]:
     return {table: [] for table in module.TABLE_REQUIRED_COLUMNS}
 
 
-def _install_model_stub(monkeypatch):
-    monkeypatch.setattr(
-        module,
-        "list_promoted_web_models",
-        lambda: [
-            SimpleNamespace(slug="notebook", version="notebook_v1"),
-            SimpleNamespace(slug="deal", version="deal_v2"),
-        ],
-    )
-
-
 def test_rollout_checker_passes_empty_tables(monkeypatch):
-    _install_model_stub(monkeypatch)
     monkeypatch.setattr(module, "get_table_schema", lambda table: [])
 
     report = module.check_prediction_storage_rollout(
@@ -74,20 +61,18 @@ def test_rollout_checker_passes_empty_tables(monkeypatch):
 
     assert report.state == "ok"
     assert report.tables[0].row_count == 0
-    assert len(report.band_models) == 2
-    assert report.band_models[0].next_show_prediction_runs == 0
+    assert len(report.band_models) == 1
+    assert report.band_models[0].setlist_predictions == 0
 
 
 def test_rollout_checker_fails_empty_state_when_rows_exist(monkeypatch):
-    _install_model_stub(monkeypatch)
     monkeypatch.setattr(module, "get_table_schema", lambda table: [])
     rows = _empty_rows()
-    rows[module.NEXT_SHOW_PREDICTION_RUNS_TABLE] = [
+    rows[module.SETLIST_PREDICTIONS_TABLE] = [
         {
             "id": 1,
             "band": "goose",
-            "model_slug": "notebook",
-            "model_version": "notebook_v1",
+            "model_version": "goose_baseline_v1",
         }
     ]
 
@@ -98,14 +83,13 @@ def test_rollout_checker_fails_empty_state_when_rows_exist(monkeypatch):
     )
 
     assert report.state == "failed"
-    assert "next_show_prediction_runs:expected_empty:1" in report.blockers
+    assert "setlist_predictions:expected_empty:1" in report.blockers
 
 
 def test_rollout_checker_fails_on_missing_table(monkeypatch):
-    _install_model_stub(monkeypatch)
     monkeypatch.setattr(module, "get_table_schema", lambda table: [])
     rows = _empty_rows()
-    del rows[module.COMPLETED_SHOW_ACCURACY_TABLE]
+    del rows[module.SETLIST_ACCURACY_TABLE]
 
     report = module.check_prediction_storage_rollout(
         bands=["goose"],
@@ -115,14 +99,12 @@ def test_rollout_checker_fails_on_missing_table(monkeypatch):
 
     assert report.state == "failed"
     assert any(
-        blocker.startswith("completed_show_accuracy:not_readable")
+        blocker.startswith("setlist_accuracy:not_readable")
         for blocker in report.blockers
     )
 
 
 def test_rollout_checker_fails_on_rpc_schema_mismatch(monkeypatch):
-    _install_model_stub(monkeypatch)
-
     def schema(table: str):
         return [
             {"column_name": column}
@@ -145,9 +127,8 @@ def test_rollout_checker_fails_on_rpc_schema_mismatch(monkeypatch):
 
 
 def test_rollout_checker_populated_state_runs_production_audit(monkeypatch):
-    _install_model_stub(monkeypatch)
     monkeypatch.setattr(module, "get_table_schema", lambda table: [])
-    audit = MagicMock(state="failed", blockers=("goose:notebook:missing",), warnings=())
+    audit = MagicMock(state="failed", blockers=("goose:missing",), warnings=())
     monkeypatch.setattr(module, "run_supabase_audit", lambda bands: audit)
 
     report = module.check_prediction_storage_rollout(
@@ -158,4 +139,4 @@ def test_rollout_checker_populated_state_runs_production_audit(monkeypatch):
 
     assert report.state == "failed"
     assert report.production_audit_state == "failed"
-    assert "production_audit:goose:notebook:missing" in report.blockers
+    assert "production_audit:goose:missing" in report.blockers

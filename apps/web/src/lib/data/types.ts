@@ -5,8 +5,7 @@
  * import from a single canonical location.
  */
 
-import type { LikelihoodTier, ModelSlug } from "@/lib/config";
-import type { ShowDetails } from "@/lib/next-show";
+import type { LikelihoodTier } from "@/lib/config";
 
 export type { ShowDetails } from "@/lib/next-show";
 
@@ -24,13 +23,13 @@ export type PredictionRow = {
   recentAvgGap: number | null;
   gapRatio: number | null;
   gapZScore: number | null;
-  ckplusScore: number | null;
   probability: number | null;
   tier: LikelihoodTier;
 };
 
 export type PredictionSnapshot = {
   targetShowDate: string | null;
+  targetShowKey: string | null;
   referenceDate: string | null;
   predictedAt: string | null;
   modelVersion: string | null;
@@ -43,12 +42,13 @@ export type AccuracyRow = {
   venueName: string | null;
   city: string | null;
   state: string | null;
-  k10Recall: number | null;
-  k25Recall: number | null;
-  k50Recall: number | null;
-  k10Precision: number | null;
-  k25Precision: number | null;
-  k50Precision: number | null;
+  recall10: number | null;
+  recall25: number | null;
+  recall50: number | null;
+  p10: number | null;
+  p25: number | null;
+  p50: number | null;
+  weightedPrecisionScore: number | null;
 };
 
 export type SetlistSong = {
@@ -60,28 +60,6 @@ export type SetlistSong = {
 export type SetlistSnapshot = {
   showDetails: Record<string, unknown> | null;
   songs: SetlistSong[];
-};
-
-export type ExplorerSnapshot = {
-  availableDates: string[];
-  selectedDate: string | null;
-  predictions: PredictionSnapshot | null;
-  setlist: SetlistSnapshot | null;
-};
-
-export type ReplayShowOption = {
-  showDate: string;
-  venueName: string | null;
-};
-
-export type ReplaySnapshot = {
-  availableShows: ReplayShowOption[];
-  selectedDate: string | null;
-  show: ShowDetails | null;
-  setlist: SetlistSnapshot | null;
-  modelA: ModelSlug;
-  modelB: ModelSlug;
-  snapshots: Partial<Record<ModelSlug, PredictionSnapshot | null>>;
 };
 
 export type BandEntry = {

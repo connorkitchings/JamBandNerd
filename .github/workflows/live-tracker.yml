@@ -4,13 +4,15 @@ on:
   workflow_dispatch:
     inputs:
       band:
-        description: "Band to track (goose, phish, or wsp)"
+        description: "Band to track"
         required: true
         type: choice
         options:
           - goose
           - phish
           - wsp
+          - billy
+          - um
       date:
         description: "Target show date (YYYY-MM-DD)"
         required: true
@@ -40,7 +42,7 @@ jobs:
   run-tracker:
     name: "Live Tracker: ${{ github.event.inputs.band }} on ${{ github.event.inputs.date }}"
     runs-on: ubuntu-latest
-
+    
     # GitHub Actions limit is 6 hours; set timeout slightly below to allow graceful fail
     timeout-minutes: 360
 
@@ -48,10 +50,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Install uv and Python
+      - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
+
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v6
+        with:
           python-version: "3.12"
 
       - name: Validate required secrets

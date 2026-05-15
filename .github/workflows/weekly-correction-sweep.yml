@@ -41,29 +41,35 @@ on:
         default: true
         type: boolean
 
-env:
-  SWEEP_WINDOW_DAYS: ${{ github.event.inputs.window_days || '730' }}
-  DRY_RUN: ${{ github.event.inputs.dry_run != 'false' }}
-
 jobs:
   setup:
     name: Setup Sweep Parameters
     runs-on: ubuntu-latest
     outputs:
-      band: ${{ steps.determine-band.outputs.band }}
-      cron_band: ${{ steps.determine-band.outputs.cron_band }}
+      bands: ${{ steps.determine-band.outputs.bands }}
+      is_multi: ${{ steps.determine-band.outputs.is_multi }}
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
       - name: Determine target band
         id: determine-band
         run: |
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            # Manual trigger - use input
-            BAND="${{ github.event.inputs.band || 'all' }}"
-            echo "band=$BAND" >> $GITHUB_OUTPUT
-            echo "cron_band=" >> $GITHUB_OUTPUT
+            INPUT_BAND="${{ github.event.inputs.band || 'all' }}"
+            if [[ "$INPUT_BAND" == "all" ]]; then
+              BANDS_JSON=$(python -m scripts.get_all_bands)
+              echo "is_multi=true" >> $GITHUB_OUTPUT
+            else
+              BANDS_JSON="[\"$INPUT_BAND\"]"
+              echo "is_multi=false" >> $GITHUB_OUTPUT
+            fi
           else
-            # Scheduled trigger - determine from cron
-            # Get the current cron schedule that triggered this run
             CURRENT_HOUR=$(date -u +%H)
             case $CURRENT_HOUR in
               14) BAND="goose" ;;
@@ -74,17 +80,25 @@ jobs:
               19) BAND="um" ;;
               *) BAND="unknown" ;;
             esac
-            echo "band=$BAND" >> $GITHUB_OUTPUT
-            echo "cron_band=$BAND" >> $GITHUB_OUTPUT
+            if [[ "$BAND" == "unknown" ]]; then
+              echo "::error::Could not determine band from scheduled hour: $CURRENT_HOUR"
+              exit 1
+            fi
+            BANDS_JSON="[\"$BAND\"]"
+            echo "is_multi=false" >> $GITHUB_OUTPUT
             echo "Running scheduled correction sweep for: $BAND"
           fi
+          echo "bands=$BANDS_JSON" >> $GITHUB_OUTPUT
 
   correction-sweep:
-    name: Correction Sweep - ${{ needs.setup.outputs.band }}
+    name: Correction Sweep - ${{ matrix.band }}
     needs: setup
-    if: needs.setup.outputs.band != 'unknown'
     runs-on: ubuntu-latest
     timeout-minutes: 90
+    strategy:
+      matrix:
+        band: ${{ fromJson(needs.setup.outputs.bands) }}
+      fail-fast: false
 
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -103,7 +117,7 @@ jobs:
       - name: Validate required secrets
         run: |
           MISSING=()
-          BAND="${{ needs.setup.outputs.band }}"
+          BAND="${{ matrix.band }}"
 
           if [[ -z "$SUPABASE_URL" ]]; then
             MISSING+=("SUPABASE_URL")
@@ -122,7 +136,7 @@ jobs:
             exit 1
           fi
 
-          echo "✅ All required secrets are configured"
+          echo "All required secrets are configured"
 
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -133,11 +147,11 @@ jobs:
         run: uv sync --locked --no-dev
 
       - name: Install Playwright OS Dependencies
-        if: needs.setup.outputs.band == 'wsp' || needs.setup.outputs.band == 'eggy'
+        if: matrix.band == 'wsp' || matrix.band == 'eggy'
         run: uv run python -m playwright install-deps firefox
 
       - name: Cache Playwright Browsers
-        if: needs.setup.outputs.band == 'wsp' || needs.setup.outputs.band == 'eggy'
+        if: matrix.band == 'wsp' || matrix.band == 'eggy'
         uses: actions/cache@v5
         id: playwright-cache
         with:
@@ -145,21 +159,23 @@ jobs:
           key: playwright-${{ runner.os }}-firefox-${{ hashFiles('uv.lock') }}
 
       - name: Install Playwright Browsers
-        if: (needs.setup.outputs.band == 'wsp' || needs.setup.outputs.band == 'eggy') && steps.playwright-cache.outputs.cache-hit != 'true'
+        if: (matrix.band == 'wsp' || matrix.band == 'eggy') && steps.playwright-cache.outputs.cache-hit != 'true'
         run: uv run python -m playwright install firefox
 
       - name: Run Correction Sweep
         id: sweep
         run: |
-          BAND="${{ needs.setup.outputs.band }}"
-          WINDOW_DAYS="${{ env.SWEEP_WINDOW_DAYS }}"
+          BAND="${{ matrix.band }}"
+          WINDOW_DAYS="${{ github.event.inputs.window_days || '730' }}"
           DRY_RUN_FLAG=""
 
-          if [[ "${{ env.DRY_RUN }}" == "true" ]]; then
+          if [[ "${{ github.event_name }}" == "schedule" ]]; then
+            echo "Running in LIVE mode (scheduled)"
+          elif [[ "${{ github.event.inputs.dry_run }}" != "false" ]]; then
             DRY_RUN_FLAG="--dry-run"
             echo "Running in DRY-RUN mode (corrections will be detected but not applied)"
           else
-            echo "Running in LIVE mode (corrections will be applied)"
+            echo "Running in LIVE mode (manual)"
           fi
 
           echo "::group::Running correction sweep for $BAND (window: $WINDOW_DAYS days)"
@@ -175,26 +191,26 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: correction-sweep-report-${{ needs.setup.outputs.band }}-${{ github.run_id }}
-          path: correction_sweep_report.json
+          name: correction-sweep-report-${{ matrix.band }}-${{ github.run_id }}
+          path: correction_sweep_report_${{ matrix.band }}.json
           if-no-files-found: ignore
 
       - name: Notify on Completion
         if: always()
         run: |
-          BAND="${{ needs.setup.outputs.band }}"
+          BAND="${{ matrix.band }}"
           STATUS="${{ steps.sweep.outcome }}"
 
           if [[ "$STATUS" == "success" ]]; then
-            echo "✅ Correction sweep completed successfully for $BAND"
+            echo "Correction sweep completed successfully for $BAND"
           else
-            echo "❌ Correction sweep failed for $BAND"
+            echo "Correction sweep failed for $BAND"
           fi
 
   sweep-summary:
     name: Sweep Summary
     needs: [setup, correction-sweep]
-    if: always() && needs.setup.outputs.band == 'all'
+    if: always() && needs.setup.outputs.is_multi == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Download all reports
@@ -208,8 +224,8 @@ jobs:
           echo "## Weekly Correction Sweep Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
-          if ls correction_sweep_report*.json 1> /dev/null 2>&1; then
-            for report in correction_sweep_report*.json; do
+          if ls correction_sweep_report_*.json 1> /dev/null 2>&1; then
+            for report in correction_sweep_report_*.json; do
               echo "- $report" >> $GITHUB_STEP_SUMMARY
             done
           else

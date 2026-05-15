@@ -50,27 +50,14 @@ Adding a new model follows a similar pattern.
    - `scripts/run_backtest.py`
    - `scripts/run_optimized_pipeline.py`
 4. **Create storage**: write live next-show rows to
-   `next_show_prediction_runs`/`next_show_prediction_songs`, and write retained
-   completed-show rows to `completed_show_prediction_runs` plus
-   `completed_show_accuracy`.
+   `setlist_predictions`/`setlist_prediction_songs`, and write retained
+   completed-show rows to `setlist_results` plus `setlist_accuracy`.
 5. **Document versioning**: define the `model_version` contract for the new
    model.
 
 ### 2. Presentation Layer
 
-The public surface is the website app in `apps/web`. Model presentation metadata
-still lives in `apps/web/src/lib/config.ts`, but backend lifecycle and
-capability flags come from `src/jambandnerd/models/metadata.py`.
-
-```ts
-MODEL_CONFIG = {
-  notebook: {
-    displayName: "Notebook",
-    explanation: "Existing notebook model explanation.",
-  },
-  new_model: {
-    displayName: "New Model",
-    explanation: "A brief explanation of how the new model works.",
-  },
-} as const;
-```
+The public surface is the website app in `apps/web`. The website discovers
+bands from Supabase and reads one active prediction board per band from
+`setlist_*` tables. There is no frontend model picker or public model
+configuration surface on this branch.

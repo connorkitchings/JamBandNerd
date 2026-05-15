@@ -17,6 +17,12 @@ def project_root_dir():
 
 
 @pytest.fixture
+def sample_data_dir(project_root_dir):
+    """Return the sample data directory for tests."""
+    return project_root_dir / "tests" / "data"
+
+
+@pytest.fixture
 def mock_env_vars():
     """Provide mock environment variables for testing."""
     return {

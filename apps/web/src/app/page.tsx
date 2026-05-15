@@ -3,7 +3,6 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { SectionCard } from "@/components/section-card";
-import { ACTIVE_MODELS } from "@/lib/config";
 import {
   getBands,
   getLatestPredictions,
@@ -12,6 +11,13 @@ import {
 import { buildLocationLabel, formatDateLabel } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
+
+const HOME_TEASER_BANDS = [
+  { slug: "phish", label: "Phish", fallbackName: "Phish" },
+  { slug: "wsp", label: "WSP", fallbackName: "Widespread Panic" },
+  { slug: "billy", label: "Billy", fallbackName: "Billy Strings" },
+  { slug: "goose", label: "Goose", fallbackName: "Goose" },
+] as const;
 
 const HOW_IT_WORKS = [
   {
@@ -22,19 +28,18 @@ const HOW_IT_WORKS = [
   {
     step: "02",
     title: "Apply prediction models",
-    body: "Multiple models score and rank songs to estimate what is most likely to appear next.",
+    body: "A per-band model scores and ranks songs to estimate what is most likely to appear next.",
   },
   {
     step: "03",
     title: "Publish predictions",
-    body: "Predictions, performance reads, and replay views are published together in the website.",
+    body: "Predictions, performance reads, and setlist history are published together in the website.",
   },
 ] as const;
 
 type Props = {
   searchParams: Promise<{
     band?: string;
-    model?: string;
     teaser?: string;
   }>;
 };
@@ -47,38 +52,20 @@ export const metadata: Metadata = {
 
 export default async function HomePage({ searchParams }: Props) {
   const params = await searchParams;
-  const query = new URLSearchParams();
 
   if (params.band) {
-    query.set("band", params.band);
-  }
-
-  if (params.model) {
-    query.set("model", params.model);
-  }
-
-  if (query.size > 0) {
-    redirect(`/predictions${query.toString() ? `?${query}` : ""}`);
+    redirect(`/predictions?band=${params.band}`);
   }
 
   const bandsResult = await getBands();
   const bands = bandsResult.status === "ready" ? bandsResult.bands : [];
   const requestedTeaser = params.teaser?.trim().toLowerCase();
-  const TEASER_ORDER = ["phish", "wsp", "billy", "goose"];
-  const TEASER_LABELS: Record<string, string> = {
-    wsp: "WSP",
-    billy: "Billy",
-  };
-  const teaserBands = TEASER_ORDER
-    .map((slug) => bands.find((b) => b.slug === slug))
-    .filter((b): b is NonNullable<typeof b> => b != null);
-  const teaserBandSlug =
-    teaserBands.find((b) => b.slug === requestedTeaser)?.slug ??
-    teaserBands[0]?.slug ??
-    bands[0]?.slug ??
-    "goose";
+  const teaserConfig =
+    HOME_TEASER_BANDS.find((band) => band.slug === requestedTeaser) ??
+    HOME_TEASER_BANDS[0];
+  const teaserBandSlug = teaserConfig.slug;
 
-  const teaserPredictionState = await getLatestPredictions(teaserBandSlug, "notebook");
+  const teaserPredictionState = await getLatestPredictions(teaserBandSlug);
   const teaserNextShowState = await getNextShowDetails(teaserBandSlug);
   const teaserNextShow =
     teaserNextShowState.status === "ready" ? teaserNextShowState.show : null;
@@ -104,8 +91,8 @@ export default async function HomePage({ searchParams }: Props) {
                   What are they playing next?
                 </h1>
                 <p className="mt-5 max-w-2xl text-lg leading-relaxed text-on-surface-variant">
-                  Setlist predictions for the next show, plus model comparisons, performance
-                  tracking, and historical replay in one place.
+                  Setlist predictions for the next show, plus performance
+                  tracking and historical analysis in one place.
                 </p>
                 <div className="mt-8 grid gap-4 md:max-w-3xl md:grid-cols-2">
                   <Link
@@ -130,7 +117,7 @@ export default async function HomePage({ searchParams }: Props) {
               Teasers
             </p>
             <div className="grid grid-cols-4 gap-2">
-              {teaserBands.map((band) => {
+              {HOME_TEASER_BANDS.map((band) => {
                 const isActive = band.slug === teaserBandSlug;
                 return (
                   <Link
@@ -143,7 +130,7 @@ export default async function HomePage({ searchParams }: Props) {
                         : "border-transparent bg-surface-container-low text-on-surface-variant hover:bg-outline-variant/20 hover:text-on-surface"
                     }`}
                   >
-                    {TEASER_LABELS[band.slug] ?? band.displayName}
+                    {band.label}
                   </Link>
                 );
               })}
@@ -151,14 +138,14 @@ export default async function HomePage({ searchParams }: Props) {
 
             {teaserPredictionState.status === "ready" ? (
               <>
-                <div className="editorial-chip mt-5 rounded-[1.5rem] p-4 text-center">
+                <div className="editorial-chip mt-5 rounded-[1.5rem] p-4">
                   <p className="font-label text-[10px] font-medium uppercase tracking-[0.18rem] text-on-surface-variant/70">
                     Next Show
                   </p>
                   <p className="mt-1.5 font-headline text-xl font-bold text-primary md:text-2xl">
                     {formatDateLabel(
                       teaserNextShow?.showDate ??
-                        teaserPredictionState.snapshot.referenceDate,
+                        teaserPredictionState.snapshot.targetShowDate,
                     )}
                   </p>
                   <p className="mt-1 font-headline text-base text-on-surface">
@@ -172,7 +159,7 @@ export default async function HomePage({ searchParams }: Props) {
                 <div className="editorial-chip mt-4 rounded-[1.5rem] p-4">
                   <div className="flex items-center justify-between mb-3 border-b border-outline-variant/15 pb-2">
                     <p className="font-label text-[10px] font-medium uppercase tracking-[0.16rem] text-on-surface-variant/70">
-                      Top Picks (Notebook)
+                      Top Picks
                     </p>
                     <p className="font-label text-[10px] font-medium uppercase tracking-[0.16rem] text-on-surface-variant/70">
                       Current Gap
@@ -223,7 +210,7 @@ export default async function HomePage({ searchParams }: Props) {
       </section>
 
       {/* Stats Ribbon */}
-      <section className="grid grid-cols-2 gap-4 md:grid-cols-3">
+      <section className="grid grid-cols-2 gap-4 md:grid-cols-2">
         <div className="editorial-panel flex flex-col justify-center px-6 py-5 text-center">
           <p className="font-headline text-3xl font-bold text-on-surface">
             {bands.length || "—"}
@@ -233,14 +220,6 @@ export default async function HomePage({ searchParams }: Props) {
           </p>
         </div>
         <div className="editorial-panel flex flex-col justify-center px-6 py-5 text-center">
-          <p className="font-headline text-3xl font-bold text-on-surface">
-            {ACTIVE_MODELS.length}
-          </p>
-          <p className="mt-1 font-label text-[10px] font-bold uppercase tracking-[0.18rem] text-on-surface-variant">
-            Prediction Models
-          </p>
-        </div>
-        <div className="editorial-panel col-span-2 flex flex-col justify-center px-6 py-5 text-center md:col-span-1">
           <p className="font-headline text-3xl font-bold text-on-surface">Daily</p>
           <p className="mt-1 font-label text-[10px] font-bold uppercase tracking-[0.18rem] text-on-surface-variant">
             Refresh Cadence

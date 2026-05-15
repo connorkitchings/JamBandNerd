@@ -84,11 +84,12 @@ def test_fingerprint_matches_default_profile():
         assert warnings == [], f"{filename} produced warnings: {warnings}"
 
 
+@patch("jambandnerd.data_collection.wsp.collector.get_supabase_client")
 @patch("jambandnerd.data_collection.wsp.collector.parse_setlist_from_text")
 @patch("jambandnerd.data_collection.wsp.collector.make_request")
 @patch("jambandnerd.data_collection.wsp.collector.decode_ec_response")
 def test_html_table_parser_stops_at_stats_section(
-    mock_decode, mock_make_request, mock_parse_text
+    mock_decode, mock_make_request, mock_parse_text, mock_supabase
 ):
     """Regression: stats section after setlist songs must not produce duplicate positions.
 
@@ -101,6 +102,9 @@ def test_html_table_parser_stops_at_stats_section(
 
     fixture_html = (FIXTURES / "setlist_page_with_stats.html").read_text().encode()
 
+    mock_supabase.return_value.table.return_value.select.return_value.eq.return_value.limit.return_value.execute.return_value.data = (
+        []
+    )
     mock_response = MagicMock()
     mock_response.url = "https://example.com/setlists/20250726a.asp"
     mock_make_request.return_value = mock_response
@@ -129,16 +133,20 @@ def test_html_table_parser_stops_at_stats_section(
         ), f"{label} has duplicate song names: {names}"
 
 
+@patch("jambandnerd.data_collection.wsp.collector.get_supabase_client")
 @patch("jambandnerd.data_collection.wsp.collector.make_request")
 @patch("jambandnerd.data_collection.wsp.collector.decode_ec_response")
 @patch("jambandnerd.data_collection.wsp.collector.parse_setlist_from_text")
 def test_collector_falls_back_when_primary_parser_fragments_comma_title(
-    mock_parse_text, mock_decode, mock_make_request
+    mock_parse_text, mock_decode, mock_make_request, mock_supabase
 ):
     from jambandnerd.data_collection.wsp.collector import WSPCollector
 
     fixture_html = (FIXTURES / "setlist_table_rows_with_comma_title.html").read_text()
 
+    mock_supabase.return_value.table.return_value.select.return_value.eq.return_value.limit.return_value.execute.return_value.data = (
+        []
+    )
     mock_response = MagicMock()
     mock_response.url = "https://example.com/setlists/20200124a.asp"
     mock_make_request.return_value = mock_response

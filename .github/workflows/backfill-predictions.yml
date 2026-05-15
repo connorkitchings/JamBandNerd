@@ -11,7 +11,6 @@ on:
         options:
           - all
           - billy
-          - eggy
           - goose
           - phish
           - um
@@ -40,7 +39,8 @@ jobs:
       - id: set_bands
         run: |
           if [[ "${{ github.event.inputs.band }}" == "all" ]]; then
-            BANDS_JSON=$(python -m scripts.get_all_bands)
+            # Eggy excluded from Phase A single-model rollout (see config/models.py ACTIVE_BANDS)
+            BANDS_JSON='["goose","phish","wsp","billy","um"]'
             echo "bands=$BANDS_JSON" >> $GITHUB_OUTPUT
           else
             echo "bands=[\"${{ github.event.inputs.band }}\"]" >> $GITHUB_OUTPUT
@@ -76,10 +76,14 @@ jobs:
           fi
           echo "✅ All required secrets are configured"
 
-      - name: Install uv and Python
+      - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
           python-version: "3.12"
 
       - name: Install dependencies

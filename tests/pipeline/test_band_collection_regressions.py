@@ -43,6 +43,26 @@ class _BillyCollectorStub:
         ]
 
 
+class _BillySongRenameCollectorStub:
+    def collect_songs(self):
+        return [
+            {
+                "song_uuid": "stable-song-uuid",
+                "song_name": "Miss The Mississippi And You",
+                "original_artist": "Jimmie Rodgers",
+                "original_artist_id": "163",
+                "times_played": 26,
+                "times_teased": 0,
+                "first_played": "2012-12-30",
+                "last_played": "2026-04-14",
+                "source_url": "https://bmfsdb.com/song/stable-song-uuid",
+            }
+        ]
+
+    def collect_shows(self, start_date=None, end_date=None):
+        return []
+
+
 class _WSPCollectorStub:
     def __init__(self, status=None):
         self.status = status
@@ -238,6 +258,172 @@ def test_run_billy_collection_uses_paginated_existing_setlist_reads(monkeypatch)
     ]
 
 
+def test_run_billy_collection_reconciles_song_uuid_label_changes(monkeypatch):
+    collector = _BillySongRenameCollectorStub()
+    updates = []
+    upserted = {}
+
+    class QueryStub:
+        def update(self, payload):
+            self.payload = payload
+            return self
+
+        def eq(self, column, value):
+            updates.append((column, value, self.payload))
+            return self
+
+        def execute(self):
+            return SimpleNamespace(data=[])
+
+    class ClientStub:
+        def table(self, name):
+            assert name == "billy_songs_raw"
+            return QueryStub()
+
+    def fake_fetch_rows_by_column_values(
+        table_name, *, select_columns, filter_column, values, chunk_size=200
+    ):
+        if table_name == "billy_shows_raw":
+            return []
+        assert table_name == "billy_songs_raw"
+        if filter_column == "song_uuid":
+            return [
+                {
+                    "song_uuid": "stable-song-uuid",
+                    "song_name": "Miss the Mississippi and You",
+                }
+            ]
+        if filter_column == "song_name":
+            return []
+        raise AssertionError(f"unexpected filter {filter_column}")
+
+    def fake_upsert(table_name, df, conflict_columns, **_kwargs):
+        upserted["table_name"] = table_name
+        upserted["song_name"] = df.iloc[0]["song_name"]
+        upserted["conflict_columns"] = tuple(conflict_columns)
+
+    monkeypatch.setattr(
+        run_billy_collection, "ensure_source_reachable", lambda *_args, **_kwargs: None
+    )
+    monkeypatch.setattr(run_billy_collection, "BillyCollector", lambda: collector)
+    monkeypatch.setattr(
+        run_billy_collection,
+        "fetch_rows_by_column_values",
+        fake_fetch_rows_by_column_values,
+    )
+    monkeypatch.setattr(
+        run_billy_collection, "get_supabase_client", lambda: ClientStub()
+    )
+    monkeypatch.setattr(
+        run_billy_collection,
+        "validate_and_upsert_dataframe",
+        fake_upsert,
+    )
+    monkeypatch.setattr(
+        run_billy_collection,
+        "CollectionTimer",
+        lambda *_args, **_kwargs: type("T", (), {"log": lambda *a, **k: None})(),
+    )
+
+    run_billy_collection.run_billy_collection(skip_validation=True)
+
+    assert updates == [
+        (
+            "song_uuid",
+            "stable-song-uuid",
+            {"song_name": "Miss The Mississippi And You"},
+        )
+    ]
+    assert upserted == {
+        "table_name": "billy_songs_raw",
+        "song_name": "Miss The Mississippi And You",
+        "conflict_columns": ("song_name",),
+    }
+
+
+def test_run_billy_collection_preserves_existing_song_name_on_uuid_conflict(
+    monkeypatch,
+):
+    collector = _BillySongRenameCollectorStub()
+    updates = []
+    upserted = {}
+
+    class QueryStub:
+        def update(self, payload):
+            updates.append(payload)
+            return self
+
+        def eq(self, *_args, **_kwargs):
+            return self
+
+        def execute(self):
+            return SimpleNamespace(data=[])
+
+    class ClientStub:
+        def table(self, name):
+            assert name == "billy_songs_raw"
+            return QueryStub()
+
+    def fake_fetch_rows_by_column_values(
+        table_name, *, select_columns, filter_column, values, chunk_size=200
+    ):
+        if table_name == "billy_shows_raw":
+            return []
+        assert table_name == "billy_songs_raw"
+        if filter_column == "song_uuid":
+            return [
+                {
+                    "song_uuid": "stable-song-uuid",
+                    "song_name": "Miss the Mississippi and You",
+                }
+            ]
+        if filter_column == "song_name":
+            return [
+                {
+                    "song_uuid": "other-song-uuid",
+                    "song_name": "Miss The Mississippi And You",
+                }
+            ]
+        raise AssertionError(f"unexpected filter {filter_column}")
+
+    def fake_upsert(table_name, df, conflict_columns, **_kwargs):
+        upserted["table_name"] = table_name
+        upserted["song_name"] = df.iloc[0]["song_name"]
+        upserted["conflict_columns"] = tuple(conflict_columns)
+
+    monkeypatch.setattr(
+        run_billy_collection, "ensure_source_reachable", lambda *_args, **_kwargs: None
+    )
+    monkeypatch.setattr(run_billy_collection, "BillyCollector", lambda: collector)
+    monkeypatch.setattr(
+        run_billy_collection,
+        "fetch_rows_by_column_values",
+        fake_fetch_rows_by_column_values,
+    )
+    monkeypatch.setattr(
+        run_billy_collection, "get_supabase_client", lambda: ClientStub()
+    )
+    monkeypatch.setattr(
+        run_billy_collection,
+        "validate_and_upsert_dataframe",
+        fake_upsert,
+    )
+    monkeypatch.setattr(
+        run_billy_collection,
+        "CollectionTimer",
+        lambda *_args, **_kwargs: type("T", (), {"log": lambda *a, **k: None})(),
+    )
+
+    run_billy_collection.run_billy_collection(skip_validation=True)
+
+    assert updates == []
+    assert upserted == {
+        "table_name": "billy_songs_raw",
+        "song_name": "Miss the Mississippi and You",
+        "conflict_columns": ("song_name",),
+    }
+
+
 def test_wsp_process_uses_paginated_existing_setlist_reads(monkeypatch):
     collector = _WSPCollectorStub()
     client = _WSPClientStub()
@@ -315,7 +501,7 @@ def test_wsp_process_uses_paginated_existing_setlist_reads(monkeypatch):
     monkeypatch.setattr(
         wsp_orchestration,
         "normalize_setlists",
-        lambda rows, canonical_lookup=None: pd.DataFrame(rows),
+        lambda rows: pd.DataFrame(rows),
     )
     monkeypatch.setattr(
         wsp_orchestration,
