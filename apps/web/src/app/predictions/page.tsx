@@ -156,19 +156,22 @@ export default async function PredictionsPage({ searchParams }: Props) {
   const accuracyWindow = accuracyRows.length || 50;
   const precisionCards = [
     {
-      title: "Top 10 Accuracy",
-      value: formatPercent(average(accuracyRows.map((row) => row.recall10))),
-      description: `last ${accuracyWindow} shows`,
+      title: "Top 10",
+      precision: formatPercent(average(accuracyRows.map((row) => row.p10))),
+      recall: formatPercent(average(accuracyRows.map((row) => row.recall10))),
+      windowLabel: `last ${accuracyWindow} shows`,
     },
     {
-      title: "Top 25 Accuracy",
-      value: formatPercent(average(accuracyRows.map((row) => row.recall25))),
-      description: `last ${accuracyWindow} shows`,
+      title: "Top 25",
+      precision: formatPercent(average(accuracyRows.map((row) => row.p25))),
+      recall: formatPercent(average(accuracyRows.map((row) => row.recall25))),
+      windowLabel: `last ${accuracyWindow} shows`,
     },
     {
-      title: "Top 50 Accuracy",
-      value: formatPercent(average(accuracyRows.map((row) => row.recall50))),
-      description: `last ${accuracyWindow} shows`,
+      title: "Top 50",
+      precision: formatPercent(average(accuracyRows.map((row) => row.p50))),
+      recall: formatPercent(average(accuracyRows.map((row) => row.recall50))),
+      windowLabel: `last ${accuracyWindow} shows`,
     },
   ] as const;
 
@@ -228,7 +231,7 @@ export default async function PredictionsPage({ searchParams }: Props) {
         snapshotLabel={snapshotLabel}
         predictions={predictionState.snapshot.predictions}
         precisionCards={precisionCards}
-        metricCaption="Accuracy is measured as the share of the actual setlist included in each Top-X group."
+        metricCaption="Precision measures pick quality; recall measures setlist coverage."
       />
 
       <section>

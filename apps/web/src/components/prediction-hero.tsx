@@ -4,9 +4,9 @@ import { TONIGHT_STATUS_LABEL } from "@/lib/show-status";
 
 type PrecisionCard = {
   title: string;
-  scope?: string;
-  value: string;
-  description: string;
+  precision: string;
+  recall: string;
+  windowLabel: string;
 };
 
 type Props = {
@@ -75,6 +75,51 @@ function getOutlookSummary(predictions: PredictionRow[]) {
 const CARD_CLASS =
   "editorial-chip relative rounded-[1.5rem] px-5 py-5 text-center backdrop-blur-sm flex min-h-[118px] flex-col justify-center";
 
+function MetricPairCard({ card }: { card: PrecisionCard }) {
+  return (
+    <div className={`${CARD_CLASS} gap-3`}>
+      <div>
+        <p className="font-label text-[10px] font-bold uppercase tracking-[0.18rem] text-on-surface-variant/80">
+          {card.title}
+        </p>
+        <p className="mt-1 font-label text-[9px] font-bold uppercase tracking-[0.16rem] text-primary/80">
+          {card.windowLabel}
+        </p>
+      </div>
+
+      <div className="grid gap-3 text-left">
+        <div className="rounded-xl bg-surface/55 px-3 py-3">
+          <div className="flex items-baseline justify-between gap-3">
+            <p className="font-label text-[10px] font-bold uppercase tracking-[0.16rem] text-on-surface-variant">
+              Precision
+            </p>
+            <p className="font-headline text-xl font-bold text-on-surface">
+              {card.precision}
+            </p>
+          </div>
+          <p className="mt-1 text-xs leading-5 text-on-surface-variant">
+            Share of these picks that were played.
+          </p>
+        </div>
+
+        <div className="rounded-xl bg-surface/55 px-3 py-3">
+          <div className="flex items-baseline justify-between gap-3">
+            <p className="font-label text-[10px] font-bold uppercase tracking-[0.16rem] text-on-surface-variant">
+              Recall
+            </p>
+            <p className="font-headline text-xl font-bold text-on-surface">
+              {card.recall}
+            </p>
+          </div>
+          <p className="mt-1 text-xs leading-5 text-on-surface-variant">
+            Share of the setlist found here.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function PredictionHero({
   venueName,
   dateLabel,
@@ -131,62 +176,9 @@ export function PredictionHero({
               </p>
             </div>
 
-            <div className={`${CARD_CLASS} flex flex-col justify-center`}>
-              <p className="mb-1 font-label text-[10px] font-bold uppercase tracking-[0.18rem] text-on-surface-variant/80">
-                {precisionCards[0].title}
-              </p>
-              {precisionCards[0].scope ? (
-                <p className="mb-2 font-label text-[10px] font-bold uppercase tracking-[0.18rem] text-primary/85">
-                  {precisionCards[0].scope}
-                </p>
-              ) : null}
-              <div className="flex flex-col items-center justify-center gap-1">
-                <p className="font-headline text-2xl font-bold text-on-surface">
-                  {precisionCards[0].value}
-                </p>
-                <p className="font-label text-[10px] font-bold uppercase tracking-[0.18rem] text-on-surface-variant/80 text-center">
-                  {precisionCards[0].description}
-                </p>
-              </div>
-            </div>
-
-            <div className={`${CARD_CLASS} flex flex-col justify-center`}>
-              <p className="mb-1 font-label text-[10px] font-bold uppercase tracking-[0.18rem] text-on-surface-variant/80">
-                {precisionCards[1].title}
-              </p>
-              {precisionCards[1].scope ? (
-                <p className="mb-2 font-label text-[10px] font-bold uppercase tracking-[0.18rem] text-primary/85">
-                  {precisionCards[1].scope}
-                </p>
-              ) : null}
-              <div className="flex flex-col items-center justify-center gap-1">
-                <p className="font-headline text-2xl font-bold text-on-surface">
-                  {precisionCards[1].value}
-                </p>
-                <p className="font-label text-[10px] font-bold uppercase tracking-[0.18rem] text-on-surface-variant/80 text-center">
-                  {precisionCards[1].description}
-                </p>
-              </div>
-            </div>
-
-            <div className={`${CARD_CLASS} flex flex-col justify-center`}>
-              <p className="mb-1 font-label text-[10px] font-bold uppercase tracking-[0.18rem] text-on-surface-variant/80">
-                {precisionCards[2].title}
-              </p>
-              {precisionCards[2].scope ? (
-                <p className="mb-2 font-label text-[10px] font-bold uppercase tracking-[0.18rem] text-primary/85">
-                  {precisionCards[2].scope}
-                </p>
-              ) : null}
-              <div className="flex flex-col items-center justify-center gap-1">
-                <p className="font-headline text-2xl font-bold text-on-surface">
-                  {precisionCards[2].value}
-                </p>
-                <p className="font-label text-[10px] font-bold uppercase tracking-[0.18rem] text-on-surface-variant/80 text-center">
-                  {precisionCards[2].description}
-                </p>
-              </div>
-            </div>
+            <MetricPairCard card={precisionCards[0]} />
+            <MetricPairCard card={precisionCards[1]} />
+            <MetricPairCard card={precisionCards[2]} />
           </div>
 
           {metricCaption ? (
