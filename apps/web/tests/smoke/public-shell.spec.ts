@@ -45,7 +45,7 @@ test("desktop routes render the public shell", async ({ page }, testInfo) => {
   await expect(page.getByRole("heading", { name: "What are they playing next?" })).toBeVisible();
   await expect(
     page
-      .getByRole("heading", { name: "Supported Bands" })
+      .getByRole("heading", { name: "Teasers" })
       .or(page.getByRole("heading", { name: "Band registry unavailable" })),
   ).toBeVisible();
 

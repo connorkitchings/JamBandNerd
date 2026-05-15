@@ -77,45 +77,54 @@ const CARD_CLASS =
 
 function MetricPairCard({ card }: { card: PrecisionCard }) {
   return (
-    <div className={`${CARD_CLASS} gap-3`}>
-      <div>
-        <p className="font-label text-[10px] font-bold uppercase tracking-[0.18rem] text-on-surface-variant/80">
-          {card.title}
-        </p>
-        <p className="mt-1 font-label text-[9px] font-bold uppercase tracking-[0.16rem] text-primary/80">
-          {card.windowLabel}
-        </p>
-      </div>
+    <div className={`${CARD_CLASS} gap-2`}>
+      <p className="font-label text-[10px] font-bold uppercase tracking-[0.18rem] text-on-surface-variant/80">
+        {card.title}
+      </p>
 
-      <div className="grid gap-3 text-left">
-        <div className="rounded-xl bg-surface/55 px-3 py-3">
-          <div className="flex items-baseline justify-between gap-3">
-            <p className="font-label text-[10px] font-bold uppercase tracking-[0.16rem] text-on-surface-variant">
-              Precision
-            </p>
-            <p className="font-headline text-xl font-bold text-on-surface">
-              {card.precision}
-            </p>
-          </div>
-          <p className="mt-1 text-xs leading-5 text-on-surface-variant">
-            Share of these picks that were played.
+      <div className="flex items-baseline justify-center gap-3">
+        <div className="text-left">
+          <p className="font-label text-[9px] font-bold uppercase tracking-[0.14rem] text-on-surface-variant">
+            Precision
+          </p>
+          <p className="font-headline text-2xl font-bold text-on-surface">
+            {card.precision}
           </p>
         </div>
-
-        <div className="rounded-xl bg-surface/55 px-3 py-3">
-          <div className="flex items-baseline justify-between gap-3">
-            <p className="font-label text-[10px] font-bold uppercase tracking-[0.16rem] text-on-surface-variant">
-              Recall
-            </p>
-            <p className="font-headline text-xl font-bold text-on-surface">
-              {card.recall}
-            </p>
-          </div>
-          <p className="mt-1 text-xs leading-5 text-on-surface-variant">
-            Share of the setlist found here.
+        <div className="h-8 w-px bg-outline-variant/20" />
+        <div className="text-left">
+          <p className="font-label text-[9px] font-bold uppercase tracking-[0.14rem] text-on-surface-variant">
+            Recall
+          </p>
+          <p className="font-headline text-2xl font-bold text-primary">
+            {card.recall}
           </p>
         </div>
       </div>
+
+      <p className="hidden text-xs leading-5 text-on-surface-variant md:block">
+        {card.windowLabel}
+      </p>
+    </div>
+  );
+}
+
+function MobileMetricStrip({ cards }: { cards: readonly PrecisionCard[] }) {
+  return (
+    <div className="editorial-chip flex rounded-[1.5rem] px-4 py-4 md:hidden">
+      {cards.map((card) => (
+        <div key={card.title} className="flex-1 text-center">
+          <p className="font-label text-[9px] font-bold uppercase tracking-[0.14rem] text-on-surface-variant/70">
+            {card.title}
+          </p>
+          <p className="mt-1 font-headline text-lg font-bold text-on-surface">
+            {card.precision}
+          </p>
+          <p className="font-label text-[8px] uppercase tracking-[0.12rem] text-primary/70">
+            {card.recall}
+          </p>
+        </div>
+      ))}
     </div>
   );
 }
@@ -163,7 +172,7 @@ export function PredictionHero({
             </h1>
           </div>
 
-          <div className="relative z-20 mx-auto mt-8 grid max-w-4xl gap-3 overflow-visible md:grid-cols-2 xl:grid-cols-4">
+          <div className="relative z-20 mx-auto mt-8 flex max-w-4xl flex-col gap-3 md:grid md:grid-cols-2 xl:grid-cols-4">
             <div className={`${CARD_CLASS} z-30 overflow-visible hover:z-40 focus-within:z-40`}>
               <div className="flex items-center justify-center gap-2 mb-2">
                 <p className="font-label text-[10px] font-bold uppercase tracking-[0.18rem] text-on-surface-variant/80">
@@ -180,6 +189,8 @@ export function PredictionHero({
             <MetricPairCard card={precisionCards[1]} />
             <MetricPairCard card={precisionCards[2]} />
           </div>
+
+          <MobileMetricStrip cards={precisionCards} />
 
           {metricCaption ? (
             <p className="mx-auto mt-3 max-w-4xl text-center font-label text-[10px] uppercase tracking-[0.16rem] text-on-surface-variant/60">

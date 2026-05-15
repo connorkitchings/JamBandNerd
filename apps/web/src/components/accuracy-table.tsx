@@ -23,9 +23,12 @@ export function AccuracyTable({ rows }: Props) {
           <tr>
             <th className={`${TABLE_HEAD_CLASS} whitespace-nowrap`}>Show Date</th>
             <th className={TABLE_HEAD_CLASS}>Venue</th>
-            <th className={`${TABLE_HEAD_CLASS} whitespace-nowrap`}>Top 10</th>
-            <th className={`${TABLE_HEAD_CLASS} whitespace-nowrap`}>Top 25</th>
-            <th className={`${TABLE_HEAD_CLASS} whitespace-nowrap`}>Top 50</th>
+            <th className={`${TABLE_HEAD_CLASS} whitespace-nowrap`}>R10</th>
+            <th className={`${TABLE_HEAD_CLASS} whitespace-nowrap`}>P10</th>
+            <th className={`${TABLE_HEAD_CLASS} whitespace-nowrap`}>R25</th>
+            <th className={`${TABLE_HEAD_CLASS} whitespace-nowrap`}>P25</th>
+            <th className={`${TABLE_HEAD_CLASS} whitespace-nowrap`}>R50</th>
+            <th className={`${TABLE_HEAD_CLASS} whitespace-nowrap`}>P50</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-outline-variant/20 bg-surface-container text-on-surface">
@@ -37,10 +40,19 @@ export function AccuracyTable({ rows }: Props) {
                 {formatPercent(row.recall10)}
               </td>
               <td className={`${TABLE_CELL_CLASS} whitespace-nowrap tabular-nums`}>
+                {formatPercent(row.p10)}
+              </td>
+              <td className={`${TABLE_CELL_CLASS} whitespace-nowrap font-headline tabular-nums text-primary`}>
                 {formatPercent(row.recall25)}
               </td>
               <td className={`${TABLE_CELL_CLASS} whitespace-nowrap tabular-nums`}>
+                {formatPercent(row.p25)}
+              </td>
+              <td className={`${TABLE_CELL_CLASS} whitespace-nowrap font-headline tabular-nums text-primary`}>
                 {formatPercent(row.recall50)}
+              </td>
+              <td className={`${TABLE_CELL_CLASS} whitespace-nowrap tabular-nums`}>
+                {formatPercent(row.p50)}
               </td>
             </tr>
           ))}

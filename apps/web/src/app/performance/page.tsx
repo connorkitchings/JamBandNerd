@@ -137,11 +137,17 @@ export default async function PerformancePage({ searchParams }: Props) {
                 <p className={`mt-1 font-headline text-lg font-bold ${activeMetric === 10 ? "text-primary" : "text-on-surface"}`}>
                   {formatPercent(latestRow?.recall10 ?? null)}
                 </p>
+                <p className="mt-0.5 font-label text-[8px] uppercase tracking-[0.12rem] text-on-surface-variant/60">
+                  P {formatPercent(latestRow?.p10 ?? null)}
+                </p>
               </div>
               <div className="rounded-2xl bg-surface/70 px-3 py-3">
                 <p className="font-label text-[9px] uppercase tracking-[0.16rem] text-on-surface-variant">Top 25</p>
                 <p className={`mt-1 font-headline text-lg font-bold ${activeMetric === 25 ? "text-primary" : "text-on-surface"}`}>
                   {formatPercent(latestRow?.recall25 ?? null)}
+                </p>
+                <p className="mt-0.5 font-label text-[8px] uppercase tracking-[0.12rem] text-on-surface-variant/60">
+                  P {formatPercent(latestRow?.p25 ?? null)}
                 </p>
               </div>
               <div className="rounded-2xl bg-surface/70 px-3 py-3">
@@ -149,13 +155,16 @@ export default async function PerformancePage({ searchParams }: Props) {
                 <p className={`mt-1 font-headline text-lg font-bold ${activeMetric === 50 ? "text-primary" : "text-on-surface"}`}>
                   {formatPercent(latestRow?.recall50 ?? null)}
                 </p>
+                <p className="mt-0.5 font-label text-[8px] uppercase tracking-[0.12rem] text-on-surface-variant/60">
+                  P {formatPercent(latestRow?.p50 ?? null)}
+                </p>
               </div>
             </div>
           </div>
         }
       />
 
-      <section className="grid gap-4 md:grid-cols-3">
+      <section className="grid gap-4 md:grid-cols-6">
         <SectionCard
           title={formatPercent(top10Average)}
           eyebrow="Avg Top 10"
@@ -169,6 +178,21 @@ export default async function PerformancePage({ searchParams }: Props) {
         <SectionCard
           title={formatPercent(top50Average)}
           eyebrow="Avg Top 50"
+          centered
+        />
+        <SectionCard
+          title={formatPercent(average(state.rows.map((row) => row.p10)))}
+          eyebrow="Avg P10"
+          centered
+        />
+        <SectionCard
+          title={formatPercent(average(state.rows.map((row) => row.p25)))}
+          eyebrow="Avg P25"
+          centered
+        />
+        <SectionCard
+          title={formatPercent(average(state.rows.map((row) => row.p50)))}
+          eyebrow="Avg P50"
           centered
         />
       </section>
