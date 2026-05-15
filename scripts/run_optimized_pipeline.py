@@ -91,6 +91,7 @@ def _validate_band_accuracy(*, band: str, max_age_hours: int = 72) -> None:
         bands=[band],
         max_age_hours=max_age_hours,
         replay_window=RETAINED_CORPUS_WINDOW,
+        require_exact_retained_window=True,
     )
 
     if failures:
@@ -107,6 +108,7 @@ def _validate_band_accuracy_skip_freshness(
         max_age_hours=max_age_hours,
         replay_window=RETAINED_CORPUS_WINDOW,
         skip_freshness=True,
+        require_exact_retained_window=True,
     )
 
     if failures:

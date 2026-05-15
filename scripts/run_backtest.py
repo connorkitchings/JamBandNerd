@@ -494,6 +494,18 @@ def run_backtest(
             )
         if not new_ids:
             print(f"{log_prefix} All shows in window already scored. Nothing to do.")
+            if prune_to_window and not dry_run:
+                deleted = prune_setlist_corpus(
+                    band=band,
+                    model_version=model_version,
+                    retained_target_show_keys=retained_window_keys,
+                    results_table=SETLIST_RESULTS_TABLE,
+                    accuracy_table=SETLIST_ACCURACY_TABLE,
+                )
+                if deleted:
+                    print(
+                        f"{log_prefix} Pruned {deleted} completed-show row(s) outside retained window."
+                    )
             return 0
         target_shows = target_shows[target_shows["show_id"].astype(str).isin(new_ids)]
 

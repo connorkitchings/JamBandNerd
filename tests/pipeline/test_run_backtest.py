@@ -6,7 +6,7 @@ import pandas as pd
 import pytest
 
 from scripts import run_backtest as run_backtest_module
-from src.jambandnerd.models.registry import get_model_definition
+from src.jambandnerd.models.registry import get_band_model_version, get_model_definition
 
 
 class _Prediction:
@@ -375,6 +375,8 @@ def test_run_backtest_raises_when_results_required_and_none_generated(monkeypatc
 
 
 def test_run_backtest_writes_no_output_when_all_scored(monkeypatch, tmp_path):
+    captured_prune: dict[str, object] = {}
+
     monkeypatch.setattr(
         run_backtest_module,
         "load_backtest_frames",
@@ -409,8 +411,13 @@ def test_run_backtest_writes_no_output_when_all_scored(monkeypatch, tmp_path):
     )
     monkeypatch.setattr(
         run_backtest_module,
-        "fetch_scored_show_ids",
+        "fetch_scored_target_show_keys",
         lambda *a, **kw: {"goose-show-1", "goose-show-2"},
+    )
+    monkeypatch.setattr(
+        run_backtest_module,
+        "prune_setlist_corpus",
+        lambda **kwargs: captured_prune.update(kwargs) or 1,
     )
 
     output_file = tmp_path / "gha_output"
@@ -419,7 +426,7 @@ def test_run_backtest_writes_no_output_when_all_scored(monkeypatch, tmp_path):
 
     result = run_backtest_module.run_backtest(
         band="goose",
-        model="notebook",
+        model=None,
         start=None,
         end=None,
         shows=2,
@@ -428,6 +435,12 @@ def test_run_backtest_writes_no_output_when_all_scored(monkeypatch, tmp_path):
 
     assert result == 0
     assert output_file.read_text() == "backtest_incremental_all_scored=true\n"
+    assert captured_prune["band"] == "goose"
+    assert captured_prune["model_version"] == get_band_model_version("goose")
+    assert captured_prune["retained_target_show_keys"] == [
+        "goose-show-1",
+        "goose-show-2",
+    ]
 
 
 def test_run_backtest_writes_github_output_false_when_new_shows(monkeypatch, tmp_path):
@@ -620,6 +633,11 @@ def test_run_backtest_no_github_output_when_env_not_set(monkeypatch, tmp_path):
         run_backtest_module,
         "fetch_scored_show_ids",
         lambda *a, **kw: {"goose-show-1"},
+    )
+    monkeypatch.setattr(
+        run_backtest_module,
+        "prune_setlist_corpus",
+        lambda **kwargs: 0,
     )
     monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
 
