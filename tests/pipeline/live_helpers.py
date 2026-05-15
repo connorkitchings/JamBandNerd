@@ -4,10 +4,7 @@ import os
 from datetime import datetime, timedelta, timezone
 
 from src.jambandnerd.db.connection import get_supabase_client
-from src.jambandnerd.models.registry import (
-    get_model_version,
-    get_prediction_table,
-)
+from src.jambandnerd.models.registry import get_band_model_version
 
 
 def ensure_live_env(*, band: str) -> None:
@@ -30,13 +27,12 @@ def assert_prediction_publish_fresh(
     *, band: str, model: str, started_at: datetime
 ) -> None:
     client = get_supabase_client()
-    table_name = get_prediction_table(model)
-    model_version = get_model_version(model)
+    table_name = "setlist_predictions"
+    model_version = get_band_model_version(band)
     response = (
         client.table(table_name)
         .select("band, model_version, predicted_at, reference_date, predictions")
         .eq("band", band)
-        .eq("model_slug", model)
         .eq("model_version", model_version)
         .order("predicted_at", desc=True)
         .limit(1)
@@ -54,7 +50,7 @@ def assert_accuracy_publish_fresh(
     *, band: str, model: str, started_at: datetime
 ) -> None:
     client = get_supabase_client()
-    model_version = get_model_version(model)
+    model_version = get_band_model_version(band)
 
     per_show_response = (
         client.table("accuracy_per_show")

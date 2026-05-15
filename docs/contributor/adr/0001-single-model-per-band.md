@@ -1,8 +1,8 @@
 # ADR 0001 — Single Model Per Band
 
-**Status**: Accepted  
+**Status**: Accepted — Phase A and Phase B complete; legacy multi-model code removed.  
 **Date**: 2026-04-25  
-**Branch**: `feat/single-model-per-band`
+**Branch**: `feat/single-model-per-band` (merged to `dev`)
 
 ---
 

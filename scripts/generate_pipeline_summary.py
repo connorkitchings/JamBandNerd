@@ -140,7 +140,7 @@ def build_prediction_coverage_lines(
     lines = [
         "### Prediction Coverage",
         "",
-        "| Band | Notebook Top-50 Hits | Songs Played | Reference Date |",
+        "| Band | Top-50 Hits | Songs Played | Reference Date |",
         "| --- | --- | --- | --- |",
     ]
 
@@ -171,12 +171,11 @@ def build_prediction_coverage_lines(
             }
 
             prediction_rows = (
-                client.table("predictions")
+                client.table("setlist_predictions")
                 .select("predictions")
                 .eq("band", band)
-                .eq("model_slug", "notebook")
                 .eq("reference_date", reference_date)
-                .order("predicted_at", desc=True)
+                .order("generated_at", desc=True)
                 .limit(1)
                 .execute()
                 .data

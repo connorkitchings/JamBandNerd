@@ -9,9 +9,9 @@ import scripts.run_backtest as run_backtest_module
 from scripts.common import prepare_band_data
 from scripts.run_backtest import build_scored_run_records
 from src.jambandnerd.models.registry import (
-    build_predictor,
-    get_model_definition,
-    serialize_model_predictions,
+    build_band_predictor,
+    get_band_metadata,
+    get_band_serializer,
 )
 from src.jambandnerd.transformations.gaps import generate_model_data
 
@@ -68,17 +68,17 @@ def notebook_song_names_for_reference_date(
         exclusion_window=3,
         band="goose",
     )
-    predictor = build_predictor("notebook", band="goose")
+    predictor = build_band_predictor(band="goose")
     prediction_output = predictor.predict(
         model_data=model_data,
-        top_k=get_model_definition("notebook").default_top_k,
+        top_k=get_band_metadata("goose").default_top_k,
     )
     predictions = (
         prediction_output[0]
         if isinstance(prediction_output, tuple)
         else prediction_output
     )
-    serialized = serialize_model_predictions("notebook", predictions)
+    serialized = get_band_serializer("goose")(predictions)
     return [row["song_name"] for row in serialized]
 
 
@@ -99,7 +99,6 @@ def test_backtest_rows_use_previous_day_reference_date_for_completed_show() -> N
     target_shows = shows_df[shows_df["show_date"] == date(2024, 1, 11)].copy()
     scored_runs = build_scored_run_records(
         band="goose",
-        model="notebook",
         shows_df=shows_df,
         sets_df=setlists_df,
         target_shows=target_shows,
@@ -135,6 +134,9 @@ def test_backtest_passes_target_show_context_without_target_setlist(
         )
 
     class FakePredictor:
+        def train(self, model_data):
+            pass
+
         def predict(self, **_kwargs):
             return [SimpleNamespace(song_name="Alpha")]
 
@@ -143,27 +145,26 @@ def test_backtest_passes_target_show_context_without_target_setlist(
     )
     monkeypatch.setattr(
         run_backtest_module,
-        "get_model_definition",
-        lambda _model: SimpleNamespace(
-            version="test_v1",
+        "get_band_metadata",
+        lambda _band: SimpleNamespace(
+            model_version="test_v1",
             default_top_k=50,
             supports_training=False,
         ),
     )
     monkeypatch.setattr(
         run_backtest_module,
-        "build_predictor",
+        "build_band_predictor",
         lambda *_args, **_kwargs: FakePredictor(),
     )
     monkeypatch.setattr(
         run_backtest_module,
-        "serialize_model_predictions",
-        lambda _model, _preds: [{"song_name": "Alpha"}],
+        "get_band_serializer",
+        lambda _band: lambda _preds: [{"song_name": "Alpha"}],
     )
 
     scored_runs = build_scored_run_records(
         band="goose",
-        model="notebook",
         shows_df=shows_df,
         sets_df=setlists_df,
         target_shows=target_shows,
