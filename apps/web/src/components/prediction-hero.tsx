@@ -1,9 +1,9 @@
 import { TONIGHT_STATUS_LABEL } from "@/lib/show-status";
 
-type PrecisionCard = {
+type MetricCard = {
   title: string;
-  precision: string;
-  recall: string;
+  avgHits: string;
+  coverage: string;
 };
 
 type Props = {
@@ -13,10 +13,10 @@ type Props = {
   statusLabel: string;
   snapshotLabel: string;
   performanceWindowLabel: string;
-  precisionCards: readonly [PrecisionCard, PrecisionCard];
+  precisionCards: readonly [MetricCard, MetricCard];
 };
 
-function MetricBlock({ card }: { card: PrecisionCard }) {
+function MetricBlock({ card }: { card: MetricCard }) {
   return (
     <div className="rounded-2xl border border-outline-variant/15 bg-surface/35 px-4 py-4">
       <div className="text-center">
@@ -31,7 +31,7 @@ function MetricBlock({ card }: { card: PrecisionCard }) {
             Avg. Hits
           </p>
           <p className="mt-1 font-headline text-2xl font-bold text-on-surface md:text-3xl">
-            {card.precision}
+            {card.avgHits}
           </p>
           <p className="mt-1 text-xs leading-5 text-on-surface-variant">
             picks played
@@ -39,10 +39,10 @@ function MetricBlock({ card }: { card: PrecisionCard }) {
         </div>
         <div className="text-center">
           <p className="font-label text-[9px] uppercase tracking-[0.14rem] text-on-surface-variant">
-            Recall
+            Coverage
           </p>
           <p className="mt-1 font-headline text-2xl font-bold text-primary md:text-3xl">
-            {card.recall}
+            {card.coverage}
           </p>
           <p className="mt-1 text-xs leading-5 text-on-surface-variant">
             setlist caught
@@ -57,7 +57,7 @@ function MetricPanel({
   cards,
   performanceWindowLabel,
 }: {
-  cards: readonly PrecisionCard[];
+  cards: readonly MetricCard[];
   performanceWindowLabel: string;
 }) {
   return (
@@ -148,7 +148,7 @@ export function PredictionHero({
               </p>
               <p className="mt-1 text-sm leading-6 text-on-surface/75">
                 Avg. hits is the average number of model picks that were
-                played. Recall is how much of the actual setlist the model
+                played. Coverage is how much of the actual setlist the model
                 caught.
               </p>
             </div>

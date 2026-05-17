@@ -18,8 +18,10 @@ import {
   resolveBandSelection,
 } from "@/lib/data";
 import {
+  average,
   buildLocationLabel,
   formatDateLabel,
+  formatAvgHits,
   formatPercent,
   formatTimestampLabel,
 } from "@/lib/format";
@@ -31,19 +33,6 @@ import {
 } from "@/lib/show-status";
 
 export const dynamic = "force-dynamic";
-
-function average(values: Array<number | null>) {
-  const filtered = values.filter((value): value is number => value !== null);
-  if (filtered.length === 0) {
-    return null;
-  }
-
-  return filtered.reduce((sum, value) => sum + value, 0) / filtered.length;
-}
-
-function formatAverageHits(value: number | null, k: number) {
-  return value === null ? "—" : (value * k).toFixed(1);
-}
 
 type Props = {
   searchParams: Promise<{
@@ -157,18 +146,20 @@ export default async function PredictionsPage({ searchParams }: Props) {
   const statusLabel = getPredictionStatusLabel(heroDate);
   const snapshotLabel = formatTimestampLabel(predictionState.snapshot.predictedAt);
   const accuracyRows = accuracyState.status === "ready" ? accuracyState.rows : [];
-  const accuracyWindow = accuracyRows.length || 50;
-  const performanceWindowLabel = `most recent ${accuracyWindow} shows`;
+  const performanceWindowLabel =
+    accuracyRows.length > 0
+      ? `most recent ${accuracyRows.length} shows`
+      : "no scored shows yet";
   const precisionCards = [
     {
       title: "Top 10",
-      precision: formatAverageHits(average(accuracyRows.map((row) => row.p10)), 10),
-      recall: formatPercent(average(accuracyRows.map((row) => row.recall10))),
+      avgHits: formatAvgHits(average(accuracyRows.map((row) => row.p10)), 10),
+      coverage: formatPercent(average(accuracyRows.map((row) => row.recall10))),
     },
     {
       title: "Top 25",
-      precision: formatAverageHits(average(accuracyRows.map((row) => row.p25)), 25),
-      recall: formatPercent(average(accuracyRows.map((row) => row.recall25))),
+      avgHits: formatAvgHits(average(accuracyRows.map((row) => row.p25)), 25),
+      coverage: formatPercent(average(accuracyRows.map((row) => row.recall25))),
     },
   ] as const;
 

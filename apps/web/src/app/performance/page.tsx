@@ -9,7 +9,7 @@ import { PageHero } from "@/components/page-hero";
 import { RecallChart } from "@/components/recall-chart";
 import { SectionCard } from "@/components/section-card";
 import { getBands, getRecentAccuracy, bandEntryBySlug, resolveBandSelection } from "@/lib/data";
-import { formatCompactDateLabel, formatPercent } from "@/lib/format";
+import { average, formatAvgHits, formatCompactDateLabel, formatPercent } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -31,14 +31,6 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
     title: `${bandName} Performance Ledger | JamBandNerd`,
     description: `Track historical prediction accuracy for ${bandName}.`,
   };
-}
-
-function average(values: Array<number | null>) {
-  const filtered = values.filter((value): value is number => value !== null);
-  if (filtered.length === 0) {
-    return null;
-  }
-  return filtered.reduce((sum, value) => sum + value, 0) / filtered.length;
 }
 
 type KSelection = 10 | 25 | 50 | "all";
@@ -141,7 +133,7 @@ export default async function PerformancePage({ searchParams }: Props) {
                   {formatPercent(latestRow?.recall10 ?? null)}
                 </p>
                 <p className="mt-0.5 font-label text-[8px] uppercase tracking-[0.12rem] text-on-surface-variant/60">
-                  P {formatPercent(latestRow?.p10 ?? null)}
+                  {formatAvgHits(latestRow?.p10 ?? null, 10)} hits
                 </p>
               </div>
               <div className="rounded-2xl bg-surface/70 px-3 py-3">
@@ -150,7 +142,7 @@ export default async function PerformancePage({ searchParams }: Props) {
                   {formatPercent(latestRow?.recall25 ?? null)}
                 </p>
                 <p className="mt-0.5 font-label text-[8px] uppercase tracking-[0.12rem] text-on-surface-variant/60">
-                  P {formatPercent(latestRow?.p25 ?? null)}
+                  {formatAvgHits(latestRow?.p25 ?? null, 25)} hits
                 </p>
               </div>
               <div className="rounded-2xl bg-surface/70 px-3 py-3">
@@ -159,7 +151,7 @@ export default async function PerformancePage({ searchParams }: Props) {
                   {formatPercent(latestRow?.recall50 ?? null)}
                 </p>
                 <p className="mt-0.5 font-label text-[8px] uppercase tracking-[0.12rem] text-on-surface-variant/60">
-                  P {formatPercent(latestRow?.p50 ?? null)}
+                  {formatAvgHits(latestRow?.p50 ?? null, 50)} hits
                 </p>
               </div>
             </div>
@@ -169,25 +161,25 @@ export default async function PerformancePage({ searchParams }: Props) {
 
       <section className="grid gap-4 md:grid-cols-3">
         {[
-          { label: "Top 10", recall: top10Average, precision: p10Average },
-          { label: "Top 25", recall: top25Average, precision: p25Average },
-          { label: "Top 50", recall: top50Average, precision: p50Average },
+          { label: "Top 10", coverage: top10Average, avgHits: p10Average, k: 10 },
+          { label: "Top 25", coverage: top25Average, avgHits: p25Average, k: 25 },
+          { label: "Top 50", coverage: top50Average, avgHits: p50Average, k: 50 },
         ].map((metric) => (
           <SectionCard
             key={metric.label}
-            title={formatPercent(metric.recall)}
-            eyebrow={`${metric.label} recall`}
+            title={formatPercent(metric.coverage)}
+            eyebrow={`${metric.label} coverage`}
             centered
           >
             <p className="text-center font-label text-[10px] uppercase tracking-[0.16rem] text-on-surface-variant">
-              Precision {formatPercent(metric.precision)}
+              {formatAvgHits(metric.avgHits, metric.k)} avg. hits
             </p>
           </SectionCard>
         ))}
       </section>
 
       <p className="px-2 text-center text-sm text-on-surface-variant">
-        Recall is the share of the actual setlist included in each Top-X group; precision is the share of picks that were played.
+        Coverage is the share of the actual setlist in each Top-X group; avg. hits is the average number of picks that were played.
       </p>
 
       <SectionCard title="Accuracy Over Time">

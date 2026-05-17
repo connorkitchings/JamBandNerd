@@ -25,7 +25,7 @@ export default function DataUsePage() {
       <SectionCard title="What The Site Uses">
         <ul className="space-y-3 pl-5 text-sm leading-6 text-on-surface-variant marker:text-primary/75 list-disc">
           <li>Basic show facts such as band names, dates, venues, locations, song titles, and setlist order.</li>
-          <li>Prediction and performance data created by JamBandNerd, including ranked boards, gaps, precision, recall, and replay matches.</li>
+          <li>Prediction and performance data created by JamBandNerd, including ranked boards, gaps, avg. hits, coverage, and replay matches.</li>
           <li>Setlist histories organized so each band&apos;s predictions can be scored after shows are completed.</li>
         </ul>
       </SectionCard>

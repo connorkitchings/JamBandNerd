@@ -95,7 +95,7 @@ export default async function HomePage({ searchParams }: Props) {
             </h1>
             <p className="mt-5 max-w-2xl text-lg leading-relaxed text-on-surface-variant">
               See how each band&apos;s model ranks the next show, then track
-              precision, recall, and replay results after the setlist lands.
+              avg. hits, coverage, and replay results after the setlist lands.
             </p>
             <div className="mt-8 hidden gap-4 md:grid md:max-w-3xl md:grid-cols-2">
               <Link

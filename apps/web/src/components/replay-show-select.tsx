@@ -24,7 +24,6 @@ export function ReplayShowSelect({ band, selectedDate, options }: Props) {
         Select show
       </span>
       <select
-        aria-label="Select replay show"
         className="min-h-12 w-full rounded-xl border border-outline-variant/30 bg-surface px-4 py-3 font-headline text-sm text-on-surface outline-none transition focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30 disabled:cursor-wait disabled:opacity-70"
         disabled={isPending}
         value={selectedDate}

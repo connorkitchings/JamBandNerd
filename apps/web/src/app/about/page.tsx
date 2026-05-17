@@ -15,9 +15,9 @@ const FAQ_ITEMS = [
       "The Predictions page is the current ranked board for a selected band's next target show. Songs near the top are the model's strongest picks. The tiers help group the board into stronger and weaker signals, but the exact rank still matters.",
   },
   {
-    question: "What do precision and recall mean?",
+    question: "What do avg. hits and coverage mean?",
     answer:
-      "Precision asks: of the songs the model picked, how many were played? Recall asks: of the songs actually played, how many did the model catch? Both matter, because a good setlist model should make useful picks and cover a meaningful share of the show.",
+      "Avg. hits asks: of the songs the model picked, how many were actually played? Coverage asks: of the songs actually played, how many did the model catch? Both matter, because a good setlist model should make useful picks and cover a meaningful share of the show.",
   },
   {
     question: "What drives the predictions?",
@@ -57,7 +57,7 @@ const SITE_AREAS = [
     step: "02",
     title: "Performance",
     description:
-      "Check recent precision and recall to understand how useful the model has been over completed shows.",
+      "Check recent avg. hits and coverage to understand how useful the model has been over completed shows.",
   },
   {
     step: "03",
