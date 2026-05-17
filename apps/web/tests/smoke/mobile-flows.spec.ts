@@ -46,7 +46,7 @@ test.describe("mobile flows", () => {
     await expect(mobileNav).toBeVisible();
 
     const labels = await mobileNav.getByRole("link").locator("span:last-child").allTextContents();
-    expect(labels).toEqual(["Home", "Stats", "Predict", "Replay"]);
+    expect(labels).toEqual(["Home", "Predict", "Replay", "Model"]);
     expect(labels).not.toContain("Compare");
   });
 
@@ -86,7 +86,16 @@ test.describe("mobile flows", () => {
 
     await bootstrapHostedPreviewBypass(page);
     
-    const routes = ["/", "/predictions", "/performance", "/last-show", "/about", "/contact", "/data-use"];
+    const routes = [
+      "/",
+      "/predictions",
+      "/performance",
+      "/replay",
+      "/last-show",
+      "/about",
+      "/contact",
+      "/data-use",
+    ];
     for (const route of routes) {
       await page.goto(route);
       await page.waitForLoadState("networkidle");

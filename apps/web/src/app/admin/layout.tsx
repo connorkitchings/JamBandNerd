@@ -1,17 +1,8 @@
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
     <div>
-      <div
-        style={{
-          padding: "8px 16px",
-          background: "#1a1a1a",
-          borderBottom: "1px solid #333",
-          fontSize: "12px",
-          color: "#888",
-          letterSpacing: "0.05em",
-        }}
-      >
-        ADMIN
+      <div className="mx-auto mb-6 max-w-6xl rounded-b-[1.35rem] border-x border-b border-outline-variant/25 bg-surface-container px-5 py-3 text-center font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">
+        Admin
       </div>
       {children}
     </div>

@@ -1,12 +1,9 @@
-import { ShowOutlookPopover } from "@/components/show-outlook-popover";
-import type { PredictionRow } from "@/lib/data";
 import { TONIGHT_STATUS_LABEL } from "@/lib/show-status";
 
 type PrecisionCard = {
   title: string;
   precision: string;
   recall: string;
-  windowLabel: string;
 };
 
 type Props = {
@@ -15,116 +12,75 @@ type Props = {
   locationLabel: string;
   statusLabel: string;
   snapshotLabel: string;
-  predictions: PredictionRow[];
-  precisionCards: readonly [PrecisionCard, PrecisionCard, PrecisionCard];
-  metricCaption?: string;
+  performanceWindowLabel: string;
+  precisionCards: readonly [PrecisionCard, PrecisionCard];
 };
 
-function getOutlookSummary(predictions: PredictionRow[]) {
-  if (predictions.length === 0) {
-    return {
-      label: "No signal",
-      rotationCoreTop10: 0,
-      longGapCountTop50: 0,
-    };
-  }
-
-  const top10 = predictions.slice(0, 10);
-  const top50 = predictions.slice(0, 50);
-  const avgCurrentGap =
-    top10.reduce((sum, row) => sum + (row.currentGap ?? 0), 0) /
-    Math.max(top10.length, 1);
-  const recentCount = top10.filter(
-    (row) => (row.currentGap ?? Number.POSITIVE_INFINITY) <= 8,
-  ).length;
-  const longGapCountTop50 = top50.filter(
-    (row) => (row.currentGap ?? 0) >= 20,
-  ).length;
-
-  if (avgCurrentGap >= 15) {
-    return {
-      label: "Deep cuts expected",
-      rotationCoreTop10: recentCount,
-      longGapCountTop50,
-    };
-  }
-
-  if (recentCount >= 4 && avgCurrentGap < 8) {
-    return {
-      label: "Heavy rotation",
-      rotationCoreTop10: recentCount,
-      longGapCountTop50,
-    };
-  }
-
-  if (longGapCountTop50 >= 8) {
-    return {
-      label: "Bust-out potential",
-      rotationCoreTop10: recentCount,
-      longGapCountTop50,
-    };
-  }
-
-  return {
-    label: "Balanced expectations",
-    rotationCoreTop10: recentCount,
-    longGapCountTop50,
-  };
-}
-
-const CARD_CLASS =
-  "editorial-chip relative rounded-[1.5rem] px-5 py-5 text-center backdrop-blur-sm flex min-h-[118px] flex-col justify-center";
-
-function MetricPairCard({ card }: { card: PrecisionCard }) {
+function MetricBlock({ card }: { card: PrecisionCard }) {
   return (
-    <div className={`${CARD_CLASS} gap-2`}>
-      <p className="font-label text-[10px] font-bold uppercase tracking-[0.18rem] text-on-surface-variant/80">
-        {card.title}
-      </p>
+    <div className="rounded-2xl border border-outline-variant/15 bg-surface/35 px-4 py-4">
+      <div className="text-center">
+        <p className="font-headline text-lg font-bold text-on-surface">
+          {card.title}
+        </p>
+      </div>
 
-      <div className="flex items-baseline justify-center gap-3">
-        <div className="text-left">
-          <p className="font-label text-[9px] font-bold uppercase tracking-[0.14rem] text-on-surface-variant">
-            Precision
+      <div className="mt-5 grid grid-cols-2 gap-4">
+        <div className="text-center">
+          <p className="font-label text-[9px] uppercase tracking-[0.14rem] text-on-surface-variant">
+            Avg. Hits
           </p>
-          <p className="font-headline text-2xl font-bold text-on-surface">
+          <p className="mt-1 font-headline text-2xl font-bold text-on-surface md:text-3xl">
             {card.precision}
           </p>
+          <p className="mt-1 text-xs leading-5 text-on-surface-variant">
+            picks played
+          </p>
         </div>
-        <div className="h-8 w-px bg-outline-variant/20" />
-        <div className="text-left">
-          <p className="font-label text-[9px] font-bold uppercase tracking-[0.14rem] text-on-surface-variant">
+        <div className="text-center">
+          <p className="font-label text-[9px] uppercase tracking-[0.14rem] text-on-surface-variant">
             Recall
           </p>
-          <p className="font-headline text-2xl font-bold text-primary">
+          <p className="mt-1 font-headline text-2xl font-bold text-primary md:text-3xl">
             {card.recall}
+          </p>
+          <p className="mt-1 text-xs leading-5 text-on-surface-variant">
+            setlist caught
           </p>
         </div>
       </div>
-
-      <p className="hidden text-xs leading-5 text-on-surface-variant md:block">
-        {card.windowLabel}
-      </p>
     </div>
   );
 }
 
-function MobileMetricStrip({ cards }: { cards: readonly PrecisionCard[] }) {
+function MetricPanel({
+  cards,
+  performanceWindowLabel,
+}: {
+  cards: readonly PrecisionCard[];
+  performanceWindowLabel: string;
+}) {
   return (
-    <div className="editorial-chip flex rounded-[1.5rem] px-4 py-4 md:hidden">
-      {cards.map((card) => (
-        <div key={card.title} className="flex-1 text-center">
-          <p className="font-label text-[9px] font-bold uppercase tracking-[0.14rem] text-on-surface-variant/70">
-            {card.title}
+    <div className="editorial-chip rounded-[1.5rem] p-5 text-left md:p-6">
+      <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+        <div>
+          <p className="font-label text-[10px] font-bold uppercase tracking-[0.18rem] text-primary/85">
+            Model performance
           </p>
-          <p className="mt-1 font-headline text-lg font-bold text-on-surface">
-            {card.precision}
-          </p>
-          <p className="font-label text-[8px] uppercase tracking-[0.12rem] text-primary/70">
-            {card.recall}
-          </p>
+          <h2 className="mt-2 font-headline text-xl font-bold text-on-surface md:text-2xl">
+            How good has this model been?
+          </h2>
         </div>
-      ))}
+        <p className="rounded-full border border-outline-variant/15 bg-surface/35 px-3 py-1.5 font-label text-[10px] uppercase tracking-[0.14rem] text-on-surface-variant">
+          {performanceWindowLabel}
+        </p>
+      </div>
+
+      <div className="mt-5 grid gap-3 md:grid-cols-2">
+        {cards.map((card) => (
+          <MetricBlock key={card.title} card={card} />
+        ))}
+      </div>
     </div>
   );
 }
@@ -135,11 +91,9 @@ export function PredictionHero({
   locationLabel,
   statusLabel,
   snapshotLabel,
-  predictions,
+  performanceWindowLabel,
   precisionCards,
-  metricCaption,
 }: Props) {
-  const outlook = getOutlookSummary(predictions);
   const headlineLocation = locationLabel || venueName;
   const dateDetail = locationLabel && venueName ? `${dateLabel} • ${venueName}` : dateLabel;
 
@@ -172,33 +126,14 @@ export function PredictionHero({
             </h1>
           </div>
 
-          <div className="relative z-20 mx-auto mt-8 flex max-w-4xl flex-col gap-3 md:grid md:grid-cols-2 xl:grid-cols-4">
-            <div className={`${CARD_CLASS} z-30 overflow-visible hover:z-40 focus-within:z-40`}>
-              <div className="flex items-center justify-center gap-2 mb-2">
-                <p className="font-label text-[10px] font-bold uppercase tracking-[0.18rem] text-on-surface-variant/80">
-                  Show Outlook
-                </p>
-                <ShowOutlookPopover />
-              </div>
-              <p className="font-headline text-xl font-bold text-primary md:text-2xl">
-                {outlook.label}
-              </p>
-            </div>
-
-            <MetricPairCard card={precisionCards[0]} />
-            <MetricPairCard card={precisionCards[1]} />
-            <MetricPairCard card={precisionCards[2]} />
+          <div className="relative z-20 mx-auto mt-8 max-w-4xl">
+            <MetricPanel
+              cards={precisionCards}
+              performanceWindowLabel={performanceWindowLabel}
+            />
           </div>
 
-          <MobileMetricStrip cards={precisionCards} />
-
-          {metricCaption ? (
-            <p className="mx-auto mt-3 max-w-4xl text-center font-label text-[10px] uppercase tracking-[0.16rem] text-on-surface-variant/60">
-              {metricCaption}
-            </p>
-          ) : null}
-
-          <div className="mx-auto mt-5 grid max-w-4xl gap-2 border-t border-outline-variant/15 pt-4 md:grid-cols-2">
+          <div className="mx-auto mt-5 grid max-w-4xl gap-2 border-t border-outline-variant/15 pt-4 md:grid-cols-[0.75fr_1.25fr]">
             <div className="rounded-2xl border border-outline-variant/15 bg-surface/40 px-4 py-3 text-center md:text-left">
               <p className="font-label text-[10px] uppercase tracking-[0.16rem] text-on-surface-variant">
                 Prediction Run
@@ -207,12 +142,14 @@ export function PredictionHero({
                 {snapshotLabel}
               </p>
             </div>
-            <div className="rounded-2xl border border-outline-variant/15 bg-surface/40 px-4 py-3 text-center md:text-right">
+            <div className="rounded-2xl border border-outline-variant/15 bg-surface/40 px-4 py-3 text-center md:text-left">
               <p className="font-label text-[10px] uppercase tracking-[0.16rem] text-on-surface-variant">
-                Tier Note
+                How To Read It
               </p>
-              <p className="mt-1 text-sm text-on-surface/75">
-                Tiers reflect relative model signal, not guaranteed outcomes.
+              <p className="mt-1 text-sm leading-6 text-on-surface/75">
+                Avg. hits is the average number of model picks that were
+                played. Recall is how much of the actual setlist the model
+                caught.
               </p>
             </div>
           </div>

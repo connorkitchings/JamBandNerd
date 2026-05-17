@@ -41,6 +41,10 @@ function average(values: Array<number | null>) {
   return filtered.reduce((sum, value) => sum + value, 0) / filtered.length;
 }
 
+function formatAverageHits(value: number | null, k: number) {
+  return value === null ? "—" : (value * k).toFixed(1);
+}
+
 type Props = {
   searchParams: Promise<{
     band?: string;
@@ -154,24 +158,17 @@ export default async function PredictionsPage({ searchParams }: Props) {
   const snapshotLabel = formatTimestampLabel(predictionState.snapshot.predictedAt);
   const accuracyRows = accuracyState.status === "ready" ? accuracyState.rows : [];
   const accuracyWindow = accuracyRows.length || 50;
+  const performanceWindowLabel = `most recent ${accuracyWindow} shows`;
   const precisionCards = [
     {
       title: "Top 10",
-      precision: formatPercent(average(accuracyRows.map((row) => row.p10))),
+      precision: formatAverageHits(average(accuracyRows.map((row) => row.p10)), 10),
       recall: formatPercent(average(accuracyRows.map((row) => row.recall10))),
-      windowLabel: `last ${accuracyWindow} shows`,
     },
     {
       title: "Top 25",
-      precision: formatPercent(average(accuracyRows.map((row) => row.p25))),
+      precision: formatAverageHits(average(accuracyRows.map((row) => row.p25)), 25),
       recall: formatPercent(average(accuracyRows.map((row) => row.recall25))),
-      windowLabel: `last ${accuracyWindow} shows`,
-    },
-    {
-      title: "Top 50",
-      precision: formatPercent(average(accuracyRows.map((row) => row.p50))),
-      recall: formatPercent(average(accuracyRows.map((row) => row.recall50))),
-      windowLabel: `last ${accuracyWindow} shows`,
     },
   ] as const;
 
@@ -229,9 +226,8 @@ export default async function PredictionsPage({ searchParams }: Props) {
         locationLabel={locationLabel}
         statusLabel={statusLabel}
         snapshotLabel={snapshotLabel}
-        predictions={predictionState.snapshot.predictions}
+        performanceWindowLabel={performanceWindowLabel}
         precisionCards={precisionCards}
-        metricCaption="Precision measures pick quality; recall measures setlist coverage."
       />
 
       <section>

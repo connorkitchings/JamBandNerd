@@ -100,6 +100,9 @@ export default async function PerformancePage({ searchParams }: Props) {
   const top10Average = average(state.rows.map((row) => row.recall10));
   const top25Average = average(state.rows.map((row) => row.recall25));
   const top50Average = average(state.rows.map((row) => row.recall50));
+  const p10Average = average(state.rows.map((row) => row.p10));
+  const p25Average = average(state.rows.map((row) => row.p25));
+  const p50Average = average(state.rows.map((row) => row.p50));
   const latestRow = state.rows[0] ?? null;
   const recentRows = state.rows.slice(0, 5);
 
@@ -164,41 +167,27 @@ export default async function PerformancePage({ searchParams }: Props) {
         }
       />
 
-      <section className="grid gap-4 md:grid-cols-6">
-        <SectionCard
-          title={formatPercent(top10Average)}
-          eyebrow="Avg Top 10"
-          centered
-        />
-        <SectionCard
-          title={formatPercent(top25Average)}
-          eyebrow="Avg Top 25"
-          centered
-        />
-        <SectionCard
-          title={formatPercent(top50Average)}
-          eyebrow="Avg Top 50"
-          centered
-        />
-        <SectionCard
-          title={formatPercent(average(state.rows.map((row) => row.p10)))}
-          eyebrow="Avg P10"
-          centered
-        />
-        <SectionCard
-          title={formatPercent(average(state.rows.map((row) => row.p25)))}
-          eyebrow="Avg P25"
-          centered
-        />
-        <SectionCard
-          title={formatPercent(average(state.rows.map((row) => row.p50)))}
-          eyebrow="Avg P50"
-          centered
-        />
+      <section className="grid gap-4 md:grid-cols-3">
+        {[
+          { label: "Top 10", recall: top10Average, precision: p10Average },
+          { label: "Top 25", recall: top25Average, precision: p25Average },
+          { label: "Top 50", recall: top50Average, precision: p50Average },
+        ].map((metric) => (
+          <SectionCard
+            key={metric.label}
+            title={formatPercent(metric.recall)}
+            eyebrow={`${metric.label} recall`}
+            centered
+          >
+            <p className="text-center font-label text-[10px] uppercase tracking-[0.16rem] text-on-surface-variant">
+              Precision {formatPercent(metric.precision)}
+            </p>
+          </SectionCard>
+        ))}
       </section>
 
       <p className="px-2 text-center text-sm text-on-surface-variant">
-        Accuracy is measured as the share of the actual setlist included in each Top-X group.
+        Recall is the share of the actual setlist included in each Top-X group; precision is the share of picks that were played.
       </p>
 
       <SectionCard title="Accuracy Over Time">
@@ -267,7 +256,7 @@ export default async function PerformancePage({ searchParams }: Props) {
             buttonClassName="w-full rounded-[1.35rem] border border-outline-variant/20 bg-surface-container-low px-4 py-4 text-center font-headline text-sm uppercase tracking-[0.12em] text-on-surface"
             containerClassName="rounded-[1.35rem] border border-outline-variant/20 bg-surface-container-low"
           >
-              <AccuracyTable rows={state.rows} />
+            <AccuracyTable rows={state.rows} />
           </ExpandablePanel>
         </div>
 

@@ -24,7 +24,7 @@ export const DESKTOP_NAV_ITEMS: NavItem[] = [
   {
     href: "/performance",
     label: "Performance",
-    mobileLabel: "Stats",
+    mobileLabel: "Model",
     icon: "◬",
     matches: ["/performance"],
   },
@@ -46,13 +46,6 @@ export const MOBILE_NAV_ITEMS: NavItem[] = [
     matches: ["/"],
   },
   {
-    href: "/performance",
-    label: "Performance",
-    mobileLabel: "Stats",
-    icon: "◬",
-    matches: ["/performance"],
-  },
-  {
     href: "/predictions",
     label: "Predictions",
     mobileLabel: "Predict",
@@ -65,6 +58,13 @@ export const MOBILE_NAV_ITEMS: NavItem[] = [
     mobileLabel: "Replay",
     icon: "◎",
     matches: ["/replay"],
+  },
+  {
+    href: "/performance",
+    label: "Performance",
+    mobileLabel: "Model",
+    icon: "◬",
+    matches: ["/performance"],
   },
 ];
 

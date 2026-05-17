@@ -97,17 +97,15 @@ npm run verify:web
 
 JamBandNerd should use a single public product version across the repo and website.
 
-- Current public version: `0.3.0`
+- Current public version: `1.0.1`
 - Versioning style: Semantic Versioning (`MAJOR.MINOR.PATCH`)
 - Scope rule: keep `pyproject.toml`, `src/jambandnerd/__init__.py`, `apps/web/package.json`, and the website footer version in sync
 
 Use these bump rules:
 
-- Patch (`0.2.x`): UI polish, bug fixes, copy edits, test-only work, and non-breaking internal cleanup
-- Minor (`0.x.0`): new user-facing pages/features, notable analytics additions, or meaningful model/product improvements that do not break expected workflows
+- Patch (`1.0.x`): UI polish, bug fixes, copy edits, test-only work, and non-breaking internal cleanup
+- Minor (`1.x.0`): new user-facing pages/features, notable analytics additions, or meaningful model/product improvements that do not break expected workflows
 - Major (`x.0.0`): breaking product changes, major route/navigation resets, incompatible data contracts, or the first stable public `1.0.0`
-
-Until the product is stable, stay on the `0.x` line. Treat `0.3.0` as the current visible website version rather than a finished general-availability release.
 
 ## Environment Variables
 

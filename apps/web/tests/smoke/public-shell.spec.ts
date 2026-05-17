@@ -45,9 +45,10 @@ test("desktop routes render the public shell", async ({ page }, testInfo) => {
   await expect(page.getByRole("heading", { name: "What are they playing next?" })).toBeVisible();
   await expect(
     page
-      .getByRole("heading", { name: "Teasers" })
+      .getByRole("heading", { name: "First Look" })
       .or(page.getByRole("heading", { name: "Band registry unavailable" })),
   ).toBeVisible();
+  await expect(page.locator('main a[href="/?teaser=phish"]')).toBeVisible();
 
   const bandPredictionLinks = page.locator('main a[href^="/predictions?band="]');
   if ((await bandPredictionLinks.count()) > 0) {
@@ -58,6 +59,9 @@ test("desktop routes render the public shell", async ({ page }, testInfo) => {
   await expectPrimaryHeadingOrMissingEnv(page);
 
   await page.goto("/predictions");
+  await expectPrimaryHeadingOrMissingEnv(page);
+
+  await page.goto("/replay");
   await expectPrimaryHeadingOrMissingEnv(page);
 
   await page.goto("/?band=goose");
@@ -92,7 +96,7 @@ test("removed multi-model routes are unavailable", async ({ page }, testInfo) =>
     expect(response?.status()).toBe(404);
   }
 
-  await page.goto("/replay");
+  await page.goto("/replay?band=goose&date=2026-01-01");
   await expectPrimaryHeadingOrMissingEnv(page);
 });
 
@@ -106,7 +110,7 @@ test("mobile navigation uses thumb-first ordering", async ({ page }, testInfo) =
   await expect(mobileNav).toBeVisible();
 
   const labels = await mobileNav.getByRole("link").locator("span:last-child").allTextContents();
-  expect(labels).toEqual(["Home", "Stats", "Predict", "Replay"]);
+  expect(labels).toEqual(["Home", "Predict", "Replay", "Model"]);
   expect(labels).not.toContain("Compare");
 });
 
