@@ -43,7 +43,7 @@ class BandMetadata:
 
     band: str
     model_version: str
-    default_top_k: int = 25
+    default_top_k: int = 50
     notes: str | None = None
 
 

@@ -161,6 +161,11 @@ export default async function PredictionsPage({ searchParams }: Props) {
       avgHits: formatAvgHits(average(accuracyRows.map((row) => row.p25)), 25),
       coverage: formatPercent(average(accuracyRows.map((row) => row.recall25))),
     },
+    {
+      title: "Top 50",
+      avgHits: formatAvgHits(average(accuracyRows.map((row) => row.p50)), 50),
+      coverage: formatPercent(average(accuracyRows.map((row) => row.recall50))),
+    },
   ] as const;
 
   const searchSongs = predictionState.snapshot.predictions.map((row) => ({

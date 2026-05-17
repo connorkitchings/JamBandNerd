@@ -13,7 +13,7 @@ type Props = {
   statusLabel: string;
   snapshotLabel: string;
   performanceWindowLabel: string;
-  precisionCards: readonly [MetricCard, MetricCard];
+  precisionCards: readonly [MetricCard, MetricCard, MetricCard];
 };
 
 function MetricBlock({ card }: { card: MetricCard }) {
@@ -76,7 +76,7 @@ function MetricPanel({
         </p>
       </div>
 
-      <div className="mt-5 grid gap-3 md:grid-cols-2">
+      <div className="mt-5 grid gap-3 md:grid-cols-3">
         {cards.map((card) => (
           <MetricBlock key={card.title} card={card} />
         ))}

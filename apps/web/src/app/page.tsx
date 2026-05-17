@@ -22,18 +22,18 @@ const HOME_TEASER_BANDS = [
 const HOW_IT_WORKS = [
   {
     step: "01",
-    title: "Collect setlist data",
-    body: "Historical setlists are collected and normalized into a shared format across supported bands.",
+    title: "Gather the setlists",
+    body: "We pull in setlist history for every band we cover — what was played, when, and where.",
   },
   {
     step: "02",
-    title: "Score the next show",
-    body: "For each band, a model ranks songs for the next target show using setlist history, tour information, and current context.",
+    title: "Take a guess at the next show",
+    body: "We've built a model from years of setlist history for each band. It looks at rotation, gaps, and venue habits to rank the likeliest songs for the upcoming show.",
   },
   {
     step: "03",
-    title: "Track what landed",
-    body: "Completed shows feed the performance ledger and replay views so the public board stays accountable.",
+    title: "See what actually happened",
+    body: "After the show, we check the board against the real setlist so you can see what landed and what didn't.",
   },
 ] as const;
 
@@ -47,7 +47,7 @@ type Props = {
 export const metadata: Metadata = {
   title: "JamBandNerd | Setlist Predictions",
   description:
-    "Setlist predictions for the next show, with performance tracking and historical replay for supported jam bands.",
+    "Educated guesses about what your favorite jam bands will play next — and a look back at how those guesses held up.",
 };
 
 export default async function HomePage({ searchParams }: Props) {
@@ -94,8 +94,7 @@ export default async function HomePage({ searchParams }: Props) {
               What are they playing next?
             </h1>
             <p className="mt-5 max-w-2xl text-lg leading-relaxed text-on-surface-variant">
-              See how each band&apos;s model ranks the next show, then track
-              avg. hits, coverage, and replay results after the setlist lands.
+              We rank the songs each band might play at the next show. It&apos;s an educated guess — sometimes right, sometimes not — but always worth checking.
             </p>
             <div className="mt-8 hidden gap-4 md:grid md:max-w-3xl md:grid-cols-2">
               <Link
@@ -240,7 +239,7 @@ export default async function HomePage({ searchParams }: Props) {
         </div>
       </section>
 
-      <SectionCard title="How Predictions Work">
+      <SectionCard title="How It Works">
         <div className="grid gap-6 md:grid-cols-3">
           {HOW_IT_WORKS.map((item) => (
             <div
@@ -262,7 +261,7 @@ export default async function HomePage({ searchParams }: Props) {
       </SectionCard>
 
       {bands.length > 0 && (
-        <SectionCard title="Artists We Track">
+        <SectionCard title="Who We Follow">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {bands.map((band) => (
               <Link

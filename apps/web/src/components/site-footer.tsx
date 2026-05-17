@@ -12,27 +12,27 @@ export function SiteFooter() {
           This site is not affiliated with, or endorsed by, any of the bands or
           management referenced on this site.
         </p>
-        <div className="mt-4 flex flex-wrap items-center justify-center gap-3 text-xs">
+        <div className="mt-4 grid grid-cols-2 gap-2 md:flex md:flex-wrap md:items-center md:justify-center md:gap-3">
           <Link
-            className="rounded-full border border-outline-variant/20 px-4 py-2 transition hover:border-primary/40 hover:text-primary"
+            className="rounded-full border border-outline-variant/20 px-4 py-2 text-center text-xs transition hover:border-primary/40 hover:text-primary"
             href="/about"
           >
             About
           </Link>
           <Link
-            className="rounded-full border border-outline-variant/20 px-4 py-2 transition hover:border-primary/40 hover:text-primary"
+            className="rounded-full border border-outline-variant/20 px-4 py-2 text-center text-xs transition hover:border-primary/40 hover:text-primary"
             href="/data-use"
           >
             Data Use
           </Link>
           <Link
-            className="rounded-full border border-outline-variant/20 px-4 py-2 transition hover:border-primary/40 hover:text-primary"
+            className="rounded-full border border-outline-variant/20 px-4 py-2 text-center text-xs transition hover:border-primary/40 hover:text-primary"
             href="/contact"
           >
             Contact
           </Link>
           <Link
-            className="rounded-full border border-outline-variant/20 px-4 py-2 transition hover:border-primary/40 hover:text-primary"
+            className="rounded-full border border-outline-variant/20 px-4 py-2 text-center text-xs transition hover:border-primary/40 hover:text-primary"
             href="/admin/setlist"
           >
             Admin
