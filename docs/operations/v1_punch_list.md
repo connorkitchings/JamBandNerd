@@ -1,95 +1,264 @@
 # v1.0 Pre-Launch Punch List
 
-Comprehensive review of every page and component in `apps/web/`. File references are relative to `apps/web/src/`. 30 items.
+Comprehensive review of every page and component in `apps/web/`. File references are relative to `apps/web/src/`. Items are organized by priority, then by effort within each tier. Each item carries a risk tag.
 
-## Critical / Accessibility
+## Risk Tags
 
-1. **Missing `focus-visible` on navigation links** — Interactive elements in 7 files lack visible focus rings. Screen-reader and keyboard-only users cannot see which element is focused.
-   - `components/site-header.tsx:49` — mobile back button has no `focus-visible:ring`
-   - `components/site-header.tsx:100` — desktop nav links have no `focus-visible:ring`
-   - `components/mobile-bottom-nav.tsx:24` — all 4 bottom nav links
-   - `components/k-toggle.tsx:39` — toggle buttons
-   - `components/contact-actions.tsx:34` — copy email button
-   - `components/filter-links.tsx:56` — band pills
-   - `components/dashboard-side-nav.tsx:66` — band grid links
-   - Fix: add `focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none` to each.
+| Tag | Meaning |
+|-----|---------|
+| **SHIELD** | Security or compliance exposure — fix before launch |
+| **BLOCK** | Blocks a user segment (keyboard, screen-reader, mobile) |
+| **LEAK** | Wasted compute, bundle bloat, or dead code |
+| **DRIFT** | Content, copy, or UX inconsistency — degrades trust |
+| **FRICTION** | Developer experience or maintainability concern |
 
-2. **`components/expandable-panel.tsx:29-48`** — expand/collapse buttons missing `aria-expanded` and `aria-controls`. Screen readers cannot determine toggle state or which content region is controlled.
+## Independent Follow-Up: 2026-05-17
 
-3. **`components/song-search.tsx:96-132`** — no "no results found" state. When a user searches and nothing matches, the input stays open with no feedback. Add a result row or message: "No songs found matching '...'".
+Fresh route-level review covered `/`, `/predictions`, `/performance`, `/replay`, `/last-show`, `/about`, `/contact`, `/data-use`, `/admin/setlist`, `/preview/tables`, and removed routes `/compare` and `/explorer` at desktop and mobile sizes. The review intentionally happened before reading this punch list.
 
-4. **`components/mobile-control-selects.tsx:32-43`** — each `<select>` has both a wrapping `<label>` (line 32) and an `aria-label` (line 38). The `<label>` is not linked to the `<select>` via `htmlFor`/`id`. Pick one pattern (prefer explicit `id` + `htmlFor`).
+Resolved during the follow-up:
+- `app/admin/setlist/page.tsx` now renders an `Admin Access` `<h1>` and status text while the session check is pending.
+- `app/replay/page.tsx` now stacks the prediction board and actual setlist sections, fixing the cramped desktop replay table where song names could disappear and removing the stretched empty actual-setlist panel.
 
-5. **Homepage mobile CTAs missing** — `app/page.tsx:99` — "View Predictions" and "See Performance" buttons are `hidden md:grid`. Mobile users landing on `/` see no primary call-to-action buttons. Add mobile equivalents or unhide the existing buttons (they're already full-width styled).
+Deferred finding:
+- **Performance ledger duplicate-looking rows** — `/performance` currently displays repeated same-date/same-venue rows in the recent accuracy ledger. This may represent multiple retained model snapshots or duplicate source rows, so fix only after confirming the intended `setlist_accuracy` read contract. Candidate fixes: filter to the active model version, dedupe by canonical show key, or expose model/version context in the table so repeated rows are explainable.
 
-6. **Heading hierarchy audit** — `components/prediction-hero.tsx` and `components/page-hero.tsx` both render `<h1>`. `components/data-state.tsx` renders `<h2>`. Currently each page renders only one of these heroes, so no duplicates exist — but this is fragile and undocumented. Add a lint comment or runtime invariant check.
+---
+
+## Critical / Security / Accessibility
+
+### 1. `proxy.ts` naming — non-standard middleware filename [FRICTION]
+- **File:** `src/proxy.ts`
+- **Effort:** Trivial — rename to `src/middleware.ts` for convention, or leave as-is
+- **Risk:** Low. Confirmed: Next.js 16 recognizes `proxy.ts` as middleware (build output shows `ƒ Proxy (Middleware)`). Admin routes **are protected** in production. Rename only for developer clarity — `middleware.ts` is the expected convention and reduces onboarding confusion.
+- **Status:** Downgraded from SHIELD to FRICTION after build verification on 2026-05-17.
+
+### 2. Missing `focus-visible` on navigation links [BLOCK]
+- **Files:** `components/site-header.tsx:49,100`, `components/mobile-bottom-nav.tsx:24`, `components/k-toggle.tsx:39`, `components/contact-actions.tsx:34`, `components/filter-links.tsx:56`, `components/dashboard-side-nav.tsx:66`
+- **Effort:** Low — add `focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none` to each interactive element
+- **Risk:** Keyboard-only and screen-reader users cannot see which element is focused.
+
+### 3. `expandable-panel.tsx` missing `aria-expanded` and `aria-controls` [BLOCK]
+- **File:** `components/expandable-panel.tsx:29-48`
+- **Effort:** Low — add `aria-expanded={isExpanded}` and `aria-controls` pointing to the body region
+- **Risk:** Screen readers cannot determine toggle state or which content region is controlled.
+
+### 4. `mobile-control-selects.tsx` label not linked to `<select>` [BLOCK]
+- **File:** `components/mobile-control-selects.tsx:32-43`
+- **Effort:** Low — add `id` to `<select>` and `htmlFor` on `<label>`, or remove the redundant `aria-label`
+- **Risk:** The wrapping `<label>` is not programmatically associated with the control.
+
+### 5. Homepage mobile CTAs hidden [BLOCK]
+- **File:** `app/page.tsx:99`
+- **Effort:** Low — remove `hidden md:grid` or add mobile-equivalent buttons
+- **Risk:** Mobile users landing on `/` see no primary call-to-action buttons.
+
+### 6. `song-search.tsx` no "no results" state [DRIFT]
+- **File:** `components/song-search.tsx:96-132`
+- **Effort:** Low — add a result row or message when `results.length === 0 && query.trim().length > 0`
+- **Risk:** User searches, gets zero matches, and receives no feedback.
+
+### 7. Heading hierarchy undocumented [FRICTION]
+- **Files:** `components/prediction-hero.tsx`, `components/page-hero.tsx` (both `<h1>`), `components/data-state.tsx` (`<h2>`)
+- **Effort:** Low — add a lint comment or runtime invariant check that each page renders exactly one `<h1>`
+- **Risk:** Fragile — adding a second hero to a page would create duplicate `<h1>` elements.
+
+---
 
 ## UX / Functional
 
-7. **Song name truncation missing on mobile** — `components/song-board.tsx:237` — mobile list song names have no `truncate` class. Long names (e.g., "Miss the Mississippi and You") will overflow the card.
+### 8. No `loading.tsx` — blank screens during server fetches [DRIFT]
+- **Scope:** All 10 page routes; at minimum `/predictions`, `/performance`, `/replay`, `/last-show`
+- **Effort:** Medium — add `loading.tsx` files with skeleton UI matching each route's layout
+- **Risk:** With server-side Supabase reads, users see a blank screen until the full page renders. No streaming suspense boundaries exist anywhere.
 
-8. **`normalizeSongName` duplicated** — `app/replay/page.tsx:55` and `app/last-show/page.tsx:41` both define the same function. Move to `lib/song-board-core.ts` or `lib/format.ts`.
+### 9. No `error.tsx` or `not-found.tsx` — unhandled errors break design [DRIFT]
+- **Scope:** All page routes
+- **Effort:** Medium — add route-level `error.tsx` with recovery button and site-wide `not-found.tsx`
+- **Risk:** Any unhandled server error or 404 falls through to default Next.js pages, breaking the site's visual design and providing no recovery path.
 
-9. **Top-K hit computation duplicated** — `app/replay/page.tsx:59-75` defines `computeTopKHits` and `computeTopKRecall`. `app/last-show/page.tsx:102-109` recomputes hits manually with `.slice(0, 10).filter()`. Use a shared helper from `lib/` for both.
+### 10. Song name truncation missing on mobile [DRIFT]
+- **File:** `components/song-board.tsx:237`
+- **Effort:** Low — add `truncate` class to mobile list song names
+- **Risk:** Long names (e.g., "Miss the Mississippi and You") will overflow the card.
 
-10. **`app/last-show/page.tsx`** — only shows Top-10 hits comparison in the aside panel. Replay page shows both Top-10 and Top-25. Add Top-25 and Top-50 hits counts for consistency.
+### 11. `normalizeSongName` duplicated across two pages [FRICTION]
+- **Files:** `app/replay/page.tsx:55`, `app/last-show/page.tsx:41`
+- **Effort:** Low — move to `lib/format.ts` or `lib/song-board-core.ts`
+- **Risk:** Drift if one copy is changed and the other is not.
 
-11. **`app/predictions/page.tsx:241`** — description text says "clustering tonight" even when `displayState` is "previous" or "next". Conditionally change the copy based on `displayState`.
+### 12. Top-K hit computation duplicated across two pages [FRICTION]
+- **Files:** `app/replay/page.tsx:59-75` defines `computeTopKHits`/`computeTopKRecall`; `app/last-show/page.tsx:102-109` recomputes hits manually with `.slice(0, 10).filter()`
+- **Effort:** Low — extract shared helpers to `lib/format.ts` or `lib/song-board-core.ts`
+- **Risk:** Same as #11 — logic drift between copies.
 
-12. **Double `editorial-panel` nesting on predictions** — `app/predictions/page.tsx:230` wraps the `<SongBoard>` in its own `editorial-panel`, and `<SongBoard>`'s `<TierSection>` (line 282) also renders `editorial-panel`. Creates double-border visual nesting. Remove the outer panel or the inner panels.
+### 13. `last-show` only shows Top-10 hits [DRIFT]
+- **File:** `app/last-show/page.tsx`
+- **Effort:** Low — add Top-25 and Top-50 hit counts to match replay page
+- **Risk:** Inconsistent metric exposure between similar routes.
 
-13. **`components/prediction-hero.tsx:97`** — `headlineLocation = locationLabel || venueName`. When a location label exists (e.g., "Chicago, IL"), it becomes the `<h1>` instead of the venue name. The venue name is more specific and interesting to users. Swap priority: venue name should be the headline, location should be subordinate.
+### 14. Predictions description says "clustering tonight" for all states [DRIFT]
+- **File:** `app/predictions/page.tsx:241`
+- **Effort:** Low — conditionally change copy based on `displayState`
+- **Risk:** Misleading text when showing previous or next shows.
 
-14. **`components/recall-chart.tsx`** — SVG chart uses fixed viewBox with `preserveAspectRatio="xMidYMid meet"`. On very wide screens (>1200px) the chart expands to fill width, making dot markers and labels disproportionately small. Cap the container at a max render width (~900px).
+### 15. Double `editorial-panel` nesting on predictions [DRIFT]
+- **File:** `app/predictions/page.tsx:230` wraps `<SongBoard>`, which also renders `editorial-panel` in its `<TierSection>` (line 282)
+- **Effort:** Low — remove the outer panel or the inner panels
+- **Risk:** Double-border visual nesting degrades the design.
 
-15. **`components/setlist-columns.tsx:150-152`** — mobile setlist uses comma-separated inline flow; encore set renders as a separate full-width card on desktop. Fine for current use but the split between `MobileSetlistFlow` and `SetGroupCard` could be unified into a single render path.
+### 16. `prediction-hero.tsx` headline priority inverted [DRIFT]
+- **File:** `components/prediction-hero.tsx:97` — `headlineLocation = locationLabel || venueName`
+- **Effort:** Low — swap: venue name as headline, location as subordinate
+- **Risk:** Generic "Chicago, IL" shown instead of the more specific venue name.
+
+### 17. `recall-chart.tsx` scales poorly on wide screens [DRIFT]
+- **File:** `components/recall-chart.tsx`
+- **Effort:** Low — cap container at `max-w-[900px] mx-auto`
+- **Risk:** On screens >1200px the chart expands, making dot markers and labels disproportionately small.
+
+### 18. `setlist-columns.tsx` split render paths [FRICTION]
+- **File:** `components/setlist-columns.tsx:150-152`
+- **Effort:** Medium — unify `MobileSetlistFlow` and `SetGroupCard` into a single render path
+- **Risk:** Maintenance burden; changes must be applied twice.
+
+---
+
+## Code Quality / Performance
+
+### 19. Repeated error/empty state boilerplate across all pages [FRICTION]
+- **Scope:** Every page duplicates the 4-state check (`missing_env`, `error`, `empty`, `ready`)
+- **Effort:** Medium — extract a shared `DataGate` component
+- **Risk:** High cognitive load for new contributors; drift if one page adds a new state.
+
+### 20. Env vars serialized into client bundle [SHIELD]
+- **File:** `app/predictions/page.tsx:195-203` — `process.env.SUPABASE_URL` and `SUPABASE_ANON_KEY` passed as props to `<LiveTracker>`
+- **Effort:** Low — rename to `NEXT_PUBLIC_SUPABASE_URL`/`NEXT_PUBLIC_SUPABASE_ANON_KEY` for intentional public exposure, or refactor to avoid serializing
+- **Risk:** Server env vars leak into client-side HTML without explicit `NEXT_PUBLIC_` prefix.
+
+### 21. Supabase client re-created on every mount [LEAK]
+- **File:** `components/live-tracker.tsx:36` — `createClient()` per mount
+- **Effort:** Low — use a module-level singleton
+- **Risk:** Re-initializes WebSocket connection on route changes.
+
+### 22. Hardcoded teaser bands vs Supabase source of truth [DRIFT]
+- **File:** `app/page.tsx:15-20` — `HOME_TEASER_BANDS`
+- **Effort:** Low — derive teaser bands from fetched `bands` result, hardcoded list as fallback only
+- **Risk:** If a band is renamed or removed in Supabase, the teaser silently shows stale data.
+
+### 23. Performance page iterates `state.rows` six times [LEAK]
+- **File:** `app/performance/page.tsx:92-97`
+- **Effort:** Low — precompute mapped arrays in one pass
+- **Risk:** Wasted compute on every server render.
+
+### 24. `recall-chart.tsx` computes `linePath` twice [LEAK]
+- **File:** `components/recall-chart.tsx:38-44` — `buildPath().areaPath()` recomputes the line string internally
+- **Effort:** Low — have `areaPath` reuse the result of `linePath`
+- **Risk:** Wasted computation on every chart render.
+
+### 25. `recall-chart.tsx` maps `chronological` three times [LEAK]
+- **File:** `components/recall-chart.tsx:56-58` — one `.map()` per series
+- **Effort:** Low — single pass that builds all three series simultaneously
+- **Risk:** Unnecessary iteration over the same array.
+
+### 26. `lib/data.ts` vs `lib/data/` naming collision [FRICTION]
+- **Files:** `lib/data.ts` (aggregate re-export) alongside `lib/data/` directory
+- **Effort:** Low — rename aggregate to `lib/data/index.ts` or `lib/data-facade.ts`
+- **Risk:** Import confusion for contributors (`@/lib/data` vs `@/lib/data/bands`).
+
+---
 
 ## Content & Copy
 
-16. **`app/data-use/page.tsx:67`** — uses `...` (three ASCII dots) instead of `…` (ellipsis character). Replace with `…` or `&hellip;`.
+### 27. ASCII dots instead of ellipsis [DRIFT]
+- **File:** `app/data-use/page.tsx:67`
+- **Effort:** Trivial — replace `...` with `…`
+- **Risk:** Typographic inconsistency.
 
-17. **`components/prediction-hero.tsx:150`** — "How To Read It" section text. Uses straight quotes if present. Audit all user-facing copy for curly quotes `"` `"`.
+### 28. Straight quotes in user-facing copy [DRIFT]
+- **File:** `components/prediction-hero.tsx:150` and all user-facing text
+- **Effort:** Trivial — audit and replace with curly quotes `" "` where appropriate
+- **Risk:** Typographic polish.
 
-18. **`app/contact/page.tsx:53`** — "By submitting data corrections, you grant..." paragraph appears at the bottom of a contact page with no submission form. Either remove the license grant text or move it to a page where data submission actually occurs (e.g., Admin setlist page).
+### 29. Misplaced license grant on contact page [DRIFT]
+- **File:** `app/contact/page.tsx:53`
+- **Effort:** Low — remove or move to admin setlist page where data submission occurs
+- **Risk:** Confusing — no submission form exists on the contact page.
 
-19. **`app/performance/page.tsx:114`** — uses the term "slippage" which is financial jargon. Consider "drift", "variation", or "consistency" instead.
+### 30. "Slippage" is financial jargon [DRIFT]
+- **File:** `app/performance/page.tsx:114`
+- **Effort:** Trivial — replace with "drift", "variation", or "consistency"
+- **Risk:** Terminology mismatch for non-financial audience.
 
-## Code Quality / Architecture
-
-20. **Repeated error/empty state boilerplate** — Every page duplicates the same 4-state check pattern (`missing_env`, `error`, `empty`, `ready`). Extract a shared `DataGate` component that accepts a `RouteState` and renders the appropriate fallback or delegates to children.
-
-21. **`app/predictions/page.tsx:195-203`** — `process.env.SUPABASE_URL` and `SUPABASE_ANON_KEY` are passed as props to `<LiveTracker>`, which serializes them into client-side HTML. Use `NEXT_PUBLIC_` prefix for intentional public exposure, or refactor to avoid serializing server env vars into client bundles.
-
-22. **`components/live-tracker.tsx:36`** — creates a new `createClient()` on every component mount. While the dependency array makes this stable per band/show, a module-level singleton Supabase client would be cleaner and avoid re-initializing the WebSocket connection on route changes.
-
-23. **`app/page.tsx:15-20`** — `HOME_TEASER_BANDS` is hardcoded to 4 bands. The Supabase `bands` table is the canonical source of truth. If a band is renamed or removed in Supabase, the teaser silently shows stale data. Derive teaser bands from the fetched `bands` result, using the hardcoded list only as fallback.
-
-24. **`app/performance/page.tsx:92-97`** — computes `top10Average`, `top25Average`, `top50Average`, `p10Average`, `p25Average`, `p50Average` by calling `state.rows.map(...)` six separate times, iterating the same array six times. Combine into one precomputed set of mapped arrays.
+---
 
 ## Minor / Polish
 
-25. **`components/song-search.tsx:73`** — search `<input>` missing `autocomplete="off"` and `spellCheck={false}`. Song names are not dictionary words and password managers may trigger on the search field.
+### 31. Search input missing `autocomplete` and `spellCheck` [DRIFT]
+- **File:** `components/song-search.tsx:73`
+- **Effort:** Trivial — add `autocomplete="off"` and `spellCheck={false}`
+- **Risk:** Password managers may trigger; spell-check underlines song names.
 
-26. **`app/about/page.tsx:123`** — FAQ `<details>` elements all start closed. Consider opening the first FAQ item by default (`defaultOpen` or `open` attribute) for better initial UX.
+### 32. FAQ items all start closed [DRIFT]
+- **File:** `app/about/page.tsx:123`
+- **Effort:** Trivial — add `open` attribute to first `<details>` element
+- **Risk:** Users land on FAQ with no content visible.
 
-27. **`components/setlist-columns.tsx:41-55`** — `getGridClassName` handles 1–4 sets but has no explicit 5+ set case. Most bands play 2–3 sets; 4+ is rare but the fallback grid should always be well-defined.
+### 33. `getGridClassName` has no explicit 5+ set case [DRIFT]
+- **File:** `components/setlist-columns.tsx:41-55`
+- **Effort:** Trivial — add explicit `default` case with sensible grid
+- **Risk:** Rare but undefined behavior for 5+ set shows.
 
-28. **`app/globals.css:51-55` and `:57-63`** — both `<html>` and `<body>` declare radial gradient backgrounds. The `<body>` gradient visually overrides `<html>`'s. Remove the dead `<html>` background or consolidate.
+### 34. Dead `<html>` background gradient [LEAK]
+- **File:** `app/globals.css:51-55` (html) and `:57-63` (body)
+- **Effort:** Trivial — remove the `<html>` gradient; `<body>` overrides it
+- **Risk:** Dead CSS bytes.
 
-29. **`components/prediction-hero.tsx`** — component is semantically overloaded: it renders the show hero (date, venue, status badge) AND the model performance metric panel (3 cards). Consider splitting into `ShowHero` (context) and inline `<MetricPanel>` in the page. Reduces prop count and single-responsibility concerns.
+### 35. `prediction-hero.tsx` semantically overloaded [FRICTION]
+- **File:** `components/prediction-hero.tsx` — renders show hero AND model performance metrics
+- **Effort:** Medium — split into `ShowHero` and inline `<MetricPanel>`
+- **Risk:** High prop count, single-responsibility violation.
 
-30. **`components/dashboard-side-nav.tsx` and `components/filter-links.tsx`** — both render band pills with nearly identical active/hover styling but different public APIs (`FilterLinks` takes `date`, `DashboardSideNav` doesn't). Extract a shared `BandPillGrid` component.
+### 36. Band pill grid duplication [FRICTION]
+- **Files:** `components/dashboard-side-nav.tsx` and `components/filter-links.tsx`
+- **Effort:** Medium — extract shared `BandPillGrid` component
+- **Risk:** Nearly identical active/hover styling maintained in two places.
+
+### 37. Empty directories `_preview/tables/` and `preview/tables/` [LEAK]
+- **Scope:** `app/_preview/tables/` and `app/preview/tables/`
+- **Effort:** Trivial — delete both directories
+- **Risk:** Dead code; confusion about which path is active.
 
 ---
 
 ## Summary
 
-| Priority | Count | Focus |
-|----------|-------|-------|
-| Critical (a11y) | 6 | focus-visible rings, aria-expanded, label linkage, heading audit |
-| UX / Functional | 9 | truncation, code dedup, empty states, navigation consistency |
-| Content / Copy | 4 | ellipsis, curly quotes, terminology, misplaced copy |
-| Code Quality | 5 | shared state gate, env exposure, client singleton, perf |
-| Minor / Polish | 6 | autocomplete, dead CSS, FAQ default-open, component reuse |
+| Priority | Count | Effort Profile | Key Risks |
+|----------|-------|----------------|-----------|
+| Critical (a11y) | 6 | 6 Low | BLOCK: keyboard/screen-reader/mobile users |
+| UX / Functional | 11 | 8 Low, 3 Medium | DRIFT: inconsistent UX across routes; no loading/error states |
+| Code Quality / Performance | 8 | 6 Low, 2 Medium | SHIELD: env leak; LEAK: wasted compute; FRICTION: maintainability |
+| Content / Copy | 4 | 3 Trivial, 1 Low | DRIFT: typography, terminology, misplaced copy |
+| Minor / Polish | 8 | 4 Trivial, 4 Medium | LEAK: dead CSS/dirs; FRICTION: component reuse, proxy naming |
 
-No data-corruption or crash bugs found. Core prediction/performance/replay data flows are sound. Primary risk areas are keyboard/screen-reader accessibility and mobile UX gaps on the homepage.
+**Total: 37 items** (30 original + 1 deferred + 6 new; #1 downgraded after build verification)
+
+### Effort Distribution
+
+| Effort | Count |
+|--------|-------|
+| Trivial | 7 |
+| Low | 20 |
+| Medium | 10 |
+
+### Recommended Fix Order
+
+1. **#2–7 Critical a11y** (BLOCK, all Low) — unblock user segments
+2. **#20 env vars** (SHIELD, Low) — prevent server env leak
+3. **#8–9 loading/error boundaries** (DRIFT, Medium) — baseline UX resilience
+4. **#11–12 code dedup** (FRICTION, Low) — quick wins, reduce drift risk
+5. **#23–25 performance** (LEAK, Low) — free compute at low cost
+6. **#1 proxy naming** (FRICTION, Trivial) — rename to `middleware.ts` for convention
+7. **Remaining items** — batch by effort for efficient sprints
+
+No data-corruption or crash bugs found. Core prediction/performance/replay data flows are sound.

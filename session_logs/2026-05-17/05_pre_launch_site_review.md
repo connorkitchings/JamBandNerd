@@ -45,3 +45,22 @@ Every file in:
 ## Next Step
 
 Work through `docs/operations/v1_punch_list.md` item by item over several sessions before merging `dev` to `main` for v1.0 production launch. Start with the 6 critical a11y items.
+
+## Independent Follow-Up
+
+After the initial read-only review, a separate route-level pass was completed before re-reading this log or the punch list. It covered the public routes, `/admin/setlist`, `/preview/tables`, and removed routes `/compare` and `/explorer` at desktop and mobile sizes.
+
+Implemented immediately:
+- Added a stable `Admin Access` `<h1>` plus status text to the `/admin/setlist` session-checking state.
+- Changed `/replay` so the prediction board and actual setlist stack full-width, preserving song names in the desktop prediction table and removing the stretched empty setlist panel.
+
+Added to `docs/operations/v1_punch_list.md`:
+- Follow-up finding for duplicate-looking `/performance` recent ledger rows, pending data contract review before any UI/data-layer change.
+
+Validation:
+- `npm run test:web:smoke:list`
+- Local Playwright route audit with screenshots under `/tmp/jbn-site-review-shots`
+- `npm run lint:web`
+- `npm run build:web`
+- `npm run verify:web`
+- `npm run verify:docs`

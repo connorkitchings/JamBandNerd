@@ -197,8 +197,13 @@ export default function AdminSetlistPage() {
 
   if (isCheckingSession) {
     return (
-      <div className="mx-auto max-w-md py-12 text-center text-sm text-on-surface-variant">
-        Checking admin session...
+      <div className="mx-auto max-w-md space-y-3 py-12 text-center">
+        <h1 className="font-headline text-3xl font-bold text-on-surface">
+          Admin Access
+        </h1>
+        <p className="text-sm text-on-surface-variant" role="status">
+          Checking admin session...
+        </p>
       </div>
     );
   }

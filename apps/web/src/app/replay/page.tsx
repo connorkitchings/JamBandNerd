@@ -255,7 +255,7 @@ export default async function ReplayPage({ searchParams }: Props) {
         </div>
       </SectionCard>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.05fr)_minmax(320px,0.95fr)]">
+      <div className="grid gap-6">
         <SectionCard title="Prediction Board" eyebrow="Saved snapshot">
           <SongBoard rows={rows} highlightSongs={actualSongs} compact />
         </SectionCard>
