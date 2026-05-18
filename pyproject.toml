@@ -24,7 +24,7 @@ dependencies = [
     "psycopg2-binary",
     "typer",
     "tqdm",
-    "playwright>=1.59.0",
+    "playwright>=1.60.0",
     "lightgbm>=4.0.0",
     "duckdb>=1.0.0",
     "scikit-learn>=1.8.0",
