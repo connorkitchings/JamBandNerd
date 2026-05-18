@@ -32,6 +32,10 @@ async function expectPrimaryHeadingOrMissingEnv(page: Page) {
   ).toBeVisible();
 }
 
+async function expectSinglePrimaryHeading(page: Page) {
+  await expect(page.locator("main h1")).toHaveCount(1);
+}
+
 test("desktop routes render the public shell", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop-chromium", "desktop-only shell check");
 
@@ -43,6 +47,7 @@ test("desktop routes render the public shell", async ({ page }, testInfo) => {
   await expect(page.getByRole("navigation", { name: "Primary navigation" }).getByRole("link", { name: "Performance" })).toBeVisible();
   await expect(page.getByRole("navigation", { name: "Primary navigation" }).getByRole("link", { name: "Replay" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "What are they playing next?" })).toBeVisible();
+  await expectSinglePrimaryHeading(page);
   await expect(
     page
       .getByRole("heading", { name: "First Look" })
@@ -57,25 +62,32 @@ test("desktop routes render the public shell", async ({ page }, testInfo) => {
 
   await page.goto("/performance");
   await expectPrimaryHeadingOrMissingEnv(page);
+  await expectSinglePrimaryHeading(page);
 
   await page.goto("/predictions");
   await expectPrimaryHeadingOrMissingEnv(page);
+  await expectSinglePrimaryHeading(page);
 
   await page.goto("/replay");
   await expectPrimaryHeadingOrMissingEnv(page);
+  await expectSinglePrimaryHeading(page);
 
   await page.goto("/?band=goose");
   await page.waitForURL(/\/predictions\?band=goose$/);
   await expectPrimaryHeadingOrMissingEnv(page);
+  await expectSinglePrimaryHeading(page);
 
   await page.goto("/about");
   await expect(page.getByRole("heading", { name: "About JamBandNerd" })).toBeVisible();
+  await expectSinglePrimaryHeading(page);
 
   await page.goto("/data-use");
   await expect(page.getByRole("heading", { name: "Data Use" })).toBeVisible();
+  await expectSinglePrimaryHeading(page);
 
   await page.goto("/contact");
   await expect(page.getByRole("heading", { name: "Contact JamBandNerd" })).toBeVisible();
+  await expectSinglePrimaryHeading(page);
 
   await page.goto("/admin/setlist");
   await expect(

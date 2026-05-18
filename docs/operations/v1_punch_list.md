@@ -14,11 +14,13 @@ Comprehensive review of every page and component in `apps/web/`. File references
 
 ## Implementation Status: 2026-05-18
 
-All launch punch-list items have been addressed for local V1 readiness.
+All launch punch-list items have been addressed for local V1 readiness after a second implementation audit.
 
 - Items #2–37 were implemented in the web app, docs, or tests.
 - Item #1 was intentionally kept as `src/proxy.ts`: Next.js 16.2 recognizes and prefers `proxy.ts`; renaming to `middleware.ts` introduces a framework deprecation warning.
-- Local checks completed during implementation: `npm run test:web:unit`, `npm run lint:web`, `npm run build:web`, and `npm run test:web:smoke:list`.
+- Medium refactor items are complete: route states now use `DataGate`, prediction metrics are split out of the show hero, setlist columns share one render path, and band pill links share `BandPillGrid`.
+- Heading hierarchy is guarded by the public-shell smoke test, which now asserts exactly one `<h1>` on public routes.
+- Local checks completed during implementation: `npm run test:web:unit`, `npm run lint:web`, `npm run build:web`, `npm run test:web:smoke:list`, `npm run test:web:smoke`, `npm run verify:web`, `npm run verify:docs`, and `npm run verify:clean`.
 - Final deployment remains prepare-only: no push, PR, merge, hosted smoke, or production deploy was performed from this pass.
 
 ## Independent Follow-Up: 2026-05-17

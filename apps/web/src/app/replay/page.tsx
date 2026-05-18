@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { DashboardSideNav } from "@/components/dashboard-side-nav";
+import { DataGate } from "@/components/data-gate";
 import { DataState } from "@/components/data-state";
 import { PageHero } from "@/components/page-hero";
 import { ReplayShowSelect } from "@/components/replay-show-select";
@@ -76,24 +77,14 @@ export default async function ReplayPage({ searchParams }: Props) {
     bandsResult.status === "ready" ? bandSelection.bandEntry?.slug : params.band;
   const accuracyState = await getRecentAccuracy(selectedBand, 50);
 
-  if (accuracyState.status === "missing_env") {
+  if (accuracyState.status !== "ready") {
     return (
-      <DataState
-        title="Supabase environment required"
-        body="Set SUPABASE_URL and SUPABASE_ANON_KEY to enable the replay route."
-      />
-    );
-  }
-
-  if (accuracyState.status === "error") {
-    return <DataState title="Replay query failed" body={accuracyState.message} />;
-  }
-
-  if (accuracyState.status === "empty") {
-    return (
-      <DataState
-        title="No replay history available"
-        body="No retained scored shows were found for the selected band."
+      <DataGate
+        state={accuracyState}
+        missingEnvBody="Set SUPABASE_URL and SUPABASE_ANON_KEY to enable the replay route."
+        errorTitle="Replay query failed"
+        emptyTitle="No replay history available"
+        emptyBody="No retained scored shows were found for the selected band."
       />
     );
   }
@@ -122,24 +113,14 @@ export default async function ReplayPage({ searchParams }: Props) {
     getSetlistForDate(accuracyState.band, selectedDate),
   ]);
 
-  if (predictionState.status === "error") {
-    return <DataState title="Replay query failed" body={predictionState.message} />;
-  }
-
-  if (predictionState.status === "empty") {
+  if (predictionState.status !== "ready") {
     return (
-      <DataState
-        title="No prediction snapshot available"
-        body="A retained scored show was found, but no prediction snapshot was available for that date."
-      />
-    );
-  }
-
-  if (predictionState.status === "missing_env") {
-    return (
-      <DataState
-        title="Supabase environment required"
-        body="Set SUPABASE_URL and SUPABASE_ANON_KEY to enable the replay route."
+      <DataGate
+        state={predictionState}
+        missingEnvBody="Set SUPABASE_URL and SUPABASE_ANON_KEY to enable the replay route."
+        errorTitle="Replay query failed"
+        emptyTitle="No prediction snapshot available"
+        emptyBody="A retained scored show was found, but no prediction snapshot was available for that date."
       />
     );
   }

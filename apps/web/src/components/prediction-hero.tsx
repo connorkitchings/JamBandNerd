@@ -12,6 +12,9 @@ type Props = {
   locationLabel: string;
   statusLabel: string;
   snapshotLabel: string;
+};
+
+type MetricPanelProps = {
   performanceWindowLabel: string;
   precisionCards: readonly [MetricCard, MetricCard, MetricCard];
 };
@@ -53,7 +56,7 @@ function MetricBlock({ card }: { card: MetricCard }) {
   );
 }
 
-function MetricPanel({
+export function PredictionMetricPanel({
   cards,
   performanceWindowLabel,
 }: {
@@ -91,8 +94,6 @@ export function PredictionHero({
   locationLabel,
   statusLabel,
   snapshotLabel,
-  performanceWindowLabel,
-  precisionCards,
 }: Props) {
   const headlineLocation = venueName || locationLabel;
   const dateDetail = [dateLabel, locationLabel].filter(Boolean).join(" • ");
@@ -126,13 +127,6 @@ export function PredictionHero({
             </h1>
           </div>
 
-          <div className="relative z-20 mx-auto mt-8 max-w-4xl">
-            <MetricPanel
-              cards={precisionCards}
-              performanceWindowLabel={performanceWindowLabel}
-            />
-          </div>
-
           <div className="mx-auto mt-5 grid max-w-4xl gap-2 border-t border-outline-variant/15 pt-4 md:grid-cols-[0.75fr_1.25fr]">
             <div className="rounded-2xl border border-outline-variant/15 bg-surface/40 px-4 py-3 text-center md:text-left">
               <p className="font-label text-[10px] uppercase tracking-[0.16rem] text-on-surface-variant">
@@ -156,5 +150,19 @@ export function PredictionHero({
         </div>
       </div>
     </section>
+  );
+}
+
+export function PredictionHeroMetrics({
+  performanceWindowLabel,
+  precisionCards,
+}: MetricPanelProps) {
+  return (
+    <div className="relative z-20 mx-auto -mt-6 mb-10 max-w-4xl px-3 md:-mt-8">
+      <PredictionMetricPanel
+        cards={precisionCards}
+        performanceWindowLabel={performanceWindowLabel}
+      />
+    </div>
   );
 }

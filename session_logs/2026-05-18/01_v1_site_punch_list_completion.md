@@ -18,12 +18,26 @@ Implement the full 37-item V1 website punch list and prepare a local deployment 
 - Removed empty preview route directories.
 - Kept `src/proxy.ts` because Next.js 16.2 prefers it; renaming to `middleware.ts` produced a deprecation warning.
 
+## Follow-Up Correction
+
+After the first local commit, the punch list was re-audited and three gaps were found:
+
+- `DataGate` had not actually been extracted.
+- `PredictionHero` still owned both show context and metric panel rendering.
+- Heading hierarchy was improved but not guarded by a test.
+
+Those gaps were closed in the follow-up patch: route status branches now use `DataGate`, prediction metrics are rendered through `PredictionHeroMetrics`, and public-shell smoke tests assert a single `<h1>` on public routes.
+
 ## Validation
 
 - `npm run test:web:unit` — passed
 - `npm run lint:web` — passed
 - `npm run build:web` — passed
 - `npm run test:web:smoke:list` — passed
+- `npm run test:web:smoke` — passed
+- `npm run verify:web` — passed
+- `npm run verify:docs` — passed
+- `npm run verify:clean` — passed
 
 ## Deployment Handoff
 

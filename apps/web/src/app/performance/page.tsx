@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { AccuracyTable } from "@/components/accuracy-table";
 import { DashboardSideNav } from "@/components/dashboard-side-nav";
+import { DataGate } from "@/components/data-gate";
 import { DataState } from "@/components/data-state";
 import { ExpandablePanel } from "@/components/expandable-panel";
 import { KToggle } from "@/components/k-toggle";
@@ -62,24 +63,14 @@ export default async function PerformancePage({ searchParams }: Props) {
     bandsResult.status === "ready" ? bandSelection.bandEntry?.slug : params.band;
   const state = await getRecentAccuracy(selectedBand, 50);
 
-  if (state.status === "missing_env") {
+  if (state.status !== "ready") {
     return (
-      <DataState
-        title="Supabase environment required"
-        body="Set SUPABASE_URL and SUPABASE_ANON_KEY to enable the performance route."
-      />
-    );
-  }
-
-  if (state.status === "error") {
-    return <DataState title="Performance query failed" body={state.message} />;
-  }
-
-  if (state.status === "empty") {
-    return (
-      <DataState
-        title="No accuracy rows available"
-        body="No accuracy rows were returned from the accuracy table."
+      <DataGate
+        state={state}
+        missingEnvBody="Set SUPABASE_URL and SUPABASE_ANON_KEY to enable the performance route."
+        errorTitle="Performance query failed"
+        emptyTitle="No accuracy rows available"
+        emptyBody="No accuracy rows were returned from the accuracy table."
       />
     );
   }

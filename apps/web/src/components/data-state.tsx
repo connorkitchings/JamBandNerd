@@ -4,6 +4,7 @@ type Props = {
   headingLevel?: "h1" | "h2";
 };
 
+// Default to h1 for full-page states; embedded states must opt down to h2.
 export function DataState({ title, body, headingLevel = "h1" }: Props) {
   const Heading = headingLevel;
 

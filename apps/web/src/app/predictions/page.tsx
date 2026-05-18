@@ -2,9 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { DashboardSideNav } from "@/components/dashboard-side-nav";
+import { DataGate } from "@/components/data-gate";
 import { DataState } from "@/components/data-state";
 import { LiveTracker } from "@/components/live-tracker";
-import { PredictionHero } from "@/components/prediction-hero";
+import { PredictionHero, PredictionHeroMetrics } from "@/components/prediction-hero";
 import { SharePredictionsButton } from "@/components/share-predictions-button";
 import { SongBoard } from "@/components/song-board";
 import { SongSearch } from "@/components/song-search";
@@ -85,33 +86,16 @@ export default async function PredictionsPage({ searchParams }: Props) {
     bandsResult.status === "ready" ? bandSelection.bandEntry?.slug : params.band;
   const predictionState = await getLatestPredictions(selectedBand);
 
-  if (predictionState.status === "missing_env") {
+  if (predictionState.status !== "ready") {
     return (
-      <div className="mx-auto max-w-6xl">
-        <DataState
-          title="Supabase environment required"
-          body="Set SUPABASE_URL and SUPABASE_ANON_KEY to enable server-side prediction reads in the website."
-        />
-      </div>
-    );
-  }
-
-  if (predictionState.status === "error") {
-    return (
-      <div className="mx-auto max-w-6xl">
-        <DataState title="Prediction query failed" body={predictionState.message} />
-      </div>
-    );
-  }
-
-  if (predictionState.status === "empty") {
-    return (
-      <div className="mx-auto max-w-6xl">
-        <DataState
-          title="No predictions available"
-          body="No latest prediction snapshot was found for the selected band."
-        />
-      </div>
+      <DataGate
+        state={predictionState}
+        className="mx-auto max-w-6xl"
+        missingEnvBody="Set SUPABASE_URL and SUPABASE_ANON_KEY to enable server-side prediction reads in the website."
+        errorTitle="Prediction query failed"
+        emptyTitle="No predictions available"
+        emptyBody="No latest prediction snapshot was found for the selected band."
+      />
     );
   }
 
@@ -229,6 +213,8 @@ export default async function PredictionsPage({ searchParams }: Props) {
         locationLabel={locationLabel}
         statusLabel={statusLabel}
         snapshotLabel={snapshotLabel}
+      />
+      <PredictionHeroMetrics
         performanceWindowLabel={performanceWindowLabel}
         precisionCards={precisionCards}
       />

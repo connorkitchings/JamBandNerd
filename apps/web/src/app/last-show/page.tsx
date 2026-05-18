@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { DataGate } from "@/components/data-gate";
 import { DataState } from "@/components/data-state";
 import { FilterLinks } from "@/components/filter-links";
 import { PageHero } from "@/components/page-hero";
@@ -57,24 +58,14 @@ export default async function LastShowPage({ searchParams }: Props) {
     bandsResult.status === "ready" ? bandSelection.bandEntry?.slug : params.band;
   const state = await getLastShowSetlist(selectedBand);
 
-  if (state.status === "missing_env") {
+  if (state.status !== "ready") {
     return (
-      <DataState
-        title="Supabase environment required"
-        body="Set SUPABASE_URL and SUPABASE_ANON_KEY to enable the last-show route."
-      />
-    );
-  }
-
-  if (state.status === "error") {
-    return <DataState title="Last-show query failed" body={state.message} />;
-  }
-
-  if (state.status === "empty") {
-    return (
-      <DataState
-        title="No last show available"
-        body="No completed show with setlist data was found for the selected band."
+      <DataGate
+        state={state}
+        missingEnvBody="Set SUPABASE_URL and SUPABASE_ANON_KEY to enable the last-show route."
+        errorTitle="Last-show query failed"
+        emptyTitle="No last show available"
+        emptyBody="No completed show with setlist data was found for the selected band."
       />
     );
   }
