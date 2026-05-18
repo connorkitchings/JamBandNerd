@@ -87,6 +87,31 @@ BILLY_FAST_V9_FEATURE_COLS: list[str] = [
     "notebook_rank_score",
 ]
 
+BILLY_FAST_V11_FEATURE_COLS: list[str] = [
+    *BILLY_FAST_V2_FEATURE_COLS,
+    "overdue_ratio",
+    "avg_ltp_recent",
+    "ltp_diff_recent",
+    "is_very_recent",
+]
+
+BILLY_FAST_V12_FEATURE_COLS: list[str] = [
+    "gap_shows",
+    "plays_past_10",
+    "plays_past_25",
+    "plays_past_50_scaled",
+    "career_play_pct",
+    "month_play_rate",
+    "is_cover",
+    "tour_position",
+    "diff_25_to_50",
+    "show_position_in_run",
+    "same_venue_run_position",
+    "overdue_ratio",
+    "avg_ltp_recent",
+    "ltp_diff_recent",
+]
+
 BILLY_FAST_V5_FEATURE_COLS: list[str] = [
     *BILLY_FAST_V3_FEATURE_COLS,
     "gap_percentile",
@@ -1404,9 +1429,191 @@ class BillyFastPredictorV10(BillyFastPredictorV3):
     _LGB_PARAMS: dict[str, Any] = _BILLY_FAST_V10_LGB_PARAMS
 
 
+# ── BillyFastPredictorV11 ─────────────────────────────────────────────────────
+
+
+class BillyFastPredictorV11(BillyFastPredictorV2):
+    """BillyFast V11 — removes plays_past_3/5, adds is_very_recent binary penalty.
+
+    Extends V2 (11 features) with overdue_ratio, avg_ltp_recent, ltp_diff_recent
+    from V3, plus a new is_very_recent binary feature (1.0 if gap ≤ 3).
+    Removes plays_past_3 and plays_past_5 which reinforce "hot" for gap=1 songs
+    instead of penalizing recency.
+
+    Total: 15 features. Same HP params as V10 (leaves=15, min_leaf=10).
+    """
+
+    MODEL_VERSION = "billy_fast_gbm_v11_recent_penalty"
+    _FEATURE_COLS: list[str] = BILLY_FAST_V11_FEATURE_COLS
+    _LGB_PARAMS: dict[str, Any] = _BILLY_FAST_V10_LGB_PARAMS
+
+    def _extra_training_row_features(
+        self,
+        *,
+        eligible_songs: pd.Index,
+        j: int,
+        target_date: Any,
+        gap_e: pd.Series,
+        career_pct: pd.Series,
+        p25: pd.Series,
+        p50: pd.Series,
+        cache: dict,
+        plays: pd.DataFrame,
+        target_show_index: int,
+    ) -> dict:
+        v2 = super()._extra_training_row_features(
+            eligible_songs=eligible_songs,
+            j=j,
+            target_date=target_date,
+            gap_e=gap_e,
+            career_pct=career_pct,
+            p25=p25,
+            p50=p50,
+            cache=cache,
+            plays=plays,
+            target_show_index=target_show_index,
+        )
+        window = max(1, min(25, j))
+        avg_ltp = window / p25.clip(lower=1).values
+        return {
+            **v2,
+            "overdue_ratio": (gap_e * career_pct).values,
+            "avg_ltp_recent": avg_ltp,
+            "ltp_diff_recent": gap_e.values - avg_ltp,
+            "is_very_recent": (gap_e.values <= 3).astype(float),
+        }
+
+    def _extra_predict_features(
+        self,
+        *,
+        eligible_songs: pd.Index,
+        n_shows: int,
+        ref_date: pd.Timestamp,
+        gap_e: pd.Series,
+        career_pct: pd.Series,
+        p25: pd.Series,
+        p50: pd.Series,
+        cache: dict,
+        plays: pd.DataFrame,
+        target_show_context: Any,
+    ) -> dict:
+        v2 = super()._extra_predict_features(
+            eligible_songs=eligible_songs,
+            n_shows=n_shows,
+            ref_date=ref_date,
+            gap_e=gap_e,
+            career_pct=career_pct,
+            p25=p25,
+            p50=p50,
+            cache=cache,
+            plays=plays,
+            target_show_context=target_show_context,
+        )
+        window = max(1, min(25, n_shows))
+        avg_ltp = window / p25.clip(lower=1).values
+        return {
+            **v2,
+            "overdue_ratio": (gap_e * career_pct).values,
+            "avg_ltp_recent": avg_ltp,
+            "ltp_diff_recent": gap_e.values - avg_ltp,
+            "is_very_recent": (gap_e.values <= 3).astype(float),
+        }
+
+
+class BillyFastPredictorV12(BillyFastPredictorV2):
+    """BillyFast V12 — scales plays_past_50 by gap to penalize recently-played songs.
+
+    Replaces raw plays_past_50 with plays_past_50_scaled = plays_past_50 * min(gap/4, 1.0).
+    This directly encodes the domain knowledge that Billy Strings is extremely unlikely
+    to play songs with gap 1-3, without requiring the model to learn the interaction
+    between gap_shows and plays_past_50 (which shallow trees struggle with).
+
+    Removes plays_past_3/5 (redundant with small gaps) and is_very_recent (ignored by model).
+    Total: 14 features. Same HP params as V10 (leaves=15, min_leaf=10).
+    """
+
+    MODEL_VERSION = "billy_fast_gbm_v12_gap_scaled_p50"
+    _FEATURE_COLS: list[str] = BILLY_FAST_V12_FEATURE_COLS
+    _LGB_PARAMS: dict[str, Any] = _BILLY_FAST_V10_LGB_PARAMS
+
+    def _extra_training_row_features(
+        self,
+        *,
+        eligible_songs: pd.Index,
+        j: int,
+        target_date: Any,
+        gap_e: pd.Series,
+        career_pct: pd.Series,
+        p25: pd.Series,
+        p50: pd.Series,
+        cache: dict,
+        plays: pd.DataFrame,
+        target_show_index: int,
+    ) -> dict:
+        v2 = super()._extra_training_row_features(
+            eligible_songs=eligible_songs,
+            j=j,
+            target_date=target_date,
+            gap_e=gap_e,
+            career_pct=career_pct,
+            p25=p25,
+            p50=p50,
+            cache=cache,
+            plays=plays,
+            target_show_index=target_show_index,
+        )
+        window = max(1, min(25, j))
+        avg_ltp = window / p25.clip(lower=1).values
+        p50_scaled = (p50 * (gap_e / 4.0).clip(upper=1.0)).values
+        return {
+            **v2,
+            "overdue_ratio": (gap_e * career_pct).values,
+            "avg_ltp_recent": avg_ltp,
+            "ltp_diff_recent": gap_e.values - avg_ltp,
+            "plays_past_50_scaled": p50_scaled,
+        }
+
+    def _extra_predict_features(
+        self,
+        *,
+        eligible_songs: pd.Index,
+        n_shows: int,
+        ref_date: pd.Timestamp,
+        gap_e: pd.Series,
+        career_pct: pd.Series,
+        p25: pd.Series,
+        p50: pd.Series,
+        cache: dict,
+        plays: pd.DataFrame,
+        target_show_context: Any,
+    ) -> dict:
+        v2 = super()._extra_predict_features(
+            eligible_songs=eligible_songs,
+            n_shows=n_shows,
+            ref_date=ref_date,
+            gap_e=gap_e,
+            career_pct=career_pct,
+            p25=p25,
+            p50=p50,
+            cache=cache,
+            plays=plays,
+            target_show_context=target_show_context,
+        )
+        window = max(1, min(25, n_shows))
+        avg_ltp = window / p25.clip(lower=1).values
+        p50_scaled = (p50 * (gap_e / 4.0).clip(upper=1.0)).values
+        return {
+            **v2,
+            "overdue_ratio": (gap_e * career_pct).values,
+            "avg_ltp_recent": avg_ltp,
+            "ltp_diff_recent": gap_e.values - avg_ltp,
+            "plays_past_50_scaled": p50_scaled,
+        }
+
+
 # Accepted Billy baseline. Historical experiment class names remain importable so
 # prior backtest artifacts and diagnostic commands keep their original meaning.
-BillyFastBaselinePredictor = BillyFastPredictorV10
+BillyFastBaselinePredictor = BillyFastPredictorV12
 
 
 # ── V10 experiment subclasses ─────────────────────────────────────────────────
