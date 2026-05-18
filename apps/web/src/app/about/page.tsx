@@ -115,9 +115,10 @@ export default function AboutPage() {
       {/* FAQ */}
       <SectionCard title="FAQ">
         <div className="space-y-4">
-          {FAQ_ITEMS.map((item) => (
+          {FAQ_ITEMS.map((item, index) => (
             <details
               key={item.question}
+              open={index === 0}
               className="group editorial-chip rounded-[1.5rem]"
             >
               <summary className="flex cursor-pointer list-none items-start justify-between gap-3 px-5 py-4 font-headline text-sm font-medium text-on-surface transition group-open:text-primary">

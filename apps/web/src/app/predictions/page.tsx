@@ -144,6 +144,12 @@ export default async function PredictionsPage({ searchParams }: Props) {
   const isLiveShow = isShowTonight(heroDate);
   const displayState = getPredictionDisplayState(heroDate);
   const statusLabel = getPredictionStatusLabel(heroDate);
+  const boardStateCopy =
+    displayState === "tonight"
+      ? "by tier to understand how the board is clustering tonight."
+      : displayState === "next"
+        ? "by tier to understand how the next-show board is shaping up."
+        : "by tier to review what the model expected for that show.";
   const snapshotLabel = formatTimestampLabel(predictionState.snapshot.predictedAt);
   const accuracyRows = accuracyState.status === "ready" ? accuracyState.rows : [];
   const performanceWindowLabel =
@@ -192,13 +198,14 @@ export default async function PredictionsPage({ searchParams }: Props) {
         bands={bands}
       />
 
-      {heroDate && isLiveShow && process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY && (
+      {heroDate &&
+        isLiveShow &&
+        process.env.NEXT_PUBLIC_SUPABASE_URL &&
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY && (
         <LiveTracker
           band={predictionState.band}
           targetShowKey={predictionState.snapshot.targetShowKey}
           targetShowDate={heroDate}
-          supabaseUrl={process.env.SUPABASE_URL}
-          supabaseAnonKey={process.env.SUPABASE_ANON_KEY}
         />
       )}
 
@@ -226,8 +233,8 @@ export default async function PredictionsPage({ searchParams }: Props) {
         precisionCards={precisionCards}
       />
 
-      <section>
-        <div className="editorial-panel px-4 py-5 sm:px-6 sm:py-6 md:px-7">
+      <section className="px-1">
+        <div className="px-3 py-2 sm:px-4 md:px-5">
           <div className="relative flex items-start justify-between gap-4">
             <div>
               <p className="font-label text-[10px] uppercase tracking-[0.24em] text-primary">
@@ -238,7 +245,7 @@ export default async function PredictionsPage({ searchParams }: Props) {
               </h2>
               <p className="mt-3 text-sm leading-7 text-on-surface-variant">
                 All ranked predictions for {bandName}. Use the search first, then scan
-                by tier to understand how the board is clustering tonight.
+                {` ${boardStateCopy}`}
               </p>
             </div>
             <div className="shrink-0 pt-1">

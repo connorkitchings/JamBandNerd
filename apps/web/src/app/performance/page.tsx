@@ -89,12 +89,28 @@ export default async function PerformancePage({ searchParams }: Props) {
   const k = normalizeK(params.k);
   const activeMetric = k === "all" ? null : k;
 
-  const top10Average = average(state.rows.map((row) => row.recall10));
-  const top25Average = average(state.rows.map((row) => row.recall25));
-  const top50Average = average(state.rows.map((row) => row.recall50));
-  const p10Average = average(state.rows.map((row) => row.p10));
-  const p25Average = average(state.rows.map((row) => row.p25));
-  const p50Average = average(state.rows.map((row) => row.p50));
+  const recall10Values: Array<number | null> = [];
+  const recall25Values: Array<number | null> = [];
+  const recall50Values: Array<number | null> = [];
+  const p10Values: Array<number | null> = [];
+  const p25Values: Array<number | null> = [];
+  const p50Values: Array<number | null> = [];
+
+  for (const row of state.rows) {
+    recall10Values.push(row.recall10);
+    recall25Values.push(row.recall25);
+    recall50Values.push(row.recall50);
+    p10Values.push(row.p10);
+    p25Values.push(row.p25);
+    p50Values.push(row.p50);
+  }
+
+  const top10Average = average(recall10Values);
+  const top25Average = average(recall25Values);
+  const top50Average = average(recall50Values);
+  const p10Average = average(p10Values);
+  const p25Average = average(p25Values);
+  const p50Average = average(p50Values);
   const latestRow = state.rows[0] ?? null;
   const recentRows = state.rows.slice(0, 5);
 
@@ -111,7 +127,7 @@ export default async function PerformancePage({ searchParams }: Props) {
         eyebrow=""
         title={`${bandName} performance ledger`}
         meta={`last ${state.rows.length} scored shows`}
-        description="Track how much of each setlist the model's top-ranked groups actually capture. This is the long-view read on stability, slippage, and standout nights."
+        description="Track how much of each setlist the model's top-ranked groups actually capture. This is the long-view read on stability, variation, and standout nights."
         aside={
           <div className="editorial-panel p-5">
             <div className="space-y-1 text-center">

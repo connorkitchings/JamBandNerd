@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { formatTop10Text } from "../../src/lib/format-predictions-text.ts";
-import type { PredictionRow } from "../../src/lib/data.ts";
+import type { PredictionRow } from "../../src/lib/data/index.ts";
 
 function buildRow(songName: string, rank: number): PredictionRow {
   return {

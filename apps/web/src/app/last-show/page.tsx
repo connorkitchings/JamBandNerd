@@ -16,6 +16,7 @@ import {
   resolveBandSelection,
 } from "@/lib/data";
 import { buildLocationLabel, formatDateLabel } from "@/lib/format";
+import { computeTopKHits, normalizeSongName } from "@/lib/song-board-core";
 
 export const dynamic = "force-dynamic";
 
@@ -36,10 +37,6 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
     title: `${bandName} Last Show Setlist | JamBandNerd`,
     description: `View the setlist from the most recent ${bandName} show and compare it to the prediction snapshot.`,
   };
-}
-
-function normalizeSongName(value: string) {
-  return value.trim().toLowerCase();
 }
 
 export default async function LastShowPage({ searchParams }: Props) {
@@ -103,9 +100,9 @@ export default async function LastShowPage({ searchParams }: Props) {
   const actualSongs = new Set(
     state.setlist.songs.map((song) => normalizeSongName(song.songName)),
   );
-  const replayHits = predictionRows
-    .slice(0, 10)
-    .filter((row) => actualSongs.has(normalizeSongName(row.songName)));
+  const top10Hits = computeTopKHits(predictionRows, actualSongs, 10);
+  const top25Hits = computeTopKHits(predictionRows, actualSongs, 25);
+  const top50Hits = computeTopKHits(predictionRows, actualSongs, 50);
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
@@ -133,7 +130,7 @@ export default async function LastShowPage({ searchParams }: Props) {
               </p>
               <p className="mt-3 font-headline text-2xl font-semibold text-primary">
                 {predictionState.status === "ready"
-                  ? `${replayHits.length}/${Math.min(10, predictionRows.length || 10)}`
+                  ? `${top10Hits}/${Math.min(10, predictionRows.length || 10)}`
                   : "—"}
               </p>
             </div>
@@ -180,7 +177,11 @@ export default async function LastShowPage({ searchParams }: Props) {
                   Hits
                 </p>
                 <p className="mt-2 text-sm text-on-surface">
-                  {replayHits.length} of the top 10 landed in the actual setlist
+                  Top 10: {top10Hits}/{Math.min(10, predictionRows.length || 10)}
+                  {" · "}
+                  Top 25: {top25Hits}/{Math.min(25, predictionRows.length || 25)}
+                  {" · "}
+                  Top 50: {top50Hits}/{Math.min(50, predictionRows.length || 50)}
                 </p>
               </div>
               <div className="rounded-xl border border-outline-variant/20 bg-surface-container-low p-4">
@@ -196,6 +197,7 @@ export default async function LastShowPage({ searchParams }: Props) {
           <DataState
             title="No prediction snapshot available"
             body="A completed show was found, but there was no prediction snapshot stored for the same date."
+            headingLevel="h2"
           />
         )}
       </SectionCard>

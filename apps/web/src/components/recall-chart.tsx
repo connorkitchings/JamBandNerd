@@ -35,12 +35,7 @@ function buildPath(points: Array<{ index: number; value: number }>, plotWidth: n
           `${i === 0 ? "M" : "L"} ${xPos(point.index, totalPoints).toFixed(1)} ${yPos(point.value).toFixed(1)}`,
         )
         .join(" "),
-    areaPath: (totalPoints: number) => {
-      const linePath = points
-        .map((point, i) =>
-          `${i === 0 ? "M" : "L"} ${xPos(point.index, totalPoints).toFixed(1)} ${yPos(point.value).toFixed(1)}`,
-        )
-        .join(" ");
+    areaPath: (totalPoints: number, linePath: string) => {
       return `${linePath} L ${xPos(points[points.length - 1]?.index ?? 0, totalPoints).toFixed(1)} ${(PADDING.top + plotHeight).toFixed(1)} L ${xPos(points[0]?.index ?? 0, totalPoints).toFixed(1)} ${(PADDING.top + plotHeight).toFixed(1)} Z`;
     },
     xPos,
@@ -51,10 +46,20 @@ function buildPath(points: Array<{ index: number; value: number }>, plotWidth: n
 export function RecallChart({ rows, k = 10 }: Props) {
   const chronological = [...rows].reverse();
   const totalRows = chronological.length;
+  const top10Values: Array<{ index: number; date: string | null; value: number | null }> = [];
+  const top25Values: Array<{ index: number; date: string | null; value: number | null }> = [];
+  const top50Values: Array<{ index: number; date: string | null; value: number | null }> = [];
+
+  chronological.forEach((row, index) => {
+    top10Values.push({ index, date: row.showDate, value: row.recall10 });
+    top25Values.push({ index, date: row.showDate, value: row.recall25 });
+    top50Values.push({ index, date: row.showDate, value: row.recall50 });
+  });
+
   const seriesEntries = [
-    { key: 10 as const, label: "Top 10", color: getStrokeColor(10), values: chronological.map((row, index) => ({ index, date: row.showDate, value: row.recall10 })) },
-    { key: 25 as const, label: "Top 25", color: getStrokeColor(25), values: chronological.map((row, index) => ({ index, date: row.showDate, value: row.recall25 })) },
-    { key: 50 as const, label: "Top 50", color: getStrokeColor(50), values: chronological.map((row, index) => ({ index, date: row.showDate, value: row.recall50 })) },
+    { key: 10 as const, label: "Top 10", color: getStrokeColor(10), values: top10Values },
+    { key: 25 as const, label: "Top 25", color: getStrokeColor(25), values: top25Values },
+    { key: 50 as const, label: "Top 50", color: getStrokeColor(50), values: top50Values },
   ] as const;
 
   const visibleSeries = (k === "all" ? seriesEntries : seriesEntries.filter((entry) => entry.key === k))
@@ -101,7 +106,7 @@ export function RecallChart({ rows, k = 10 }: Props) {
     PADDING.top + plotHeight - ((clamp(value, yMin, yMax) - yMin) / (yMax - yMin)) * plotHeight;
 
   return (
-    <div className="w-full overflow-x-auto">
+    <div className="mx-auto w-full max-w-[900px] overflow-x-auto">
       {k === "all" ? (
         <div className="mb-4 flex flex-wrap gap-3">
           {visibleSeries.map((series) => (
@@ -171,7 +176,7 @@ export function RecallChart({ rows, k = 10 }: Props) {
         {visibleSeries.map((series) => {
           const pathTools = buildPath(series.points, plotWidth, plotHeight, yMin, yMax);
           const linePath = pathTools.linePath(totalRows);
-          const areaPath = pathTools.areaPath(totalRows);
+          const areaPath = pathTools.areaPath(totalRows, linePath);
           return (
             <g key={`series-${series.key}`}>
               {k !== "all" ? (

@@ -39,19 +39,19 @@ function buildSetGroups(songs: SetlistSong[]) {
 }
 
 function getGridClassName(setCount: number) {
-  if (setCount === 1) {
-    return "grid-cols-1";
+  switch (setCount) {
+    case 0:
+    case 1:
+      return "grid-cols-1";
+    case 2:
+      return "grid-cols-1 md:grid-cols-2";
+    case 3:
+      return "grid-cols-1 md:grid-cols-3";
+    case 4:
+      return "grid-cols-1 md:grid-cols-2 xl:grid-cols-4";
+    default:
+      return "grid-cols-1 md:grid-cols-2 xl:grid-cols-3";
   }
-
-  if (setCount === 2) {
-    return "grid-cols-1 md:grid-cols-2";
-  }
-
-  if (setCount === 3) {
-    return "grid-cols-1 md:grid-cols-3";
-  }
-
-  return "grid-cols-1 md:grid-cols-2 xl:grid-cols-4";
 }
 
 function SetGroupCard({
@@ -90,54 +90,12 @@ function SetGroupCard({
   );
 }
 
-function MobileSetlistFlow({
-  groups,
-}: {
-  groups: SetGroup[];
-}) {
-  return (
-    <div className="space-y-4 md:hidden">
-      {groups.map((setGroup) => (
-        <section
-          key={setGroup.key}
-          className="rounded-[1.35rem] border border-outline-variant/20 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(17,23,35,0.5))] px-4 py-4 shadow-[0_16px_40px_rgba(0,0,0,0.14)]"
-        >
-          <div className="flex items-center gap-3">
-            <div className="flex w-[3.75rem] shrink-0 flex-col justify-center text-right">
-              <p className="font-label text-[10px] uppercase tracking-[0.18em] text-on-surface-variant">
-                {setGroup.label}
-              </p>
-              <p className="mt-1 font-label text-[9px] uppercase tracking-[0.16em] text-on-surface-variant/80">
-                {setGroup.songs.length} songs
-              </p>
-            </div>
-
-            <div className="min-w-0 flex-1 border-l border-outline-variant/15 pl-4 text-sm leading-7 text-on-surface">
-              {setGroup.songs.map((song, index) => (
-                <span
-                  key={`${setGroup.key}-${song.position ?? index}-${song.songName}`}
-                  className="break-words"
-                >
-                  <span className="font-headline font-medium">{song.songName}</span>
-                  {index < setGroup.songs.length - 1 ? (
-                    <span className="pr-1 text-on-surface-variant">, </span>
-                  ) : null}
-                </span>
-              ))}
-            </div>
-          </div>
-        </section>
-      ))}
-    </div>
-  );
-}
-
 export function SetlistColumns({ songs }: Props) {
   const { regularSets, encoreSongs } = buildSetGroups(songs);
-  const mobileGroups = [...regularSets];
+  const groups = [...regularSets];
 
   if (encoreSongs.length > 0) {
-    mobileGroups.push({
+    groups.push({
       key: "encore",
       label: "Encore",
       songs: encoreSongs,
@@ -145,26 +103,14 @@ export function SetlistColumns({ songs }: Props) {
   }
 
   return (
-    <div className="space-y-5">
-      {mobileGroups.length > 0 ? <MobileSetlistFlow groups={mobileGroups} /> : null}
-
-      {regularSets.length > 0 ? (
-        <div className={`hidden gap-4 md:grid ${getGridClassName(regularSets.length)}`}>
-          {regularSets.map((setGroup) => (
-            <SetGroupCard
-              key={setGroup.key}
-              label={setGroup.label}
-              songs={setGroup.songs}
-            />
-          ))}
-        </div>
-      ) : null}
-
-      {encoreSongs.length > 0 ? (
-        <div className="hidden md:block">
-          <SetGroupCard label="Encore" songs={encoreSongs} />
-        </div>
-      ) : null}
+    <div className={`grid gap-4 ${getGridClassName(groups.length)}`}>
+      {groups.map((setGroup) => (
+        <SetGroupCard
+          key={setGroup.key}
+          label={setGroup.label}
+          songs={setGroup.songs}
+        />
+      ))}
     </div>
   );
 }

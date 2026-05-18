@@ -235,7 +235,8 @@ function TierMobileList({
               </span>
               <div className="min-w-0 flex-1">
                 <p
-                  className={`font-headline text-sm font-medium ${isHighlighted ? "text-green-300" : "text-on-surface"}`}
+                  className={`truncate font-headline text-sm font-medium ${isHighlighted ? "text-green-300" : "text-on-surface"}`}
+                  title={row.songName}
                 >
                   {row.songName}
                   {isHighlighted ? (

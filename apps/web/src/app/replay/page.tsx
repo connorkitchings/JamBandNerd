@@ -23,6 +23,11 @@ import {
   formatPercent,
   formatTimestampLabel,
 } from "@/lib/format";
+import {
+  computeTopKHits,
+  computeTopKRecall,
+  normalizeSongName,
+} from "@/lib/song-board-core";
 
 export const dynamic = "force-dynamic";
 
@@ -50,28 +55,6 @@ export async function generateMetadata({
     title: `${bandName} Replay${dateLabel} | JamBandNerd`,
     description: `Review a retained ${bandName} prediction board against the actual setlist for a completed show.`,
   };
-}
-
-function normalizeSongName(value: string) {
-  return value.trim().toLowerCase();
-}
-
-function computeTopKHits(rows: Array<{ songName: string }>, actualSongs: Set<string>, k: number) {
-  return rows
-    .slice(0, k)
-    .filter((row) => actualSongs.has(normalizeSongName(row.songName))).length;
-}
-
-function computeTopKRecall(
-  rows: Array<{ songName: string }>,
-  actualSongs: Set<string>,
-  k: number,
-) {
-  if (actualSongs.size === 0) {
-    return null;
-  }
-
-  return computeTopKHits(rows, actualSongs, k) / actualSongs.size;
 }
 
 export default async function ReplayPage({ searchParams }: Props) {
@@ -267,6 +250,7 @@ export default async function ReplayPage({ searchParams }: Props) {
             <DataState
               title="No setlist found"
               body="A retained prediction snapshot exists, but the matching setlist payload was not found."
+              headingLevel="h2"
             />
           )}
         </SectionCard>

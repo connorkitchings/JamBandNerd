@@ -12,6 +12,15 @@ Comprehensive review of every page and component in `apps/web/`. File references
 | **DRIFT** | Content, copy, or UX inconsistency — degrades trust |
 | **FRICTION** | Developer experience or maintainability concern |
 
+## Implementation Status: 2026-05-18
+
+All launch punch-list items have been addressed for local V1 readiness.
+
+- Items #2–37 were implemented in the web app, docs, or tests.
+- Item #1 was intentionally kept as `src/proxy.ts`: Next.js 16.2 recognizes and prefers `proxy.ts`; renaming to `middleware.ts` introduces a framework deprecation warning.
+- Local checks completed during implementation: `npm run test:web:unit`, `npm run lint:web`, `npm run build:web`, and `npm run test:web:smoke:list`.
+- Final deployment remains prepare-only: no push, PR, merge, hosted smoke, or production deploy was performed from this pass.
+
 ## Independent Follow-Up: 2026-05-17
 
 Fresh route-level review covered `/`, `/predictions`, `/performance`, `/replay`, `/last-show`, `/about`, `/contact`, `/data-use`, `/admin/setlist`, `/preview/tables`, and removed routes `/compare` and `/explorer` at desktop and mobile sizes. The review intentionally happened before reading this punch list.

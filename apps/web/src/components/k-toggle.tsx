@@ -36,7 +36,7 @@ export function KToggle({ currentK }: Props) {
           key={value}
           onClick={() => setK(value)}
           onKeyDown={(e) => handleKeyDown(e, value)}
-          className={`touch-manipulation min-h-11 rounded px-3 py-1.5 font-label text-[10px] uppercase tracking-wider transition-colors ${
+          className={`touch-manipulation min-h-11 rounded px-3 py-1.5 font-label text-[10px] uppercase tracking-wider transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none ${
             currentK === value
               ? "bg-primary/20 text-primary ring-1 ring-primary/40"
               : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"

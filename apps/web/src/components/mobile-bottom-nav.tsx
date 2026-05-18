@@ -21,7 +21,7 @@ export function MobileBottomNav() {
               key={item.href}
               href={item.href}
               aria-label={item.mobileLabel}
-              className={`touch-manipulation flex min-h-12 flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[10px] uppercase tracking-[0.12rem] transition ${
+              className={`touch-manipulation flex min-h-12 flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[10px] uppercase tracking-[0.12rem] transition focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none ${
                 isActive
                   ? "bg-primary/12 text-primary shadow-[inset_0_0_0_1px_rgba(255,191,105,0.14)]"
                   : "text-on-background/55 hover:bg-surface/70 hover:text-on-background"

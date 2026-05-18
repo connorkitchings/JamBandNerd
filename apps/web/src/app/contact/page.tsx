@@ -49,11 +49,6 @@ export default function ContactPage() {
           </ul>
         </SectionCard>
       </div>
-
-      <p className="text-center text-xs text-on-surface-variant">
-        By submitting data corrections, you grant JamBandNerd a non-exclusive license to use
-        that factual information to improve our models.
-      </p>
     </div>
   );
 }

@@ -40,6 +40,8 @@ A cloud-based data platform for collecting, transforming, and predicting jam ban
     ```bash
     SUPABASE_URL=your_supabase_url
     SUPABASE_ANON_KEY=your_supabase_anon_key
+    NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+    NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
     ```
 
 ## Usage

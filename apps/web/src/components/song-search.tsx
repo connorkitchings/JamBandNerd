@@ -74,6 +74,8 @@ export function SongSearch({ songs }: Props) {
             placeholder="Will they play…?"
             className="w-full rounded-xl border border-outline-variant/30 bg-surface-container py-3.5 pl-11 pr-12 font-headline text-sm text-on-surface placeholder:text-on-surface-variant/50 transition focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
             aria-label="Search for a song"
+            autoComplete="off"
+            spellCheck={false}
           />
           <button
             type="button"
@@ -85,7 +87,7 @@ export function SongSearch({ songs }: Props) {
               }
               setIsOpen(false);
             }}
-            className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-on-surface-variant transition hover:text-on-surface"
+            className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-on-surface-variant transition hover:text-on-surface focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
             aria-label={query ? "Clear search" : "Close search"}
           >
             ✕
@@ -128,6 +130,14 @@ export function SongSearch({ songs }: Props) {
                 );
               })}
             </ul>
+        </div>
+      )}
+      {isOpen && showResults && results.length === 0 && (
+        <div className="absolute inset-x-0 top-full z-20 mt-2 rounded-xl border border-outline-variant/30 bg-surface-container-high px-4 py-4 shadow-xl">
+          <p className="font-headline text-sm text-on-surface">No songs found</p>
+          <p className="mt-1 text-xs leading-5 text-on-surface-variant">
+            Try a shorter title or check the full prediction board.
+          </p>
         </div>
       )}
     </div>

@@ -8,7 +8,7 @@ export type {
   SetlistSong,
   SetlistSnapshot,
   ShowDetails,
-} from "./data/types";
+} from "./types";
 
 // --- Parsers (pure utilities) ---
 export {
@@ -24,7 +24,7 @@ export {
   parseNumber,
   parsePredictions,
   parseStringArray,
-} from "./data/parsers";
+} from "./parsers";
 
 // --- Bands ---
 export {
@@ -34,17 +34,17 @@ export {
   getClientOrState,
   isValidBandSlug,
   resolveBandSelection,
-} from "./data/bands";
+} from "./bands";
 
 // --- Predictions ---
 export {
   getLatestPredictions,
   getPredictionDates,
   getPredictionsForDate,
-} from "./data/predictions";
+} from "./predictions";
 
 // --- Accuracy ---
-export { getRecentAccuracy } from "./data/accuracy";
+export { getRecentAccuracy } from "./accuracy";
 
 // --- Shows ---
 export {
@@ -53,4 +53,4 @@ export {
   getNextShowDetails,
   getSetlistForDate,
   getShowDetailsByDate,
-} from "./data/shows";
+} from "./shows";

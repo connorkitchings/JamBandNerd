@@ -94,8 +94,8 @@ export function PredictionHero({
   performanceWindowLabel,
   precisionCards,
 }: Props) {
-  const headlineLocation = locationLabel || venueName;
-  const dateDetail = locationLabel && venueName ? `${dateLabel} • ${venueName}` : dateLabel;
+  const headlineLocation = venueName || locationLabel;
+  const dateDetail = [dateLabel, locationLabel].filter(Boolean).join(" • ");
 
   return (
     <section className="mb-10">

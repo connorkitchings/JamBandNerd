@@ -12,7 +12,7 @@ import { buildLocationLabel, formatDateLabel } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
-const HOME_TEASER_BANDS = [
+const HOME_TEASER_FALLBACK_BANDS = [
   { slug: "phish", label: "Phish", fallbackName: "Phish" },
   { slug: "wsp", label: "WSP", fallbackName: "Widespread Panic" },
   { slug: "billy", label: "Billy", fallbackName: "Billy Strings" },
@@ -59,10 +59,17 @@ export default async function HomePage({ searchParams }: Props) {
 
   const bandsResult = await getBands();
   const bands = bandsResult.status === "ready" ? bandsResult.bands : [];
+  const teaserBands =
+    bands.length > 0
+      ? bands.slice(0, 4).map((band) => ({
+          slug: band.slug,
+          label: band.displayName,
+          fallbackName: band.displayName,
+        }))
+      : HOME_TEASER_FALLBACK_BANDS;
   const requestedTeaser = params.teaser?.trim().toLowerCase();
   const teaserConfig =
-    HOME_TEASER_BANDS.find((band) => band.slug === requestedTeaser) ??
-    HOME_TEASER_BANDS[0];
+    teaserBands.find((band) => band.slug === requestedTeaser) ?? teaserBands[0];
   const teaserBandSlug = teaserConfig.slug;
   const teaserBandEntry = bands.find((band) => band.slug === teaserBandSlug) ?? {
     slug: teaserBandSlug,
@@ -96,16 +103,16 @@ export default async function HomePage({ searchParams }: Props) {
             <p className="mt-5 max-w-2xl text-lg leading-relaxed text-on-surface-variant">
               We rank the songs each band might play at the next show. It&apos;s an educated guess — sometimes right, sometimes not — but always worth checking.
             </p>
-            <div className="mt-8 hidden gap-4 md:grid md:max-w-3xl md:grid-cols-2">
+            <div className="mt-8 grid gap-3 sm:max-w-3xl sm:grid-cols-2 md:gap-4">
               <Link
                 href="/predictions"
-                className="inline-flex w-full items-center justify-center rounded-full border border-outline-variant/35 bg-surface/70 px-6 py-3.5 text-center font-headline text-sm font-medium uppercase tracking-[0.14rem] text-on-surface transition hover:border-primary/35 hover:bg-surface-container-low hover:text-primary"
+                className="inline-flex w-full items-center justify-center rounded-full border border-outline-variant/35 bg-surface/70 px-6 py-3.5 text-center font-headline text-sm font-medium uppercase tracking-[0.14rem] text-on-surface transition hover:border-primary/35 hover:bg-surface-container-low hover:text-primary focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
               >
                 View Predictions
               </Link>
               <Link
                 href="/performance"
-                className="inline-flex w-full items-center justify-center rounded-full border border-outline-variant/35 bg-surface/70 px-6 py-3.5 text-center font-headline text-sm font-medium uppercase tracking-[0.14rem] text-on-surface transition hover:border-primary/35 hover:bg-surface-container-low hover:text-primary"
+                className="inline-flex w-full items-center justify-center rounded-full border border-outline-variant/35 bg-surface/70 px-6 py-3.5 text-center font-headline text-sm font-medium uppercase tracking-[0.14rem] text-on-surface transition hover:border-primary/35 hover:bg-surface-container-low hover:text-primary focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
               >
                 See Performance
               </Link>
@@ -117,14 +124,14 @@ export default async function HomePage({ searchParams }: Props) {
               First Look
             </h2>
             <div className="grid grid-cols-4 gap-2">
-              {HOME_TEASER_BANDS.map((band) => {
+              {teaserBands.map((band) => {
                 const isActive = band.slug === teaserBandSlug;
                 return (
                   <Link
                     key={band.slug}
                     href={`/?teaser=${band.slug}`}
                     scroll={false}
-                    className={`flex items-center justify-center rounded-full border px-2.5 py-2 text-center font-headline text-[10px] font-bold uppercase tracking-[0.12rem] transition ${
+                    className={`flex items-center justify-center rounded-full border px-2.5 py-2 text-center font-headline text-[10px] font-bold uppercase tracking-[0.12rem] transition focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none ${
                       isActive
                         ? "border-primary/30 bg-primary/12 text-primary"
                         : "border-transparent bg-surface-container-low text-on-surface-variant hover:bg-outline-variant/20 hover:text-on-surface"
@@ -200,7 +207,7 @@ export default async function HomePage({ searchParams }: Props) {
                 </p>
                 <Link
                   href="/predictions"
-                  className="mt-4 inline-block rounded-full border border-outline-variant/40 bg-surface-container-low px-4 py-2 font-headline text-xs font-bold uppercase tracking-[0.14rem] text-on-surface transition hover:border-primary hover:text-primary"
+                  className="mt-4 inline-block rounded-full border border-outline-variant/40 bg-surface-container-low px-4 py-2 font-headline text-xs font-bold uppercase tracking-[0.14rem] text-on-surface transition hover:border-primary hover:text-primary focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
                 >
                   Open full board
                 </Link>
@@ -267,7 +274,7 @@ export default async function HomePage({ searchParams }: Props) {
               <Link
                 key={band.slug}
                 href={`/predictions?band=${band.slug}`}
-                className="editorial-chip flex items-center justify-center rounded-[1.5rem] p-5 text-center transition-all hover:border-primary hover:bg-surface-container-high hover:shadow-md"
+                className="editorial-chip flex items-center justify-center rounded-[1.5rem] p-5 text-center transition-all hover:border-primary hover:bg-surface-container-high hover:shadow-md focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
               >
                 <span className="font-headline text-lg font-bold text-on-surface transition-colors hover:text-primary">
                   {band.displayName}

@@ -47,13 +47,6 @@
     sans-serif;
 }
 
-html {
-  background:
-    radial-gradient(circle at top left, rgba(255, 191, 105, 0.14), transparent 22%),
-    radial-gradient(circle at top right, rgba(136, 229, 216, 0.12), transparent 20%),
-    linear-gradient(180deg, #090c12 0%, #0e131d 48%, #111723 100%);
-}
-
 body {
   min-height: 100vh;
   background:

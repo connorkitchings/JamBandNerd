@@ -114,6 +114,13 @@ The website currently expects the same two server-side variables in all environm
 - `SUPABASE_URL`
 - `SUPABASE_ANON_KEY`
 
+Client-side live prediction refreshes also use the public anon-key pair:
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+
+These must mirror the Supabase URL and anon key, never a service-role key.
+
 For local development, copy `apps/web/.env.local.example` to `apps/web/.env.local`.
 
 Do not use a service-role key in the website environment.
