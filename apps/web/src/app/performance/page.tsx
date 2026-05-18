@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { AccuracyTable } from "@/components/accuracy-table";
+import { ChartMetricToggle, type ChartMetric } from "@/components/chart-metric-toggle";
 import { DashboardSideNav } from "@/components/dashboard-side-nav";
 import { DataGate } from "@/components/data-gate";
 import { DataState } from "@/components/data-state";
@@ -10,7 +11,7 @@ import { PageHero } from "@/components/page-hero";
 import { RecallChart } from "@/components/recall-chart";
 import { SectionCard } from "@/components/section-card";
 import { getBands, getRecentAccuracy, bandEntryBySlug, resolveBandSelection } from "@/lib/data";
-import { average, formatAvgHits, formatCompactDateLabel, formatPercent } from "@/lib/format";
+import { average, formatAvgHits, formatCompactDateLabel, formatHits, formatPercent } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +19,7 @@ type Props = {
   searchParams: Promise<{
     band?: string;
     k?: string;
+    metric?: string;
   }>;
 };
 
@@ -34,15 +36,113 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
   };
 }
 
-type KSelection = 10 | 25 | 50 | "all";
+type KSelection = 10 | 25 | 50;
+type PerformanceMetric = {
+  label: string;
+  coverage: number | null;
+  avgHits: number | null;
+  k: 10 | 25 | 50;
+};
 
 function normalizeK(value?: string): KSelection {
-  if (value === "all") {
-    return "all";
-  }
-
   const n = Number(value);
-  return n === 10 || n === 25 || n === 50 ? n : "all";
+  return n === 25 || n === 50 ? n : 10;
+}
+
+function normalizeChartMetric(value?: string): ChartMetric {
+  return value === "hits" ? "hits" : "coverage";
+}
+
+function PerformanceMetricCard({
+  metric,
+  active,
+  compact = false,
+  hitsLabel = "Avg. Hits",
+}: {
+  metric: PerformanceMetric;
+  active?: boolean;
+  compact?: boolean;
+  hitsLabel?: "Avg. Hits" | "Hits";
+}) {
+  return (
+    <div
+      className={`rounded-2xl border px-4 py-4 text-center ${
+        active
+          ? "border-primary/30 bg-primary/10"
+          : "border-outline-variant/15 bg-surface/70"
+      }`}
+    >
+      <p className="font-headline text-base font-bold text-on-surface underline decoration-current decoration-2 underline-offset-4">
+        {metric.label}
+      </p>
+      <div className={`mt-4 grid grid-cols-2 ${compact ? "gap-2" : "gap-4"}`}>
+        <div>
+          <p className="font-label text-[9px] font-semibold uppercase tracking-[0.14rem] text-tertiary">
+            {hitsLabel}
+          </p>
+          <p
+            className={`mt-1 font-headline font-bold text-tertiary ${
+              compact ? "text-lg" : "text-2xl"
+            }`}
+          >
+            {hitsLabel === "Hits"
+              ? formatHits(metric.avgHits, metric.k)
+              : formatAvgHits(metric.avgHits, metric.k)}
+          </p>
+        </div>
+        <div>
+          <p className="font-label text-[9px] font-semibold uppercase tracking-[0.14rem] text-primary">
+            Coverage
+          </p>
+          <p
+            className={`mt-1 font-headline font-bold text-primary ${
+              compact ? "text-lg" : "text-2xl"
+            }`}
+          >
+            {formatPercent(metric.coverage)}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LatestMetricSnapshot({
+  metric,
+  active,
+}: {
+  metric: PerformanceMetric;
+  active?: boolean;
+}) {
+  return (
+    <div
+      className={`grid grid-cols-3 items-center gap-3 rounded-xl border px-3 py-2.5 text-center ${
+        active
+          ? "border-primary/30 bg-primary/10"
+          : "border-outline-variant/15 bg-surface/65"
+      }`}
+    >
+      <div>
+        <p className="font-label text-[8px] font-semibold uppercase tracking-[0.12rem] text-tertiary">
+          Hits
+        </p>
+        <p className="mt-0.5 font-headline text-base font-bold text-tertiary">
+          {formatHits(metric.avgHits, metric.k)}
+        </p>
+      </div>
+      <p className="font-headline text-sm font-bold text-on-surface underline decoration-current decoration-2 underline-offset-4">
+        {metric.label}
+      </p>
+      <div>
+        <p className="font-label text-[8px] font-semibold uppercase tracking-[0.12rem] text-primary">
+          Coverage
+        </p>
+        <p className="mt-0.5 font-headline text-base font-bold text-primary">
+          {formatPercent(metric.coverage)}
+        </p>
+      </div>
+    </div>
+  );
 }
 
 export default async function PerformancePage({ searchParams }: Props) {
@@ -78,7 +178,7 @@ export default async function PerformancePage({ searchParams }: Props) {
   const bandEntry = bandEntryBySlug(bands, state.band);
   const bandName = bandEntry?.displayName ?? state.band;
   const k = normalizeK(params.k);
-  const activeMetric = k === "all" ? null : k;
+  const chartMetric = normalizeChartMetric(params.metric);
 
   const recall10Values: Array<number | null> = [];
   const recall25Values: Array<number | null> = [];
@@ -104,6 +204,31 @@ export default async function PerformancePage({ searchParams }: Props) {
   const p50Average = average(p50Values);
   const latestRow = state.rows[0] ?? null;
   const recentRows = state.rows.slice(0, 5);
+  const averageMetrics: PerformanceMetric[] = [
+    { label: "Top 10", coverage: top10Average, avgHits: p10Average, k: 10 },
+    { label: "Top 25", coverage: top25Average, avgHits: p25Average, k: 25 },
+    { label: "Top 50", coverage: top50Average, avgHits: p50Average, k: 50 },
+  ];
+  const latestMetrics: PerformanceMetric[] = [
+    {
+      label: "Top 10",
+      coverage: latestRow?.recall10 ?? null,
+      avgHits: latestRow?.p10 ?? null,
+      k: 10,
+    },
+    {
+      label: "Top 25",
+      coverage: latestRow?.recall25 ?? null,
+      avgHits: latestRow?.p25 ?? null,
+      k: 25,
+    },
+    {
+      label: "Top 50",
+      coverage: latestRow?.recall50 ?? null,
+      avgHits: latestRow?.p50 ?? null,
+      k: 50,
+    },
+  ];
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
@@ -133,70 +258,64 @@ export default async function PerformancePage({ searchParams }: Props) {
               </p>
             </div>
 
-            <div className="mt-6 grid grid-cols-3 gap-3 border-t border-outline-variant/15 pt-4 text-left">
-              <div className="rounded-2xl bg-surface/70 px-3 py-3">
-                <p className="font-label text-[9px] uppercase tracking-[0.16rem] text-on-surface-variant">Top 10</p>
-                <p className={`mt-1 font-headline text-lg font-bold ${activeMetric === 10 ? "text-primary" : "text-on-surface"}`}>
-                  {formatPercent(latestRow?.recall10 ?? null)}
-                </p>
-                <p className="mt-0.5 font-label text-[8px] uppercase tracking-[0.12rem] text-on-surface-variant/60">
-                  {formatAvgHits(latestRow?.p10 ?? null, 10)} hits
-                </p>
-              </div>
-              <div className="rounded-2xl bg-surface/70 px-3 py-3">
-                <p className="font-label text-[9px] uppercase tracking-[0.16rem] text-on-surface-variant">Top 25</p>
-                <p className={`mt-1 font-headline text-lg font-bold ${activeMetric === 25 ? "text-primary" : "text-on-surface"}`}>
-                  {formatPercent(latestRow?.recall25 ?? null)}
-                </p>
-                <p className="mt-0.5 font-label text-[8px] uppercase tracking-[0.12rem] text-on-surface-variant/60">
-                  {formatAvgHits(latestRow?.p25 ?? null, 25)} hits
-                </p>
-              </div>
-              <div className="rounded-2xl bg-surface/70 px-3 py-3">
-                <p className="font-label text-[9px] uppercase tracking-[0.16rem] text-on-surface-variant">Top 50</p>
-                <p className={`mt-1 font-headline text-lg font-bold ${activeMetric === 50 ? "text-primary" : "text-on-surface"}`}>
-                  {formatPercent(latestRow?.recall50 ?? null)}
-                </p>
-                <p className="mt-0.5 font-label text-[8px] uppercase tracking-[0.12rem] text-on-surface-variant/60">
-                  {formatAvgHits(latestRow?.p50 ?? null, 50)} hits
-                </p>
-              </div>
+            <div className="mt-4 grid gap-2 border-t border-outline-variant/15 pt-4">
+              {latestMetrics.map((metric) => (
+                <LatestMetricSnapshot
+                  key={metric.label}
+                  metric={metric}
+                />
+              ))}
             </div>
           </div>
         }
       />
 
       <section className="grid gap-4 md:grid-cols-3">
-        {[
-          { label: "Top 10", coverage: top10Average, avgHits: p10Average, k: 10 },
-          { label: "Top 25", coverage: top25Average, avgHits: p25Average, k: 25 },
-          { label: "Top 50", coverage: top50Average, avgHits: p50Average, k: 50 },
-        ].map((metric) => (
-          <SectionCard
+        {averageMetrics.map((metric) => (
+          <PerformanceMetricCard
             key={metric.label}
-            title={formatPercent(metric.coverage)}
-            eyebrow={`${metric.label} coverage`}
-            centered
-          >
-            <p className="text-center font-label text-[10px] uppercase tracking-[0.16rem] text-on-surface-variant">
-              {formatAvgHits(metric.avgHits, metric.k)} avg. hits
-            </p>
-          </SectionCard>
+            metric={metric}
+          />
         ))}
       </section>
 
       <p className="px-2 text-center text-sm text-on-surface-variant">
-        Coverage is the share of the actual setlist in each Top-X group; avg. hits is the average number of picks that were played.
+        Coverage is the share of the actual setlist caught in each Top-X group. Avg. Hits is the average number of picks played.
       </p>
 
-      <SectionCard title="Accuracy Over Time">
-        <div className="mb-4">
-          <Suspense fallback={null}>
-            <KToggle currentK={k} />
-          </Suspense>
+      <section className="editorial-panel p-5 md:p-7">
+        <div className="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-start">
+          <div>
+            <h2 className="font-headline text-[1.35rem] font-semibold uppercase tracking-[-0.03em] text-on-surface md:text-2xl">
+              Accuracy Over Time
+            </h2>
+            <p className="mt-2 max-w-xl text-sm leading-6 text-on-surface-variant">
+              Each dot is one scored show. The dashed line marks the average across the retained window.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-[auto_auto] sm:items-start lg:justify-end">
+            <div className="space-y-1.5">
+              <p className="font-label text-[9px] font-semibold uppercase tracking-[0.18em] text-on-surface-variant">
+                Measure
+              </p>
+              <Suspense fallback={null}>
+                <ChartMetricToggle currentMetric={chartMetric} />
+              </Suspense>
+            </div>
+            <div className="space-y-1.5">
+              <p className="font-label text-[9px] font-semibold uppercase tracking-[0.18em] text-on-surface-variant">
+                Prediction Group
+              </p>
+              <Suspense fallback={null}>
+                <KToggle currentK={k} />
+              </Suspense>
+            </div>
+          </div>
         </div>
-        <RecallChart rows={state.rows} k={k} />
-      </SectionCard>
+        <div className="mt-5">
+          <RecallChart rows={state.rows} k={k} metric={chartMetric} />
+        </div>
+      </section>
 
       <SectionCard title="Recent Show Accuracy">
         <div className="space-y-4 md:hidden">
@@ -206,7 +325,7 @@ export default async function PerformancePage({ searchParams }: Props) {
                 key={`${row.showDate}-${index}`}
                 className="rounded-[1.35rem] border border-outline-variant/20 bg-surface-container-low px-4 py-4"
               >
-                <div className="flex items-start justify-between gap-3">
+                <div className="text-center">
                   <div>
                     <p className="font-headline text-lg font-semibold text-on-surface">
                       {formatCompactDateLabel(row.showDate)}
@@ -215,35 +334,38 @@ export default async function PerformancePage({ searchParams }: Props) {
                       {row.venueName ?? "Venue unavailable"}
                     </p>
                   </div>
-                  <span className="rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 font-label text-[10px] uppercase tracking-[0.18em] text-primary">
-                    {formatPercent(row.recall10)} top 10
-                  </span>
                 </div>
-                <div className="mt-4 grid grid-cols-3 gap-2">
-                  <div className="rounded-2xl bg-surface/70 px-3 py-3 text-center">
-                    <p className="font-label text-[9px] uppercase tracking-[0.16rem] text-on-surface-variant">
-                      Top 10
-                    </p>
-                    <p className="mt-1 font-headline text-base font-bold text-primary">
-                      {formatPercent(row.recall10)}
-                    </p>
-                  </div>
-                  <div className="rounded-2xl bg-surface/70 px-3 py-3 text-center">
-                    <p className="font-label text-[9px] uppercase tracking-[0.16rem] text-on-surface-variant">
-                      Top 25
-                    </p>
-                    <p className="mt-1 font-headline text-base font-bold text-on-surface">
-                      {formatPercent(row.recall25)}
-                    </p>
-                  </div>
-                  <div className="rounded-2xl bg-surface/70 px-3 py-3 text-center">
-                    <p className="font-label text-[9px] uppercase tracking-[0.16rem] text-on-surface-variant">
-                      Top 50
-                    </p>
-                    <p className="mt-1 font-headline text-base font-bold text-on-surface">
-                      {formatPercent(row.recall50)}
-                    </p>
-                  </div>
+                <div className="mt-4 grid gap-2 min-[520px]:grid-cols-3">
+                  <PerformanceMetricCard
+                    metric={{
+                      label: "Top 10",
+                      coverage: row.recall10,
+                      avgHits: row.p10,
+                      k: 10,
+                    }}
+                    compact
+                    hitsLabel="Hits"
+                  />
+                  <PerformanceMetricCard
+                    metric={{
+                      label: "Top 25",
+                      coverage: row.recall25,
+                      avgHits: row.p25,
+                      k: 25,
+                    }}
+                    compact
+                    hitsLabel="Hits"
+                  />
+                  <PerformanceMetricCard
+                    metric={{
+                      label: "Top 50",
+                      coverage: row.recall50,
+                      avgHits: row.p50,
+                      k: 50,
+                    }}
+                    compact
+                    hitsLabel="Hits"
+                  />
                 </div>
               </div>
             ))}
@@ -255,12 +377,12 @@ export default async function PerformancePage({ searchParams }: Props) {
             buttonClassName="w-full rounded-[1.35rem] border border-outline-variant/20 bg-surface-container-low px-4 py-4 text-center font-headline text-sm uppercase tracking-[0.12em] text-on-surface"
             containerClassName="rounded-[1.35rem] border border-outline-variant/20 bg-surface-container-low"
           >
-            <AccuracyTable rows={state.rows} />
+            <AccuracyTable rows={state.rows} band={state.band} />
           </ExpandablePanel>
         </div>
 
         <div className="hidden md:block">
-          <AccuracyTable rows={state.rows} />
+          <AccuracyTable rows={state.rows} band={state.band} />
         </div>
       </SectionCard>
     </div>

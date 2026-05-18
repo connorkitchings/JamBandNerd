@@ -99,3 +99,7 @@ export function average(values: Array<number | null>) {
 export function formatAvgHits(value: number | null, k: number) {
   return value === null ? "—" : (value * k).toFixed(1);
 }
+
+export function formatHits(value: number | null, k: number) {
+  return value === null ? "—" : String(Math.round(value * k));
+}

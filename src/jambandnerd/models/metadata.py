@@ -31,7 +31,7 @@ class ModelMetadata:
     supports_backtest: bool
     lifecycle_stage: ModelLifecycleStage
     web_visibility: ModelWebVisibility
-    readiness_windows: tuple[int, ...] = (100,)
+    readiness_windows: tuple[int, ...] = (50,)
     readiness_baselines: tuple[str, ...] = ()
     default_top_k: int = 50
     notes: str | None = None
@@ -95,7 +95,7 @@ MODEL_METADATA: tuple[ModelMetadata, ...] = (
         supports_backtest=True,
         lifecycle_stage="web_promoted",
         web_visibility="promoted",
-        readiness_windows=(100,),
+        readiness_windows=(50,),
         readiness_baselines=(),
     ),
     ModelMetadata(
@@ -130,7 +130,7 @@ MODEL_METADATA: tuple[ModelMetadata, ...] = (
         supports_backtest=True,
         lifecycle_stage="web_promoted",
         web_visibility="promoted",
-        readiness_windows=(100,),
+        readiness_windows=(50,),
         readiness_baselines=("notebook",),
         notes="Promoted 2026-04-11. Replaces CK+.",
     ),

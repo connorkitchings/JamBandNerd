@@ -128,18 +128,9 @@ export default async function PredictionsPage({ searchParams }: Props) {
   const isLiveShow = isShowTonight(heroDate);
   const displayState = getPredictionDisplayState(heroDate);
   const statusLabel = getPredictionStatusLabel(heroDate);
-  const boardStateCopy =
-    displayState === "tonight"
-      ? "by tier to understand how the board is clustering tonight."
-      : displayState === "next"
-        ? "by tier to understand how the next-show board is shaping up."
-        : "by tier to review what the model expected for that show.";
   const snapshotLabel = formatTimestampLabel(predictionState.snapshot.predictedAt);
   const accuracyRows = accuracyState.status === "ready" ? accuracyState.rows : [];
-  const performanceWindowLabel =
-    accuracyRows.length > 0
-      ? `most recent ${accuracyRows.length} shows`
-      : "no scored shows yet";
+  const performanceWindowLabel = "last 50 scored shows";
   const precisionCards = [
     {
       title: "Top 10",
@@ -229,10 +220,6 @@ export default async function PredictionsPage({ searchParams }: Props) {
               <h2 className="mt-3 font-headline text-3xl font-bold uppercase tracking-[-0.04em] text-on-surface">
                 Song board
               </h2>
-              <p className="mt-3 text-sm leading-7 text-on-surface-variant">
-                All ranked predictions for {bandName}. Use the search first, then scan
-                {` ${boardStateCopy}`}
-              </p>
             </div>
             <div className="shrink-0 pt-1">
               <SharePredictionsButton text={shareText} />

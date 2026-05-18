@@ -21,30 +21,30 @@ type MetricPanelProps = {
 
 function MetricBlock({ card }: { card: MetricCard }) {
   return (
-    <div className="rounded-2xl border border-outline-variant/15 bg-surface/35 px-4 py-4">
-      <div className="text-center">
-        <p className="font-headline text-lg font-bold text-on-surface">
+    <div className="rounded-2xl border border-outline-variant/15 bg-surface/35 px-4 py-4 md:px-5">
+      <div className="border-b border-outline-variant/15 pb-3 text-center">
+        <p className="font-headline text-lg font-bold text-on-surface underline decoration-current decoration-2 underline-offset-4">
           {card.title}
         </p>
       </div>
 
-      <div className="mt-5 grid grid-cols-2 gap-4">
-        <div className="text-center">
-          <p className="font-label text-[9px] uppercase tracking-[0.14rem] text-on-surface-variant">
+      <div className="mt-4 grid grid-cols-2 gap-3">
+        <div className="rounded-xl bg-surface-container-low/55 px-3 py-3 text-center">
+          <p className="font-label text-[9px] font-semibold uppercase tracking-[0.14rem] text-tertiary">
             Avg. Hits
           </p>
-          <p className="mt-1 font-headline text-2xl font-bold text-on-surface md:text-3xl">
+          <p className="mt-1 font-headline text-3xl font-bold text-tertiary">
             {card.avgHits}
           </p>
           <p className="mt-1 text-xs leading-5 text-on-surface-variant">
             picks played
           </p>
         </div>
-        <div className="text-center">
-          <p className="font-label text-[9px] uppercase tracking-[0.14rem] text-on-surface-variant">
+        <div className="rounded-xl bg-surface-container-low/55 px-3 py-3 text-center">
+          <p className="font-label text-[9px] font-semibold uppercase tracking-[0.14rem] text-primary">
             Coverage
           </p>
-          <p className="mt-1 font-headline text-2xl font-bold text-primary md:text-3xl">
+          <p className="mt-1 font-headline text-3xl font-bold text-primary">
             {card.coverage}
           </p>
           <p className="mt-1 text-xs leading-5 text-on-surface-variant">
@@ -65,7 +65,7 @@ export function PredictionMetricPanel({
 }) {
   return (
     <div className="editorial-chip rounded-[1.5rem] p-5 text-left md:p-6">
-      <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+      <div className="grid gap-4 md:grid-cols-[1fr_auto] md:items-center">
         <div>
           <p className="font-label text-[10px] font-bold uppercase tracking-[0.18rem] text-primary/85">
             Model performance
@@ -74,9 +74,14 @@ export function PredictionMetricPanel({
             How good has this model been?
           </h2>
         </div>
-        <p className="rounded-full border border-outline-variant/15 bg-surface/35 px-3 py-1.5 font-label text-[10px] uppercase tracking-[0.14rem] text-on-surface-variant">
-          {performanceWindowLabel}
-        </p>
+        <div className="rounded-2xl border border-outline-variant/15 bg-surface/35 px-4 py-3 md:min-w-56 md:text-center">
+          <p className="font-label text-[9px] uppercase tracking-[0.16rem] text-on-surface-variant">
+            Scoring Window
+          </p>
+          <p className="mt-1 font-headline text-lg font-semibold text-on-surface">
+            {performanceWindowLabel}
+          </p>
+        </div>
       </div>
 
       <div className="mt-5 grid gap-3 md:grid-cols-3">
@@ -158,7 +163,7 @@ export function PredictionHeroMetrics({
   precisionCards,
 }: MetricPanelProps) {
   return (
-    <div className="relative z-20 mx-auto -mt-6 mb-10 max-w-4xl px-3 md:-mt-8">
+    <div className="relative z-20 mx-auto -mt-6 mb-10 w-full max-w-6xl px-1 md:-mt-8">
       <PredictionMetricPanel
         cards={precisionCards}
         performanceWindowLabel={performanceWindowLabel}

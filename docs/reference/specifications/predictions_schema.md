@@ -67,7 +67,7 @@ exists.
 ## Retained Completed-Show Storage
 
 `setlist_results` stores the exact ranked boards for the active
-last-100 completed-show corpus per band model version. It is the replay source
+last-50 completed-show corpus per band model version. It is the replay source
 of truth.
 Rows outside the retained 100-show corpus are hard-deleted by the retained corpus
 sync.
@@ -170,7 +170,7 @@ The active product architecture is split by intent:
 
 - live next-show rows in `setlist_predictions` plus
   `setlist_prediction_songs`
-- retained last-100 completed-show rows in `setlist_results` plus
+- retained last-50 completed-show rows in `setlist_results` plus
    `setlist_accuracy`
 
 Reasons:

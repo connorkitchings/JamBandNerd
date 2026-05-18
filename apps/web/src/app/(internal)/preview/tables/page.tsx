@@ -59,6 +59,7 @@ const predictionRows = [
 
 const accuracyRows = [
   {
+    showId: "preview-2026-03-12",
     showDate: "2026-03-12",
     venueName: "The Salt Shed",
     city: "Chicago",
@@ -72,6 +73,7 @@ const accuracyRows = [
     weightedPrecisionScore: 0.41,
   },
   {
+    showId: "preview-2026-03-14",
     showDate: "2026-03-14",
     venueName: "Red Rocks Amphitheatre",
     city: "Morrison",

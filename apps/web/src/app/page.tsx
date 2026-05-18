@@ -59,14 +59,15 @@ export default async function HomePage({ searchParams }: Props) {
 
   const bandsResult = await getBands();
   const bands = bandsResult.status === "ready" ? bandsResult.bands : [];
-  const teaserBands =
-    bands.length > 0
-      ? bands.slice(0, 4).map((band) => ({
-          slug: band.slug,
-          label: band.displayName,
-          fallbackName: band.displayName,
-        }))
-      : HOME_TEASER_FALLBACK_BANDS;
+  const teaserBands = HOME_TEASER_FALLBACK_BANDS.map((fallbackBand) => {
+    const bandEntry = bands.find((band) => band.slug === fallbackBand.slug);
+
+    return {
+      slug: fallbackBand.slug,
+      label: fallbackBand.label,
+      fallbackName: bandEntry?.displayName ?? fallbackBand.fallbackName,
+    };
+  });
   const requestedTeaser = params.teaser?.trim().toLowerCase();
   const teaserConfig =
     teaserBands.find((band) => band.slug === requestedTeaser) ?? teaserBands[0];
@@ -103,7 +104,7 @@ export default async function HomePage({ searchParams }: Props) {
             <p className="mt-5 max-w-2xl text-lg leading-relaxed text-on-surface-variant">
               We rank the songs each band might play at the next show. It&apos;s an educated guess — sometimes right, sometimes not — but always worth checking.
             </p>
-            <div className="mt-8 grid gap-3 sm:max-w-3xl sm:grid-cols-2 md:gap-4">
+            <div className="mt-8 hidden gap-3 sm:max-w-3xl sm:grid-cols-2 md:grid md:gap-4">
               <Link
                 href="/predictions"
                 className="inline-flex w-full items-center justify-center rounded-full border border-outline-variant/35 bg-surface/70 px-6 py-3.5 text-center font-headline text-sm font-medium uppercase tracking-[0.14rem] text-on-surface transition hover:border-primary/35 hover:bg-surface-container-low hover:text-primary focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
