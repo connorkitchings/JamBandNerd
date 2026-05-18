@@ -14,7 +14,6 @@ Per-show train+predict time: seconds, not minutes.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Any
 
 import lightgbm as lgb
@@ -22,6 +21,7 @@ import numpy as np
 import pandas as pd
 
 from jambandnerd.models.base import PredictionModel
+from jambandnerd.models.deal.model import DealPrediction
 from jambandnerd.transformations.gaps import ModelData
 from jambandnerd.transformations.run_context import (
     normalize_target_show_context,
@@ -112,16 +112,6 @@ _LGB_PARAMS: dict[str, Any] = {
     "seed": 42,
 }
 _LGB_ROUNDS = 200
-
-
-# ── Prediction result ─────────────────────────────────────────────────────────
-
-
-@dataclass
-class BillyPrediction:
-    song_name: str
-    probability: float
-    gap_shows: int
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -369,6 +359,12 @@ class BillyFastPredictor(PredictionModel):
             if not sp_df.empty
             else pd.DataFrame(index=pd.Index([], name="song_name"))
         )
+        last_play_dates = (
+            plays.sort_values("show_index")
+            .groupby("song_name")["show_date"]
+            .max()
+            .to_dict()
+        )
 
         return {
             "presence": presence,
@@ -383,6 +379,7 @@ class BillyFastPredictor(PredictionModel):
             "first_play_col": first_play_col,
             "avg_days_bp": avg_days_bp,
             "set_feats": set_feats,
+            "last_play_dates": last_play_dates,
         }
 
     def build_diagnostic_training_frame(self, model_data: ModelData) -> pd.DataFrame:
@@ -724,7 +721,7 @@ class BillyFastPredictor(PredictionModel):
 
     # ── Prediction ────────────────────────────────────────────────────────────
 
-    def predict(self, model_data: ModelData, top_k: int = 50) -> list[BillyPrediction]:
+    def predict(self, model_data: ModelData, top_k: int = 50) -> list[DealPrediction]:
         if self._model is None:
             return []
 
@@ -805,11 +802,21 @@ class BillyFastPredictor(PredictionModel):
 
         order = np.argsort(probs)[::-1][:top_k]
         gap_arr = gap_predict.loc[eligible_songs].values
+        last_play_dates = cache["last_play_dates"]
         return [
-            BillyPrediction(
+            DealPrediction(
                 song_name=str(eligible_songs[i]),
                 probability=float(probs[i]),
-                gap_shows=int(gap_arr[i]),
+                current_gap=int(gap_arr[i]),
+                plays_past_year=0,
+                recent_plays_50=int(p50.loc[eligible_songs[i]]),
+                LTP=(
+                    pd.Timestamp(last_play_dates[str(eligible_songs[i])])
+                    .date()
+                    .isoformat()
+                    if str(eligible_songs[i]) in last_play_dates
+                    else None
+                ),
             )
             for i in order
         ]
