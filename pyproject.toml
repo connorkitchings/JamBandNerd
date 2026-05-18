@@ -18,7 +18,7 @@ dependencies = [
     "pyarrow",
     "requests",
     "python-dotenv",
-    "lxml==6.1.0",
+    "lxml==6.1.1",
     "supabase",
     "beautifulsoup4",
     "psycopg2-binary",
