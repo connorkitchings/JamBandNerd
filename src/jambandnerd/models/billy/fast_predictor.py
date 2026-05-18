@@ -21,6 +21,7 @@ import numpy as np
 import pandas as pd
 
 from jambandnerd.models.base import PredictionModel
+from jambandnerd.models.calibration import PlattScaler
 from jambandnerd.models.deal.model import DealPrediction
 from jambandnerd.transformations.gaps import ModelData
 from jambandnerd.transformations.run_context import (
@@ -308,6 +309,7 @@ class BillyFastPredictor(PredictionModel):
                 songs_df_resolved = None
         self._songs_lookup: dict[str, float] = _build_is_cover_lookup(songs_df_resolved)
         self._model: lgb.Booster | None = None
+        self._calibrator: PlattScaler | None = None
         self.best_iteration: int | None = None
         # Cached from train() for reuse in predict()
         self._cache: dict | None = None
@@ -652,11 +654,23 @@ class BillyFastPredictor(PredictionModel):
         y = X_all.pop("label")
         X_features = X_all[self._FEATURE_COLS]
 
-        if self._EARLY_STOPPING_ROUNDS is None or len(group_sizes) < 2:
+        # Reserve last 20% of groups for calibration (held-out set)
+        cal_group_count = max(1, int(round(len(group_sizes) * 0.2)))
+        cal_group_count = min(cal_group_count, len(group_sizes) - 1)
+        train_group_count = len(group_sizes) - cal_group_count
+        cal_row_count = sum(group_sizes[train_group_count:])
+        train_row_count = sum(group_sizes[:train_group_count])
+
+        X_cal = X_features.iloc[train_row_count:]
+        y_cal = y.iloc[train_row_count:]
+        X_train = X_features.iloc[:train_row_count]
+        y_train = y.iloc[:train_row_count]
+
+        if self._EARLY_STOPPING_ROUNDS is None or train_group_count < 2:
             train_data = lgb.Dataset(
-                X_features,
-                label=y,
-                group=group_sizes,
+                X_train,
+                label=y_train,
+                group=group_sizes[:train_group_count],
                 free_raw_data=False,
             )
             self._model = lgb.train(
@@ -665,48 +679,48 @@ class BillyFastPredictor(PredictionModel):
                 num_boost_round=self._LGB_ROUNDS,
             )
             self.best_iteration = int(self._model.current_iteration())
-            return
+        else:
+            val_group_count = max(
+                1,
+                int(round(train_group_count * self._VALIDATION_FRACTION)),
+            )
+            val_group_count = min(val_group_count, train_group_count - 1)
+            es_train_group_count = train_group_count - val_group_count
+            es_train_row_count = sum(group_sizes[:es_train_group_count])
 
-        val_group_count = max(
-            1,
-            int(round(len(group_sizes) * self._VALIDATION_FRACTION)),
-        )
-        val_group_count = min(val_group_count, len(group_sizes) - 1)
-        train_group_count = len(group_sizes) - val_group_count
-        train_row_count = sum(group_sizes[:train_group_count])
+            train_data = lgb.Dataset(
+                X_features.iloc[:es_train_row_count],
+                label=y.iloc[:es_train_row_count],
+                group=group_sizes[:es_train_group_count],
+                free_raw_data=False,
+            )
+            valid_data = lgb.Dataset(
+                X_features.iloc[es_train_row_count:train_row_count],
+                label=y.iloc[es_train_row_count:train_row_count],
+                group=group_sizes[es_train_group_count:train_group_count],
+                reference=train_data,
+                free_raw_data=False,
+            )
+            stopping_model = lgb.train(
+                self._LGB_PARAMS,
+                train_data,
+                num_boost_round=self._LGB_ROUNDS,
+                valid_sets=[valid_data],
+                valid_names=["valid"],
+                callbacks=[
+                    lgb.early_stopping(
+                        self._EARLY_STOPPING_ROUNDS,
+                        first_metric_only=False,
+                        verbose=False,
+                        min_delta=0.0,
+                    )
+                ],
+            )
+            self.best_iteration = int(
+                stopping_model.best_iteration or stopping_model.current_iteration()
+            )
 
-        train_data = lgb.Dataset(
-            X_features.iloc[:train_row_count],
-            label=y.iloc[:train_row_count],
-            group=group_sizes[:train_group_count],
-            free_raw_data=False,
-        )
-        valid_data = lgb.Dataset(
-            X_features.iloc[train_row_count:],
-            label=y.iloc[train_row_count:],
-            group=group_sizes[train_group_count:],
-            reference=train_data,
-            free_raw_data=False,
-        )
-        stopping_model = lgb.train(
-            self._LGB_PARAMS,
-            train_data,
-            num_boost_round=self._LGB_ROUNDS,
-            valid_sets=[valid_data],
-            valid_names=["valid"],
-            callbacks=[
-                lgb.early_stopping(
-                    self._EARLY_STOPPING_ROUNDS,
-                    first_metric_only=False,
-                    verbose=False,
-                    min_delta=0.0,
-                )
-            ],
-        )
-        self.best_iteration = int(
-            stopping_model.best_iteration or stopping_model.current_iteration()
-        )
-
+        # Retrain on ALL data with best iteration
         full_train_data = lgb.Dataset(
             X_features,
             label=y,
@@ -718,6 +732,29 @@ class BillyFastPredictor(PredictionModel):
             full_train_data,
             num_boost_round=self.best_iteration,
         )
+
+        # Fit probability calibrator on held-out calibration set.
+        # Uses log-odds shift: shifts all raw logits by a constant so the
+        # average calibrated probability matches the empirical base rate,
+        # while preserving the model's relative score ordering.
+        if cal_row_count > 0:
+            cal_scores = self._model.predict(X_cal.values)
+            cal_probs_raw = 1.0 / (1.0 + np.exp(-np.clip(cal_scores, -30.0, 30.0)))
+            base_rate = float(np.clip(y_cal.mean(), 1e-6, 1 - 1e-6))
+            target_logit = float(np.log(base_rate / (1 - base_rate)))
+            raw_logits = np.log(np.clip(cal_probs_raw, 1e-6, 1 - 1e-6) / (1 - np.clip(cal_probs_raw, 1e-6, 1 - 1e-6)))
+            logit_shift = target_logit - float(np.mean(raw_logits))
+        else:
+            # Fallback: use all training data for calibration
+            all_scores = self._model.predict(X_features.values)
+            all_probs_raw = 1.0 / (1.0 + np.exp(-np.clip(all_scores, -30.0, 30.0)))
+            base_rate = float(np.clip(y.mean(), 1e-6, 1 - 1e-6))
+            target_logit = float(np.log(base_rate / (1 - base_rate)))
+            raw_logits = np.log(np.clip(all_probs_raw, 1e-6, 1 - 1e-6) / (1 - np.clip(all_probs_raw, 1e-6, 1 - 1e-6)))
+            logit_shift = target_logit - float(np.mean(raw_logits))
+        self._calibrator = PlattScaler()
+        self._calibrator.a = 1.0
+        self._calibrator.b = logit_shift
 
     # ── Prediction ────────────────────────────────────────────────────────────
 
@@ -798,7 +835,10 @@ class BillyFastPredictor(PredictionModel):
         )
 
         scores = self._model.predict(X[self._FEATURE_COLS].values)
-        probs = 1.0 / (1.0 + np.exp(-scores))
+        if self._calibrator is not None:
+            probs = self._calibrator.transform(scores)
+        else:
+            probs = 1.0 / (1.0 + np.exp(-scores))
 
         order = np.argsort(probs)[::-1][:top_k]
         gap_arr = gap_predict.loc[eligible_songs].values
