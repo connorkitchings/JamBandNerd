@@ -197,7 +197,7 @@ def test_deal_training_frame_excludes_same_day_history() -> None:
         training_window_shows=10,
     )
 
-    target_rows = training_frame[training_frame["target_show_index"] == 6]
+    target_rows = training_frame[training_frame["target_show_index"] == 5]
     assert "Anchor Song" in set(target_rows["song_name"])
     assert "Leak Song" not in set(target_rows["song_name"])
 

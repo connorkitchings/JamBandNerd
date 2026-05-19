@@ -767,7 +767,10 @@ class BillyFastPredictor(PredictionModel):
             cal_probs_raw = 1.0 / (1.0 + np.exp(-np.clip(cal_scores, -30.0, 30.0)))
             base_rate = float(np.clip(y_cal.mean(), 1e-6, 1 - 1e-6))
             target_logit = float(np.log(base_rate / (1 - base_rate)))
-            raw_logits = np.log(np.clip(cal_probs_raw, 1e-6, 1 - 1e-6) / (1 - np.clip(cal_probs_raw, 1e-6, 1 - 1e-6)))
+            raw_logits = np.log(
+                np.clip(cal_probs_raw, 1e-6, 1 - 1e-6)
+                / (1 - np.clip(cal_probs_raw, 1e-6, 1 - 1e-6))
+            )
             logit_shift = target_logit - float(np.mean(raw_logits))
         else:
             # Fallback: use all training data for calibration
@@ -775,7 +778,10 @@ class BillyFastPredictor(PredictionModel):
             all_probs_raw = 1.0 / (1.0 + np.exp(-np.clip(all_scores, -30.0, 30.0)))
             base_rate = float(np.clip(y.mean(), 1e-6, 1 - 1e-6))
             target_logit = float(np.log(base_rate / (1 - base_rate)))
-            raw_logits = np.log(np.clip(all_probs_raw, 1e-6, 1 - 1e-6) / (1 - np.clip(all_probs_raw, 1e-6, 1 - 1e-6)))
+            raw_logits = np.log(
+                np.clip(all_probs_raw, 1e-6, 1 - 1e-6)
+                / (1 - np.clip(all_probs_raw, 1e-6, 1 - 1e-6))
+            )
             logit_shift = target_logit - float(np.mean(raw_logits))
         self._calibrator = PlattScaler()
         self._calibrator.a = 1.0

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "jambandnerd"
-version = "0.3.0"
+version = "1.0.1"
 description = "Modular data science platform for jam band setlists, pipelines, and analytics."
 authors = [
   { name = "Connor Kitchings" }

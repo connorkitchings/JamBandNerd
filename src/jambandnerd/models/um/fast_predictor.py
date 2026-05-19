@@ -12,9 +12,10 @@ import pandas as pd
 
 from jambandnerd.models.phish.fast_predictor import (
     _LGB_PARAMS,
-    PHISH_FAST_FEATURE_COLS,
     PHISH_FAST_V2_FEATURE_COLS,
     PhishFastPredictorV2,
+    _run_position,
+    _tour_position,
     _window_plays,
 )
 from jambandnerd.transformations.run_context import (
@@ -340,20 +341,6 @@ class UMFastPredictorV12(UMFastPredictor):
         plays: pd.DataFrame,
         target_show_index: int,
     ) -> dict:
-        v2_base = {
-            "tour_position": super()._extra_training_row_features(
-                eligible_songs=eligible_songs,
-                j=j,
-                target_date=target_date,
-                gap_e=gap_e,
-                career_pct=career_pct,
-                p25=p25,
-                p50=p50,
-                cache=cache,
-                plays=plays,
-                target_show_index=target_show_index,
-            ).get("tour_position", 1.0),
-        }
         col_dates = cache["col_dates"]
         col_venues = cache["col_venues"]
         prior_dates = [d for d in col_dates[:j] if d is not None]
@@ -361,11 +348,6 @@ class UMFastPredictorV12(UMFastPredictor):
             tour_pos = 1.0
             run_pos = 1.0
         else:
-            from jambandnerd.models.phish.fast_predictor import (
-                _tour_position,
-                _run_position,
-            )
-
             tour_pos = float(_tour_position(prior_dates, target_date, tour_gap_days=14))
             run_pos = float(_run_position(prior_dates, target_date, gap_days=1))
 
@@ -416,11 +398,6 @@ class UMFastPredictorV12(UMFastPredictor):
         plays: pd.DataFrame,
         target_show_context: Any,
     ) -> dict:
-        from jambandnerd.models.phish.fast_predictor import (
-            _tour_position,
-            _run_position,
-        )
-
         col_dates = cache["col_dates"]
         prior_dates = [d for d in col_dates if d is not None]
         tour_pos = float(_tour_position(prior_dates, ref_date.date(), tour_gap_days=14))

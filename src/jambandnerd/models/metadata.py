@@ -69,8 +69,11 @@ BAND_METADATA: tuple[BandMetadata, ...] = (
     ),
     BandMetadata(
         band="billy",
-        model_version="billy_fast_gbm_v10_hp_tuned",
-        notes="V3 features with HP-tuned leaves=15 + min_leaf=10. dual=0.388 (+0.011 vs V3).",
+        model_version="billy_fast_gbm_v12_gap_scaled_p50",
+        notes=(
+            "BillyFast V12: V10 HP baseline with plays_past_50_scaled = "
+            "p50 * min(gap/4, 1.0) to penalize recently played songs."
+        ),
     ),
     BandMetadata(
         band="um",

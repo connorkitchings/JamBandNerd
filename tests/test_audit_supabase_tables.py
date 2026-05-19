@@ -249,8 +249,8 @@ def test_run_supabase_audit_fails_when_history_or_accuracy_below_window(monkeypa
     _install_audit_stubs(
         monkeypatch,
         latest_row=_prediction_row(),
-        count_overrides={"setlist_results": 99, "setlist_accuracy": 98},
-        replay_rows=_replay_rows(count=98),
+        count_overrides={"setlist_results": 49, "setlist_accuracy": 48},
+        replay_rows=_replay_rows(count=48),
     )
 
     report = module.run_supabase_audit(bands=["goose"])
