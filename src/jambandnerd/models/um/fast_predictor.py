@@ -12,6 +12,7 @@ import pandas as pd
 
 from jambandnerd.models.phish.fast_predictor import (
     _LGB_PARAMS,
+    PHISH_FAST_FEATURE_COLS,
     PHISH_FAST_V2_FEATURE_COLS,
     PhishFastPredictorV2,
     _window_plays,
@@ -21,6 +22,24 @@ from jambandnerd.transformations.run_context import (
     normalized_venue_key,
     same_venue_run_show_indices,
 )
+
+UM_FAST_V2_FEATURE_COLS: list[str] = list(PHISH_FAST_V2_FEATURE_COLS)
+
+UM_FAST_V12_FEATURE_COLS: list[str] = [
+    "gap_shows",
+    "plays_past_25",
+    "plays_past_50_scaled",
+    "plays_past_2yr",
+    "career_play_pct",
+    "month_play_rate",
+    "tour_position",
+    "diff_25_to_50",
+    "show_position_in_run",
+    "same_venue_run_position",
+    "overdue_ratio",
+    "avg_ltp_recent",
+    "ltp_diff_recent",
+]
 
 
 class UMFastPredictor(PhishFastPredictorV2):
@@ -45,6 +64,13 @@ class UMFastPredictor(PhishFastPredictorV2):
 _UM_V2_LGB_PARAMS: dict[str, Any] = {
     **_LGB_PARAMS,
     "num_leaves": 15,
+    "learning_rate": 0.07,
+    "reg_lambda": 0.1,
+}
+
+_UM_V12_LGB_PARAMS: dict[str, Any] = {
+    **_LGB_PARAMS,
+    "num_leaves": 31,
     "learning_rate": 0.07,
     "reg_lambda": 0.1,
 }
@@ -283,3 +309,145 @@ class UMFastPredictorV2LongRotation(UMFastPredictorV2):
             )
         )
         return extra
+
+
+class UMFastPredictorV12(UMFastPredictor):
+    """UMFast V12 — scales plays_past_50 by gap, removes plays_past_3/5.
+
+    Same issue as Billy V10: plays_past_3/5 reinforce "hot" for gap=1 songs
+    instead of penalizing recency, and with num_leaves=15 the model can't
+    learn the interaction. Fix: replace plays_past_50 with plays_past_50_scaled
+    = plays_past_50 * min(gap/4, 1.0).
+
+    Total: 14 features. Same HP params as V2 (leaves=15, lr=0.07, lambda=0.1).
+    """
+
+    MODEL_VERSION = "um_fast_gbm_v12_gap_scaled_p50"
+    _FEATURE_COLS: list[str] = UM_FAST_V12_FEATURE_COLS
+    _LGB_PARAMS: dict[str, Any] = _UM_V12_LGB_PARAMS
+
+    def _extra_training_row_features(
+        self,
+        *,
+        eligible_songs: pd.Index,
+        j: int,
+        target_date: Any,
+        gap_e: pd.Series,
+        career_pct: pd.Series,
+        p25: pd.Series,
+        p50: pd.Series,
+        cache: dict,
+        plays: pd.DataFrame,
+        target_show_index: int,
+    ) -> dict:
+        v2_base = {
+            "tour_position": super()._extra_training_row_features(
+                eligible_songs=eligible_songs,
+                j=j,
+                target_date=target_date,
+                gap_e=gap_e,
+                career_pct=career_pct,
+                p25=p25,
+                p50=p50,
+                cache=cache,
+                plays=plays,
+                target_show_index=target_show_index,
+            ).get("tour_position", 1.0),
+        }
+        col_dates = cache["col_dates"]
+        col_venues = cache["col_venues"]
+        prior_dates = [d for d in col_dates[:j] if d is not None]
+        if target_date is None:
+            tour_pos = 1.0
+            run_pos = 1.0
+        else:
+            from jambandnerd.models.phish.fast_predictor import (
+                _tour_position,
+                _run_position,
+            )
+
+            tour_pos = float(_tour_position(prior_dates, target_date, tour_gap_days=14))
+            run_pos = float(_run_position(prior_dates, target_date, gap_days=1))
+
+        pct25 = p25 / max(1, min(25, j))
+        pct50 = p50 / max(1, min(50, j))
+        diff = (pct25 - pct50).values
+
+        target_venue = col_venues[j] if j < len(col_venues) else None
+        if target_venue:
+            target_context = normalize_target_show_context({"venue_name": target_venue})
+            if normalized_venue_key(target_context):
+                sub_plays = plays[plays["show_index"] < target_show_index]
+                same_run_indices = same_venue_run_show_indices(
+                    sub_plays, target_context
+                )
+                same_run_position = float(len(same_run_indices) + 1)
+            else:
+                same_run_position = 0.0
+        else:
+            same_run_position = 0.0
+
+        window = max(1, min(25, j))
+        avg_ltp = window / p25.clip(lower=1).values
+        p50_scaled = (p50 * (gap_e / 4.0).clip(upper=1.0)).values
+
+        return {
+            "tour_position": tour_pos,
+            "diff_25_to_50": diff,
+            "show_position_in_run": run_pos,
+            "same_venue_run_position": same_run_position,
+            "overdue_ratio": (gap_e * career_pct).values,
+            "avg_ltp_recent": avg_ltp,
+            "ltp_diff_recent": gap_e.values - avg_ltp,
+            "plays_past_50_scaled": p50_scaled,
+        }
+
+    def _extra_predict_features(
+        self,
+        *,
+        eligible_songs: pd.Index,
+        n_shows: int,
+        ref_date: pd.Timestamp,
+        gap_e: pd.Series,
+        career_pct: pd.Series,
+        p25: pd.Series,
+        p50: pd.Series,
+        cache: dict,
+        plays: pd.DataFrame,
+        target_show_context: Any,
+    ) -> dict:
+        from jambandnerd.models.phish.fast_predictor import (
+            _tour_position,
+            _run_position,
+        )
+
+        col_dates = cache["col_dates"]
+        prior_dates = [d for d in col_dates if d is not None]
+        tour_pos = float(_tour_position(prior_dates, ref_date.date(), tour_gap_days=14))
+        run_pos = float(_run_position(prior_dates, ref_date.date(), gap_days=1))
+
+        pct25 = p25 / max(1, min(25, n_shows))
+        pct50 = p50 / max(1, min(50, n_shows))
+        diff = (pct25 - pct50).values
+
+        normalized_ctx = normalize_target_show_context(target_show_context or {})
+        if normalized_venue_key(normalized_ctx):
+            same_run_indices = same_venue_run_show_indices(plays, normalized_ctx)
+            same_run_position = float(len(same_run_indices) + 1)
+        else:
+            same_run_position = 0.0
+
+        window = max(1, min(25, n_shows))
+        avg_ltp = window / p25.clip(lower=1).values
+        p50_scaled = (p50 * (gap_e / 4.0).clip(upper=1.0)).values
+
+        return {
+            "tour_position": tour_pos,
+            "diff_25_to_50": diff,
+            "show_position_in_run": run_pos,
+            "same_venue_run_position": same_run_position,
+            "overdue_ratio": (gap_e * career_pct).values,
+            "avg_ltp_recent": avg_ltp,
+            "ltp_diff_recent": gap_e.values - avg_ltp,
+            "plays_past_50_scaled": p50_scaled,
+        }
