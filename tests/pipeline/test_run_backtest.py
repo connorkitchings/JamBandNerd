@@ -9,6 +9,15 @@ from scripts import run_backtest as run_backtest_module
 from src.jambandnerd.models.registry import get_band_model_version, get_model_definition
 
 
+@pytest.fixture(autouse=True)
+def _skip_supabase_write_preflight(monkeypatch):
+    monkeypatch.setattr(
+        run_backtest_module,
+        "_verify_supabase_write_access",
+        lambda: None,
+    )
+
+
 class _Prediction:
     def __init__(self, song_name: str):
         self.song_name = song_name

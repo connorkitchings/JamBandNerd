@@ -199,6 +199,11 @@ def test_compare_models_candidate_notebook_matches_backtest_metrics(monkeypatch)
     monkeypatch.setattr(module, "fetch_table", _mock_tables)
     monkeypatch.setattr(backtest_module, "fetch_table", _mock_tables)
     monkeypatch.setattr(
+        backtest_module,
+        "_verify_supabase_write_access",
+        lambda: None,
+    )
+    monkeypatch.setattr(
         module,
         "prepare_band_data",
         lambda shows_df, setlists_df, band: (shows_df, setlists_df),

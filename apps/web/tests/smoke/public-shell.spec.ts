@@ -51,7 +51,8 @@ test("desktop routes render the public shell", async ({ page }, testInfo) => {
   await expect(
     page
       .getByRole("heading", { name: "First Look" })
-      .or(page.getByRole("heading", { name: "Band registry unavailable" })),
+      .or(page.getByRole("heading", { name: "Band registry unavailable" }))
+      .first(),
   ).toBeVisible();
   await expect(page.locator('main a[href="/?teaser=phish"]')).toBeVisible();
 
