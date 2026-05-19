@@ -42,7 +42,7 @@ controls whether the board is labeled as next show, tonight, or previous show.
 Scores and prunes the active completed-show prediction corpus.
 
 - `--band <repo-supported-band-slug>`: (Required) The band to process.
-- `--window {N}`: (Optional) Retained completed-show window. Defaults to `100`.
+- `--window {N}`: (Optional) Retained completed-show window. Defaults to `50`.
 - `--incremental` / `--no-incremental`: (Optional) Skip already-scored shows when possible.
 
 ### `run_backtest.py`
@@ -96,14 +96,14 @@ Usage:
 ```bash
 uv run python scripts/audit_supabase_tables.py
 uv run python scripts/audit_supabase_tables.py --band goose --band phish
-uv run python scripts/audit_supabase_tables.py --max-age-hours 72 --replay-window 100 --output artifacts/supabase_audit.json
+uv run python scripts/audit_supabase_tables.py --max-age-hours 72 --replay-window 50 --output artifacts/supabase_audit.json
 ```
 
 Arguments:
 
 - `--band <slug>`: (Optional, repeatable) Limit the audit to specific repo-supported bands.
 - `--max-age-hours <N>`: (Optional) Freshness threshold for website-facing prediction and accuracy surfaces. Defaults to `72`.
-- `--replay-window <N>`: (Optional) Override the required replay-history window. Defaults to `100`.
+- `--replay-window <N>`: (Optional) Override the required replay-history window. Defaults to `50`.
 - `--output <path>`: (Optional) Write the JSON audit report to disk.
 - `--skip-accuracy`: (Optional) Preserve the existing workflow behavior that degrades stale supported-model accuracy from a hard failure to a warning for runs where accuracy regeneration was intentionally skipped.
 

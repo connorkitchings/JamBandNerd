@@ -53,7 +53,7 @@ Granular commands:
 ```bash
 uv run python scripts/run_goose_collection.py
 uv run python scripts/generate_live_predictions.py --band goose
-uv run python scripts/sync_retained_prediction_corpus.py --band goose --window 100
+uv run python scripts/sync_retained_prediction_corpus.py --band goose --window 50
 ```
 
 ## Prediction and Storage

@@ -38,6 +38,7 @@ export type PredictionSnapshot = {
 };
 
 export type AccuracyRow = {
+  showId: string | null;
   showDate: string | null;
   venueName: string | null;
   city: string | null;

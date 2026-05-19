@@ -335,6 +335,7 @@ def _merge_rank_guard_predictions(
     guard_count: int,
     top_k: int,
 ) -> list[DealPrediction]:
+    primary_lookup = {str(p.song_name): p for p in primary}
     merged: list[DealPrediction] = []
     seen: set[str] = set()
     for prediction in [*guarded[:guard_count], *primary]:
@@ -342,22 +343,15 @@ def _merge_rank_guard_predictions(
         if song_name in seen:
             continue
         seen.add(song_name)
-        merged.append(prediction)
+        primary_pred = primary_lookup.get(song_name)
+        if primary_pred is not None:
+            merged.append(primary_pred)
+        else:
+            merged.append(prediction)
         if len(merged) >= top_k:
             break
 
-    denominator = max(1, len(merged) - 1)
-    return [
-        DealPrediction(
-            song_name=prediction.song_name,
-            probability=float(1.0 - (rank / denominator)),
-            current_gap=prediction.current_gap,
-            plays_past_year=prediction.plays_past_year,
-            recent_plays_50=prediction.recent_plays_50,
-            LTP=prediction.LTP,
-        )
-        for rank, prediction in enumerate(merged)
-    ]
+    return merged
 
 
 class _NotebookTop10GuardMixin:

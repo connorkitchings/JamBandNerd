@@ -648,8 +648,14 @@ def prune_setlist_corpus(
     results_table: str = "setlist_results",
     accuracy_table: str = "setlist_accuracy",
     allow_empty_retained: bool = False,
+    prune_other_model_versions: bool = True,
 ) -> int:
-    """Hard-delete setlist result/accuracy rows outside the retained corpus."""
+    """Hard-delete setlist result/accuracy rows outside the retained corpus.
+
+    The website-facing retained corpus stores only the active model version for
+    the last N completed shows. Older model versions are intentionally removed
+    here instead of being left for the frontend to filter around.
+    """
     retained = {str(key) for key in retained_target_show_keys}
     if not retained and not allow_empty_retained:
         raise RuntimeError(
@@ -658,6 +664,51 @@ def prune_setlist_corpus(
         )
 
     client = get_supabase_client()
+    deleted = 0
+
+    if prune_other_model_versions:
+        stale_accuracy = (
+            client.table(accuracy_table)
+            .select("target_show_key")
+            .eq("band", band)
+            .neq("model_version", model_version)
+            .execute()
+        )
+        for row in stale_accuracy.data or []:
+            target_show_key = row.get("target_show_key")
+            if not target_show_key:
+                continue
+            (
+                client.table(accuracy_table)
+                .delete()
+                .eq("band", band)
+                .neq("model_version", model_version)
+                .eq("target_show_key", target_show_key)
+                .execute()
+            )
+            deleted += 1
+
+        stale_results = (
+            client.table(results_table)
+            .select("target_show_key")
+            .eq("band", band)
+            .neq("model_version", model_version)
+            .execute()
+        )
+        for row in stale_results.data or []:
+            target_show_key = row.get("target_show_key")
+            if not target_show_key:
+                continue
+            (
+                client.table(results_table)
+                .delete()
+                .eq("band", band)
+                .neq("model_version", model_version)
+                .eq("target_show_key", target_show_key)
+                .execute()
+            )
+            deleted += 1
+
     response = (
         client.table(results_table)
         .select("target_show_key")
@@ -665,7 +716,6 @@ def prune_setlist_corpus(
         .eq("model_version", model_version)
         .execute()
     )
-    deleted = 0
     for row in response.data or []:
         target_show_key = row.get("target_show_key")
         if not target_show_key or str(target_show_key) in retained:

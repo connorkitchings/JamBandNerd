@@ -238,7 +238,7 @@ The completed-show canonical row additionally includes `actual_songs` and
 - `setlist_accuracy` is the canonical granular evaluation store.
 - new `setlist_accuracy` rows link to `setlist_results` through
   `prediction_run_id`
-- pipeline validation checks that exactly the retained last-100 rows carry
+- pipeline validation checks that exactly the retained last-50 rows carry
   replay lineage, so replay readiness is part of normal data health.
 
 ## Current Decision: Prediction Storage

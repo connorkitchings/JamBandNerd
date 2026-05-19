@@ -89,10 +89,13 @@ export default async function ReplayPage({ searchParams }: Props) {
     );
   }
 
-  const availableShows = accuracyState.rows
-    .map((row) => row.showDate)
-    .filter((showDate): showDate is string => Boolean(showDate))
-    .map((showDate) => ({ showDate }));
+  const availableShows = [
+    ...new Set(
+      accuracyState.rows
+        .map((row) => row.showDate)
+        .filter((showDate): showDate is string => Boolean(showDate)),
+    ),
+  ].map((showDate) => ({ showDate }));
   const selectedDate =
     availableShows.some((show) => show.showDate === params.date)
       ? params.date

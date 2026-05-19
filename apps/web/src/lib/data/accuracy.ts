@@ -15,6 +15,39 @@ import {
 } from "./parsers";
 import type { AccuracyRow, RouteState } from "./types";
 
+function getAccuracyRowKey(row: AccuracyRow) {
+  if (row.showId) {
+    return row.showId;
+  }
+
+  if (!row.showDate) {
+    return null;
+  }
+
+  return [row.showDate, row.venueName ?? "", row.city ?? "", row.state ?? ""].join("|");
+}
+
+async function getLatestPredictionModelVersion(
+  client: NonNullable<ReturnType<typeof getSupabaseServerClient>>,
+  band: string,
+) {
+  const { data, error } = await client
+    .from("setlist_predictions")
+    .select("model_version")
+    .eq("band", band)
+    .order("generated_at", { ascending: false })
+    .limit(1);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const modelVersion = data?.[0]?.model_version;
+  return typeof modelVersion === "string" && modelVersion.length > 0
+    ? modelVersion
+    : null;
+}
+
 export const getRecentAccuracy = cache(
   async (
     bandInput: string | undefined,
@@ -44,14 +77,20 @@ export const getRecentAccuracy = cache(
     }
 
     try {
-      const { data, error } = await client
+      const modelVersion = await getLatestPredictionModelVersion(client, band);
+      let query = client
         .from("setlist_accuracy")
         .select(
           "show_id, show_date, p10, p25, p50, recall_10, recall_25, recall_50, weighted_precision_score",
         )
         .eq("band", band)
-        .order("show_date", { ascending: false })
-        .limit(limit);
+        .order("show_date", { ascending: false });
+
+      if (modelVersion) {
+        query = query.eq("model_version", modelVersion);
+      }
+
+      const { data, error } = await query.limit(limit);
 
       if (error) {
         return { status: "error", message: error.message };
@@ -150,6 +189,7 @@ export const getRecentAccuracy = cache(
             city: null,
             state: null,
           },
+        showId: row.showId,
         showDate: row.showDate,
         recall10: row.recall10,
         recall25: row.recall25,
@@ -160,9 +200,20 @@ export const getRecentAccuracy = cache(
         weightedPrecisionScore: row.weightedPrecisionScore,
       }));
 
-      return rows.length === 0
+      const uniqueRows = rows.filter((row, index, allRows) => {
+        const key = getAccuracyRowKey(row);
+        if (!key) {
+          return true;
+        }
+
+        return allRows.findIndex((candidate) => getAccuracyRowKey(candidate) === key) === index;
+      });
+
+      const limitedRows = uniqueRows.slice(0, limit);
+
+      return limitedRows.length === 0
         ? { status: "empty" }
-        : { status: "ready", band, rows };
+        : { status: "ready", band, rows: limitedRows };
     } catch (error) {
       return {
         status: "error",

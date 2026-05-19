@@ -31,7 +31,7 @@ class ModelMetadata:
     supports_backtest: bool
     lifecycle_stage: ModelLifecycleStage
     web_visibility: ModelWebVisibility
-    readiness_windows: tuple[int, ...] = (100,)
+    readiness_windows: tuple[int, ...] = (50,)
     readiness_baselines: tuple[str, ...] = ()
     default_top_k: int = 50
     notes: str | None = None
@@ -74,8 +74,8 @@ BAND_METADATA: tuple[BandMetadata, ...] = (
     ),
     BandMetadata(
         band="um",
-        model_version="um_fast_gbm_v2",
-        notes="UMFast V2 (HP-tuned leaves=15, lr=0.07, lambda=0.1). dual=0.343 (+0.020 vs V1).",
+        model_version="um_fast_gbm_v12_gap_scaled_p50",
+        notes="UMFast V12: dedup shows by date for correct gaps, plays_past_50_scaled = p50 * min(gap/4, 1.0), removed plays_past_10. 2 gap<=3 in top 10.",
     ),
 )
 
@@ -95,7 +95,7 @@ MODEL_METADATA: tuple[ModelMetadata, ...] = (
         supports_backtest=True,
         lifecycle_stage="web_promoted",
         web_visibility="promoted",
-        readiness_windows=(100,),
+        readiness_windows=(50,),
         readiness_baselines=(),
     ),
     ModelMetadata(
@@ -130,7 +130,7 @@ MODEL_METADATA: tuple[ModelMetadata, ...] = (
         supports_backtest=True,
         lifecycle_stage="web_promoted",
         web_visibility="promoted",
-        readiness_windows=(100,),
+        readiness_windows=(50,),
         readiness_baselines=("notebook",),
         notes="Promoted 2026-04-11. Replaces CK+.",
     ),

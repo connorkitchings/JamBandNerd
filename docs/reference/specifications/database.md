@@ -51,7 +51,7 @@ by writing derived tables back to Supabase.
 SQL-friendly reads and realtime refresh. It duplicates `target_show_date`,
 `reference_date`, `generated_at`, and `top_k` from the canonical run so the
 website can scope by target show. `setlist_results` preserves exact prediction
-boards for the active last-100 completed-show corpus.
+boards for the active last-50 completed-show corpus.
 
 `target_show_date` is the product/display selector. `reference_date` is the
 model cutoff. `generated_at` is the freshness timestamp.
@@ -62,7 +62,7 @@ model cutoff. `generated_at` is the freshness timestamp.
 
 `setlist_accuracy` is the canonical granular evaluation store. Rows link
 to `setlist_results` via `prediction_run_id` for Replay lineage.
-Rows outside the retained last-100 completed-show corpus are hard-deleted from
+Rows outside the retained last-50 completed-show corpus are hard-deleted from
 the active metric store.
 
 ## Utility Modules
@@ -142,7 +142,7 @@ server-side contexts.
 - live prediction freshness should be validated using `generated_at`
 - website prediction selection should use `target_show_date`, not
   `reference_date`
-- completed-show metrics should be derived only from the retained last-100 corpus
+- completed-show metrics should be derived only from the retained last-50 corpus
 
 ## Related Documents
 

@@ -20,7 +20,7 @@ truth for current model rollout, CI schedules, or product delivery.
 - each active band has one registered website-facing model version
 - CK+ is retired and kept only for historical reference
 - live next-show predictions are stored separately from completed-show history
-- model metrics come from the retained last-100 completed-show corpus in
+- model metrics come from the retained last-50 completed-show corpus in
   `setlist_results` and `setlist_accuracy`
 
 ## Read Next
