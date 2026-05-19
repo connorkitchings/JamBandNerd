@@ -66,6 +66,28 @@ from src.jambandnerd.models.registry import (
 )
 from src.jambandnerd.transformations.gaps import generate_model_data
 
+_SUPABASE_WRITE_KEY_PREFIXES = ("sb_secret_", "eyJ")
+
+
+def _verify_supabase_write_access() -> None:
+    """Fail early if the Supabase API key cannot write through RLS policies."""
+    key = (
+        os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+        or os.environ.get("SUPABASE_KEY")
+        or ""
+    )
+    if not key:
+        raise RuntimeError(
+            "SUPABASE_SERVICE_ROLE_KEY (or SUPABASE_KEY) must be set in the environment."
+        )
+    if not any(key.startswith(prefix) for prefix in _SUPABASE_WRITE_KEY_PREFIXES):
+        raise RuntimeError(
+            f"Supabase API key has prefix {key[:15]}... — this appears to be a "
+            "publishable/anon key. Writes to Supabase will fail with RLS policy "
+            "violations. Set SUPABASE_SERVICE_ROLE_KEY to an sb_secret_... key "
+            "(from Supabase Dashboard → Settings → API Keys)."
+        )
+
 
 def _write_github_output(key: str, value: str) -> None:
     github_output = os.environ.get("GITHUB_OUTPUT")
@@ -418,6 +440,8 @@ def run_backtest(
     print(f"{log_prefix} Fetching raw data...")
     shows_df, sets_df = load_backtest_frames(band, snapshot_root=snapshot_root)
 
+    _verify_supabase_write_access()
+
     if shows_df.empty or sets_df.empty:
         message = f"{log_prefix} No data to backtest. Aborting."
         print(message)
@@ -494,6 +518,18 @@ def run_backtest(
             )
         if not new_ids:
             print(f"{log_prefix} All shows in window already scored. Nothing to do.")
+            if prune_to_window and not dry_run:
+                deleted = prune_setlist_corpus(
+                    band=band,
+                    model_version=model_version,
+                    retained_target_show_keys=retained_window_keys,
+                    results_table=SETLIST_RESULTS_TABLE,
+                    accuracy_table=SETLIST_ACCURACY_TABLE,
+                )
+                if deleted:
+                    print(
+                        f"{log_prefix} Pruned {deleted} completed-show row(s) outside retained window."
+                    )
             return 0
         target_shows = target_shows[target_shows["show_id"].astype(str).isin(new_ids)]
 

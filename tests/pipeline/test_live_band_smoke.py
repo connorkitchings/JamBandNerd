@@ -7,7 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from .fixtures import BANDS
+from src.jambandnerd.models.registry import list_active_bands
+
 from .live_helpers import (
     assert_accuracy_publish_fresh,
     assert_prediction_publish_fresh,
@@ -18,7 +19,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
 @pytest.mark.live
-@pytest.mark.parametrize("band", BANDS)
+@pytest.mark.parametrize("band", list_active_bands())
 def test_live_band_pipeline_smoke(band):
     try:
         ensure_live_env(band=band)
@@ -39,16 +40,14 @@ def test_live_band_pipeline_smoke(band):
             f"live pipeline failed for {band}\nstdout:\n{result.stdout}\n\nstderr:\n{result.stderr}"
         )
 
-    assert "Successfully completed pipeline" in result.stdout
+    combined_output = f"{result.stdout}\n{result.stderr}"
+    assert "Successfully completed pipeline" in combined_output
 
-    for model in ("notebook", "deal"):
-        assert_prediction_publish_fresh(
-            band=band,
-            model=model,
-            started_at=started_at,
-        )
-        assert_accuracy_publish_fresh(
-            band=band,
-            model=model,
-            started_at=started_at,
-        )
+    assert_prediction_publish_fresh(
+        band=band,
+        started_at=started_at,
+    )
+    assert_accuracy_publish_fresh(
+        band=band,
+        started_at=started_at,
+    )

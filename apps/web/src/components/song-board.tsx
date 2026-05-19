@@ -223,43 +223,53 @@ function TierMobileList({
     <div className="divide-y divide-outline-variant/10 md:hidden">
       {rows.map((row) => {
         const { isHighlighted } = getTierRowState(row, highlightSongs);
+        const firstLine = [
+          row.currentGap !== null
+            ? `Gap ${row.currentGap}`
+            : "Gap unknown",
+          row.lastPlayed ? `LTP ${formatMMDDYYYY(row.lastPlayed)}` : null,
+          row.recentPlays50 !== null ? `${row.recentPlays50} / 50` : null,
+        ].filter(Boolean);
+        const probabilityPct =
+          row.probability !== null
+            ? Math.min(Math.max(row.probability * 100, 0), 100)
+            : null;
 
         return (
           <div
             key={`${row.rank}-${row.songName}`}
-            className={`flex items-center justify-between px-4 py-4 ${isHighlighted ? "bg-green-950/20" : ""}`}
+            className={`flex items-start gap-3 px-4 py-4 ${isHighlighted ? "bg-green-950/20" : ""}`}
           >
-            <div className="flex min-w-0 flex-1 items-center gap-3">
-              <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-surface-container-high/60 font-headline text-sm font-bold tabular-nums text-on-surface-variant">
-                {row.rank}
-              </span>
-              <div className="min-w-0 flex-1">
-                <p
-                  className={`font-headline text-sm font-medium ${isHighlighted ? "text-green-300" : "text-on-surface"}`}
-                >
-                  {row.songName}
-                  {isHighlighted ? (
-                    <span className="ml-1">
-                      <CheckIcon />
-                    </span>
-                  ) : null}
-                </p>
-                <p className="text-xs text-on-surface-variant">
-                  {row.probability !== null
-                    ? `${(row.probability * 100).toFixed(1)}% probability`
-                    : ""}
-                  {row.currentGap !== null
-                    ? ` · ${row.currentGap} ${row.currentGap === 1 ? "show" : "shows"} ago`
-                    : ""}
-                  {row.lastPlayed ? ` · ${formatMMDDYYYY(row.lastPlayed)}` : ""}
-                </p>
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-surface-container-high/60 font-headline text-sm font-bold tabular-nums text-on-surface-variant">
+              {row.rank}
+            </span>
+            <div className="min-w-0 flex-1">
+              <p
+                className={`truncate font-headline text-sm font-medium ${isHighlighted ? "text-green-300" : "text-on-surface"}`}
+                title={row.songName}
+              >
+                {row.songName}
+                {isHighlighted ? (
+                  <span className="ml-1 inline-flex align-middle">
+                    <CheckIcon />
+                  </span>
+                ) : null}
+              </p>
+              <p className="mt-1 truncate font-label text-[10px] uppercase tracking-[0.12rem] text-on-surface-variant">
+                {firstLine.join(" · ")}
+              </p>
+              <div className="mt-2 flex items-center gap-2">
+                <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-surface-container-high">
+                  <div
+                    className="h-full rounded-full bg-primary/75"
+                    style={{ width: `${probabilityPct ?? 0}%` }}
+                  />
+                </div>
+                <span className="w-12 shrink-0 text-right font-mono text-[11px] tabular-nums text-primary/90">
+                  {probabilityPct !== null ? `${probabilityPct.toFixed(1)}%` : "—"}
+                </span>
               </div>
             </div>
-            {row.recentPlays50 !== null ? (
-              <span className="ml-3 shrink-0 text-right font-mono text-xs tabular-nums text-on-surface-variant">
-                {row.recentPlays50} / 50
-              </span>
-            ) : null}
           </div>
         );
       })}

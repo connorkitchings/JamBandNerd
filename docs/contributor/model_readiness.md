@@ -102,3 +102,17 @@ requires `10`.
 4. update the per-band model registry metadata
 
 This separation keeps model backfills and site exposure decoupled.
+
+## Active Model Issues
+
+- **Goose probability calibration:** local V1 review found a next-show Goose
+  prediction showing Hungersite at `100%`. Song-level setlist probabilities
+  should not reach 100%, so investigate the Goose model probability calculation
+  or calibration layer before treating displayed Goose percentages as
+  trustworthy.
+- **Non-Goose LTP serialization:** latest prediction payloads for Phish, WSP,
+  Billy, and UM do not include `LTP`/`last_played_date`, so the website cannot
+  render last-played dates for those bands. Supabase source checks found raw
+  last-played data for Phish, WSP, and Billy, while UM likely needs
+  transform-derived LTP from setlists. Treat this as a prediction
+  generation/serialization follow-up, not a frontend display issue.

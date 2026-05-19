@@ -18,7 +18,11 @@ export function SectionCard({
   return (
     <section className="editorial-panel p-6 md:p-7">
       <div
-        className={`relative flex flex-col gap-4 ${headerAccessory ? "md:flex-row md:items-start md:justify-between" : ""}`}
+        className={`relative flex gap-4 ${
+          headerAccessory
+            ? "flex-row items-start justify-between"
+            : "flex-col"
+        }`}
       >
         <div>
           {eyebrow ? (
@@ -38,7 +42,9 @@ export function SectionCard({
             {title}
           </h2>
         </div>
-        {headerAccessory ? <div className="md:ml-4 md:min-w-[11rem]">{headerAccessory}</div> : null}
+        {headerAccessory ? (
+          <div className="ml-3 shrink-0 md:ml-4 md:min-w-[11rem]">{headerAccessory}</div>
+        ) : null}
       </div>
       {children && <div className="relative mt-5">{children}</div>}
     </section>

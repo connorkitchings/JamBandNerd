@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 import { matchesPredictionUpdateScope } from "@/lib/live-updates";
 
@@ -10,30 +10,36 @@ type Props = {
   band: string;
   targetShowKey?: string | null;
   targetShowDate?: string | null;
-  supabaseUrl: string;
-  supabaseAnonKey: string;
 };
+
+let browserSupabase: SupabaseClient | null = null;
+
+function getBrowserSupabase() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!url || !key) {
+    return null;
+  }
+
+  browserSupabase ??= createClient(url, key);
+  return browserSupabase;
+}
 
 export function LiveTracker({
   band,
   targetShowKey,
   targetShowDate,
-  supabaseUrl,
-  supabaseAnonKey,
 }: Props) {
   const router = useRouter();
 
   useEffect(() => {
-    if (
-      !supabaseUrl ||
-      !supabaseAnonKey ||
-      !band ||
-      (!targetShowKey && !targetShowDate)
-    ) {
+    const supabase = getBrowserSupabase();
+
+    if (!supabase || !band || (!targetShowKey && !targetShowDate)) {
       return;
     }
 
-    const supabase = createClient(supabaseUrl, supabaseAnonKey);
     const channel = supabase
       .channel(`live-updates-${band}-${targetShowKey ?? targetShowDate}`)
       .on(
@@ -66,7 +72,7 @@ export function LiveTracker({
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [band, targetShowKey, targetShowDate, supabaseUrl, supabaseAnonKey, router]);
+  }, [band, targetShowKey, targetShowDate, router]);
 
   return null;
 }

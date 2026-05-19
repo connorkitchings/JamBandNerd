@@ -16,7 +16,7 @@ from src.jambandnerd.models.registry import list_active_bands
 def sync_retained_prediction_corpus(
     *,
     band: str,
-    window: int = 100,
+    window: int = 50,
     incremental: bool = True,
     require_results: bool = False,
     dry_run: bool = False,
@@ -41,7 +41,7 @@ def main() -> None:
         description="Sync retained completed-show prediction and accuracy corpus."
     )
     parser.add_argument("--band", required=True, choices=list_active_bands())
-    parser.add_argument("--window", type=int, default=100)
+    parser.add_argument("--window", type=int, default=50)
     parser.add_argument(
         "--incremental",
         action=argparse.BooleanOptionalAction,

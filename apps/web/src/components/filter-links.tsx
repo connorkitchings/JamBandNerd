@@ -1,5 +1,4 @@
-import Link from "next/link";
-
+import { BandPillGrid } from "@/components/band-pill-grid";
 import type { BandSlug } from "@/lib/config";
 import { MobileControlSelects } from "@/components/mobile-control-selects";
 import type { BandEntry } from "@/lib/data";
@@ -21,14 +20,15 @@ function buildHref(pathname: string, band: BandSlug, date?: string | null) {
 }
 
 export function FilterLinks({ pathname, band, date, bands }: Props) {
+  const bandLinks = bands.map((item) => ({
+    href: buildHref(pathname, item.slug, date),
+    label: item.displayName,
+    active: item.slug === band,
+  }));
   const mobileGroups = [
     {
       label: "Band",
-      options: bands.map((item) => ({
-        href: buildHref(pathname, item.slug, date),
-        label: item.displayName,
-        active: item.slug === band,
-      })),
+      options: bandLinks,
       testId: "mobile-band-select",
     },
   ];
@@ -45,25 +45,7 @@ export function FilterLinks({ pathname, band, date, bands }: Props) {
             </span>
           </div>
           <div className="overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <div className="gap-2 md:flex md:flex-1 md:flex-wrap md:min-w-0">
-              {bands.map((item) => {
-                const active = item.slug === band;
-                return (
-                  <Link
-                    key={item.slug}
-                    href={buildHref(pathname, item.slug, date)}
-                    aria-current={active ? "page" : undefined}
-                    className={`touch-manipulation flex items-center justify-center rounded-full border px-4 py-2.5 text-center font-headline text-[11px] font-bold uppercase tracking-[0.14rem] transition whitespace-nowrap ${
-                      active
-                        ? "border-primary/25 bg-primary/12 text-primary"
-                        : "border-outline-variant/40 bg-surface/75 text-on-surface-variant hover:border-primary/35 hover:text-on-surface"
-                    }`}
-                  >
-                    {item.displayName}
-                  </Link>
-                );
-              })}
-            </div>
+            <BandPillGrid links={bandLinks} className="md:flex md:flex-1 md:flex-wrap md:min-w-0" />
           </div>
         </div>
       </div>

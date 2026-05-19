@@ -24,9 +24,16 @@ export const DESKTOP_NAV_ITEMS: NavItem[] = [
   {
     href: "/performance",
     label: "Performance",
-    mobileLabel: "Stats",
+    mobileLabel: "Model",
     icon: "◬",
     matches: ["/performance"],
+  },
+  {
+    href: "/replay",
+    label: "Replay",
+    mobileLabel: "Replay",
+    icon: "◎",
+    matches: ["/replay"],
   },
 ];
 
@@ -39,22 +46,29 @@ export const MOBILE_NAV_ITEMS: NavItem[] = [
     matches: ["/"],
   },
   {
-    href: "/performance",
-    label: "Performance",
-    mobileLabel: "Stats",
-    icon: "◬",
-    matches: ["/performance"],
-  },
-  {
     href: "/predictions",
     label: "Predictions",
     mobileLabel: "Predict",
     icon: "◈",
     matches: ["/predictions"],
   },
+  {
+    href: "/replay",
+    label: "Replay",
+    mobileLabel: "Replay",
+    icon: "◎",
+    matches: ["/replay"],
+  },
+  {
+    href: "/performance",
+    label: "Performance",
+    mobileLabel: "Model",
+    icon: "◬",
+    matches: ["/performance"],
+  },
 ];
 
-const DETAIL_ROUTE_PREFIXES = ["/last-show"];
+const DETAIL_ROUTE_PREFIXES = ["/last-show", "/replay"];
 
 export function isActivePath(pathname: string, matches: string[]) {
   return matches.includes(pathname);

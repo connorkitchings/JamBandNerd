@@ -14,7 +14,6 @@ Per-show train+predict time: seconds, not minutes.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Any
 
 import lightgbm as lgb
@@ -22,6 +21,8 @@ import numpy as np
 import pandas as pd
 
 from jambandnerd.models.base import PredictionModel
+from jambandnerd.models.calibration import PlattScaler
+from jambandnerd.models.deal.model import DealPrediction
 from jambandnerd.transformations.gaps import ModelData
 from jambandnerd.transformations.run_context import (
     normalize_target_show_context,
@@ -86,6 +87,31 @@ BILLY_FAST_V9_FEATURE_COLS: list[str] = [
     "notebook_rank_score",
 ]
 
+BILLY_FAST_V11_FEATURE_COLS: list[str] = [
+    *BILLY_FAST_V2_FEATURE_COLS,
+    "overdue_ratio",
+    "avg_ltp_recent",
+    "ltp_diff_recent",
+    "is_very_recent",
+]
+
+BILLY_FAST_V12_FEATURE_COLS: list[str] = [
+    "gap_shows",
+    "plays_past_10",
+    "plays_past_25",
+    "plays_past_50_scaled",
+    "career_play_pct",
+    "month_play_rate",
+    "is_cover",
+    "tour_position",
+    "diff_25_to_50",
+    "show_position_in_run",
+    "same_venue_run_position",
+    "overdue_ratio",
+    "avg_ltp_recent",
+    "ltp_diff_recent",
+]
+
 BILLY_FAST_V5_FEATURE_COLS: list[str] = [
     *BILLY_FAST_V3_FEATURE_COLS,
     "gap_percentile",
@@ -112,16 +138,6 @@ _LGB_PARAMS: dict[str, Any] = {
     "seed": 42,
 }
 _LGB_ROUNDS = 200
-
-
-# ── Prediction result ─────────────────────────────────────────────────────────
-
-
-@dataclass
-class BillyPrediction:
-    song_name: str
-    probability: float
-    gap_shows: int
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -317,6 +333,7 @@ class BillyFastPredictor(PredictionModel):
             songs_df_resolved = None
         self._songs_lookup: dict[str, float] = _build_is_cover_lookup(songs_df_resolved)
         self._model: lgb.Booster | None = None
+        self._calibrator: PlattScaler | None = None
         self.best_iteration: int | None = None
         # Cached from train() for reuse in predict()
         self._cache: dict | None = None
@@ -368,6 +385,12 @@ class BillyFastPredictor(PredictionModel):
             if not sp_df.empty
             else pd.DataFrame(index=pd.Index([], name="song_name"))
         )
+        last_play_dates = (
+            plays.sort_values("show_index")
+            .groupby("song_name")["show_date"]
+            .max()
+            .to_dict()
+        )
 
         return {
             "presence": presence,
@@ -382,6 +405,7 @@ class BillyFastPredictor(PredictionModel):
             "first_play_col": first_play_col,
             "avg_days_bp": avg_days_bp,
             "set_feats": set_feats,
+            "last_play_dates": last_play_dates,
         }
 
     def build_diagnostic_training_frame(self, model_data: ModelData) -> pd.DataFrame:
@@ -654,11 +678,23 @@ class BillyFastPredictor(PredictionModel):
         y = X_all.pop("label")
         X_features = X_all[self._FEATURE_COLS]
 
-        if self._EARLY_STOPPING_ROUNDS is None or len(group_sizes) < 2:
+        # Reserve last 20% of groups for calibration (held-out set)
+        cal_group_count = max(1, int(round(len(group_sizes) * 0.2)))
+        cal_group_count = min(cal_group_count, len(group_sizes) - 1)
+        train_group_count = len(group_sizes) - cal_group_count
+        cal_row_count = sum(group_sizes[train_group_count:])
+        train_row_count = sum(group_sizes[:train_group_count])
+
+        X_cal = X_features.iloc[train_row_count:]
+        y_cal = y.iloc[train_row_count:]
+        X_train = X_features.iloc[:train_row_count]
+        y_train = y.iloc[:train_row_count]
+
+        if self._EARLY_STOPPING_ROUNDS is None or train_group_count < 2:
             train_data = lgb.Dataset(
-                X_features,
-                label=y,
-                group=group_sizes,
+                X_train,
+                label=y_train,
+                group=group_sizes[:train_group_count],
                 free_raw_data=False,
             )
             self._model = lgb.train(
@@ -667,48 +703,48 @@ class BillyFastPredictor(PredictionModel):
                 num_boost_round=self._LGB_ROUNDS,
             )
             self.best_iteration = int(self._model.current_iteration())
-            return
+        else:
+            val_group_count = max(
+                1,
+                int(round(train_group_count * self._VALIDATION_FRACTION)),
+            )
+            val_group_count = min(val_group_count, train_group_count - 1)
+            es_train_group_count = train_group_count - val_group_count
+            es_train_row_count = sum(group_sizes[:es_train_group_count])
 
-        val_group_count = max(
-            1,
-            int(round(len(group_sizes) * self._VALIDATION_FRACTION)),
-        )
-        val_group_count = min(val_group_count, len(group_sizes) - 1)
-        train_group_count = len(group_sizes) - val_group_count
-        train_row_count = sum(group_sizes[:train_group_count])
+            train_data = lgb.Dataset(
+                X_features.iloc[:es_train_row_count],
+                label=y.iloc[:es_train_row_count],
+                group=group_sizes[:es_train_group_count],
+                free_raw_data=False,
+            )
+            valid_data = lgb.Dataset(
+                X_features.iloc[es_train_row_count:train_row_count],
+                label=y.iloc[es_train_row_count:train_row_count],
+                group=group_sizes[es_train_group_count:train_group_count],
+                reference=train_data,
+                free_raw_data=False,
+            )
+            stopping_model = lgb.train(
+                self._LGB_PARAMS,
+                train_data,
+                num_boost_round=self._LGB_ROUNDS,
+                valid_sets=[valid_data],
+                valid_names=["valid"],
+                callbacks=[
+                    lgb.early_stopping(
+                        self._EARLY_STOPPING_ROUNDS,
+                        first_metric_only=False,
+                        verbose=False,
+                        min_delta=0.0,
+                    )
+                ],
+            )
+            self.best_iteration = int(
+                stopping_model.best_iteration or stopping_model.current_iteration()
+            )
 
-        train_data = lgb.Dataset(
-            X_features.iloc[:train_row_count],
-            label=y.iloc[:train_row_count],
-            group=group_sizes[:train_group_count],
-            free_raw_data=False,
-        )
-        valid_data = lgb.Dataset(
-            X_features.iloc[train_row_count:],
-            label=y.iloc[train_row_count:],
-            group=group_sizes[train_group_count:],
-            reference=train_data,
-            free_raw_data=False,
-        )
-        stopping_model = lgb.train(
-            self._LGB_PARAMS,
-            train_data,
-            num_boost_round=self._LGB_ROUNDS,
-            valid_sets=[valid_data],
-            valid_names=["valid"],
-            callbacks=[
-                lgb.early_stopping(
-                    self._EARLY_STOPPING_ROUNDS,
-                    first_metric_only=False,
-                    verbose=False,
-                    min_delta=0.0,
-                )
-            ],
-        )
-        self.best_iteration = int(
-            stopping_model.best_iteration or stopping_model.current_iteration()
-        )
-
+        # Retrain on ALL data with best iteration
         full_train_data = lgb.Dataset(
             X_features,
             label=y,
@@ -721,9 +757,38 @@ class BillyFastPredictor(PredictionModel):
             num_boost_round=self.best_iteration,
         )
 
+        # Fit probability calibrator on held-out calibration set.
+        # Uses log-odds shift: shifts all raw logits by a constant so the
+        # average calibrated probability matches the empirical base rate,
+        # while preserving the model's relative score ordering.
+        if cal_row_count > 0:
+            cal_scores = self._model.predict(X_cal.values)
+            cal_probs_raw = 1.0 / (1.0 + np.exp(-np.clip(cal_scores, -30.0, 30.0)))
+            base_rate = float(np.clip(y_cal.mean(), 1e-6, 1 - 1e-6))
+            target_logit = float(np.log(base_rate / (1 - base_rate)))
+            raw_logits = np.log(
+                np.clip(cal_probs_raw, 1e-6, 1 - 1e-6)
+                / (1 - np.clip(cal_probs_raw, 1e-6, 1 - 1e-6))
+            )
+            logit_shift = target_logit - float(np.mean(raw_logits))
+        else:
+            # Fallback: use all training data for calibration
+            all_scores = self._model.predict(X_features.values)
+            all_probs_raw = 1.0 / (1.0 + np.exp(-np.clip(all_scores, -30.0, 30.0)))
+            base_rate = float(np.clip(y.mean(), 1e-6, 1 - 1e-6))
+            target_logit = float(np.log(base_rate / (1 - base_rate)))
+            raw_logits = np.log(
+                np.clip(all_probs_raw, 1e-6, 1 - 1e-6)
+                / (1 - np.clip(all_probs_raw, 1e-6, 1 - 1e-6))
+            )
+            logit_shift = target_logit - float(np.mean(raw_logits))
+        self._calibrator = PlattScaler()
+        self._calibrator.a = 1.0
+        self._calibrator.b = logit_shift
+
     # ── Prediction ────────────────────────────────────────────────────────────
 
-    def predict(self, model_data: ModelData, top_k: int = 50) -> list[BillyPrediction]:
+    def predict(self, model_data: ModelData, top_k: int = 50) -> list[DealPrediction]:
         if self._model is None:
             return []
 
@@ -800,15 +865,28 @@ class BillyFastPredictor(PredictionModel):
         )
 
         scores = self._model.predict(X[self._FEATURE_COLS].values)
-        probs = 1.0 / (1.0 + np.exp(-scores))
+        if self._calibrator is not None:
+            probs = self._calibrator.transform(scores)
+        else:
+            probs = 1.0 / (1.0 + np.exp(-scores))
 
         order = np.argsort(probs)[::-1][:top_k]
         gap_arr = gap_predict.loc[eligible_songs].values
+        last_play_dates = cache["last_play_dates"]
         return [
-            BillyPrediction(
+            DealPrediction(
                 song_name=str(eligible_songs[i]),
                 probability=float(probs[i]),
-                gap_shows=int(gap_arr[i]),
+                current_gap=int(gap_arr[i]),
+                plays_past_year=0,
+                recent_plays_50=int(p50.loc[eligible_songs[i]]),
+                LTP=(
+                    pd.Timestamp(last_play_dates[str(eligible_songs[i])])
+                    .date()
+                    .isoformat()
+                    if str(eligible_songs[i]) in last_play_dates
+                    else None
+                ),
             )
             for i in order
         ]
@@ -1356,9 +1434,191 @@ class BillyFastPredictorV10(BillyFastPredictorV3):
     _LGB_PARAMS: dict[str, Any] = _BILLY_FAST_V10_LGB_PARAMS
 
 
+# ── BillyFastPredictorV11 ─────────────────────────────────────────────────────
+
+
+class BillyFastPredictorV11(BillyFastPredictorV2):
+    """BillyFast V11 — removes plays_past_3/5, adds is_very_recent binary penalty.
+
+    Extends V2 (11 features) with overdue_ratio, avg_ltp_recent, ltp_diff_recent
+    from V3, plus a new is_very_recent binary feature (1.0 if gap ≤ 3).
+    Removes plays_past_3 and plays_past_5 which reinforce "hot" for gap=1 songs
+    instead of penalizing recency.
+
+    Total: 15 features. Same HP params as V10 (leaves=15, min_leaf=10).
+    """
+
+    MODEL_VERSION = "billy_fast_gbm_v11_recent_penalty"
+    _FEATURE_COLS: list[str] = BILLY_FAST_V11_FEATURE_COLS
+    _LGB_PARAMS: dict[str, Any] = _BILLY_FAST_V10_LGB_PARAMS
+
+    def _extra_training_row_features(
+        self,
+        *,
+        eligible_songs: pd.Index,
+        j: int,
+        target_date: Any,
+        gap_e: pd.Series,
+        career_pct: pd.Series,
+        p25: pd.Series,
+        p50: pd.Series,
+        cache: dict,
+        plays: pd.DataFrame,
+        target_show_index: int,
+    ) -> dict:
+        v2 = super()._extra_training_row_features(
+            eligible_songs=eligible_songs,
+            j=j,
+            target_date=target_date,
+            gap_e=gap_e,
+            career_pct=career_pct,
+            p25=p25,
+            p50=p50,
+            cache=cache,
+            plays=plays,
+            target_show_index=target_show_index,
+        )
+        window = max(1, min(25, j))
+        avg_ltp = window / p25.clip(lower=1).values
+        return {
+            **v2,
+            "overdue_ratio": (gap_e * career_pct).values,
+            "avg_ltp_recent": avg_ltp,
+            "ltp_diff_recent": gap_e.values - avg_ltp,
+            "is_very_recent": (gap_e.values <= 3).astype(float),
+        }
+
+    def _extra_predict_features(
+        self,
+        *,
+        eligible_songs: pd.Index,
+        n_shows: int,
+        ref_date: pd.Timestamp,
+        gap_e: pd.Series,
+        career_pct: pd.Series,
+        p25: pd.Series,
+        p50: pd.Series,
+        cache: dict,
+        plays: pd.DataFrame,
+        target_show_context: Any,
+    ) -> dict:
+        v2 = super()._extra_predict_features(
+            eligible_songs=eligible_songs,
+            n_shows=n_shows,
+            ref_date=ref_date,
+            gap_e=gap_e,
+            career_pct=career_pct,
+            p25=p25,
+            p50=p50,
+            cache=cache,
+            plays=plays,
+            target_show_context=target_show_context,
+        )
+        window = max(1, min(25, n_shows))
+        avg_ltp = window / p25.clip(lower=1).values
+        return {
+            **v2,
+            "overdue_ratio": (gap_e * career_pct).values,
+            "avg_ltp_recent": avg_ltp,
+            "ltp_diff_recent": gap_e.values - avg_ltp,
+            "is_very_recent": (gap_e.values <= 3).astype(float),
+        }
+
+
+class BillyFastPredictorV12(BillyFastPredictorV2):
+    """BillyFast V12 — scales plays_past_50 by gap to penalize recently-played songs.
+
+    Replaces raw plays_past_50 with plays_past_50_scaled = plays_past_50 * min(gap/4, 1.0).
+    This directly encodes the domain knowledge that Billy Strings is extremely unlikely
+    to play songs with gap 1-3, without requiring the model to learn the interaction
+    between gap_shows and plays_past_50 (which shallow trees struggle with).
+
+    Removes plays_past_3/5 (redundant with small gaps) and is_very_recent (ignored by model).
+    Total: 14 features. Same HP params as V10 (leaves=15, min_leaf=10).
+    """
+
+    MODEL_VERSION = "billy_fast_gbm_v12_gap_scaled_p50"
+    _FEATURE_COLS: list[str] = BILLY_FAST_V12_FEATURE_COLS
+    _LGB_PARAMS: dict[str, Any] = _BILLY_FAST_V10_LGB_PARAMS
+
+    def _extra_training_row_features(
+        self,
+        *,
+        eligible_songs: pd.Index,
+        j: int,
+        target_date: Any,
+        gap_e: pd.Series,
+        career_pct: pd.Series,
+        p25: pd.Series,
+        p50: pd.Series,
+        cache: dict,
+        plays: pd.DataFrame,
+        target_show_index: int,
+    ) -> dict:
+        v2 = super()._extra_training_row_features(
+            eligible_songs=eligible_songs,
+            j=j,
+            target_date=target_date,
+            gap_e=gap_e,
+            career_pct=career_pct,
+            p25=p25,
+            p50=p50,
+            cache=cache,
+            plays=plays,
+            target_show_index=target_show_index,
+        )
+        window = max(1, min(25, j))
+        avg_ltp = window / p25.clip(lower=1).values
+        p50_scaled = (p50 * (gap_e / 4.0).clip(upper=1.0)).values
+        return {
+            **v2,
+            "overdue_ratio": (gap_e * career_pct).values,
+            "avg_ltp_recent": avg_ltp,
+            "ltp_diff_recent": gap_e.values - avg_ltp,
+            "plays_past_50_scaled": p50_scaled,
+        }
+
+    def _extra_predict_features(
+        self,
+        *,
+        eligible_songs: pd.Index,
+        n_shows: int,
+        ref_date: pd.Timestamp,
+        gap_e: pd.Series,
+        career_pct: pd.Series,
+        p25: pd.Series,
+        p50: pd.Series,
+        cache: dict,
+        plays: pd.DataFrame,
+        target_show_context: Any,
+    ) -> dict:
+        v2 = super()._extra_predict_features(
+            eligible_songs=eligible_songs,
+            n_shows=n_shows,
+            ref_date=ref_date,
+            gap_e=gap_e,
+            career_pct=career_pct,
+            p25=p25,
+            p50=p50,
+            cache=cache,
+            plays=plays,
+            target_show_context=target_show_context,
+        )
+        window = max(1, min(25, n_shows))
+        avg_ltp = window / p25.clip(lower=1).values
+        p50_scaled = (p50 * (gap_e / 4.0).clip(upper=1.0)).values
+        return {
+            **v2,
+            "overdue_ratio": (gap_e * career_pct).values,
+            "avg_ltp_recent": avg_ltp,
+            "ltp_diff_recent": gap_e.values - avg_ltp,
+            "plays_past_50_scaled": p50_scaled,
+        }
+
+
 # Accepted Billy baseline. Historical experiment class names remain importable so
 # prior backtest artifacts and diagnostic commands keep their original meaning.
-BillyFastBaselinePredictor = BillyFastPredictorV10
+BillyFastBaselinePredictor = BillyFastPredictorV12
 
 
 # ── V10 experiment subclasses ─────────────────────────────────────────────────

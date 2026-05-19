@@ -11,6 +11,7 @@ from jambandnerd.models.billy.fast_predictor import (
     BILLY_FAST_V2_FEATURE_COLS,
     BILLY_FAST_V3_FEATURE_COLS,
     BILLY_FAST_V5_FEATURE_COLS,
+    BILLY_FAST_V12_FEATURE_COLS,
     BillyFastBaselinePredictor,
     BillyFastPredictor,
     BillyFastPredictorV2,
@@ -18,6 +19,7 @@ from jambandnerd.models.billy.fast_predictor import (
     BillyFastPredictorV4,
     BillyFastPredictorV5,
     BillyFastPredictorV6,
+    BillyFastPredictorV12,
     BillyFastV10EarlyStop,
     BillyFastV10FullHistory,
     BillyFastV10LongRotation,
@@ -232,8 +234,8 @@ def test_registry_returns_billy_fast_predictor() -> None:
     predictor = build_band_predictor(
         "billy", songs_df=_SONGS_DF, persist_artifacts=False
     )
-    assert isinstance(predictor, BillyFastPredictorV3)
-    assert predictor.MODEL_VERSION == "billy_fast_gbm_v10_hp_tuned"
+    assert isinstance(predictor, BillyFastPredictorV12)
+    assert predictor.MODEL_VERSION == "billy_fast_gbm_v12_gap_scaled_p50"
 
 
 def test_billy_fast_diagnostic_frame_includes_active_and_candidate_features() -> None:
@@ -644,10 +646,11 @@ class TestV10ExperimentSubclasses:
         assert predictor._start_col(100) == 3
         assert predictor._start_col(200) == 50
 
-    def test_baseline_is_v10(self):
+    def test_baseline_is_v12(self):
         predictor = BillyFastBaselinePredictor()
-        assert predictor.MODEL_VERSION == "billy_fast_gbm_v10_hp_tuned"
+        assert predictor.MODEL_VERSION == "billy_fast_gbm_v12_gap_scaled_p50"
         assert predictor._LGB_PARAMS["num_leaves"] == 15
+        assert predictor._FEATURE_COLS == BILLY_FAST_V12_FEATURE_COLS
 
 
 class TestBillyV10Experiments:

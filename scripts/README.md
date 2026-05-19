@@ -9,7 +9,7 @@ These are the canonical scripts used by docs and GitHub Actions:
 
 - `run_optimized_pipeline.py` — local helper runner for one band or `all`; mirrors the daily workflow sequence, but GitHub Actions YAML is the canonical orchestrator. If collection preflight selects verify-only mode, prediction/backtest work is skipped unless `--force` is passed.
 - `generate_live_predictions.py` — generate active live next-show predictions for `--band` using that band's registered model version
-- `sync_retained_prediction_corpus.py` — compute and prune the retained last-100 completed-show prediction/metric corpus
+- `sync_retained_prediction_corpus.py` — compute and prune the retained last-50 completed-show prediction/metric corpus for the active model version
 - `run_backtest.py` — scoring helper used by the retained corpus sync; supports local raw-table snapshots via `--snapshot-root`
 - `verify_data_freshness.py` — CI data-quality check for recent missing setlists
 - `generate_pipeline_summary.py` — GitHub Actions monitoring summary for recent completed-show freshness and prediction coverage

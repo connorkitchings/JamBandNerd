@@ -4,8 +4,8 @@ import pytest
 
 from jambandnerd.models.billy.fast_predictor import BillyFastBaselinePredictor
 from jambandnerd.models.goose.model import GooseFastRankSpecialNotebookTop10Predictor
-from jambandnerd.models.phish.fast_predictor import PhishFastPredictor
-from jambandnerd.models.um.fast_predictor import UMFastPredictorV2
+from jambandnerd.models.phish.experiments import PhishFastPlusNotebookRankVenueRun
+from jambandnerd.models.um.fast_predictor import UMFastPredictorV12
 from jambandnerd.models.wsp.fast_predictor import WSPFastPredictor
 from src.jambandnerd.models.registry import (
     build_band_predictor,
@@ -69,12 +69,12 @@ def test_active_band_predictors_dispatch_to_registered_single_models() -> None:
             "goose_fast_rank_v1_candidate_relaxed_special_nbtop10",
         ),
         "phish": (
-            PhishFastPredictor,
+            PhishFastPlusNotebookRankVenueRun,
             "phish_fast_gbm_v2_feat_notebook_rank_venue_run",
         ),
         "wsp": (WSPFastPredictor, "wsp_fast_gbm_v2"),
-        "billy": (BillyFastBaselinePredictor, "billy_fast_gbm_v10_hp_tuned"),
-        "um": (UMFastPredictorV2, "um_fast_gbm_v2"),
+        "billy": (BillyFastBaselinePredictor, "billy_fast_gbm_v12_gap_scaled_p50"),
+        "um": (UMFastPredictorV12, "um_fast_gbm_v12_gap_scaled_p50"),
     }
 
     assert list_active_bands() == ["goose", "phish", "wsp", "billy", "um"]
@@ -110,6 +110,6 @@ def test_registry_lifecycle_metadata_tracks_staged_rollout() -> None:
     assert notebook.web_visibility == "promoted"
     assert deal.lifecycle_stage == "web_promoted"
     assert deal.web_visibility == "promoted"
-    assert deal.readiness_windows == (100,)
+    assert deal.readiness_windows == (50,)
     assert deal.readiness_baselines == ("notebook",)
     assert ckplus.lifecycle_stage == "retired"

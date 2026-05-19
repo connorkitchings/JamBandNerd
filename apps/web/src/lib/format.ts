@@ -86,3 +86,20 @@ export function formatSetLabel(value: number | null) {
 export function formatPercent(value: number | null, digits = 1) {
   return value === null ? "—" : `${(value * 100).toFixed(digits)}%`;
 }
+
+export function average(values: Array<number | null>) {
+  const filtered = values.filter((value): value is number => value !== null);
+  if (filtered.length === 0) {
+    return null;
+  }
+
+  return filtered.reduce((sum, value) => sum + value, 0) / filtered.length;
+}
+
+export function formatAvgHits(value: number | null, k: number) {
+  return value === null ? "—" : (value * k).toFixed(1);
+}
+
+export function formatHits(value: number | null, k: number) {
+  return value === null ? "—" : String(Math.round(value * k));
+}

@@ -303,7 +303,7 @@ jobs:
           BACKTEST_INCREMENTAL_ALL_SCORED: ${{ steps.accuracy_calc.outputs.backtest_incremental_all_scored }}
         run: |
           echo "::group::Validating accuracy tables for ${{ matrix.band }}"
-          ARGS=(--band ${{ matrix.band }} --max-age-hours 72 --replay-window 50)
+          ARGS=(--band ${{ matrix.band }} --max-age-hours 72 --replay-window 50 --require-exact-retained-window)
           if [[ "${BACKTEST_INCREMENTAL_ALL_SCORED}" == "true" ]]; then
             ARGS+=(--skip-freshness)
           fi

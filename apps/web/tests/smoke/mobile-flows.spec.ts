@@ -46,9 +46,8 @@ test.describe("mobile flows", () => {
     await expect(mobileNav).toBeVisible();
 
     const labels = await mobileNav.getByRole("link").locator("span:last-child").allTextContents();
-    expect(labels.length).toBeGreaterThanOrEqual(3);
-    expect(labels).toContain("Stats");
-    expect(labels).toContain("Predict");
+    expect(labels).toEqual(["Home", "Predict", "Replay", "Model"]);
+    expect(labels).not.toContain("Compare");
   });
 
   test("mobile top controls use compact dropdown selectors", async ({ page }, testInfo) => {
@@ -67,6 +66,7 @@ test.describe("mobile flows", () => {
     }
 
     await expect(bandSelect).toBeVisible();
+    await expect(bandSelect).toHaveValue(/\/predictions\?band=goose/);
 
     const bandBox = await bandSelect.boundingBox();
     expect(bandBox).not.toBeNull();
@@ -86,7 +86,16 @@ test.describe("mobile flows", () => {
 
     await bootstrapHostedPreviewBypass(page);
     
-    const routes = ["/", "/predictions", "/performance", "/last-show", "/about", "/contact", "/data-use"];
+    const routes = [
+      "/",
+      "/predictions",
+      "/performance",
+      "/replay",
+      "/last-show",
+      "/about",
+      "/contact",
+      "/data-use",
+    ];
     for (const route of routes) {
       await page.goto(route);
       await page.waitForLoadState("networkidle");

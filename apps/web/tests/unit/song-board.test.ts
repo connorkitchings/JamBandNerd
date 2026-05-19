@@ -1,8 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { groupPredictionRowsByTier, normalizeSongName } from "../../src/lib/song-board-core.ts";
-import type { PredictionRow } from "../../src/lib/data.ts";
+import {
+  computeTopKHits,
+  computeTopKRecall,
+  groupPredictionRowsByTier,
+  normalizeSongName,
+} from "../../src/lib/song-board-core.ts";
+import type { PredictionRow } from "../../src/lib/data/index.ts";
 
 function buildRow(songName: string, tier: PredictionRow["tier"], rank: number): PredictionRow {
   return {
@@ -35,4 +40,23 @@ test("groupPredictionRowsByTier preserves tier order and row order", () => {
 
 test("normalizeSongName trims and lowercases values for set membership checks", () => {
   assert.equal(normalizeSongName("  Shama Lama Ding Dong "), "shama lama ding dong");
+});
+
+test("computeTopKHits counts normalized matches inside the requested window", () => {
+  const rows = [
+    { songName: "Arcadia" },
+    { songName: "  Creatures " },
+    { songName: "Hungersite" },
+  ];
+  const actualSongs = new Set(["creatures", "hungersite"]);
+
+  assert.equal(computeTopKHits(rows, actualSongs, 2), 1);
+  assert.equal(computeTopKHits(rows, actualSongs, 3), 2);
+});
+
+test("computeTopKRecall returns null for missing actual setlists", () => {
+  const rows = [{ songName: "Arcadia" }];
+
+  assert.equal(computeTopKRecall(rows, new Set(), 10), null);
+  assert.equal(computeTopKRecall(rows, new Set(["arcadia", "tumble"]), 10), 0.5);
 });

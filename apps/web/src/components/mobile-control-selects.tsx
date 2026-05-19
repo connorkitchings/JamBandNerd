@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useTransition } from "react";
+import { useId, useTransition } from "react";
 
 type MobileControlOption = {
   href: string;
@@ -22,20 +22,25 @@ type Props = {
 export function MobileControlSelects({ groups }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const baseId = useId();
 
   return (
     <div className="editorial-chip grid gap-3 rounded-[1.35rem] p-3 min-[430px]:grid-cols-2 md:hidden">
       {groups.map((group) => {
         const selectedHref = group.options.find((option) => option.active)?.href ?? group.options[0]?.href ?? "";
+        const selectId = `${baseId}-${group.label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
 
         return (
-          <label key={group.label} className="flex flex-col gap-2">
-            <span className="font-label text-[10px] font-semibold uppercase tracking-[0.24em] text-on-surface-variant">
+          <div key={group.label} className="flex flex-col gap-2">
+            <label
+              htmlFor={selectId}
+              className="font-label text-[10px] font-semibold uppercase tracking-[0.24em] text-on-surface-variant"
+            >
               {group.label}
-            </span>
+            </label>
             <div className="relative">
               <select
-                aria-label={group.label}
+                id={selectId}
                 className="min-h-12 w-full appearance-none rounded-2xl border border-outline-variant/35 bg-surface/80 px-4 py-3 pr-11 text-sm text-on-surface outline-none transition focus:border-primary/45 focus:bg-surface-container"
                 data-testid={group.testId}
                 defaultValue={selectedHref}
@@ -64,7 +69,7 @@ export function MobileControlSelects({ groups }: Props) {
                 ▾
               </span>
             </div>
-          </label>
+          </div>
         );
       })}
     </div>

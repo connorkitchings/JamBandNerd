@@ -32,6 +32,10 @@ async function expectPrimaryHeadingOrMissingEnv(page: Page) {
   ).toBeVisible();
 }
 
+async function expectSinglePrimaryHeading(page: Page) {
+  await expect(page.locator("main h1")).toHaveCount(1);
+}
+
 test("desktop routes render the public shell", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop-chromium", "desktop-only shell check");
 
@@ -41,26 +45,50 @@ test("desktop routes render the public shell", async ({ page }, testInfo) => {
   await expect(page.getByRole("navigation", { name: "Primary navigation" })).toBeVisible();
   await expect(page.getByRole("navigation", { name: "Primary navigation" }).getByRole("link", { name: "Predictions" })).toBeVisible();
   await expect(page.getByRole("navigation", { name: "Primary navigation" }).getByRole("link", { name: "Performance" })).toBeVisible();
-  await expect(page.locator("main h1")).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Primary navigation" }).getByRole("link", { name: "Replay" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "What are they playing next?" })).toBeVisible();
+  await expectSinglePrimaryHeading(page);
+  await expect(
+    page
+      .getByRole("heading", { name: "First Look" })
+      .or(page.getByRole("heading", { name: "Band registry unavailable" }))
+      .first(),
+  ).toBeVisible();
+  await expect(page.locator('main a[href="/?teaser=phish"]')).toBeVisible();
+
+  const bandPredictionLinks = page.locator('main a[href^="/predictions?band="]');
+  if ((await bandPredictionLinks.count()) > 0) {
+    await expect(bandPredictionLinks.first()).toHaveAttribute("href", /\/predictions\?band=/);
+  }
 
   await page.goto("/performance");
   await expectPrimaryHeadingOrMissingEnv(page);
+  await expectSinglePrimaryHeading(page);
 
   await page.goto("/predictions");
   await expectPrimaryHeadingOrMissingEnv(page);
+  await expectSinglePrimaryHeading(page);
+
+  await page.goto("/replay");
+  await expectPrimaryHeadingOrMissingEnv(page);
+  await expectSinglePrimaryHeading(page);
 
   await page.goto("/?band=goose");
   await page.waitForURL(/\/predictions\?band=goose$/);
   await expectPrimaryHeadingOrMissingEnv(page);
+  await expectSinglePrimaryHeading(page);
 
   await page.goto("/about");
   await expect(page.getByRole("heading", { name: "About JamBandNerd" })).toBeVisible();
+  await expectSinglePrimaryHeading(page);
 
   await page.goto("/data-use");
   await expect(page.getByRole("heading", { name: "Data Use" })).toBeVisible();
+  await expectSinglePrimaryHeading(page);
 
   await page.goto("/contact");
   await expect(page.getByRole("heading", { name: "Contact JamBandNerd" })).toBeVisible();
+  await expectSinglePrimaryHeading(page);
 
   await page.goto("/admin/setlist");
   await expect(
@@ -76,10 +104,13 @@ test("removed multi-model routes are unavailable", async ({ page }, testInfo) =>
 
   await bootstrapHostedPreviewBypass(page);
 
-  for (const route of ["/compare", "/replay", "/explorer"]) {
+  for (const route of ["/compare", "/explorer"]) {
     const response = await page.goto(route);
     expect(response?.status()).toBe(404);
   }
+
+  await page.goto("/replay?band=goose&date=2026-01-01");
+  await expectPrimaryHeadingOrMissingEnv(page);
 });
 
 test("mobile navigation uses thumb-first ordering", async ({ page }, testInfo) => {
@@ -92,9 +123,8 @@ test("mobile navigation uses thumb-first ordering", async ({ page }, testInfo) =
   await expect(mobileNav).toBeVisible();
 
   const labels = await mobileNav.getByRole("link").locator("span:last-child").allTextContents();
-  expect(labels.length).toBeGreaterThanOrEqual(3);
-  expect(labels).toContain("Stats");
-  expect(labels).toContain("Predict");
+  expect(labels).toEqual(["Home", "Predict", "Replay", "Model"]);
+  expect(labels).not.toContain("Compare");
 });
 
 test("mobile detail routes show a back affordance", async ({ page }, testInfo) => {

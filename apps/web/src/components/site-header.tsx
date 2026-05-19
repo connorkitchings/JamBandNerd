@@ -46,7 +46,7 @@ export function SiteHeader() {
             {showMobileBackButton ? (
               <button
                 aria-label="Go back"
-                className="flex size-10 items-center justify-center rounded-full border border-outline-variant/20 bg-surface/70 text-on-background transition hover:border-primary/40 hover:text-primary"
+                className="flex size-10 items-center justify-center rounded-full border border-outline-variant/20 bg-surface/70 text-on-background transition hover:border-primary/40 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
                 onClick={handleBack}
                 type="button"
               >
@@ -59,7 +59,7 @@ export function SiteHeader() {
 
           <Link
             href="/"
-            className="absolute inset-y-0 left-12 right-12 flex items-center justify-center gap-2 font-headline font-bold tracking-[-0.1em] text-on-background"
+            className="absolute inset-y-0 left-12 right-12 flex items-center justify-center gap-2 rounded-full font-headline font-bold tracking-[-0.1em] text-on-background focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
           >
             <Image
               src="/logo.png"
@@ -77,7 +77,7 @@ export function SiteHeader() {
         <div className="hidden min-w-0 items-center justify-between gap-6 md:flex">
           <Link
             href="/"
-            className="flex shrink-0 items-center gap-3 font-headline font-bold uppercase tracking-[-0.06em] text-on-background"
+            className="flex shrink-0 items-center gap-3 rounded-full font-headline font-bold uppercase tracking-[-0.06em] text-on-background focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
           >
             <Image
               src="/logo.png"
@@ -97,7 +97,7 @@ export function SiteHeader() {
                   <Link
                     key={link.href}
                     href={link.href}
-                    className={`rounded-full px-4 py-2 font-headline text-xs uppercase tracking-[0.16rem] transition duration-200 ${
+                    className={`rounded-full px-4 py-2 font-headline text-xs uppercase tracking-[0.16rem] transition duration-200 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none ${
                       isActive
                         ? "border border-primary/25 bg-primary/12 text-primary shadow-[0_0_0_1px_rgba(255,191,105,0.08)]"
                         : "border border-transparent text-on-background/70 hover:border-outline-variant/25 hover:bg-surface/60 hover:text-on-background"

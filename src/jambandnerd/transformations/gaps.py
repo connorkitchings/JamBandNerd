@@ -105,8 +105,19 @@ def _compute_base_features(
 
     # 2. Compute stable show index (normalize keys BEFORE building the index map)
     historical_shows = sort_normalized_shows(historical_shows)
-    historical_shows["show_index"] = historical_shows.index + 1
-    show_idx_map = historical_shows.set_index("show_id")["show_index"].to_dict()
+
+    # Deduplicate by date so gaps count unique show-dates, not show-rows.
+    # Bands like UM play multiple shows on the same date; counting each row
+    # inflates gaps (e.g. 16 rows after a date but only 8 unique dates).
+    date_dedup_idx = historical_shows.drop_duplicates(subset=["show_date"]).reset_index(
+        drop=True
+    )
+    date_dedup_idx["show_index"] = date_dedup_idx.index + 1
+    date_to_index = dict(zip(date_dedup_idx["show_date"], date_dedup_idx["show_index"]))
+    historical_shows["show_index"] = historical_shows["show_date"].map(date_to_index)
+    show_idx_map = dict(
+        zip(historical_shows["show_id"], historical_shows["show_index"])
+    )
 
     last_historical_index = historical_shows["show_index"].max()
     reference_index = last_historical_index + 1

@@ -3,12 +3,12 @@
 import { useEffect, useState } from "react";
 
 const ACTIVE_BANDS = [
-  { value: "wsp", label: "Widespread Panic" },
+  { value: "billy", label: "Billy Strings" },
   { value: "goose", label: "Goose" },
   { value: "phish", label: "Phish" },
-  { value: "billy", label: "Billy Strings" },
   { value: "eggy", label: "Eggy" },
   { value: "um", label: "Umphrey's McGee" },
+  { value: "wsp", label: "Widespread Panic" },
 ];
 
 export default function AdminSetlistPage() {
@@ -197,8 +197,13 @@ export default function AdminSetlistPage() {
 
   if (isCheckingSession) {
     return (
-      <div className="mx-auto max-w-md py-12 text-center text-sm text-on-surface-variant">
-        Checking admin session…
+      <div className="mx-auto max-w-md space-y-3 py-12 text-center">
+        <h1 className="font-headline text-3xl font-bold text-on-surface">
+          Admin Access
+        </h1>
+        <p className="text-sm text-on-surface-variant" role="status">
+          Checking admin session...
+        </p>
       </div>
     );
   }
@@ -206,9 +211,13 @@ export default function AdminSetlistPage() {
   if (!isConfigured) {
     return (
       <div className="mx-auto max-w-xl space-y-4 py-12 text-center">
-        <h1 className="font-headline text-3xl font-bold text-on-surface">Admin Unavailable</h1>
+        <h1 className="font-headline text-3xl font-bold text-on-surface">
+          Admin Unavailable
+        </h1>
         <p className="text-sm text-on-surface-variant">
-          Configure <code>ADMIN_PASSWORD</code> and <code>ADMIN_SESSION_SECRET</code> to enable the internal setlist admin route.
+          Configure <code>ADMIN_PASSWORD</code> and{" "}
+          <code>ADMIN_SESSION_SECRET</code> to enable the internal setlist
+          correction route.
         </p>
       </div>
     );
@@ -218,11 +227,18 @@ export default function AdminSetlistPage() {
     return (
       <div className="mx-auto max-w-md space-y-8 py-12">
         <div className="text-center">
-          <h1 className="font-headline text-3xl font-bold text-on-surface">Admin Access</h1>
-          <p className="mt-2 text-sm text-on-surface-variant">Enter password to continue</p>
+          <h1 className="font-headline text-3xl font-bold text-on-surface">
+            Admin Access
+          </h1>
+          <p className="mt-2 text-sm text-on-surface-variant">
+            Enter the admin password to add a missing setlist.
+          </p>
         </div>
 
-        <form onSubmit={handlePasswordSubmit} className="space-y-4">
+        <form
+          onSubmit={handlePasswordSubmit}
+          className="editorial-panel space-y-4 p-5"
+        >
           <div>
             <label htmlFor="password" className="sr-only">
               Password
@@ -252,11 +268,15 @@ export default function AdminSetlistPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-8 py-8">
-      <div>
-        <h1 className="font-headline text-3xl font-bold text-on-surface">Add Setlist</h1>
+    <div className="mx-auto max-w-3xl space-y-8 py-8">
+      <div className="editorial-hero px-6 py-7 md:px-8">
+        <p className="editorial-kicker">Internal tool</p>
+        <h1 className="mt-3 font-headline text-3xl font-bold uppercase tracking-[-0.04em] text-on-surface md:text-5xl">
+          Add Setlist
+        </h1>
         <p className="mt-2 text-sm text-on-surface-variant">
-          Manually add a show and setlist to the database. This route uses an httpOnly admin session cookie rather than passing credentials with each write.
+          Add a missing completed show so prediction scoring and replay can catch
+          up. Use this only for factual setlist corrections.
         </p>
         <button
           type="button"
@@ -279,7 +299,7 @@ export default function AdminSetlistPage() {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="editorial-panel space-y-6 p-5">
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <label htmlFor="band" className="block font-label text-xs font-medium text-on-surface-variant">

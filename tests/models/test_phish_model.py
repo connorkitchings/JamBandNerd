@@ -7,6 +7,7 @@ from datetime import date
 import pandas as pd
 import pytest
 
+from jambandnerd.models.deal.model import DealPrediction
 from jambandnerd.models.phish.experiments import (
     PHISH_SWEEPS,
     PhishFastPlusShowType,
@@ -16,7 +17,6 @@ from jambandnerd.models.phish.fast_predictor import (
     PHISH_FAST_FEATURE_COLS,
     PhishFastPredictor,
     PhishFastPredictorV2,
-    PhishPrediction,
     _build_gap_matrix,
     _build_presence,
     _clean_plays,
@@ -205,16 +205,18 @@ class TestCandidatePruning:
 class TestPredictionResult:
     """Test prediction result dataclass."""
 
-    def test_phish_prediction_creation(self):
-        """Test PhishPrediction dataclass."""
-        pred = PhishPrediction(
+    def test_deal_prediction_creation(self):
+        pred = DealPrediction(
             song_name="Tweezer",
             probability=0.85,
-            gap_shows=5,
+            current_gap=5,
+            plays_past_year=2,
+            recent_plays_50=3,
+            LTP="2024-01-01",
         )
         assert pred.song_name == "Tweezer"
         assert pred.probability == 0.85
-        assert pred.gap_shows == 5
+        assert pred.current_gap == 5
 
 
 class TestPhishExperiments:

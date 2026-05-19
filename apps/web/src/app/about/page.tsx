@@ -4,70 +4,66 @@ import { SectionCard } from "@/components/section-card";
 
 export const metadata: Metadata = {
   title: "About | JamBandNerd",
-  description: "Learn how JamBandNerd collects setlists, transforms data, and generates predictions.",
+  description:
+    "Learn what JamBandNerd is and how to use its setlist predictions, performance pages, and replay tools.",
 };
+
 const FAQ_ITEMS = [
   {
-    question: "How do you measure accuracy?",
+    question: "What am I looking at on the Predictions page?",
     answer:
-      "Accuracy measures how much of the actual setlist was captured by the model's top predictions. For example, 30% accuracy at Top 10 means the model's top-10 group captured 30% of that night's actual songs. The site tracks that across multiple Top-X thresholds and shows the recent scoring history for each band.",
+      "It's the model's best guess at what a band will play at the next show. Songs near the top are the strongest reads, but it's still a guess — treat it like a conversation starter, not a setlist spoiler.",
+  },
+  {
+    question: "What do avg. hits and coverage mean?",
+    answer:
+      "Avg. hits is how many of the model's picks actually got played. Coverage is how much of the real setlist the model managed to catch. Both are good to check before trusting the board too much.",
   },
   {
     question: "What drives the predictions?",
     answer:
-      "Each band has a dedicated prediction model that ranks every song in the catalog by likelihood of appearing at the next show. The model uses signals like rotation patterns, gap behavior, venue context, and recent activity to produce calibrated rankings.",
+      "Each band's model looks at setlist history, rotation patterns, song gaps, venue habits, and tour context. It turns all of that into a ranked list — but bands are unpredictable by nature, and that's part of the fun.",
   },
   {
-    question: "Does accuracy vary by band?",
+    question: "Why does performance vary by band?",
     answer:
-      "Yes. Each band has a different catalog size, rotation pattern, and setlist variability. We track accuracy separately for each band. Check the Performance page to see how predictions perform for a specific band.",
+      "Some bands stick to tight rotations, some throw curveballs every night, and some have massive catalogs to pull from. We track each band on its own terms so you're not comparing apples to oranges.",
   },
   {
     question: "How often are predictions updated?",
     answer:
-      "The pipeline runs daily at 3 PM ET. Each run collects the latest setlist data, re-generates predictions for every supported band, and publishes them to Supabase.",
+      "Daily. When new setlist information comes in, the boards and performance numbers get refreshed for all supported bands.",
   },
   {
-    question: "What do the likelihood tiers mean?",
+    question: "What is Replay for?",
     answer:
-      "Tiers (Expected, Hot, Likely, Possible) reflect relative ranking position rather than a precise probability. Expected songs have the strongest rotation signal, while Possible songs have lower recent activity but could still appear.",
+      "Replay lets you look back at a finished show and see how the prediction board held up against what was actually played. Spoiler: the model doesn't always nail it, and that's fine.",
   },
   {
     question: "Where does the setlist data come from?",
     answer:
-      "Each band has a dedicated setlist source online, with some sources affiliated with the bands and some maintained independently. We are careful to follow source terms of use, and the pipeline normalizes that factual show information into a shared show-centric format.",
-  },
-  {
-    question: "Can I use this data for my own projects?",
-    answer:
-      "The project is open-source under the MIT license. Reach out through the contact page if you have questions about reuse, attribution, or how the site is presenting data.",
+      "Each band has a dedicated setlist source online — some official, some run by fan communities. We use that factual show data carefully and keep our own predictions clearly separate.",
   },
 ];
 
-const PIPELINE_STEPS = [
+const SITE_AREAS = [
   {
     step: "01",
-    title: "Collect",
+    title: "Predictions",
     description:
-      "Aggregates public, factual show metadata (dates, venues, song titles) from community archives.",
+      "See which songs the model likes for the next show. Take it with a grain of salt.",
   },
   {
     step: "02",
-    title: "Transform",
+    title: "Performance",
     description:
-      "Normalizes raw facts into a proprietary feature set for statistical modeling.",
+      "Check avg. hits and coverage over recent shows to get a feel for how the model is doing.",
   },
   {
     step: "03",
-    title: "Predict",
+    title: "Replay",
     description:
-      "A per-band model ranks every song in the catalog by likelihood of appearing at the next show.",
-  },
-  {
-    step: "04",
-    title: "Publish",
-    description:
-      "Predictions, accuracy scores, and setlists are written to Supabase and served to this website.",
+      "Look back at a finished show and compare the prediction board to the real setlist.",
   },
 ];
 
@@ -75,39 +71,33 @@ export default function AboutPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-8">
       <PageHero
-        kicker="Platform brief"
+        kicker="About"
         title="About JamBandNerd"
-        description="JamBandNerd is a data platform that collects jam band setlists, transforms them into shared prediction features, and publishes a live website for next-show reads, historical analysis, and model auditing."
-        meta="Daily pipeline • per-band prediction model"
+        description="JamBandNerd is a setlist prediction toy for jam band fans. It uses history and statistics to guess what might get played next — and then honestly tracks how those guesses turned out."
+        descriptionClassName="md:max-w-4xl"
       />
 
-      {/* Prediction approach */}
-      <SectionCard title="How Predictions Work">
+      <SectionCard title="What The Site Does">
         <p className="mb-6 text-sm leading-6 text-on-surface-variant">
-          Each supported band has a dedicated prediction model that generates
-          an independent ranked board for every upcoming show. The model uses
-          rotation patterns, gap behavior, venue context, and recent activity
-          signals to produce calibrated song rankings.
+          Pick a band, see what the model thinks they&apos;ll play, and then check
+          back after the show to see how it did. No guarantees — just educated
+          guesses and honest scorekeeping.
         </p>
         <div className="editorial-chip rounded-[1.5rem] p-6">
           <p className="font-label text-[10px] uppercase tracking-[0.2em] text-primary">
-            Approach
+            In plain terms
           </p>
           <ul className="mt-3 space-y-3 pl-5 text-sm leading-6 text-on-surface-variant marker:text-primary/75 list-disc">
-            <li>Explainable ranking model trained on true per-show candidate rows.</li>
-            <li>Uses shared rotation, venue, and recency signals to produce calibrated song rankings.</li>
-            <li>One board per band, refreshed daily as part of the automated pipeline.</li>
+            <li>The board is an attempt at a crystal ball. It will be correct sometimes and wrong a lot.</li>
+            <li>Higher-ranked songs are stronger reads, but surprises happen every tour.</li>
+            <li>After the show, check Performance or Replay to see what actually landed.</li>
           </ul>
-          <p className="mt-4 border-t border-outline-variant/15 pt-4 font-label text-[10px] uppercase tracking-[0.16em] text-on-surface-variant">
-            The weighted-recency benchmark popularized by Phish.net informed early development.
-          </p>
         </div>
       </SectionCard>
 
-      {/* Pipeline Overview */}
-      <SectionCard title="The Pipeline">
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {PIPELINE_STEPS.map((item) => (
+      <SectionCard title="How To Use It">
+        <div className="grid gap-4 md:grid-cols-3">
+          {SITE_AREAS.map((item) => (
             <div
               key={item.step}
               className="editorial-chip rounded-[1.5rem] p-5"
@@ -125,9 +115,10 @@ export default function AboutPage() {
       {/* FAQ */}
       <SectionCard title="FAQ">
         <div className="space-y-4">
-          {FAQ_ITEMS.map((item) => (
+          {FAQ_ITEMS.map((item, index) => (
             <details
               key={item.question}
+              open={index === 0}
               className="group editorial-chip rounded-[1.5rem]"
             >
               <summary className="flex cursor-pointer list-none items-start justify-between gap-3 px-5 py-4 font-headline text-sm font-medium text-on-surface transition group-open:text-primary">

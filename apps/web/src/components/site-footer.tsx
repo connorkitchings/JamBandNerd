@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { SITE_COPYRIGHT_YEAR, SITE_NAME, SITE_VERSION } from "@/lib/site";
 
+const footerLinkClassName =
+  "rounded-full border border-outline-variant/28 bg-surface-container-high/70 px-4 py-2 text-center text-xs text-on-surface-variant transition hover:border-primary/40 hover:bg-surface-container-high hover:text-primary focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none";
+
 export function SiteFooter() {
   return (
     <footer className="mt-0 px-4 pb-20 pt-0 md:px-6 md:pb-0 lg:px-8">
@@ -12,27 +15,27 @@ export function SiteFooter() {
           This site is not affiliated with, or endorsed by, any of the bands or
           management referenced on this site.
         </p>
-        <div className="mt-4 flex flex-wrap items-center justify-center gap-3 text-xs">
+        <div className="mt-4 grid grid-cols-2 gap-2 md:flex md:flex-wrap md:items-center md:justify-center md:gap-3">
           <Link
-            className="rounded-full border border-outline-variant/20 px-4 py-2 transition hover:border-primary/40 hover:text-primary"
+            className={footerLinkClassName}
             href="/about"
           >
             About
           </Link>
           <Link
-            className="rounded-full border border-outline-variant/20 px-4 py-2 transition hover:border-primary/40 hover:text-primary"
+            className={footerLinkClassName}
             href="/data-use"
           >
             Data Use
           </Link>
           <Link
-            className="rounded-full border border-outline-variant/20 px-4 py-2 transition hover:border-primary/40 hover:text-primary"
+            className={footerLinkClassName}
             href="/contact"
           >
             Contact
           </Link>
           <Link
-            className="rounded-full border border-outline-variant/20 px-4 py-2 transition hover:border-primary/40 hover:text-primary"
+            className={footerLinkClassName}
             href="/admin/setlist"
           >
             Admin
