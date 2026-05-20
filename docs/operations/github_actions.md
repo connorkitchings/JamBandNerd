@@ -1,12 +1,13 @@
 # GitHub Actions
 
-This repository uses 9 GitHub Actions workflows for pipeline automation, CI quality gates, and operational monitoring.
+This repository uses 10 GitHub Actions workflows for pipeline automation, CI quality gates, and operational monitoring.
 
 ## Workflow Summary
 
 | Workflow | File | Schedule | Manual | PR/Push | Bands |
 |----------|------|----------|--------|---------|-------|
 | Daily Data Pipeline | `daily-pipeline.yml` | 19:00 UTC daily | Yes | -- | Active single-model bands |
+| Weekly Correction Sweep | `weekly-correction-sweep.yml` | Disabled | Yes | -- | goose, phish, eggy, billy, wsp, um |
 | Fantasy Goose | `fantasy-goose.yml` | After daily pipeline | Yes | -- | goose |
 | Backfill Predictions | `backfill-predictions.yml` | -- | Yes | -- | Active single-model bands |
 | Live Show Tracker | `live-tracker.yml` | -- | Yes | -- | goose, phish, wsp, billy, um |
@@ -15,6 +16,15 @@ This repository uses 9 GitHub Actions workflows for pipeline automation, CI qual
 | Hosted Website Smoke | `hosted-web-smoke.yml` | 20:30 UTC daily | Yes | -- | -- |
 | Dependency Audit | `dependency-audit.yml` | Mon 14:00 UTC | Yes | -- | -- |
 | Test Secrets | `test_secrets.yml` | -- | Yes | -- | -- |
+
+---
+
+## Weekly Correction Sweep
+
+The correction sweep workflow is currently manual-only. Its previous Tuesday
+schedule is disabled until `scripts/run_correction_sweep.py` has a working
+`correction_detector` implementation. Use `workflow_dispatch` only for repair
+validation.
 
 ---
 

@@ -267,7 +267,7 @@ jobs:
         run: |
           echo "::group::Generating live next-show predictions for ${{ matrix.band }}"
 
-          uv run python scripts/generate_live_predictions.py --band ${{ matrix.band }}
+          uv run python scripts/generate_live_predictions.py --band ${{ matrix.band }} --require-output
 
           echo "::endgroup::"
 

@@ -8,6 +8,8 @@ import pytest
 from scripts import run_backtest as run_backtest_module
 from src.jambandnerd.models.registry import get_band_model_version, get_model_definition
 
+_VERIFY_SUPABASE_WRITE_ACCESS = run_backtest_module._verify_supabase_write_access
+
 
 @pytest.fixture(autouse=True)
 def _skip_supabase_write_preflight(monkeypatch):
@@ -16,6 +18,21 @@ def _skip_supabase_write_preflight(monkeypatch):
         "_verify_supabase_write_access",
         lambda: None,
     )
+
+
+def test_supabase_write_preflight_accepts_trimmed_secret_key(monkeypatch):
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "  sb_secret_valid_key  \n")
+    monkeypatch.delenv("SUPABASE_KEY", raising=False)
+
+    _VERIFY_SUPABASE_WRITE_ACCESS()
+
+
+def test_supabase_write_preflight_rejects_publishable_key(monkeypatch):
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "sb_publishable_invalid_key")
+    monkeypatch.delenv("SUPABASE_KEY", raising=False)
+
+    with pytest.raises(RuntimeError, match="publishable/anon key"):
+        _VERIFY_SUPABASE_WRITE_ACCESS()
 
 
 class _Prediction:

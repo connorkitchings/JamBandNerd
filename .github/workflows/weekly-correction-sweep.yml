@@ -1,20 +1,9 @@
 name: Weekly Correction Sweep
 
 on:
-  schedule:
-    # Tuesdays at staggered times (UTC)
-    # 14:00 UTC = 10:00 AM ET (Goose)
-    # 15:00 UTC = 11:00 AM ET (Phish)
-    # 16:00 UTC = 12:00 PM ET (Eggy)
-    # 17:00 UTC = 1:00 PM ET (Billy)
-    # 18:00 UTC = 2:00 PM ET (WSP)
-    # 19:00 UTC = 3:00 PM ET (UM)
-    - cron: '0 14 * * 2'  # Tuesday 10 AM ET - Goose
-    - cron: '0 15 * * 2'  # Tuesday 11 AM ET - Phish
-    - cron: '0 16 * * 2'  # Tuesday 12 PM ET - Eggy
-    - cron: '0 17 * * 2'  # Tuesday 1 PM ET - Billy
-    - cron: '0 18 * * 2'  # Tuesday 2 PM ET - WSP
-    - cron: '0 19 * * 2'  # Tuesday 3 PM ET - UM
+  # Scheduled runs are disabled until scripts/run_correction_sweep.py has a
+  # working correction_detector implementation. Keep manual dispatch available
+  # for repair validation.
   workflow_dispatch:
     inputs:
       band:

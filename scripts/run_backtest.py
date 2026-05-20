@@ -75,7 +75,7 @@ def _verify_supabase_write_access() -> None:
         os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
         or os.environ.get("SUPABASE_KEY")
         or ""
-    )
+    ).strip()
     if not key:
         raise RuntimeError(
             "SUPABASE_SERVICE_ROLE_KEY (or SUPABASE_KEY) must be set in the environment."
