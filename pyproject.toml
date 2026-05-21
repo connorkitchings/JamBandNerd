@@ -26,7 +26,7 @@ dependencies = [
     "tqdm",
     "playwright>=1.60.0",
     "lightgbm>=4.0.0",
-    "duckdb>=1.0.0",
+    "duckdb>=1.5.3",
     "scikit-learn>=1.8.0",
 ]
 
