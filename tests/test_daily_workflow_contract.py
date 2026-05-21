@@ -88,3 +88,5 @@ def test_weekly_correction_sweep_is_not_scheduled_without_detector() -> None:
         and not CORRECTION_DETECTOR_PATH.exists()
     ):
         assert "\n  schedule:" not in workflow
+    else:
+        assert "\n  schedule:" in workflow

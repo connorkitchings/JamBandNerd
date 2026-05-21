@@ -7,7 +7,7 @@ This repository uses 10 GitHub Actions workflows for pipeline automation, CI qua
 | Workflow | File | Schedule | Manual | PR/Push | Bands |
 |----------|------|----------|--------|---------|-------|
 | Daily Data Pipeline | `daily-pipeline.yml` | 19:00 UTC daily | Yes | -- | Active single-model bands |
-| Weekly Correction Sweep | `weekly-correction-sweep.yml` | Disabled | Yes | -- | goose, phish, eggy, billy, wsp, um |
+| Weekly Correction Sweep | `weekly-correction-sweep.yml` | Tue 14:00-19:00 UTC staggered | Yes | -- | goose, phish, eggy, billy, wsp, um |
 | Fantasy Goose | `fantasy-goose.yml` | After daily pipeline | Yes | -- | goose |
 | Backfill Predictions | `backfill-predictions.yml` | -- | Yes | -- | Active single-model bands |
 | Live Show Tracker | `live-tracker.yml` | -- | Yes | -- | goose, phish, wsp, billy, um |
@@ -21,10 +21,15 @@ This repository uses 10 GitHub Actions workflows for pipeline automation, CI qua
 
 ## Weekly Correction Sweep
 
-The correction sweep workflow is currently manual-only. Its previous Tuesday
-schedule is disabled until `scripts/run_correction_sweep.py` has a working
-`correction_detector` implementation. Use `workflow_dispatch` only for repair
-validation.
+The weekly correction sweep runs automatically on Tuesdays staggered hourly by band:
+- 14:00 UTC (10:00 AM ET) - Goose
+- 15:00 UTC (11:00 AM ET) - Phish
+- 16:00 UTC (12:00 PM ET) - Eggy
+- 17:00 UTC (1:00 PM ET) - Billy Strings
+- 18:00 UTC (2:00 PM ET) - Widespread Panic
+- 19:00 UTC (3:00 PM ET) - Umphrey's McGee
+
+It uses the `correction_detector.py` module to perform checksum-based comparison of stored DB raw records with fresh upstream data over a 730-day lookback window. Use `workflow_dispatch` for manual runs or repair validation.
 
 ---
 
