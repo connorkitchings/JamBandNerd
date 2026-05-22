@@ -6,6 +6,12 @@ import sys
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, project_root)
 
+from jambandnerd.config import (
+    SETLIST_ACCURACY_TABLE,
+    SETLIST_PREDICTION_SONGS_TABLE,
+    SETLIST_PREDICTIONS_TABLE,
+    SETLIST_RESULTS_TABLE,
+)
 from jambandnerd.db.operations import get_table_schema
 
 
@@ -15,8 +21,10 @@ def main():
         "wsp_shows_raw",
         "wsp_venues_raw",
         "wsp_setlists_raw",
-        "predictions",
-        "prediction_songs",
+        SETLIST_PREDICTIONS_TABLE,
+        SETLIST_PREDICTION_SONGS_TABLE,
+        SETLIST_RESULTS_TABLE,
+        SETLIST_ACCURACY_TABLE,
     ]
     schemas = {}
     for table in table_names:

@@ -113,6 +113,24 @@ git commit -m "docs: update architecture and github actions docs for single-mode
 **Supabase production**:
 - Applied `setlist_accuracy_band_show_date_idx` index via SQL Editor
 
+## Supabase Table Optimization (Second Pass)
+
+**Migrations created and applied to production**:
+- `supabase/migrations/20260522_drop_orphaned_tables.sql` — dropped 7 orphaned tables
+- `supabase/migrations/20260522_add_setlist_songs_to_realtime.sql` — added setlist_prediction_songs to realtime
+- `supabase/migrations/20260522_create_wsp_venues_raw.sql` — created missing WSP venues table
+- `supabase/migrations/20260522_add_setlist_fk_indexes.sql` — added FK indexes for join performance
+
+**Backend scripts updated**:
+- `scripts/check_recent_avg_gap.py` — rewritten to query setlist_predictions, removed --model flag, displays actual payload fields
+- `scripts/admin/get_schemas.py` — updated table list from legacy to setlist_* tables using config constants
+
+**Verification**:
+- All 7 orphaned tables confirmed dropped (goose_setlists, goose_transitions, cosmic_shows_raw, historical_prediction_runs, predictions, prediction_songs, accuracy_per_show)
+- wsp_venues_raw confirmed created (empty, ready for WSP collector)
+- setlist tables confirmed queryable (8 predictions, 350 songs, 250 results, 250 accuracy rows)
+- FK indexes confirmed working on setlist_prediction_songs and setlist_accuracy
+
 ## Validation Status
 
 | Gate | Result |
@@ -120,7 +138,8 @@ git commit -m "docs: update architecture and github actions docs for single-mode
 | `verify:python` | 582 tests pass, black + ruff clean |
 | `verify:docs` | mkdocs builds clean |
 | `verify:web` | 30 unit + 10 smoke pass, TypeScript + ESLint clean |
-| `verify:clean` | No dirty tracked files |
+| `verify:clean` | 6 changed files (4 migrations + 2 scripts) |
+| Supabase migrations | All 4 applied and verified |
 | Correction detector | 10/10 tests pass post-merge |
 | Model version consistency | Registry matches Supabase setlist_accuracy |
 | Branch audit | All branches fully merged into dev; 3 stale remote branches from old PRs remain on origin |
