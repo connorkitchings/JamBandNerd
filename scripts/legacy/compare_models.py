@@ -18,7 +18,8 @@ sys.path.insert(0, project_root)
 
 from scripts.common import fetch_table, prepare_band_data, resolve_reference_date
 from src.jambandnerd.config.bands import get_repo_supported_bands
-from src.jambandnerd.models.comparison import (
+from src.jambandnerd.models.evaluation import list_completed_shows, select_target_shows
+from src.jambandnerd.models.legacy.comparison import (
     build_cross_band_summary,
     build_delta_summary,
     build_evaluation_predictor,
@@ -28,7 +29,6 @@ from src.jambandnerd.models.comparison import (
     score_model_on_target_shows,
     summarize_scored_rows,
 )
-from src.jambandnerd.models.evaluation import list_completed_shows, select_target_shows
 from src.jambandnerd.models.registry import (
     get_model_definition,
     list_backtest_models,

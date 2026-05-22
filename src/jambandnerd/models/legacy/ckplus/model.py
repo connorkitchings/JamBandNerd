@@ -10,9 +10,8 @@ import pandas as pd
 
 from jambandnerd.config.bands import get_excluded_songs
 from jambandnerd.config.models import RETIREMENT_GAPS
+from jambandnerd.models.base import PredictionModel
 from jambandnerd.transformations.gaps import ModelData
-
-from ..base import PredictionModel
 
 logger = logging.getLogger(__name__)
 

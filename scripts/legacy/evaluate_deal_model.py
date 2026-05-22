@@ -13,7 +13,7 @@ from typing import Any
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, project_root)
 
-from scripts.compare_models import generate_report as generate_comparison_report
+from scripts.legacy.compare_models import generate_report as generate_comparison_report
 from src.jambandnerd.config.bands import get_repo_supported_bands
 
 
