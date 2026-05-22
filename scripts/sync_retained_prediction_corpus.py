@@ -24,7 +24,6 @@ def sync_retained_prediction_corpus(
     """Score and prune the last-N completed-show corpus for a band's active model."""
     return run_backtest(
         band=band,
-        model=None,
         start=None,
         end=None,
         shows=window,

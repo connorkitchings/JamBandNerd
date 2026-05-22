@@ -123,7 +123,7 @@ test("mobile navigation uses thumb-first ordering", async ({ page }, testInfo) =
   await expect(mobileNav).toBeVisible();
 
   const labels = await mobileNav.getByRole("link").locator("span:last-child").allTextContents();
-  expect(labels).toEqual(["Home", "Predictions", "Replay", "Model"]);
+  expect(labels).toEqual(["Home", "Predictions", "Performance", "Replay"]);
   expect(labels).not.toContain("Compare");
 });
 
