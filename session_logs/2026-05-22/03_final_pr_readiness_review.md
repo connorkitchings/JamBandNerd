@@ -51,3 +51,7 @@ uv run python scripts/check_version_sync.py
 
 - Band-list harmonization remains deferred.
 - Consider whether forced retained-corpus refresh should be an explicit manual workflow option for all-scored windows where freshness reporting matters.
+
+## Next Step
+
+- Run the final manual local website review, then open the PR from `dev` to `main` and let fresh PR CI complete before merge.
