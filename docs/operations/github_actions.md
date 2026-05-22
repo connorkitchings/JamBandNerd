@@ -229,7 +229,5 @@ For manual recovery or migration workflows:
 
 - `scripts/audit_raw_data.py` — inspect raw data before targeted re-ingestion
 - `scripts/check_supported_model_freshness.py` — audit supported prediction and accuracy freshness without failing before status artifacts are written
-- `scripts/rebuild_derived_data.py` — legacy multi-model rebuild helper for rollback paths
 - `scripts/generate_live_predictions.py` — write active next-show predictions into `setlist_predictions` and `setlist_prediction_songs`
 - `scripts/sync_retained_prediction_corpus.py` — write and prune the active last-50 completed-show corpus in `setlist_results` and `setlist_accuracy`
-- `scripts/wipe_band_data.py` — legacy multi-model destructive cleanup helper
