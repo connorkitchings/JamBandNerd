@@ -48,7 +48,7 @@ export const MOBILE_NAV_ITEMS: NavItem[] = [
   {
     href: "/predictions",
     label: "Predictions",
-    mobileLabel: "Predict",
+    mobileLabel: "Predictions",
     icon: "◈",
     matches: ["/predictions"],
   },

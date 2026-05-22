@@ -46,7 +46,7 @@ test.describe("mobile flows", () => {
     await expect(mobileNav).toBeVisible();
 
     const labels = await mobileNav.getByRole("link").locator("span:last-child").allTextContents();
-    expect(labels).toEqual(["Home", "Predict", "Replay", "Model"]);
+    expect(labels).toEqual(["Home", "Predictions", "Replay", "Model"]);
     expect(labels).not.toContain("Compare");
   });
 

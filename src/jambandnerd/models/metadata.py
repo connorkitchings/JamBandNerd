@@ -49,4 +49,3 @@ BAND_METADATA: tuple[BandMetadata, ...] = (
         notes="UMFast V12: dedup shows by date for correct gaps, plays_past_50_scaled = p50 * min(gap/4, 1.0), removed plays_past_10. 2 gap<=3 in top 10.",
     ),
 )
-
