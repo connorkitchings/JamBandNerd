@@ -282,10 +282,10 @@ export const getLastShowSetlist = cache(
 
       const { data: recentShows, error } = await client
         .from(showsTable)
-        .select("*")
+        .select("show_date")
         .lt("show_date", todayIso)
         .order("show_date", { ascending: false })
-        .limit(50);
+        .limit(1);
 
       if (error) {
         return { status: "error", message: error.message };

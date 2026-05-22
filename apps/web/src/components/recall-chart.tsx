@@ -18,7 +18,7 @@ function clamp(value: number, min: number, max: number) {
 }
 
 function getStrokeColor(k: 10 | 25 | 50) {
-  return k === 10 ? "var(--color-primary)" : k === 25 ? "var(--color-tertiary)" : "#c084fc";
+  return k === 10 ? "var(--color-primary)" : k === 25 ? "var(--color-tertiary)" : "var(--color-tier-top50)";
 }
 
 function formatChartValue(value: number, metric: ChartMetric) {

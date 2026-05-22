@@ -1,12 +1,25 @@
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import type { Metadata } from "next";
+import { Space_Grotesk, Inter } from "next/font/google";
 
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 
 import "./globals.css";
+
+const spaceGrotesk = Space_Grotesk({
+  subsets: ["latin"],
+  variable: "--font-space-grotesk",
+  display: "swap",
+});
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://jambandnerd.com"),
@@ -30,7 +43,7 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html className="dark" lang="en">
+    <html className={`dark ${spaceGrotesk.variable} ${inter.variable}`} lang="en">
       <body className="font-body antialiased">
         <a
           href="#main-content"

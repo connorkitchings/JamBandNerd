@@ -131,7 +131,7 @@ export const getRecentAccuracy = cache(
       if (showIds.length > 0) {
         const { data: showData, error: showError } = await client
           .from(showsTable)
-          .select("*")
+          .select(`venue_name, venue, venue_city, city, venue_state, state, region, venue_country, country, show_date, ${idColumn}`)
           .in(idColumn, showIds);
 
         if (showError) {
@@ -161,7 +161,7 @@ export const getRecentAccuracy = cache(
       } else if (showDates.length > 0) {
         const { data: showData, error: showError } = await client
           .from(showsTable)
-          .select("*")
+          .select("venue_name, venue, venue_city, city, venue_state, state, region, venue_country, country, show_date")
           .in("show_date", showDates);
 
         if (showError) {

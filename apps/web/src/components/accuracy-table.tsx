@@ -41,7 +41,7 @@ export function AccuracyTable({ rows, band }: Props) {
               Top 25
             </th>
             <th
-              className={`${TABLE_HEAD_CLASS} border-b border-[#c084fc]/25 text-center text-[#c084fc]`}
+              className={`${TABLE_HEAD_CLASS} border-b border-tier-top50/25 text-center text-tier-top50`}
               colSpan={2}
             >
               Top 50

@@ -14,10 +14,10 @@ test("desktop navigation exposes only public single-model routes", () => {
   );
 });
 
-test("mobile navigation keeps thumb-first single-model ordering", () => {
+test("mobile navigation matches desktop navigation ordering", () => {
   assert.deepEqual(
     MOBILE_NAV_ITEMS.map((item) => item.mobileLabel),
-    ["Home", "Predictions", "Replay", "Model"],
+    DESKTOP_NAV_ITEMS.map((item) => item.mobileLabel),
   );
   assert.equal(
     MOBILE_NAV_ITEMS.some((item) => /compare/i.test(item.mobileLabel) || item.href === "/compare"),

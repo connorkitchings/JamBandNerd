@@ -17,14 +17,14 @@ export const DESKTOP_NAV_ITEMS: NavItem[] = [
   {
     href: "/predictions",
     label: "Predictions",
-    mobileLabel: "Predict",
+    mobileLabel: "Predictions",
     icon: "◈",
     matches: ["/predictions"],
   },
   {
     href: "/performance",
     label: "Performance",
-    mobileLabel: "Model",
+    mobileLabel: "Performance",
     icon: "◬",
     matches: ["/performance"],
   },
@@ -37,36 +37,7 @@ export const DESKTOP_NAV_ITEMS: NavItem[] = [
   },
 ];
 
-export const MOBILE_NAV_ITEMS: NavItem[] = [
-  {
-    href: "/",
-    label: "Home",
-    mobileLabel: "Home",
-    icon: "◉",
-    matches: ["/"],
-  },
-  {
-    href: "/predictions",
-    label: "Predictions",
-    mobileLabel: "Predictions",
-    icon: "◈",
-    matches: ["/predictions"],
-  },
-  {
-    href: "/replay",
-    label: "Replay",
-    mobileLabel: "Replay",
-    icon: "◎",
-    matches: ["/replay"],
-  },
-  {
-    href: "/performance",
-    label: "Performance",
-    mobileLabel: "Model",
-    icon: "◬",
-    matches: ["/performance"],
-  },
-];
+export const MOBILE_NAV_ITEMS: NavItem[] = DESKTOP_NAV_ITEMS;
 
 const DETAIL_ROUTE_PREFIXES = ["/last-show", "/replay"];
 

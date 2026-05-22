@@ -66,7 +66,7 @@ uv run python scripts/sync_retained_prediction_corpus.py --band goose --window 5
 - retained completed-show boards are stored in `setlist_results`
 - per-show metrics are stored in `setlist_accuracy`
 
-The active metric corpus is the last 100 eligible completed shows for Goose's
+The active metric corpus is the last 50 eligible completed shows for Goose's
 registered model version.
 
 ## Local Model Development

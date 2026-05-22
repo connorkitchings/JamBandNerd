@@ -7,7 +7,7 @@ type Props = {
 };
 
 function getKTextColor(k: 10 | 25 | 50) {
-  return k === 10 ? "text-primary" : k === 25 ? "text-tertiary" : "text-[#c084fc]";
+  return k === 10 ? "text-primary" : k === 25 ? "text-tertiary" : "text-tier-top50";
 }
 
 export function KToggle({ currentK }: Props) {

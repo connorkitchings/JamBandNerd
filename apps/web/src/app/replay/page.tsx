@@ -30,7 +30,7 @@ import {
   normalizeSongName,
 } from "@/lib/song-board-core";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 3600;
 
 type Props = {
   searchParams: Promise<{

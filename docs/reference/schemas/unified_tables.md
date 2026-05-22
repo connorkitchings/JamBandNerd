@@ -267,6 +267,10 @@ Notes:
   `src/jambandnerd/config/models.py`).
 - All four tables require RLS with `SELECT` for `anon`/`authenticated`,
   writes restricted to `service_role`.
+- `setlist_accuracy` has both `show_date` and `target_show_date`.
+  `target_show_date` is the canonical product/display selector (added via
+  migration `20260512`). `show_date` is retained for backward compatibility
+  with older accuracy queries. New code should prefer `target_show_date`.
 
 Production site lookup indexes:
 

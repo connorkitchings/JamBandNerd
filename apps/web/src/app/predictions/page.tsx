@@ -33,7 +33,7 @@ import {
   isShowTonight,
 } from "@/lib/show-status";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 3600;
 
 type Props = {
   searchParams: Promise<{

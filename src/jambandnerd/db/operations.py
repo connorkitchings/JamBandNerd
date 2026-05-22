@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import time
 from datetime import date, datetime
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Set
 
@@ -257,8 +258,6 @@ def upsert_dataframe(
         conflict_columns: A list of column names to use for conflict resolution.
         chunk_size: The number of rows to upsert per chunk.
     """
-    import time
-
     client = get_supabase_client()
     records = _dataframe_to_records(df)
 
@@ -538,76 +537,94 @@ def prune_setlist_corpus(
     deleted = 0
 
     if prune_other_model_versions:
-        stale_accuracy = (
-            client.table(accuracy_table)
+        stale_accuracy_keys = [
+            row["target_show_key"]
+            for row in (
+                client.table(accuracy_table)
+                .select("target_show_key")
+                .eq("band", band)
+                .neq("model_version", model_version)
+                .execute()
+                .data
+                or []
+            )
+            if row.get("target_show_key")
+        ]
+        if stale_accuracy_keys:
+            for chunk_start in range(0, len(stale_accuracy_keys), 200):
+                chunk = stale_accuracy_keys[chunk_start : chunk_start + 200]
+                resp = (
+                    client.table(accuracy_table)
+                    .delete()
+                    .eq("band", band)
+                    .neq("model_version", model_version)
+                    .in_("target_show_key", chunk)
+                    .execute()
+                )
+                deleted += len(resp.data or [])
+
+        stale_results_keys = [
+            row["target_show_key"]
+            for row in (
+                client.table(results_table)
+                .select("target_show_key")
+                .eq("band", band)
+                .neq("model_version", model_version)
+                .execute()
+                .data
+                or []
+            )
+            if row.get("target_show_key")
+        ]
+        if stale_results_keys:
+            for chunk_start in range(0, len(stale_results_keys), 200):
+                chunk = stale_results_keys[chunk_start : chunk_start + 200]
+                resp = (
+                    client.table(results_table)
+                    .delete()
+                    .eq("band", band)
+                    .neq("model_version", model_version)
+                    .in_("target_show_key", chunk)
+                    .execute()
+                )
+                deleted += len(resp.data or [])
+
+    current_results_keys = [
+        row["target_show_key"]
+        for row in (
+            client.table(results_table)
             .select("target_show_key")
             .eq("band", band)
-            .neq("model_version", model_version)
+            .eq("model_version", model_version)
             .execute()
+            .data
+            or []
         )
-        for row in stale_accuracy.data or []:
-            target_show_key = row.get("target_show_key")
-            if not target_show_key:
-                continue
+        if row.get("target_show_key")
+    ]
+    stale_current_keys = [
+        key for key in current_results_keys if str(key) not in retained
+    ]
+    if stale_current_keys:
+        for chunk_start in range(0, len(stale_current_keys), 200):
+            chunk = stale_current_keys[chunk_start : chunk_start + 200]
             (
                 client.table(accuracy_table)
                 .delete()
                 .eq("band", band)
-                .neq("model_version", model_version)
-                .eq("target_show_key", target_show_key)
+                .eq("model_version", model_version)
+                .in_("target_show_key", chunk)
                 .execute()
             )
-            deleted += 1
-
-        stale_results = (
-            client.table(results_table)
-            .select("target_show_key")
-            .eq("band", band)
-            .neq("model_version", model_version)
-            .execute()
-        )
-        for row in stale_results.data or []:
-            target_show_key = row.get("target_show_key")
-            if not target_show_key:
-                continue
-            (
+            resp = (
                 client.table(results_table)
                 .delete()
                 .eq("band", band)
-                .neq("model_version", model_version)
-                .eq("target_show_key", target_show_key)
+                .eq("model_version", model_version)
+                .in_("target_show_key", chunk)
                 .execute()
             )
-            deleted += 1
-
-    response = (
-        client.table(results_table)
-        .select("target_show_key")
-        .eq("band", band)
-        .eq("model_version", model_version)
-        .execute()
-    )
-    for row in response.data or []:
-        target_show_key = row.get("target_show_key")
-        if not target_show_key or str(target_show_key) in retained:
-            continue
-        (
-            client.table(accuracy_table)
-            .delete()
-            .eq("band", band)
-            .eq("model_version", model_version)
-            .eq("target_show_key", target_show_key)
-            .execute()
-        )
-        (
-            client.table(results_table)
-            .delete()
-            .eq("band", band)
-            .eq("model_version", model_version)
-            .eq("target_show_key", target_show_key)
-            .execute()
-        )
-        deleted += 1
+            deleted += len(resp.data or [])
     return deleted
 
 

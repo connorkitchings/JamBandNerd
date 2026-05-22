@@ -325,7 +325,7 @@ class BandCollector(ABC):
                 logger.warning(
                     f"Access denied (403) for {url} — upstream API may be blocking requests"
                 )
-                self._check_circuit_breaker()
+                self.record_failure()
                 return []
             raise
         except requests.exceptions.RequestException as e:

@@ -10,7 +10,7 @@ import {
 } from "@/lib/data";
 import { buildLocationLabel, formatDateLabel } from "@/lib/format";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 3600;
 
 const HOME_TEASER_FALLBACK_BANDS = [
   { slug: "phish", label: "Phish", fallbackName: "Phish" },
@@ -104,7 +104,7 @@ export default async function HomePage({ searchParams }: Props) {
             <p className="mt-5 max-w-2xl text-lg leading-relaxed text-on-surface-variant">
               We rank the songs each band might play at the next show. It&apos;s an educated guess — sometimes right, sometimes not — but always worth checking.
             </p>
-            <div className="mt-8 hidden gap-3 sm:max-w-3xl sm:grid-cols-2 md:grid md:gap-4">
+            <div className="mt-8 grid gap-3 sm:max-w-3xl sm:grid-cols-2 md:gap-4">
               <Link
                 href="/predictions"
                 className="inline-flex w-full items-center justify-center rounded-full border border-outline-variant/35 bg-surface/70 px-6 py-3.5 text-center font-headline text-sm font-medium uppercase tracking-[0.14rem] text-on-surface transition hover:border-primary/35 hover:bg-surface-container-low hover:text-primary focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"

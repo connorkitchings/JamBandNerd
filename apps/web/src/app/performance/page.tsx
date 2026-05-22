@@ -13,7 +13,7 @@ import { SectionCard } from "@/components/section-card";
 import { getBands, getRecentAccuracy, bandEntryBySlug, resolveBandSelection } from "@/lib/data";
 import { average, formatAvgHits, formatCompactDateLabel, formatHits, formatPercent } from "@/lib/format";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 3600;
 
 type Props = {
   searchParams: Promise<{
