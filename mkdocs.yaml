@@ -58,10 +58,11 @@ nav:
       - Extending the Platform: contributor/developer_guide/extending_the_platform.md
       - Agentic Development: contributor/developer_guide/ai_sessions.md
   - Operations:
-      - Daily Pipeline: operations/github_actions.md
-      - Data Recovery & Rebuild: operations/data_recovery_rebuild.md
-      - Pipeline Optimization: operations/pipeline_optimization.md
-      - Streamlit Deployment: operations/streamlit_deploy.md
+      - Index: operations/README.md
+      - GitHub Actions: operations/github_actions.md
+      - Website Delivery: operations/website_delivery.md
+      - Main Branch Elevation: operations/main_branch_elevation.md
+      - Streamlit Notes (Historical): operations/streamlit_deploy.md
       - TourWrangler Fallback (WSP): operations/tourwrangler_fallback.md
   - Reference:
       - Collectors:
@@ -102,3 +103,11 @@ nav:
   - Logs: logs/index.md
   - Archive:
       - Implementation Guide: archive/implementation_guide.md
+      - V1 Punch List: archive/v1_punch_list.md
+      - Frontend Strategy: archive/frontend_strategy.md
+      - Pipeline Optimization (Historical): archive/pipeline_optimization.md
+      - Data Recovery & Rebuild (Historical): archive/data_recovery_rebuild.md
+      - Repo Hygiene Audit: archive/repo_hygiene_audit.md
+      - Mobile Verification: archive/mobile_verification.md
+      - WSP 403 Fix: archive/wsp_403_fix.md
+      - Test Results 2025-12-01: archive/test_results_2025-12-01.md

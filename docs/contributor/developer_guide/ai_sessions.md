@@ -1,6 +1,6 @@
 # Agentic Development
 
-JamBandNerd uses a canonical multi-tool workflow for AI-assisted development. This document is the contributor-facing map to that system.
+JamBandNerd uses a canonical multi-tool workflow for AI-assisted development. This document is the contributor-facing map to that stable system.
 
 ## Canonical Entry Points
 

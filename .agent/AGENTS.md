@@ -31,8 +31,8 @@ This file defines how AI coding tools should work in this repository. Keep it sh
 - Return compact metric deltas and verification commands.
 
 ### Web/App
-- Own the website delivery strategy, frontend architecture, and legacy Streamlit transition work.
-- Prefer changes that move the repo toward the website target over new Streamlit-only feature work.
+- Own the website delivery strategy, frontend architecture, and UI product work.
+- Prefer changes that keep the live website production-ready over speculative new features.
 
 ### Researcher
 - Gather current external information with citations when needed.
@@ -63,8 +63,8 @@ Open on demand:
 1. Use `README.md` and `docs/user/pipeline_usage.md` as the source of truth for commands.
 2. Do not create intermediate Supabase tables. Transform data in memory through `ModelData`.
 3. All feature engineering must respect `reference_date`. Never use future data in features or backtests.
-4. Band-specific collector logic belongs in `src/jambandnerd/data_collection/{band}/`. Per-band predictor classes are allowed under `src/jambandnerd/models/{band}/` as the platform transitions to a single precision-optimized model per band (see ADR 0001). Shared infrastructure — `ModelData`, `PredictionModel` ABC, training/eval harness, storage contract — remains band-agnostic.
-   - **On `feat/single-model-per-band`**: The backend write boundary is `setlist_*` (one row per band per show, no `model_slug`). See ADR 0001 and `docs/reference/schemas/unified_tables.md`.
+4. Band-specific collector logic belongs in `src/jambandnerd/data_collection/{band}/`. Per-band predictor classes are allowed under `src/jambandnerd/models/{band}/` (ADR 0001 complete — one precision-optimized model per band in production). Shared infrastructure — `ModelData`, `PredictionModel` ABC, training/eval harness, storage contract — remains band-agnostic.
+   - The backend write boundary is `setlist_*` (one row per band per show, no `model_slug`). See ADR 0001 and `docs/reference/schemas/unified_tables.md`.
 5. Prefer the consolidated scripts in `scripts/` over one-off or historical entrypoints.
 6. Never work directly on `main`. Use a feature branch.
 7. Every logic change needs tests or a documented reason why no tests apply.
