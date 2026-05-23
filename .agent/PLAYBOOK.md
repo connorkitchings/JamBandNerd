@@ -15,6 +15,7 @@ This file stores persistent lessons and operating patterns that should survive a
 1. Use a small boot order and fetch docs on demand to avoid context bloat.
 2. Treat `docs/logs/` as archive/history and `session_logs/` as the active session system.
 3. Keep quality gates explicit and copy-pasteable so every AI tool uses the same validation path.
+4. Keep `.agent/AGENTS.md` as a compact router; put optional or specialized operating guidance in `.agent/workflows/` and link to it from the catalog.
 
 ## Success Patterns
 
