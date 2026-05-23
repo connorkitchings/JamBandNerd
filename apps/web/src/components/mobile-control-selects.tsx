@@ -34,14 +34,14 @@ export function MobileControlSelects({ groups }: Props) {
           <div key={group.label} className="flex flex-col gap-2">
             <label
               htmlFor={selectId}
-              className="font-label text-[10px] font-semibold uppercase tracking-[0.24em] text-on-surface-variant"
+              className="font-label text-center text-[10px] font-semibold uppercase tracking-[0.24em] text-on-surface-variant"
             >
               {group.label}
             </label>
             <div className="relative">
               <select
                 id={selectId}
-                className="min-h-12 w-full appearance-none rounded-2xl border border-outline-variant/35 bg-surface/80 px-4 py-3 pr-11 text-sm text-on-surface outline-none transition focus:border-primary/45 focus:bg-surface-container"
+                className="min-h-12 w-full appearance-none rounded-2xl border border-outline-variant/35 bg-surface/80 px-4 py-3 pr-11 text-center text-sm text-on-surface outline-none transition focus:border-primary/45 focus:bg-surface-container"
                 data-testid={group.testId}
                 defaultValue={selectedHref}
                 disabled={isPending || group.options.length === 0}

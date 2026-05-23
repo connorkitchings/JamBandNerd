@@ -12,6 +12,13 @@ from jambandnerd.config import BAND_EXCLUSION_WINDOWS, EXCLUSION_WINDOW_DEFAULT
 from jambandnerd.config.bands import get_excluded_songs
 from jambandnerd.models.base import PredictionModel
 from jambandnerd.models.deal.model import DealPrediction
+from jambandnerd.models.shared.matrix_features import (
+    build_gap_matrix,
+    build_month_cums,
+    build_presence,
+    clean_plays,
+    window_plays,
+)
 from jambandnerd.transformations.gaps import ModelData
 from jambandnerd.transformations.run_context import (
     normalize_target_show_context,
@@ -94,61 +101,20 @@ _LGB_PARAMS: dict[str, Any] = {
 _LGB_ROUNDS = 200
 
 
+# ── Shared re-exports (with goose-specific wrappers) ──────────────────────────
+
+
 def _clean_plays(plays: pd.DataFrame) -> pd.DataFrame:
-    base_columns = ["song_name", "show_index", "show_date"]
-    context_columns = [
-        column
-        for column in ("venue_name", "city", "state", "country")
-        if column in plays.columns
-    ]
-    set_columns = [
-        column
-        for column in ("set_number", "song_position", "encore")
-        if column in plays.columns
-    ]
-    df = plays[base_columns + context_columns + set_columns].copy()
-    df = df.dropna(subset=["song_name", "show_index", "show_date"])
-    df["show_date"] = pd.to_datetime(df["show_date"], errors="coerce")
-    df["show_index"] = pd.to_numeric(df["show_index"], errors="coerce")
-    if "set_number" in df.columns:
-        df["set_number"] = pd.to_numeric(df["set_number"], errors="coerce").astype(
-            "Int64"
-        )
-    if "song_position" in df.columns:
-        df["song_position"] = pd.to_numeric(
-            df["song_position"], errors="coerce"
-        ).astype("Int64")
-    if "encore" in df.columns:
-        df["encore"] = df["encore"].fillna(False).astype(bool)
-    df = df.dropna(subset=["show_date", "show_index"])
-    df["show_index"] = df["show_index"].astype(int)
-    return df.reset_index(drop=True)
+    return clean_plays(plays, coerce_set_types=True)
 
 
-def _build_presence(plays: pd.DataFrame) -> tuple[pd.DataFrame, np.ndarray]:
-    presence = (
-        plays.groupby(["song_name", "show_index"])
-        .size()
-        .gt(0)
-        .unstack(fill_value=False)
-    )
-    show_cols = presence.columns.to_numpy(dtype=np.int64)
-    return presence, show_cols
+_build_presence = build_presence
+_window_plays = window_plays
+_build_month_cums = build_month_cums
 
 
 def _build_current_gap_matrix(presence: pd.DataFrame) -> pd.DataFrame:
-    """Completed-show gap before each target column."""
-    n_shows = presence.shape[1]
-    col_pos = np.arange(n_shows, dtype=float)
-    play_col = np.where(presence.values, col_pos[np.newaxis, :], np.nan)
-    last_play = pd.DataFrame(
-        play_col, index=presence.index, columns=presence.columns
-    ).ffill(axis=1)
-    last_play_before = last_play.shift(1, axis=1)
-    gap_arr = col_pos[np.newaxis, :] - last_play_before.values - 1.0
-    gap_arr = np.where(np.isnan(last_play_before.values), float(n_shows), gap_arr)
-    gap_arr = np.clip(gap_arr, 0.0, None)
-    return pd.DataFrame(gap_arr, index=presence.index, columns=presence.columns)
+    return build_gap_matrix(presence, zero_based=True)
 
 
 def _current_gap_for_prediction(presence: pd.DataFrame) -> pd.Series:
@@ -161,37 +127,6 @@ def _current_gap_for_prediction(presence: pd.DataFrame) -> pd.Series:
     last_play_col = last_play.iloc[:, -1]
     gap = n_shows - last_play_col - 1.0
     return gap.fillna(float(n_shows)).clip(lower=0.0).astype(float)
-
-
-def _window_plays(cum: pd.DataFrame, upper_col: int, window: int) -> pd.Series:
-    end = upper_col - 1
-    if end < 0:
-        return pd.Series(0.0, index=cum.index)
-    end = min(end, cum.shape[1] - 1)
-    start = max(0, upper_col - window)
-    if start == 0:
-        return cum.iloc[:, end].astype(float)
-    return (cum.iloc[:, end] - cum.iloc[:, start - 1]).astype(float)
-
-
-def _build_month_cums(
-    plays: pd.DataFrame,
-    presence: pd.DataFrame,
-) -> dict[int, pd.DataFrame]:
-    all_songs = presence.index
-    cols = presence.columns
-    month_cums: dict[int, pd.DataFrame] = {}
-    for month in range(1, 13):
-        month_presence = (
-            plays[plays["_month"] == month]
-            .groupby(["song_name", "show_index"])
-            .size()
-            .unstack(fill_value=0)
-            .reindex(index=all_songs, columns=cols, fill_value=0)
-            .astype(float)
-        )
-        month_cums[month] = month_presence.cumsum(axis=1)
-    return month_cums
 
 
 def _sum_matrix(

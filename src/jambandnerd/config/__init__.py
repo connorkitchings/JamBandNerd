@@ -1,10 +1,5 @@
 """Centralized configuration package for JamBandNerd.
 
-This package consolidates all global configuration constants from its modules,
-making them accessible from a single entry point. This approach allows for
-organized, domain-specific configuration files while maintaining a simple
-import path for consumers.
-
 Example:
     from jambandnerd.config import SUPPORTED_BANDS, TOP_K_VALUES
 """
@@ -21,14 +16,6 @@ from .bands import (
 )
 from .data_collection import DATE_FORMATS, DEFAULT_CHUNK_SIZE, FETCH_CHUNK_SIZE
 from .database import (
-    COMPLETED_SHOW_ACCURACY_TABLE,
-    COMPLETED_SHOW_PREDICTION_RUNS_TABLE,
-    HISTORICAL_PREDICTION_RUNS_TABLE,
-    NEXT_SHOW_PREDICTION_RUNS_TABLE,
-    NEXT_SHOW_PREDICTION_SONGS_TABLE,
-    PREDICTION_SONGS_TABLE,
-    PREDICTION_TABLES,
-    RAW_TABLE_SUFFIX,
     SETLIST_ACCURACY_TABLE,
     SETLIST_PREDICTION_SONGS_TABLE,
     SETLIST_PREDICTIONS_TABLE,
@@ -36,7 +23,6 @@ from .database import (
 )
 from .models import (
     BAND_EXCLUSION_WINDOWS,
-    CKPLUS_ALPHA_DEFAULT,  # Deprecated: CK+ model retired 2026-04-11
     DEAL_EPOCHS,
     DEAL_L2_REGULARIZATION,
     DEAL_LEARNING_RATE,
@@ -44,10 +30,7 @@ from .models import (
     DEAL_MIN_TRAINING_SHOWS,
     DEAL_RETRAIN_INTERVAL_DAYS,
     DEAL_TRAINING_WINDOW_SHOWS,
-    ENABLED_MODELS,
     EXCLUSION_WINDOW_DEFAULT,
-    MIN_PLAYS_THRESHOLD_DEFAULT,
-    MODEL_VERSIONS,
     RETIREMENT_GAPS,
     TOP_K_VALUES,
 )
@@ -67,26 +50,15 @@ __all__ = [
     "DATE_FORMATS",
     # database.py
     "RAW_TABLE_SUFFIX",
-    "PREDICTION_TABLES",
-    "PREDICTION_SONGS_TABLE",
-    "HISTORICAL_PREDICTION_RUNS_TABLE",
     "SETLIST_PREDICTIONS_TABLE",
     "SETLIST_PREDICTION_SONGS_TABLE",
     "SETLIST_RESULTS_TABLE",
     "SETLIST_ACCURACY_TABLE",
-    "NEXT_SHOW_PREDICTION_RUNS_TABLE",
-    "NEXT_SHOW_PREDICTION_SONGS_TABLE",
-    "COMPLETED_SHOW_PREDICTION_RUNS_TABLE",
-    "COMPLETED_SHOW_ACCURACY_TABLE",
     # models.py
     "TOP_K_VALUES",
     "EXCLUSION_WINDOW_DEFAULT",
     "BAND_EXCLUSION_WINDOWS",
-    "MIN_PLAYS_THRESHOLD_DEFAULT",
-    "CKPLUS_ALPHA_DEFAULT",
     "RETIREMENT_GAPS",
-    "MODEL_VERSIONS",
-    "ENABLED_MODELS",
     "DEAL_MIN_PLAYS_THRESHOLD",
     "DEAL_MIN_TRAINING_SHOWS",
     "DEAL_TRAINING_WINDOW_SHOWS",

@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 
 import { DashboardSideNav } from "@/components/dashboard-side-nav";
 import { DataGate } from "@/components/data-gate";
@@ -33,7 +32,7 @@ import {
   isShowTonight,
 } from "@/lib/show-status";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 3600;
 
 type Props = {
   searchParams: Promise<{
@@ -130,7 +129,7 @@ export default async function PredictionsPage({ searchParams }: Props) {
   const statusLabel = getPredictionStatusLabel(heroDate);
   const snapshotLabel = formatTimestampLabel(predictionState.snapshot.predictedAt);
   const accuracyRows = accuracyState.status === "ready" ? accuracyState.rows : [];
-  const performanceWindowLabel = "last 50 scored shows";
+  const performanceWindowLabel = "last 50 shows";
   const precisionCards = [
     {
       title: "Top 10",
@@ -184,26 +183,13 @@ export default async function PredictionsPage({ searchParams }: Props) {
         />
       )}
 
-      {displayState === "previous" && (
-        <div className="mb-5 rounded-lg border border-outline-variant/30 bg-surface-container-low px-4 py-3 text-sm leading-6 text-on-surface-variant">
-          This board is for the previous known target show. It remains visible
-          until the next upcoming show prediction is available.{" "}
-          <Link
-            href={`/last-show?band=${predictionState.band}`}
-            className="font-semibold text-primary underline-offset-4 hover:underline"
-          >
-            View the latest completed show
-          </Link>
-          .
-        </div>
-      )}
-
       <PredictionHero
         venueName={targetShow?.venueName ?? `${bandName} Show`}
         dateLabel={dateLabel}
         locationLabel={locationLabel}
         statusLabel={statusLabel}
         snapshotLabel={snapshotLabel}
+        displayState={displayState}
       />
       <PredictionHeroMetrics
         performanceWindowLabel={performanceWindowLabel}
@@ -212,21 +198,21 @@ export default async function PredictionsPage({ searchParams }: Props) {
 
       <section className="px-1">
         <div className="px-3 py-2 sm:px-4 md:px-5">
-          <div className="relative flex items-start justify-between gap-4">
-            <div>
-              <p className="font-label text-[10px] uppercase tracking-[0.24em] text-primary">
-                Full ranking
-              </p>
-              <h2 className="mt-3 font-headline text-3xl font-bold uppercase tracking-[-0.04em] text-on-surface">
-                Song board
-              </h2>
+          <div className="text-center md:text-left">
+            <p className="font-label text-[10px] uppercase tracking-[0.24em] text-primary">
+              Full ranking
+            </p>
+            <h2 className="mt-3 font-headline text-3xl font-bold uppercase tracking-[-0.04em] text-on-surface">
+              Song board
+            </h2>
+          </div>
+          <div className="mt-5 flex items-center gap-3 md:gap-4">
+            <div className="flex flex-1 justify-center">
+              <SongSearch songs={searchSongs} />
             </div>
-            <div className="shrink-0 pt-1">
+            <div className="shrink-0">
               <SharePredictionsButton text={shareText} />
             </div>
-          </div>
-          <div className="mt-5">
-            <SongSearch songs={searchSongs} />
           </div>
           <div className="mt-6">
             <SongBoard rows={predictionState.snapshot.predictions} />

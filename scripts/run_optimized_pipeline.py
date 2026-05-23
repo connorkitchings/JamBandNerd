@@ -147,7 +147,6 @@ def _run_band_backtest(*, band: str) -> int:
 
     return run_backtest(
         band=band,
-        model=None,
         start=None,
         end=None,
         shows=RETAINED_CORPUS_WINDOW,

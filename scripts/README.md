@@ -18,7 +18,6 @@ These are the canonical scripts used by docs and GitHub Actions:
 - `validate_accuracy_tables.py` — per-show accuracy freshness/presence check, plus replay-lineage validation for recent scored shows
 - `audit_supabase_tables.py` — canonical website-facing Supabase audit that combines live prediction completeness, replay/history coverage, supported-model freshness, and recent raw setlist completeness into one read-only report
 - `collection_preflight.py` — classify collection mode and execution mode before the collector starts
-- `get_prediction_dates.py` — legacy helper to list available multi-model prediction reference dates
 - `get_last_completed_show_date.py` — resolve the most recent completed show date for a band
 
 Band collection scripts (kept at top-level so GitHub Actions and local tooling can address them directly):
@@ -26,24 +25,14 @@ Band collection scripts (kept at top-level so GitHub Actions and local tooling c
 - `run_{band}_collection.py` — raw ingestion/upserts for a specific band
 - `get_all_bands.py` — returns the repo-authoritative automation band list from `src/jambandnerd/config/bands.py`
 
-Prediction entry points (band-specific wrappers):
-
-- `generate_billy_predictions.py` — Billy Strings wrapper for `generate_predictions.py`
-- `generate_billy_ckplus_predictions.py` — Billy Strings CK+ wrapper
-
 ## Integrations
 
 - `play_fantasy_goose.py` — auto-play Fantasy Goose using the active Goose prediction board
-- `run_live_tracker.py` — poll for live setlist updates during a show
+- `run_live_tracker.py` — poll for live setlist updates during a show; triggers single-model prediction regeneration
 
 ## Recovery and rebuild
 
 - `export_backtest_snapshots.py` — export raw show/setlist tables into local JSON or Parquet snapshots for offline historical scoring
-- `rebuild_prediction_songs.py` — legacy projection rebuild for the old `prediction_songs` table
-- `rebuild_derived_data.py` — legacy multi-model rebuild helper for rollback paths
-- `backfill_predictions.py` — legacy prediction backfill helper; prefer `sync_retained_prediction_corpus.py` for active website data
-- `recover_deal_last50_local.py` — local-first recovery for missing Deal `last_100` historical rows using exported raw snapshots, local scored-run bundles, and per-band Supabase upload/verification
-- `wipe_band_data.py` — legacy multi-model destructive cleanup helper
 
 ## Diagnostics (stable)
 
@@ -52,17 +41,26 @@ Prediction entry points (band-specific wrappers):
 - `audit_shared_model_inputs.py` — audit normalized shared model-input field availability across bands before adding cross-band features
 - `check_recent_avg_gap.py` — legacy diagnostic for band/model gap checks
 - `diagnose_phase_b_features.py` — reusable Phase B feature diagnostics for per-band predictors; writes Markdown and JSON reports with descriptives, lift, and diagnostic LightGBM importance
-- `compare_models.py` — legacy baseline comparison helper; use it only for offline Phase B evidence against Notebook/Deal-era results
-- `evaluate_deal_model.py` — compatibility wrapper that runs the generic comparison workflow for Deal
-- `model_readiness.py` — canonical staged readiness workflow for future model promotion: comparison evidence, local snapshot export, historical publish, and backend validation
-- `analyze_ablations.py` — rank ablation JSON reports against the canonical Deal baseline and Notebook anchor, then print Batch 2 eligibility and suggested combo experiments
+- `report_model_headroom.py` — analyze per-band model headroom and dual-objective metric trends
+- `report_goose_promotion_readiness.py` — goose-specific promotion readiness evidence
+- `evaluate_goose_notebook_blend.py` — goose notebook blend evaluation
+- `run_experiment.py` — generic experiment runner for per-band model sweeps
+- `run_goose_ablation.py` — goose ablation sweep runner
+- `run_notebook_ablation.py` — notebook ablation sweep runner
+- `run_phase_b_backtest.py` — Phase B backtest runner
+- `promote_phase_b_winner.py` — promote a Phase B winner to active status
+
+## Legacy (archived)
+
+Offline comparison tooling preserved for historical Phase B evidence. These scripts reference retired multi-model registry functions and are not maintained for active use.
+
+- `legacy/compare_models.py` — legacy baseline comparison helper
+- `legacy/evaluate_deal_model.py` — compatibility wrapper for Deal comparison
 
 ## Admin scripts
 
 Manual tools that write to Supabase. Use with care.
 
-- `admin/add_setlist.py`
-- `admin/delete_setlist_data.py`
 - `admin/repair_wsp_setlists_range.py`
 - `admin/get_schemas.py`
 

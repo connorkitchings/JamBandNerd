@@ -19,10 +19,8 @@ import {
 } from "@/lib/data";
 import {
   buildLocationLabel,
-  formatCompactDateLabel,
-  formatDateLabel,
+  formatMMDDYYYY,
   formatPercent,
-  formatTimestampLabel,
 } from "@/lib/format";
 import {
   computeTopKHits,
@@ -30,7 +28,7 @@ import {
   normalizeSongName,
 } from "@/lib/song-board-core";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 3600;
 
 type Props = {
   searchParams: Promise<{
@@ -49,7 +47,7 @@ export async function generateMetadata({
   const bandName =
     bandSelection.bandEntry?.displayName ?? bandSelection.requestedSlug;
   const dateLabel = params.date
-    ? ` (${formatCompactDateLabel(params.date)})`
+    ? ` (${formatMMDDYYYY(params.date)})`
     : "";
 
   return {
@@ -135,8 +133,9 @@ export default async function ReplayPage({ searchParams }: Props) {
     (setlist?.songs ?? []).map((song) => normalizeSongName(song.songName)),
   );
   const rows = predictionState.snapshot.predictions;
-  const top10Hits = computeTopKHits(rows, actualSongs, 10);
-  const top25Hits = computeTopKHits(rows, actualSongs, 25);
+  const predictedSongs = new Set(
+    rows.map((row) => normalizeSongName(row.songName)),
+  );
   const locationLabel = buildLocationLabel([
     show?.city ?? null,
     show?.state ?? show?.country ?? null,
@@ -152,10 +151,14 @@ export default async function ReplayPage({ searchParams }: Props) {
 
       <PageHero
         kicker="Replay"
-        eyebrow="Completed show"
-        title={`${bandName} prediction replay`}
-        meta={formatDateLabel(selectedDate)}
-        description="Review a retained prediction board against the actual setlist for a completed show. Replay uses the saved single-model snapshot for that band and date."
+        title={
+          <>
+            {bandName}
+            <br />
+            <span className="text-primary">prediction replay</span>
+          </>
+        }
+        description="Review a retained prediction board against the actual setlist for a completed show."
         aside={
           <div className="editorial-panel p-5">
             <ReplayShowSelect
@@ -163,80 +166,106 @@ export default async function ReplayPage({ searchParams }: Props) {
               selectedDate={selectedDate}
               options={availableShows}
             />
-            <div className="mt-5 border-t border-outline-variant/15 pt-4">
-              <p className="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">
-                Snapshot
-              </p>
-              <p className="mt-2 text-sm text-on-surface">
-                {formatTimestampLabel(predictionState.snapshot.predictedAt)}
-              </p>
-            </div>
           </div>
         }
       />
 
-      <section className="grid gap-4 md:grid-cols-3">
+      {setlist ? (
         <SectionCard
-          title={setlist ? String(setlist.songs.length) : "—"}
-          eyebrow="Songs played"
-          centered
-        />
-        <SectionCard
-          title={setlist ? `${top10Hits}/10` : "—"}
-          eyebrow="Top 10 hits"
-          centered
-        />
-        <SectionCard
-          title={setlist ? `${top25Hits}/25` : "—"}
-          eyebrow="Top 25 hits"
-          centered
-        />
-      </section>
+          title="Completed Setlist"
+          headerAccessory={
+            <div className="rounded-full border border-outline-variant/15 bg-surface/50 px-4 py-2 text-center font-headline text-base font-semibold tracking-[0.08em] text-amber-400">
+              {formatMMDDYYYY(selectedDate)}
+            </div>
+          }
+        >
+          <div className="mb-5 grid gap-3 text-center md:text-left md:grid-cols-3">
+            <div className="rounded-xl border border-outline-variant/15 bg-surface-container-low/60 p-4">
+              <p className="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">
+                Venue
+              </p>
+              <p className="mt-2 text-sm font-medium text-on-surface">
+                {show?.venueName ?? "—"}
+              </p>
+            </div>
+            <div className="rounded-xl border border-outline-variant/15 bg-surface-container-low/60 p-4">
+              <p className="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">
+                Location
+              </p>
+              <p className="mt-2 text-sm font-medium text-on-surface">
+                {locationLabel ?? "—"}
+              </p>
+            </div>
+            <div className="rounded-xl border border-outline-variant/15 bg-surface-container-low/60 p-4">
+              <p className="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">
+                Songs played
+              </p>
+              <p className="mt-2 text-sm font-medium text-on-surface">
+                {String(setlist.songs.length)}
+              </p>
+            </div>
+          </div>
+          <SetlistColumns songs={setlist.songs} highlightSongs={predictedSongs} />
+        </SectionCard>
+      ) : (
+        <SectionCard title="Actual Completed Setlist">
+          <DataState
+            title="No setlist found"
+            body="A retained prediction snapshot exists, but the matching setlist payload was not found."
+            headingLevel="h2"
+          />
+        </SectionCard>
+      )}
 
-      <SectionCard title="Show Context">
+      {setlist && (
         <div className="grid gap-3 md:grid-cols-3">
-          <div className="rounded-xl border border-outline-variant/20 bg-surface-container-low p-4">
-            <p className="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">
-              Venue
-            </p>
-            <p className="mt-2 text-sm text-on-surface">
-              {show?.venueName ?? "Venue unavailable"}
-            </p>
-          </div>
-          <div className="rounded-xl border border-outline-variant/20 bg-surface-container-low p-4">
-            <p className="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">
-              Location
-            </p>
-            <p className="mt-2 text-sm text-on-surface">
-              {locationLabel ?? "Location unavailable"}
-            </p>
-          </div>
-          <div className="rounded-xl border border-outline-variant/20 bg-surface-container-low p-4">
-            <p className="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">
-              Recall
-            </p>
-            <p className="mt-2 text-sm text-on-surface">
-              Top 10 {formatPercent(computeTopKRecall(rows, actualSongs, 10))}
-            </p>
-          </div>
+          {[
+            { k: 10, hits: computeTopKHits(rows, actualSongs, 10), recall: computeTopKRecall(rows, actualSongs, 10) },
+            { k: 25, hits: computeTopKHits(rows, actualSongs, 25), recall: computeTopKRecall(rows, actualSongs, 25) },
+            { k: 50, hits: computeTopKHits(rows, actualSongs, 50), recall: computeTopKRecall(rows, actualSongs, 50) },
+          ].map((metric) => (
+            <div
+              key={metric.k}
+              className="rounded-xl border border-outline-variant/15 bg-surface/35 px-3 py-3 text-center md:px-4"
+            >
+              <div className="border-b border-outline-variant/15 pb-2">
+                <p className="font-headline text-base font-bold text-on-surface underline decoration-current decoration-2 underline-offset-4 md:text-lg">
+                  Top {metric.k}
+                </p>
+              </div>
+
+              <div className="mt-3 grid grid-cols-2 gap-2 md:gap-3">
+                <div className="rounded-lg bg-surface-container-low/55 px-2.5 py-2.5 md:rounded-xl md:px-3">
+                  <p className="font-label text-[9px] font-semibold uppercase tracking-[0.14rem] text-tertiary">
+                    Hits
+                  </p>
+                  <p className="mt-0.5 font-headline text-2xl font-bold leading-none text-tertiary md:text-3xl">
+                    {metric.hits}
+                  </p>
+                  <p className="mt-1 text-[11px] leading-4 text-on-surface-variant md:text-xs md:leading-5">
+                    picks played
+                  </p>
+                </div>
+                <div className="rounded-lg bg-surface-container-low/55 px-2.5 py-2.5 md:rounded-xl md:px-3">
+                  <p className="font-label text-[9px] font-semibold uppercase tracking-[0.14rem] text-primary">
+                    Coverage
+                  </p>
+                  <p className="mt-0.5 font-headline text-2xl font-bold leading-none text-primary md:text-3xl">
+                    {formatPercent(metric.recall)}
+                  </p>
+                  <p className="mt-1 text-[11px] leading-4 text-on-surface-variant md:text-xs md:leading-5">
+                    setlist caught
+                  </p>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
-      </SectionCard>
+      )}
 
       <div className="grid gap-6">
-        <SectionCard title="Prediction Board" eyebrow="Saved snapshot">
-          <SongBoard rows={rows} highlightSongs={actualSongs} compact />
-        </SectionCard>
-
-        <SectionCard title="Actual Setlist" eyebrow="Completed show">
-          {setlist ? (
-            <SetlistColumns songs={setlist.songs} />
-          ) : (
-            <DataState
-              title="No setlist found"
-              body="A retained prediction snapshot exists, but the matching setlist payload was not found."
-              headingLevel="h2"
-            />
-          )}
+        <SectionCard title="Prediction Board">
+          <SongBoard rows={rows} highlightSongs={actualSongs} />
         </SectionCard>
       </div>
     </div>

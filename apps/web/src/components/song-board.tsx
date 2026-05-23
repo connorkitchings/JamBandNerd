@@ -111,7 +111,14 @@ function ProbabilityBar({ probability }: { probability: number | null }) {
   const pct = Math.round(probability * 1000) / 10;
   const fillPct = Math.min(probability * 100, 100);
   return (
-    <div className="relative flex h-6 w-full items-center overflow-hidden rounded-full bg-surface-container">
+    <div
+      role="progressbar"
+      aria-valuenow={pct}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-label={`${pct.toFixed(1)}%`}
+      className="relative flex h-6 w-full items-center overflow-hidden rounded-full bg-surface-container"
+    >
       <div
         className="absolute inset-y-0 left-0 rounded-full bg-primary/20"
         style={{ width: `${fillPct}%` }}
@@ -342,7 +349,7 @@ export function SongBoard({ rows, highlightSongs, compact }: Props) {
         />
       ))}
       <p className="pt-2 text-center font-label text-[10px] uppercase tracking-[0.16rem] text-on-surface-variant/55">
-        Tiers reflect relative model signal, not guaranteed outcomes
+        Groups reflect model rank: Prime 1-10 · Likely 11-25 · Possible 26-50
       </p>
     </div>
   );

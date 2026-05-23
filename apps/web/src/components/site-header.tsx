@@ -2,38 +2,13 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 
-import { DESKTOP_NAV_ITEMS, isActivePath, isDetailPath } from "@/lib/navigation";
+import { DESKTOP_NAV_ITEMS, isActivePath } from "@/lib/navigation";
 import { SITE_NAME } from "@/lib/site";
-
-function BackIcon() {
-  return (
-    <svg aria-hidden="true" className="size-5" fill="none" viewBox="0 0 24 24">
-      <path
-        d="M15 5L8 12L15 19"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.75"
-      />
-    </svg>
-  );
-}
 
 export function SiteHeader() {
   const pathname = usePathname();
-  const router = useRouter();
-  const showMobileBackButton = isDetailPath(pathname);
-
-  function handleBack() {
-    if (window.history.length > 1) {
-      router.back();
-      return;
-    }
-
-    router.push("/predictions");
-  }
 
   return (
     <nav
@@ -43,18 +18,7 @@ export function SiteHeader() {
       <div className="editorial-chip relative mx-auto max-w-7xl rounded-full px-3 py-2 md:px-4 md:py-3">
         <div className="flex items-center md:hidden">
           <div className="flex w-12 items-center">
-            {showMobileBackButton ? (
-              <button
-                aria-label="Go back"
-                className="flex size-10 items-center justify-center rounded-full border border-outline-variant/20 bg-surface/70 text-on-background transition hover:border-primary/40 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
-                onClick={handleBack}
-                type="button"
-              >
-                <BackIcon />
-              </button>
-            ) : (
-              <div className="size-10" />
-            )}
+            <div className="size-10" />
           </div>
 
           <Link
@@ -97,10 +61,10 @@ export function SiteHeader() {
                   <Link
                     key={link.href}
                     href={link.href}
-                    className={`rounded-full px-4 py-2 font-headline text-xs uppercase tracking-[0.16rem] transition duration-200 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none ${
+                    className={`inline-flex h-10 items-center justify-center rounded-full border px-4 font-headline text-xs uppercase tracking-[0.16rem] transition duration-200 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none ${
                       isActive
-                        ? "border border-primary/25 bg-primary/12 text-primary shadow-[0_0_0_1px_rgba(255,191,105,0.08)]"
-                        : "border border-transparent text-on-background/70 hover:border-outline-variant/25 hover:bg-surface/60 hover:text-on-background"
+                        ? "border-primary/25 bg-primary/12 text-primary shadow-[0_0_0_1px_rgba(255,191,105,0.08)]"
+                        : "border-transparent text-on-background/70 hover:border-outline-variant/25 hover:bg-surface/60 hover:text-on-background"
                     }`}
                   >
                     {link.label}

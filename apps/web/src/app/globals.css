@@ -2,10 +2,16 @@
 
 @theme {
   --color-primary: #ffbf69;
+  --color-on-primary: #1a1000;
   --color-primary-container: #a85617;
   --color-secondary-container: #173a45;
   --color-on-secondary-container: #b7edf0;
   --color-tertiary: #88e5d8;
+  --color-tertiary-container: #11353a;
+  --color-on-tertiary-container: #b7edf0;
+  --color-error: #f87171;
+  --color-error-container: #3b1111;
+  --color-on-error-container: #fca5a5;
   --color-background: #090c12;
   --color-surface: #111723;
   --color-surface-container-low: #161d2b;
@@ -17,14 +23,14 @@
   --color-on-background: #f4f1ea;
   --color-outline: #7f8ca3;
   --color-outline-variant: #37455c;
-  --color-tier-expected: #ffbf69;
-  --color-tier-expected-bg: #4e2a0c;
-  --color-tier-hot: #88e5d8;
-  --color-tier-hot-bg: #11353a;
+  --color-tier-prime: #ffbf69;
+  --color-tier-prime-bg: #4e2a0c;
   --color-tier-likely: #91a0b6;
   --color-tier-likely-bg: #1b2433;
   --color-tier-possible: #f7df8a;
   --color-tier-possible-bg: #43350e;
+  --color-tier-top50: #c084fc;
+  --color-tier-top50-bg: #2d1854;
   --font-headline: var(--font-space-grotesk);
   --font-label: var(--font-space-grotesk);
   --font-body: var(--font-inter);

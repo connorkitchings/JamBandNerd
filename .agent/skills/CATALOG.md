@@ -12,6 +12,14 @@ Load a skill when the task clearly matches it. Skills are lightweight workflows,
 - Path: `.agent/skills/end-session/SKILL.md`
 - Use when: wrapping up a meaningful work session
 
+### session-search
+- Path: `.agent/workflows/session-search.md`
+- Use when: finding prior AI sessions, commands, decisions, or handoffs
+
+### delegation
+- Path: `.agent/workflows/delegation.md`
+- Use when: splitting implementation, review, research, or testing across specialist mindsets or tools
+
 ## JamBandNerd Skills
 
 ### pipeline-debug
@@ -29,3 +37,7 @@ Load a skill when the task clearly matches it. Skills are lightweight workflows,
 ### doc-update
 - Path: `.agent/skills/doc-update/SKILL.md`
 - Use when: changing commands, architecture guidance, or contributor workflow docs
+
+### research-coding
+- Path: `.agent/workflows/research-coding.md`
+- Use when: external research should inform a code, data, model, operations, or product decision

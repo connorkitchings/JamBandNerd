@@ -32,7 +32,6 @@ from src.jambandnerd.data_collection.correction_detector import (  # noqa: E402
     format_correction_report,
     run_correction_sweep,
 )
-
 from src.jambandnerd.db.connection import get_supabase_client  # noqa: E402
 
 

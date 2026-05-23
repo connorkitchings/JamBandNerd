@@ -198,12 +198,11 @@ def test_build_prediction_coverage_lines_uses_latest_completed_show_with_setlist
                 {"show_id": "played", "song_name": "Song B"},
                 {"show_id": "today", "song_name": "Ignore Me"},
             ],
-            "predictions": [
+            "setlist_predictions": [
                 {
                     "band": "goose",
-                    "model_slug": "notebook",
                     "reference_date": "2026-03-15",
-                    "predicted_at": "2026-03-15T12:00:00+00:00",
+                    "generated_at": "2026-03-15T12:00:00+00:00",
                     "predictions": json.dumps(
                         [
                             {"song_name": "Song A"},
@@ -229,12 +228,11 @@ def test_render_summary_reports_per_band_errors_without_crashing():
         {
             "goose_shows_raw": [{"show_id": "played", "show_date": "2026-03-16"}],
             "goose_setlists_raw": [{"show_id": "played", "song_name": "Song A"}],
-            "predictions": [
+            "setlist_predictions": [
                 {
                     "band": "goose",
-                    "model_slug": "notebook",
                     "reference_date": "2026-03-16",
-                    "predicted_at": "2026-03-16T12:00:00+00:00",
+                    "generated_at": "2026-03-16T12:00:00+00:00",
                     "predictions": json.dumps([{"song_name": "Song A"}]),
                 }
             ],
@@ -263,12 +261,11 @@ def test_render_summary_includes_band_health_states():
         {
             "goose_shows_raw": [{"show_id": "played", "show_date": "2026-03-16"}],
             "goose_setlists_raw": [{"show_id": "played", "song_name": "Song A"}],
-            "predictions": [
+            "setlist_predictions": [
                 {
                     "band": "goose",
-                    "model_slug": "notebook",
                     "reference_date": "2026-03-16",
-                    "predicted_at": "2026-03-16T12:00:00+00:00",
+                    "generated_at": "2026-03-16T12:00:00+00:00",
                     "predictions": json.dumps([{"song_name": "Song A"}]),
                 }
             ],

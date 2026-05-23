@@ -10,7 +10,7 @@ import {
 } from "@/lib/data";
 import { buildLocationLabel, formatDateLabel } from "@/lib/format";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 3600;
 
 const HOME_TEASER_FALLBACK_BANDS = [
   { slug: "phish", label: "Phish", fallbackName: "Phish" },
@@ -98,13 +98,13 @@ export default async function HomePage({ searchParams }: Props) {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,191,105,0.22),transparent_32%),radial-gradient(circle_at_bottom_right,rgba(136,229,216,0.12),transparent_26%),linear-gradient(135deg,rgba(255,255,255,0.04),transparent_55%)]" />
         <div className="relative grid gap-10 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)] lg:items-center">
           <div className="flex h-full flex-col justify-center">
-            <h1 className="max-w-3xl font-headline text-4xl font-bold uppercase leading-tight tracking-[-0.05em] text-on-surface md:text-6xl lg:text-7xl">
+            <h1 className="max-w-3xl text-center font-headline text-4xl font-bold uppercase leading-tight tracking-[-0.05em] text-on-surface md:text-left md:text-6xl lg:text-7xl">
               What are they playing next?
             </h1>
             <p className="mt-5 max-w-2xl text-lg leading-relaxed text-on-surface-variant">
               We rank the songs each band might play at the next show. It&apos;s an educated guess — sometimes right, sometimes not — but always worth checking.
             </p>
-            <div className="mt-8 hidden gap-3 sm:max-w-3xl sm:grid-cols-2 md:grid md:gap-4">
+            <div className="mt-8 hidden gap-3 sm:max-w-3xl md:grid md:grid-cols-2 md:gap-4">
               <Link
                 href="/predictions"
                 className="inline-flex w-full items-center justify-center rounded-full border border-outline-variant/35 bg-surface/70 px-6 py-3.5 text-center font-headline text-sm font-medium uppercase tracking-[0.14rem] text-on-surface transition hover:border-primary/35 hover:bg-surface-container-low hover:text-primary focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
@@ -146,10 +146,7 @@ export default async function HomePage({ searchParams }: Props) {
 
             {teaserPredictionState.status === "ready" ? (
               <>
-                <div className="editorial-chip mt-5 rounded-[1.5rem] p-4">
-                  <p className="font-label text-[10px] font-medium uppercase tracking-[0.18rem] text-on-surface-variant/70">
-                    Next Show
-                  </p>
+                <div className="editorial-chip mt-5 rounded-[1.5rem] p-4 text-center">
                   <p className="mt-1.5 font-headline text-xl font-bold text-primary md:text-2xl">
                     {formatDateLabel(
                       teaserNextShow?.showDate ??
@@ -248,19 +245,19 @@ export default async function HomePage({ searchParams }: Props) {
       </section>
 
       <SectionCard title="How It Works">
-        <div className="grid gap-6 md:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-3 md:gap-5">
           {HOW_IT_WORKS.map((item) => (
             <div
               key={item.step}
-              className="editorial-chip flex flex-col rounded-[1.5rem] p-6 transition-colors hover:border-primary/30"
+              className="flex flex-col items-center rounded-[1.15rem] border border-outline-variant/18 bg-surface/35 px-4 py-5 text-center transition-colors hover:border-primary/30 md:items-start md:px-5 md:py-5 md:text-left"
             >
-              <div className="mb-4 inline-flex size-9 items-center justify-center rounded-full bg-surface-container font-mono text-sm font-bold text-primary/80">
+              <div className="mb-3 font-mono text-2xl font-bold leading-none text-primary/75 md:text-xl">
                 {item.step}
               </div>
-              <p className="font-headline text-lg font-bold text-on-surface">
+              <p className="font-headline text-lg font-bold leading-tight text-on-surface md:text-base">
                 {item.title}
               </p>
-              <p className="mt-2 text-sm leading-relaxed text-on-surface-variant">
+              <p className="mt-2 max-w-[24rem] text-sm leading-6 text-on-surface-variant md:max-w-none">
                 {item.body}
               </p>
             </div>

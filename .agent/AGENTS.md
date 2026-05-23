@@ -15,7 +15,8 @@ This file defines how AI coding tools should work in this repository. Keep it sh
 - Triage the request.
 - Write a short plan before substantial work.
 - Keep the startup context budget small.
-- Route to a specialist mindset when the task is clearly data, model, web, or docs heavy.
+- Route to a specialist mindset when the task is clearly data, model, web, docs, research, or review heavy.
+- Use `.agent/workflows/delegation.md` when parallel work or isolated review would reduce context risk.
 
 ### DataOps
 - Own collectors, scripts, Supabase, CI diagnostics, and data freshness checks.
@@ -36,6 +37,7 @@ This file defines how AI coding tools should work in this repository. Keep it sh
 ### Researcher
 - Gather current external information with citations when needed.
 - Return concise findings with risks and gaps called out.
+- Use `.agent/workflows/research-coding.md` for research that informs code, data, or operational decisions.
 
 ## Boot Order
 
@@ -51,6 +53,9 @@ Open on demand:
 - CI/CD: `docs/operations/github_actions.md`
 - Website delivery: `docs/operations/website_delivery.md`
 - WSP fallback: `docs/operations/tourwrangler_fallback.md`
+- Delegation: `.agent/workflows/delegation.md`
+- Research + coding: `.agent/workflows/research-coding.md`
+- Session search: `.agent/workflows/session-search.md`
 - Historical archive: `docs/logs/`
 
 ## Critical Rules
@@ -71,8 +76,10 @@ Open on demand:
 1. Confirm the task and constraints.
 2. Read only the boot-order files first.
 3. Run the smallest useful command.
-4. Keep artifacts small: file paths, commands, tables, and metrics.
-5. If blocked after two solid attempts, escalate with a concise handoff packet.
+4. For external research, classify scope first and capture source links plus unresolved gaps.
+5. For non-trivial code changes, inspect existing patterns before editing, then verify through the narrowest useful tests.
+6. Keep artifacts small: file paths, commands, tables, metrics, source links, and open questions.
+7. If blocked after two solid attempts, escalate with a concise handoff packet.
 
 ## Handoff Packet
 

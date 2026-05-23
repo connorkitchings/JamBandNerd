@@ -35,6 +35,27 @@ function toSeedRows(data: unknown[]) {
     }));
 }
 
+async function getLatestPredictionModelVersion(
+  client: NonNullable<ReturnType<typeof getSupabaseServerClient>>,
+  band: string,
+) {
+  const { data, error } = await client
+    .from("setlist_predictions")
+    .select("model_version")
+    .eq("band", band)
+    .order("generated_at", { ascending: false })
+    .limit(1);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const modelVersion = data?.[0]?.model_version;
+  return typeof modelVersion === "string" && modelVersion.length > 0
+    ? modelVersion
+    : null;
+}
+
 // ---------------------------------------------------------------------------
 // Public cached fetchers
 // ---------------------------------------------------------------------------
@@ -158,13 +179,19 @@ export const getPredictionsForDate = cache(
     }
 
     try {
-      const { data: resultData, error: resultError } = await client
+      const modelVersion = await getLatestPredictionModelVersion(client, band);
+      let resultQuery = client
         .from("setlist_results")
         .select("*")
         .eq("band", band)
         .eq("target_show_date", targetShowDate)
-        .order("generated_at", { ascending: false })
-        .limit(1);
+        .order("generated_at", { ascending: false });
+
+      if (modelVersion) {
+        resultQuery = resultQuery.eq("model_version", modelVersion);
+      }
+
+      const { data: resultData, error: resultError } = await resultQuery.limit(1);
 
       if (resultError) {
         return { status: "error", message: resultError.message };
@@ -172,13 +199,18 @@ export const getPredictionsForDate = cache(
 
       let row = resultData?.[0];
       if (!row) {
-        const { data: liveData, error: liveError } = await client
+        let liveQuery = client
           .from("setlist_predictions")
           .select("*")
           .eq("band", band)
           .eq("target_show_date", targetShowDate)
-          .order("generated_at", { ascending: false })
-          .limit(1);
+          .order("generated_at", { ascending: false });
+
+        if (modelVersion) {
+          liveQuery = liveQuery.eq("model_version", modelVersion);
+        }
+
+        const { data: liveData, error: liveError } = await liveQuery.limit(1);
 
         if (liveError) {
           return { status: "error", message: liveError.message };

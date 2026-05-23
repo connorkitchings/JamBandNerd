@@ -3,7 +3,8 @@ import "server-only";
 import { cache } from "react";
 
 import type { BandSlug } from "@/lib/config";
-import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { getSupabaseServerClient, getServiceRoleClient } from "@/lib/supabase/server";
+import { getEasternTodayIso } from "@/lib/show-status";
 
 import { getClientOrState, getBandContext } from "./bands";
 import {
@@ -14,6 +15,8 @@ import {
   getVenueRegionFromRow,
 } from "./parsers";
 import type { AccuracyRow, RouteState } from "./types";
+
+const MIN_COMPLETE_SETLIST_SONGS = 3;
 
 function getAccuracyRowKey(row: AccuracyRow) {
   if (row.showId) {
@@ -78,12 +81,15 @@ export const getRecentAccuracy = cache(
 
     try {
       const modelVersion = await getLatestPredictionModelVersion(client, band);
+      const easternToday = getEasternTodayIso();
       let query = client
         .from("setlist_accuracy")
         .select(
-          "show_id, show_date, p10, p25, p50, recall_10, recall_25, recall_50, weighted_precision_score",
+          "show_id, show_date, p10, p25, p50, recall_10, recall_25, recall_50, actual_song_count, weighted_precision_score",
         )
         .eq("band", band)
+        .gte("actual_song_count", MIN_COMPLETE_SETLIST_SONGS)
+        .lt("show_date", easternToday)
         .order("show_date", { ascending: false });
 
       if (modelVersion) {
@@ -109,6 +115,7 @@ export const getRecentAccuracy = cache(
           p10: parseNumber(row.p10),
           p25: parseNumber(row.p25),
           p50: parseNumber(row.p50),
+          actualSongCount: parseNumber(row.actual_song_count),
           weightedPrecisionScore: parseNumber(row.weighted_precision_score),
         })) ?? [];
 
@@ -128,57 +135,62 @@ export const getRecentAccuracy = cache(
         { venueName: string | null; city: string | null; state: string | null }
       >();
 
-      if (showIds.length > 0) {
-        const { data: showData, error: showError } = await client
+      if (showIds.length > 0 && showsTable && idColumn) {
+        const showClient = getServiceRoleClient() ?? client;
+        const { data: showData, error: showError } = await showClient
           .from(showsTable)
           .select("*")
           .in(idColumn, showIds);
 
         if (showError) {
-          return { status: "error", message: showError.message };
+          console.error("accuracy: show metadata lookup failed (id path)", showError);
+        } else {
+          for (const item of showData ?? []) {
+            const row = asRecord(item);
+            if (!row) {
+              continue;
+            }
+
+            const showMeta = {
+              venueName: getVenueNameFromRow(row),
+              city: getVenueCityFromRow(row),
+              state: getVenueRegionFromRow(row),
+            };
+            const showIdValue = row[idColumn];
+            if (typeof showIdValue === "string" || typeof showIdValue === "number") {
+              showMetaByShowId.set(String(showIdValue), showMeta);
+            }
+
+            if (typeof row.show_date === "string") {
+              showMetaByShowDate.set(row.show_date, showMeta);
+            }
+          }
         }
+      }
 
-        for (const item of showData ?? []) {
-          const row = asRecord(item);
-          if (!row) {
-            continue;
-          }
-
-          const showMeta = {
-            venueName: getVenueNameFromRow(row),
-            city: getVenueCityFromRow(row),
-            state: getVenueRegionFromRow(row),
-          };
-          const showIdValue = row[idColumn];
-          if (typeof showIdValue === "string" || typeof showIdValue === "number") {
-            showMetaByShowId.set(String(showIdValue), showMeta);
-          }
-
-          if (typeof row.show_date === "string") {
-            showMetaByShowDate.set(row.show_date, showMeta);
-          }
-        }
-      } else if (showDates.length > 0) {
+      if (showMetaByShowId.size === 0 && showDates.length > 0 && showsTable) {
         const { data: showData, error: showError } = await client
           .from(showsTable)
           .select("*")
           .in("show_date", showDates);
 
         if (showError) {
-          return { status: "error", message: showError.message };
-        }
-
-        for (const item of showData ?? []) {
-          const row = asRecord(item);
-          if (!row || typeof row.show_date !== "string") {
-            continue;
-          }
-
-          showMetaByShowDate.set(row.show_date, {
-            venueName: getVenueNameFromRow(row),
-            city: getVenueCityFromRow(row),
-            state: getVenueRegionFromRow(row),
+          console.error("accuracy: show metadata lookup failed (date path)", {
+            band, showsTable, error: showError.message,
           });
+        } else {
+          for (const item of showData ?? []) {
+            const row = asRecord(item);
+            if (!row || typeof row.show_date !== "string") {
+              continue;
+            }
+
+            showMetaByShowDate.set(row.show_date, {
+              venueName: getVenueNameFromRow(row),
+              city: getVenueCityFromRow(row),
+              state: getVenueRegionFromRow(row),
+            });
+          }
         }
       }
 
@@ -197,6 +209,7 @@ export const getRecentAccuracy = cache(
         p10: row.p10,
         p25: row.p25,
         p50: row.p50,
+        actualSongCount: row.actualSongCount,
         weightedPrecisionScore: row.weightedPrecisionScore,
       }));
 

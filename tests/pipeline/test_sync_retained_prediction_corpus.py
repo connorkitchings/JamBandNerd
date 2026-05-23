@@ -22,7 +22,6 @@ def test_sync_retained_prediction_corpus_passes_dry_run_to_backtest(monkeypatch)
     assert calls == [
         {
             "band": "goose",
-            "model": None,
             "start": None,
             "end": None,
             "shows": 100,

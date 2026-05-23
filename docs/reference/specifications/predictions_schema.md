@@ -69,7 +69,7 @@ exists.
 `setlist_results` stores the exact ranked boards for the active
 last-50 completed-show corpus per band model version. It is the replay source
 of truth.
-Rows outside the retained 100-show corpus are hard-deleted by the retained corpus
+Rows outside the retained 50-show corpus are hard-deleted by the retained corpus
 sync.
 
 ### Notebook payload fields
@@ -176,7 +176,7 @@ The active product architecture is split by intent:
 Reasons:
 
 - live prediction reads cannot fall back to completed-show history
-- all model metrics share the same retained 100-show corpus
+- all model metrics share the same retained 50-show corpus
 - replay rows carry exact stored boards and actual setlists
 - site reads use `target_show_date`; `reference_date` remains model metadata
 

@@ -33,7 +33,13 @@ def list_completed_shows(
         A sorted DataFrame of shows that have corresponding setlist data.
     """
 
-    completed_show_ids = set(setlists_df["show_id"].dropna().astype(str).tolist())
+    song_counts = (
+        setlists_df.dropna(subset=["show_id", "song_name"])
+        .assign(show_id=lambda df: df["show_id"].astype(str))
+        .groupby("show_id")["song_name"]
+        .nunique()
+    )
+    completed_show_ids = set(song_counts[song_counts > 2].index.tolist())
     return sort_normalized_shows(
         shows_df[shows_df["show_id"].astype(str).isin(completed_show_ids)].copy()
     )

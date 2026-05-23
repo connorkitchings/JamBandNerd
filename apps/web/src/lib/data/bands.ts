@@ -54,8 +54,8 @@ export const getBands = cache(
         data?.map((row) => ({
           slug: String(row.slug),
           displayName: String(row.display_name),
-          showsTable: String(row.shows_table),
-          idColumn: String(row.id_column),
+          showsTable: typeof row.shows_table === "string" ? row.shows_table : "",
+          idColumn: typeof row.id_column === "string" ? row.id_column : "",
         })) ?? [];
 
       if (bands.length === 0) {

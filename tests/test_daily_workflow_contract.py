@@ -6,6 +6,10 @@ from pathlib import Path
 from jambandnerd.models.registry import list_active_bands
 
 WORKFLOW_PATH = Path(".github/workflows/daily-pipeline.yml")
+WEEKLY_CORRECTION_WORKFLOW_PATH = Path(".github/workflows/weekly-correction-sweep.yml")
+CORRECTION_DETECTOR_PATH = Path(
+    "src/jambandnerd/data_collection/correction_detector.py"
+)
 ACTIVE_DOC_PATHS = (
     Path("README.md"),
     Path("docs/user/pipeline_usage.md"),
@@ -41,7 +45,10 @@ def test_daily_workflow_matrix_and_backtest_windows_match_repo_contract() -> Non
         assert f'"{band}"' in workflow
     assert '"eggy"' not in workflow
 
-    assert "uv run python scripts/generate_live_predictions.py" in workflow
+    assert (
+        "uv run python scripts/generate_live_predictions.py "
+        "--band ${{ matrix.band }} --require-output"
+    ) in workflow
     sync_pattern = (
         r"uv run python scripts/sync_retained_prediction_corpus\.py "
         r"--band \$\{\{ matrix\.band \}\} "
@@ -69,3 +76,17 @@ def test_github_actions_docs_match_current_deal_window_and_band_authority() -> N
 
     assert "active single-model bands" in contents
     assert "Eggy remains excluded" in contents
+
+
+def test_weekly_correction_sweep_is_not_scheduled_without_detector() -> None:
+    workflow = WEEKLY_CORRECTION_WORKFLOW_PATH.read_text()
+    script = Path("scripts/run_correction_sweep.py").read_text()
+
+    assert "workflow_dispatch:" in workflow
+    if (
+        "src.jambandnerd.data_collection.correction_detector" in script
+        and not CORRECTION_DETECTOR_PATH.exists()
+    ):
+        assert "\n  schedule:" not in workflow
+    else:
+        assert "\n  schedule:" in workflow

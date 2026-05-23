@@ -16,11 +16,18 @@ from typing import Any, List
 import numpy as np
 import pandas as pd
 
+from jambandnerd.models.shared.matrix_features import (
+    run_position_continuous,
+    tour_position_continuous,
+)
 from jambandnerd.transformations.run_context import (
     normalize_target_show_context,
     normalized_venue_key,
     same_venue_run_show_indices,
 )
+
+_run_position = run_position_continuous
+_tour_position = tour_position_continuous
 
 BILLY_EXTRA_FEATURES: list[str] = [
     "month_play_rate",
@@ -35,40 +42,6 @@ BILLY_EXTRA_FEATURES: list[str] = [
     "same_venue_run_position",
     "is_cover",
 ]
-
-
-def _run_position(
-    show_dates: List[date], target_show_date: date, gap_days: int = 1
-) -> int:
-    """Night number of target_show_date within its consecutive run (1-indexed)."""
-    if not show_dates:
-        return 1
-    last = show_dates[-1]
-    if (target_show_date - last).days > gap_days:
-        return 1
-    night = 2
-    for i in range(len(show_dates) - 1, 0, -1):
-        if (show_dates[i] - show_dates[i - 1]).days <= gap_days:
-            night += 1
-        else:
-            break
-    return night
-
-
-def _tour_position(
-    show_dates: List[date], target_show_date: date, tour_gap_days: int = 14
-) -> int:
-    """Show index of target_show_date within the current touring stretch (1-indexed)."""
-    if not show_dates:
-        return 1
-    all_dates = list(show_dates) + [target_show_date]
-    pos = 1
-    for i in range(len(all_dates) - 1, 0, -1):
-        gap = (all_dates[i] - all_dates[i - 1]).days
-        if gap >= tour_gap_days:
-            break
-        pos += 1
-    return pos
 
 
 def compute_billy_song_features(

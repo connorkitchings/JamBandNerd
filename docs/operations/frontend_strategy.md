@@ -38,6 +38,19 @@ The primary audience uses phones during shows or commuting. Desktop is secondary
 - Bottom navigation on mobile, side nav on desktop.
 - Tables scroll horizontally rather than wrapping awkwardly.
 - Safe-area insets respected for notched devices.
+- Mobile and desktop do not require one-to-one feature or component parity.
+  They may intentionally differ in component structure, navigation density,
+  visible secondary metadata, and interaction patterns when that improves the
+  experience.
+- Mobile should prioritize show-time usability, fast scanning, touch ergonomics,
+  and essential actions.
+- Mobile titles and compact page headers should lean toward center alignment
+  unless a specific dense workflow is clearer left-aligned.
+- Desktop may expose richer comparison, denser tables, expanded context, and
+  secondary controls, and should generally preserve left alignment for page
+  titles and explanatory copy.
+- Viewport-specific differences are acceptable only when the core task remains
+  available and tests cover the intended behavior.
 
 ### Server First
 

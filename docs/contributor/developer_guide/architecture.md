@@ -91,13 +91,13 @@ Current website routes (target state for this branch):
 - `/` - Homepage with band overview and upcoming shows
 - `/predictions` - Live single-model prediction board with show outlook
 - `/performance` - Historical accuracy charts with K-value selection
+- `/replay` - Historical replay of a past prediction against the actual setlist
 - `/last-show` - Most recent completed show details
 - `/about`, `/contact`, `/data-use` - Public informational pages
 
 Removed from multi-model era (not present on this branch):
 - `/compare` - Model board comparison (removed; no longer two models to compare)
-- `/replay` - Side-by-side historical replay (removed; collapses to single board)
-- `/explorer` - Compatibility redirect to `/replay` (removed with `/replay`)
+- `/explorer` - Compatibility redirect to `/compare` (removed with `/compare`)
 
 Key shared components:
 - `page-hero`, `site-header`, `site-footer`, `dashboard-side-nav`

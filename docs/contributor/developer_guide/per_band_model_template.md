@@ -89,7 +89,7 @@ BAND_METADATA: list[BandMetadata] = [
 
 ## Evaluation Protocol
 
-Evaluate on the last 100 completed shows with a walk-forward backtest.
+Evaluate on the last 50 completed shows with a walk-forward backtest.
 The dual objective is **precision@10** (head of the list) and **recall@50**
 (long-list coverage), combined into a single scalar:
 
