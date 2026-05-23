@@ -28,7 +28,7 @@ export function SectionCard({
           {eyebrow ? (
             <p
               className={`font-label text-[10px] font-semibold uppercase tracking-[0.24em] text-on-surface-variant ${
-                centered ? "text-center" : ""
+                centered ? "text-center" : "text-center md:text-left"
               }`}
             >
               {eyebrow}
@@ -36,7 +36,7 @@ export function SectionCard({
           ) : null}
           <h2
             className={`mt-2 font-headline text-[1.35rem] font-semibold uppercase tracking-[-0.03em] text-on-surface ${
-              centered ? "text-center" : ""
+              centered ? "text-center" : "text-center md:text-left"
             }`}
           >
             {title}

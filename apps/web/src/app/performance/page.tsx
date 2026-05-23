@@ -11,7 +11,7 @@ import { PageHero } from "@/components/page-hero";
 import { RecallChart } from "@/components/recall-chart";
 import { SectionCard } from "@/components/section-card";
 import { getBands, getRecentAccuracy, bandEntryBySlug, resolveBandSelection } from "@/lib/data";
-import { average, formatAvgHits, formatCompactDateLabel, formatHits, formatPercent } from "@/lib/format";
+import { average, formatAvgHits, formatMMDDYYYY, formatHits, formatPercent } from "@/lib/format";
 
 export const revalidate = 3600;
 
@@ -66,40 +66,49 @@ function PerformanceMetricCard({
 }) {
   return (
     <div
-      className={`rounded-2xl border px-4 py-4 text-center ${
+      className={`rounded-xl border px-3 py-3 text-center md:px-4 ${
         active
           ? "border-primary/30 bg-primary/10"
-          : "border-outline-variant/15 bg-surface/70"
+          : "border-outline-variant/15 bg-surface/35"
       }`}
     >
-      <p className="font-headline text-base font-bold text-on-surface underline decoration-current decoration-2 underline-offset-4">
-        {metric.label}
-      </p>
-      <div className={`mt-4 grid grid-cols-2 ${compact ? "gap-2" : "gap-4"}`}>
-        <div>
+      <div className="border-b border-outline-variant/15 pb-2">
+        <p className="font-headline text-base font-bold text-on-surface underline decoration-current decoration-2 underline-offset-4 md:text-lg">
+          {metric.label}
+        </p>
+      </div>
+
+      <div className="mt-3 grid grid-cols-2 gap-2 md:gap-3">
+        <div className="rounded-lg bg-surface-container-low/55 px-2.5 py-2.5 md:rounded-xl md:px-3">
           <p className="font-label text-[9px] font-semibold uppercase tracking-[0.14rem] text-tertiary">
             {hitsLabel}
           </p>
           <p
-            className={`mt-1 font-headline font-bold text-tertiary ${
-              compact ? "text-lg" : "text-2xl"
+            className={`mt-0.5 font-headline font-bold leading-none text-tertiary ${
+              compact ? "text-xl" : "text-2xl md:text-3xl"
             }`}
           >
             {hitsLabel === "Hits"
               ? formatHits(metric.avgHits, metric.k)
               : formatAvgHits(metric.avgHits, metric.k)}
           </p>
+          <p className="mt-1 text-[11px] leading-4 text-on-surface-variant md:text-xs md:leading-5">
+            picks played
+          </p>
         </div>
-        <div>
+        <div className="rounded-lg bg-surface-container-low/55 px-2.5 py-2.5 md:rounded-xl md:px-3">
           <p className="font-label text-[9px] font-semibold uppercase tracking-[0.14rem] text-primary">
             Coverage
           </p>
           <p
-            className={`mt-1 font-headline font-bold text-primary ${
-              compact ? "text-lg" : "text-2xl"
+            className={`mt-0.5 font-headline font-bold leading-none text-primary ${
+              compact ? "text-xl" : "text-2xl md:text-3xl"
             }`}
           >
             {formatPercent(metric.coverage)}
+          </p>
+          <p className="mt-1 text-[11px] leading-4 text-on-surface-variant md:text-xs md:leading-5">
+            setlist caught
           </p>
         </div>
       </div>
@@ -240,10 +249,15 @@ export default async function PerformancePage({ searchParams }: Props) {
 
       <PageHero
         kicker="Accuracy desk"
-        eyebrow=""
-        title={`${bandName} performance ledger`}
+        title={
+          <>
+            <span className="text-primary">{bandName}</span>
+            <br />
+            performance ledger
+          </>
+        }
         meta={`last ${state.rows.length} scored shows`}
-        description="Track how much of each setlist the model's top-ranked groups actually capture. This is the long-view read on stability, variation, and standout nights."
+        description="Track how much of each setlist the model's top-ranked groups actually capture."
         aside={
           <div className="editorial-panel p-5">
             <div className="space-y-1 text-center">
@@ -251,7 +265,7 @@ export default async function PerformancePage({ searchParams }: Props) {
                 Latest scored show
               </p>
               <p className="font-headline text-2xl font-semibold text-on-surface">
-                {formatCompactDateLabel(latestRow?.showDate ?? null)}
+                {formatMMDDYYYY(latestRow?.showDate ?? null)}
               </p>
               <p className="text-sm text-on-surface-variant">
                 {latestRow?.venueName ?? "Venue unavailable"}
@@ -279,17 +293,14 @@ export default async function PerformancePage({ searchParams }: Props) {
         ))}
       </section>
 
-      <p className="px-2 text-center text-sm text-on-surface-variant">
-        Coverage is the share of the actual setlist caught in each Top-X group. Avg. Hits is the average number of picks played.
-      </p>
 
       <section className="editorial-panel p-5 md:p-7">
         <div className="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-start">
-          <div>
+          <div className="text-center lg:text-left">
             <h2 className="font-headline text-[1.35rem] font-semibold uppercase tracking-[-0.03em] text-on-surface md:text-2xl">
               Accuracy Over Time
             </h2>
-            <p className="mt-2 max-w-xl text-sm leading-6 text-on-surface-variant">
+            <p className="mt-2 text-sm leading-6 text-on-surface-variant">
               Each dot is one scored show. The dashed line marks the average across the retained window.
             </p>
           </div>
@@ -328,7 +339,7 @@ export default async function PerformancePage({ searchParams }: Props) {
                 <div className="text-center">
                   <div>
                     <p className="font-headline text-lg font-semibold text-on-surface">
-                      {formatCompactDateLabel(row.showDate)}
+                      {formatMMDDYYYY(row.showDate)}
                     </p>
                     <p className="mt-1 text-xs leading-5 text-on-surface-variant">
                       {row.venueName ?? "Venue unavailable"}

@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 type Props = {
   eyebrow?: string;
-  title: string;
+  title: ReactNode;
   description: string;
   descriptionClassName?: string;
   kicker?: string;
@@ -30,7 +30,7 @@ export function PageHero({
             : ""
         }`}
       >
-        <div className={centered ? "text-center" : ""}>
+        <div className={centered ? "text-center" : "text-center md:text-left"}>
           {kicker ? <span className="editorial-kicker">{kicker}</span> : null}
           {eyebrow ? (
             <p className="mt-3 font-label text-[10px] font-semibold uppercase tracking-[0.24em] text-on-surface-variant">
@@ -47,7 +47,7 @@ export function PageHero({
           ) : null}
           <p
             className={`mt-4 max-w-3xl text-sm leading-6 text-on-surface-variant md:mt-5 md:text-[0.95rem] md:leading-7 ${
-              centered ? "mx-auto" : ""
+              centered ? "mx-auto" : "mx-auto md:mx-0"
             } ${descriptionClassName ?? ""}`}
           >
             {description}

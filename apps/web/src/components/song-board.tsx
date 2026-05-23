@@ -349,7 +349,7 @@ export function SongBoard({ rows, highlightSongs, compact }: Props) {
         />
       ))}
       <p className="pt-2 text-center font-label text-[10px] uppercase tracking-[0.16rem] text-on-surface-variant/55">
-        Tiers reflect relative model signal, not guaranteed outcomes
+        Groups reflect model rank: Prime 1-10 · Likely 11-25 · Possible 26-50
       </p>
     </div>
   );

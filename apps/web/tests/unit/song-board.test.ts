@@ -29,11 +29,13 @@ function buildRow(songName: string, tier: PredictionRow["tier"], rank: number): 
 test("groupPredictionRowsByTier preserves tier order and row order", () => {
   const grouped = groupPredictionRowsByTier([
     buildRow("Song C", "possible", 3),
+    buildRow("Song Prime", "prime", 5),
     buildRow("Song A", "likely", 1),
     buildRow("Song D", "possible", 4),
     buildRow("Song B", "likely", 2),
   ]);
 
+  assert.deepEqual(grouped.prime.map((row) => row.songName), ["Song Prime"]);
   assert.deepEqual(grouped.likely.map((row) => row.songName), ["Song A", "Song B"]);
   assert.deepEqual(grouped.possible.map((row) => row.songName), ["Song C", "Song D"]);
 });

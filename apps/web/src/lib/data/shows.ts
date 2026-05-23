@@ -55,12 +55,13 @@ export async function getSetlistForDate(
     return null;
   }
 
+  const sortColumn = band === "um" ? "set_sequence" : "set_number";
   const [setlistResponse, detailResponse] = await Promise.all([
     client
       .from(setlistTable)
       .select("*")
       .eq(idColumn, showId)
-      .order("set_number", { ascending: true })
+      .order(sortColumn, { ascending: true })
       .order(positionColumn, { ascending: true }),
     client.from(showsTable).select("*").eq(idColumn, showId).limit(1),
   ]);
@@ -77,14 +78,15 @@ export async function getSetlistForDate(
         return [];
       }
 
-      const key = `${row.set_number}-${row[positionColumn]}`;
+      const setNumRaw = row.set_number !== undefined ? row.set_number : row.set_sequence;
+      const key = `${setNumRaw}-${row[positionColumn]}`;
       if (seen.has(key)) {
         return [];
       }
       seen.add(key);
       return [
         {
-          setNumber: parseNumber(row.set_number),
+          setNumber: parseNumber(setNumRaw),
           position: parseNumber(row[positionColumn]),
           songName: String(row.song_name ?? "Unknown Song"),
         },

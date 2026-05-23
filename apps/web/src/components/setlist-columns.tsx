@@ -1,8 +1,10 @@
 import type { SetlistSong } from "@/lib/data";
 import { formatSetLabel } from "@/lib/format";
+import { normalizeSongName } from "@/lib/song-board-core";
 
 type Props = {
   songs: SetlistSong[];
+  highlightSongs?: Set<string>;
 };
 
 type SetGroup = {
@@ -57,9 +59,11 @@ function getGridClassName(setCount: number) {
 function SetGroupCard({
   label,
   songs,
+  highlightSongs,
 }: {
   label: string;
   songs: SetlistSong[];
+  highlightSongs?: Set<string>;
 }) {
   return (
     <section className="rounded-[1.35rem] border border-outline-variant/20 bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(17,23,35,0.56))] p-4 shadow-[0_16px_40px_rgba(0,0,0,0.16)]">
@@ -72,25 +76,28 @@ function SetGroupCard({
         </span>
       </div>
       <ol className="mt-4 space-y-2">
-        {songs.map((song, index) => (
-          <li
-            key={`${label}-${song.position ?? index}-${song.songName}`}
-            className="flex items-start gap-3 rounded-xl border border-white/8 bg-[rgba(255,255,255,0.03)] px-3 py-2.5 backdrop-blur-[2px]"
-          >
-            <span className="flex h-6 min-w-6 items-center justify-center rounded-full bg-white/8 text-center font-label text-[10px] uppercase tracking-[0.12em] text-on-surface-variant">
-              {index + 1}
-            </span>
-            <span className="font-headline text-sm font-medium text-on-surface">
-              {song.songName}
-            </span>
-          </li>
-        ))}
+        {songs.map((song, index) => {
+          const isHighlighted = highlightSongs?.has(normalizeSongName(song.songName)) ?? false;
+          return (
+            <li
+              key={`${label}-${song.position ?? index}-${song.songName}`}
+              className={`flex items-start gap-3 rounded-xl border px-3 py-2.5 backdrop-blur-[2px] ${isHighlighted ? "border-green-500/30 bg-green-950/20" : "border-white/8 bg-[rgba(255,255,255,0.03)]"}`}
+            >
+              <span className={`flex h-6 min-w-6 items-center justify-center rounded-full text-center font-label text-[10px] uppercase tracking-[0.12em] ${isHighlighted ? "bg-green-500/20 text-green-300" : "bg-white/8 text-on-surface-variant"}`}>
+                {index + 1}
+              </span>
+              <span className={`font-headline text-sm font-medium ${isHighlighted ? "text-green-300" : "text-on-surface"}`}>
+                {song.songName}
+              </span>
+            </li>
+          );
+        })}
       </ol>
     </section>
   );
 }
 
-export function SetlistColumns({ songs }: Props) {
+export function SetlistColumns({ songs, highlightSongs }: Props) {
   const { regularSets, encoreSongs } = buildSetGroups(songs);
   const groups = [...regularSets];
 
@@ -109,6 +116,7 @@ export function SetlistColumns({ songs }: Props) {
           key={setGroup.key}
           label={setGroup.label}
           songs={setGroup.songs}
+          highlightSongs={highlightSongs}
         />
       ))}
     </div>

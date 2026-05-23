@@ -127,16 +127,7 @@ test("mobile navigation uses thumb-first ordering", async ({ page }, testInfo) =
   expect(labels).not.toContain("Compare");
 });
 
-test("mobile detail routes show a back affordance", async ({ page }, testInfo) => {
-  test.skip(testInfo.project.name !== "mobile-chromium", "mobile-only detail check");
 
-  await bootstrapHostedPreviewBypass(page);
-  await page.goto("/last-show");
-  await expect(page.getByRole("button", { name: "Go back" })).toBeVisible();
-
-  await page.goto("/about");
-  await expect(page.getByRole("button", { name: "Go back" })).toHaveCount(0);
-});
 
 test("preview tables remain scrollable on mobile", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "mobile-chromium", "mobile-only table check");

@@ -1,8 +1,7 @@
-export type SongBoardTier = "expected" | "hot" | "likely" | "possible";
+export type SongBoardTier = "prime" | "likely" | "possible";
 
 export const SONG_BOARD_TIER_ORDER: SongBoardTier[] = [
-  "expected",
-  "hot",
+  "prime",
   "likely",
   "possible",
 ];
@@ -41,7 +40,10 @@ export function groupPredictionRowsByTier<T extends { tier: SongBoardTier }>(
   ) as Record<SongBoardTier, T[]>;
 
   for (const row of rows) {
-    grouped[row.tier].push(row);
+    const bucket = grouped[row.tier];
+    if (bucket) {
+      bucket.push(row);
+    }
   }
 
   return grouped;

@@ -138,9 +138,8 @@ export function getVenueRegionFromRow(row: Record<string, unknown> | null): stri
 // ---------------------------------------------------------------------------
 
 export function computeTier(rank: number): LikelihoodTier {
-  if (rank <= 5) return "expected";
-  if (rank <= 15) return "hot";
-  if (rank <= 30) return "likely";
+  if (rank <= 10) return "prime";
+  if (rank <= 25) return "likely";
   return "possible";
 }
 

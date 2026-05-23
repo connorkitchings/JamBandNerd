@@ -25,7 +25,7 @@ const predictionRows = [
     gapZScore: 1.2,
     probability: 0.96,
     recentPlays50: 16,
-    tier: "expected" as const,
+    tier: "prime" as const,
   },
   {
     rank: 2,
@@ -53,7 +53,7 @@ const predictionRows = [
     gapZScore: -0.2,
     probability: 0.84,
     recentPlays50: 11,
-    tier: "expected" as const,
+    tier: "prime" as const,
   },
 ];
 
@@ -70,6 +70,7 @@ const accuracyRows = [
     p10: 0.6,
     p25: 0.4,
     p50: 0.2,
+    actualSongCount: 22,
     weightedPrecisionScore: 0.41,
   },
   {
@@ -84,6 +85,7 @@ const accuracyRows = [
     p10: 0.7,
     p25: 0.45,
     p50: 0.3,
+    actualSongCount: 24,
     weightedPrecisionScore: 0.475,
   },
 ];

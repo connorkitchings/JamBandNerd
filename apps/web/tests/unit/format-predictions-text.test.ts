@@ -17,7 +17,7 @@ function buildRow(songName: string, rank: number): PredictionRow {
     gapRatio: null,
     gapZScore: null,
     probability: null,
-    tier: "expected",
+    tier: "prime",
   };
 }
 

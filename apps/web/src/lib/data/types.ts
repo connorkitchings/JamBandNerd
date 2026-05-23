@@ -49,6 +49,7 @@ export type AccuracyRow = {
   p10: number | null;
   p25: number | null;
   p50: number | null;
+  actualSongCount: number | null;
   weightedPrecisionScore: number | null;
 };
 

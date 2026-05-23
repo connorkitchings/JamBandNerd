@@ -25,6 +25,9 @@ Current route split:
 - **Server first**: default to Server Components and server-side Supabase reads for core routes.
 - **Minimal client JavaScript**: avoid client state and heavy UI/charting libraries until they are clearly needed.
 - **Mobile first**: design for small screens first, then expand to tablet/desktop layouts.
+- **Responsive parity is flexible**: mobile and desktop do not need one-to-one
+  component parity; use viewport-specific implementations when they improve
+  clarity, density, or touch behavior.
 - **Safe-area aware**: bottom navigation and page content must respect mobile safe-area insets.
 - **Overflow safe**: data tables and dense views must remain usable on phones through scroll-safe wrappers rather than clipped content.
 - **Shared dense-data pattern**: tables and long data grids should use a single responsive wrapper/padding pattern instead of route-specific one-offs.

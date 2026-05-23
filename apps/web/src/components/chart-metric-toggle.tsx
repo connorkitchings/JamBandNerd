@@ -45,7 +45,9 @@ export function ChartMetricToggle({ currentMetric }: Props) {
             onClick={() => setMetric(option.value)}
             className={`touch-manipulation min-h-9 rounded-lg px-3 py-1.5 font-label text-[10px] uppercase tracking-wider transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none ${
               currentMetric === option.value
-                ? "bg-primary/18 text-primary ring-1 ring-primary/35"
+                ? option.value === "coverage"
+                  ? "bg-primary/18 text-primary ring-1 ring-primary/35"
+                  : "bg-tertiary/18 text-tertiary ring-1 ring-tertiary/35"
                 : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
             }`}
             aria-pressed={currentMetric === option.value}

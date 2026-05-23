@@ -1,5 +1,5 @@
 import type { AccuracyRow } from "@/lib/data";
-import { formatCompactDateLabel } from "@/lib/format";
+import { formatMMDDYYYY } from "@/lib/format";
 import type { ChartMetric } from "@/components/chart-metric-toggle";
 
 type Props = {
@@ -10,8 +10,9 @@ type Props = {
 
 const CHART_WIDTH = 760;
 const CHART_HEIGHT = 340;
-const PADDING = { top: 28, right: 76, bottom: 66, left: 48 };
+const PADDING = { top: 28, right: 76, bottom: 86, left: 48 };
 const MAX_X_AXIS_LABELS = 6;
+const X_AXIS_LABEL_OFFSET = 28;
 
 function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
@@ -112,7 +113,11 @@ export function RecallChart({ rows, k = 10, metric = "coverage" }: Props) {
   const yMax =
     metric === "coverage"
       ? 1
-      : k;
+      : k === 10
+        ? 10
+        : k === 25
+          ? 15
+          : 20;
 
   const yTicks: number[] = [];
   const tickStep = metric === "coverage" ? 0.1 : Math.max(1, Math.ceil(yMax / 5));
@@ -209,7 +214,17 @@ export function RecallChart({ rows, k = 10, metric = "coverage" }: Props) {
           );
         })}
 
+        <line
+          stroke="var(--color-outline-variant)"
+          strokeOpacity="0.35"
+          x1={PADDING.left}
+          x2={CHART_WIDTH - PADDING.right}
+          y1={PADDING.top + plotHeight}
+          y2={PADDING.top + plotHeight}
+        />
+
         {xLabels.map((point) => {
+          const labelY = PADDING.top + plotHeight + X_AXIS_LABEL_OFFSET;
           return (
             <text
               key={`xlabel-${point.index}`}
@@ -217,11 +232,11 @@ export function RecallChart({ rows, k = 10, metric = "coverage" }: Props) {
               fill="var(--color-on-surface-variant)"
               fontSize="9"
               textAnchor={point.index === 0 ? "start" : point.index === totalRows - 1 ? "end" : "middle"}
-              transform={`rotate(-30, ${xPos(point.index)}, ${PADDING.top + plotHeight + 12})`}
+              transform={`rotate(-30, ${xPos(point.index)}, ${labelY})`}
               x={xPos(point.index)}
-              y={PADDING.top + plotHeight + 12}
+              y={labelY}
             >
-              {formatCompactDateLabel(point.date)}
+              {formatMMDDYYYY(point.date)}
             </text>
           );
         })}

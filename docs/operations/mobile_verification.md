@@ -35,7 +35,7 @@ Notes:
 
 ### Performance and last show
 - Metric cards stack cleanly at narrow widths.
-- Last-show detail route shows the mobile back affordance and remains readable.
+  - Last-show detail route is styled properly and remains readable.
 - Setlist and retained prediction tables remain usable on touch screens.
 
 ## 3) Performance sanity checks

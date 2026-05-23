@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import type { AccuracyRow } from "@/lib/data";
-import { formatHits } from "@/lib/format";
+import { buildLocationLabel, formatHits, formatMMDDYYYY } from "@/lib/format";
 import {
   ResponsiveTableFrame,
   TABLE_CELL_CLASS,
@@ -17,17 +17,23 @@ function formatPercent(value: number | null) {
   return value === null ? "—" : `${(value * 100).toFixed(1)}%`;
 }
 
+function stripLeadingThe(value: string | null) {
+  if (!value) return null;
+  return value.replace(/^The\s+/i, "");
+}
+
 export function AccuracyTable({ rows, band }: Props) {
   return (
     <div>
       <ResponsiveTableFrame
-        minWidthClassName="min-w-[820px] divide-y divide-outline-variant/30"
+        minWidthClassName="min-w-[920px] divide-y divide-outline-variant/30"
         testId="accuracy-table"
       >
         <thead className="bg-surface-container-low text-on-surface-variant">
           <tr>
             <th className={`${TABLE_HEAD_CLASS} whitespace-nowrap align-bottom`} rowSpan={2}>Show Date</th>
             <th className={`${TABLE_HEAD_CLASS} align-bottom`} rowSpan={2}>Venue</th>
+            <th className={`${TABLE_HEAD_CLASS} align-bottom`} rowSpan={2}>Location</th>
             <th
               className={`${TABLE_HEAD_CLASS} border-b border-primary/25 text-center text-primary`}
               colSpan={2}
@@ -65,13 +71,16 @@ export function AccuracyTable({ rows, band }: Props) {
                     href={`/replay?band=${encodeURIComponent(band)}&date=${encodeURIComponent(row.showDate)}`}
                     className="text-on-surface underline-offset-4 hover:text-primary hover:underline focus-visible:text-primary focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
                   >
-                    {row.showDate}
+                    {formatMMDDYYYY(row.showDate)}
                   </Link>
                 ) : (
-                  row.showDate ?? "—"
+                  formatMMDDYYYY(row.showDate) ?? "—"
                 )}
               </td>
-              <td className={`${TABLE_CELL_CLASS} text-on-surface-variant`}>{row.venueName ?? "—"}</td>
+              <td className={`${TABLE_CELL_CLASS} text-on-surface-variant`}>{stripLeadingThe(row.venueName) ?? "—"}</td>
+              <td className={`${TABLE_CELL_CLASS} text-on-surface-variant`}>
+                {buildLocationLabel([row.city, row.state]) || "—"}
+              </td>
               <td className={`${TABLE_CELL_CLASS} whitespace-nowrap text-center tabular-nums text-tertiary`}>
                 {formatHits(row.p10, 10)}
               </td>
