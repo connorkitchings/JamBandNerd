@@ -1,23 +1,23 @@
 # JamBandNerd: Project Roadmap & Next Steps
 
-**Last Updated:** 2026-03-19
+**Last Updated:** 2026-05-23
 
 ## 1. Introduction
 
-JamBandNerd has a stable pipeline foundation, mature prediction models, and a working website in
-`apps/web` that is the sole product surface. The Streamlit app has been retired.
+JamBandNerd v1.0.1 shipped to production on 2026-05-23 at
+[jambandnerd.com](https://jambandnerd.com). The platform has a stable pipeline
+foundation, per-band prediction models (ADR 0001 complete), and a live website
+as the sole public product surface. The Streamlit app is retired.
 
-This roadmap shifts priorities accordingly:
+This roadmap documents completed phases and the current post-v1 focus:
 
 1. **Website Operations:** Keep the website routes and shared shell production-ready.
 2. **Deployment Hardening:** Maintain the production website deployment workflow and verification path.
-3. **Future Expansion:** Explore public API work only after the website creates real external-consumer demand.
+3. **Future Expansion:** Model Phase B refinement, potential new bands, and API exploration only after the website creates real external-consumer demand.
 
 ## 2. Prioritization Strategy
 
-Phases 1 through 3 are now substantially complete in the repo. The highest priority is **Phase 4:
-Cutover and Operations**, starting with a soft cutover that makes the website the default surface
-everywhere users and contributors look first.
+Phases 1 through 4 are now complete. v1.0.1 is live in production.
 
 ---
 
@@ -91,14 +91,45 @@ everywhere users and contributors look first.
 
 ---
 
-## Phase 4: Ongoing Operations
+## Phase 4: Cutover and Operations (Complete)
 
 ### 4.1. Website Operations
 
 - **Goal:** Operate the website and pipeline as a coherent production system.
-- **Implementation:**
-  1. Wire the website to Vercel’s native GitHub integration with `apps/web` as the root directory.
-  2. Keep website verification checks in GitHub Actions (`lint`, `build`, smoke-suite listing).
-  3. Keep pipeline failure alerting and data freshness monitoring in place.
-  4. Revisit public API work only after the website launch creates real external-consumer demand.
+- **Completed:**
+  1. Website wired to Vercel's native GitHub integration with `apps/web` as root directory.
+  2. GitHub Actions CI gates (`Repo Quality`, `Website Quality`, `Hosted Website Smoke`) active.
+  3. Daily pipeline running at 3 PM ET with per-band health reporting.
+  4. v1.0.1 shipped to production at `jambandnerd.com` on 2026-05-23.
+  5. Branch structure simplified to `main` (production) + `dev` (integration).
+
+---
+
+## Phase 5: Post-v1 Iteration (Active)
+
+### 5.1. Model Phase B Refinement
+
+- **Goal:** Improve per-band model accuracy beyond the v1 baselines.
+- **Constraints:**
+  - Do not resume broad feature or hyperparameter sweeps for the current LightGBM family.
+  - Only open experiment: Phish cleanup ablation (see `docs/contributor/model_development.md`).
+  - WSP and Billy on hold pending upstream data gaps.
 - **Priority:** **Medium**.
+
+### 5.2. Product Polish
+
+- **Goal:** Address UX and code quality items identified in the v1 punch list.
+- **Reference:** `docs/archive/v1_punch_list.md` — key open items include loading/error boundaries, accessibility fixes, and component deduplication.
+- **Priority:** **Low** (no blocking user-facing issues).
+
+### 5.3. New Band Onboarding
+
+- **Goal:** Expand coverage beyond the current five active bands.
+- **Next candidate:** Eggy (collector exists; excluded from single-model rollout due to Cloudflare bypass complexity).
+- **Priority:** **Low**.
+
+### 5.4. Public API
+
+- **Goal:** Expose prediction and accuracy data via a public API.
+- **Trigger:** Only after the website creates real external-consumer demand.
+- **Priority:** **Future / Not started**.

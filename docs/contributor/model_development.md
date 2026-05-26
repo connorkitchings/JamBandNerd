@@ -3,9 +3,9 @@
 This guide explains how to add or remove backend prediction models using the
 registry-based model platform.
 
-> **Branch note (`feat/single-model-per-band`)**: New public model work should
-> happen as Phase B per-band model iteration. The public website exposes one
-> prediction board per band, not a selectable list of model slugs.
+The platform ships one precision-optimized model per band (ADR 0001, complete).
+New public model work is per-band Phase B iteration. The website exposes one
+prediction board per band, not a selectable list of model slugs.
 
 ## Canonical Source of Truth
 
@@ -129,16 +129,21 @@ uv run python scripts/audit_shared_model_inputs.py --band all
 Only fields that can be normalized for every active band should move into the
 shared model core.
 
-## Current Phase B Follow-Up
+## Current Production Models and Phase B Status
 
-The active single-model baselines are frozen as the comparison set:
-Goose `goose_fast_rank_v1`, Phish
-`phish_fast_gbm_v2_feat_notebook_rank_venue_run`, WSP `wsp_fast_gbm_v2`,
-Billy `billy_fast_gbm_v10_hp_tuned`, and UM `um_fast_gbm_v2`.
+All five active bands have registered production models. These are frozen as the
+comparison set for any future Phase B experiments:
+
+| Band | Model Version |
+|------|---------------|
+| Goose | `goose_fast_rank_v1` |
+| Phish | `phish_fast_gbm_v2_feat_notebook_rank_venue_run` |
+| WSP | `wsp_fast_gbm_v2` |
+| Billy | `billy_fast_gbm_v10_hp_tuned` |
+| UM | `um_fast_gbm_v2` |
 
 Do not resume broad feature or hyperparameter sweeps for the current LightGBM
-family. Recent Phase B sessions found local optima for Goose, WSP, Billy, and
-UM. The next allowed model experiment is the narrow Phish cleanup ablation:
+family. The next allowed model experiment is the narrow Phish cleanup ablation:
 
 ```bash
 uv run python scripts/run_phase_b_backtest.py --band phish --predictor jambandnerd.models.phish.experiments.PhishFastPlusNotebookRankVenueRun --shows 100 --snapshot-root .snapshots/phish_phase_b

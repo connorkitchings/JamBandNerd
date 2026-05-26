@@ -219,9 +219,8 @@ All collection scripts use **warning-only validation**:
 - Validation warnings appear in GitHub Actions logs for monitoring
 - No `--skip-validation` flags needed in the workflow
 
-For more details, see:
-- `VALIDATION_IMPROVEMENTS.md` - Complete documentation
-- `TEST_REPORT_VALIDATION.md` - Testing and verification results
+For implementation details, see the source of `scripts/run_{band}_collection.py`
+and the shared validation helpers in `src/jambandnerd/db/`.
 
 ## Manual Recovery
 

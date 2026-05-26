@@ -3,15 +3,13 @@
 This page documents all prediction and accuracy table layouts used by the
 JamBandNerd pipeline.
 
-> **Branch note (`feat/single-model-per-band`):** The active backend write
-> boundary on this branch is the `setlist_*` table family (see
-> [Setlist Tables (Phase A)](#setlist-tables-phase-a) below and
+> **Note:** The active backend write boundary is the `setlist_*` table family
+> (see [Setlist Tables](#setlist-tables) below and
 > [ADR 0001](../../contributor/adr/0001-single-model-per-band.md)).
-> Legacy tables listed below remain populated by `main`/`dev` and continue
-> serving the live website until the frontend cutover completes. They are
-> read-only from the perspective of Phase A backend code.
+> Legacy tables listed below remain in Supabase but receive **no new writes**
+> from the active pipeline. They are historical artifacts from the multi-model era.
 
-## Legacy Tables (read-only on this branch)
+## Legacy Tables (archived — no longer written by active pipeline)
 
 ### Prediction Tables
 
@@ -147,11 +145,10 @@ Notes:
 
 ---
 
-## Setlist Tables (Phase A)
+## Setlist Tables
 
-> These four tables are the active backend write boundary on
-> `feat/single-model-per-band`. They are created by
-> `supabase/migrations/20260425_create_setlist_tables.sql`.
+> These four tables are the active backend write boundary (ADR 0001, complete).
+> They are created by `supabase/migrations/20260425_create_setlist_tables.sql`.
 
 Key differences from legacy tables:
 

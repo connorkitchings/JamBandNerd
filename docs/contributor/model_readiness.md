@@ -1,23 +1,26 @@
-# Model Readiness Runbook
+# Model Readiness Runbook (Legacy — Multi-Model Era)
 
-> **Legacy runbook**: This workflow documents the old multi-model readiness
-> path. On `feat/single-model-per-band`, use it only for rollback context or
-> offline baseline comparison while Phase B models are evaluated.
+> **This runbook documents the old multi-model readiness path.** It is preserved
+> as historical reference only. The multi-model architecture was retired with
+> ADR 0001 (complete, v1.0.1 live).
+>
+> For current Phase B per-band model iteration, see
+> [Model Development Guide](model_development.md#staged-model-promotion).
 
-Use this workflow when preparing a legacy model for Supabase and eventual
-website rollout across the repo-supported bands.
+Use this workflow when reviewing legacy model promotion history or running
+offline baseline comparisons against legacy tables.
 
 ## Goal
 
-Reach a state where the model has:
+This legacy workflow reached a state where a model had:
 
 - comparison evidence
 - canonical prediction rows
-- legacy replay lineage in `historical_prediction_runs`
-- legacy per-show accuracy in `accuracy_per_show`
-- a backend readiness report proving the site can consume it
+- legacy replay lineage in `historical_prediction_runs` (no longer populated by active pipeline)
+- legacy per-show accuracy in `accuracy_per_show` (no longer populated by active pipeline)
+- a backend readiness report proving the site could consume it
 
-This does **not** automatically expose the model on the website.
+This did **not** automatically expose the model on the website.
 
 ## Canonical command
 

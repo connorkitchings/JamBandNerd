@@ -1,8 +1,8 @@
 # ADR 0001 — Single Model Per Band
 
-**Status**: Accepted — Phase A and Phase B complete; legacy multi-model code removed.  
+**Status**: Accepted — Phase A and Phase B complete; legacy multi-model code removed. Live in production as of v1.0.1 (2026-05-23).  
 **Date**: 2026-04-25  
-**Branch**: `feat/single-model-per-band` (merged to `dev`)
+**Branch**: `feat/single-model-per-band` (merged to `dev`, promoted to `main` — v1.0.1 live 2026-05-23)
 
 ---
 
@@ -62,15 +62,13 @@ Three problems drove this decision:
   Gate promotion on F1@25 improvement with p@25 non-regression, while legacy
   p@10/r@50 checks remain active over the required backtest window.
 
-**Parallel operation during development:**
+**Parallel operation (completed):**
 
 - Legacy tables (`predictions`, `prediction_songs`, `historical_prediction_runs`,
-  `accuracy_per_show`, and the four split tables) stay populated on `main`/`dev`
-  and continue serving the live site.
-- This branch builds new Supabase tables alongside them. No legacy data is
-  migrated, rewritten, or removed during Phase A.
-- Site cutover to new tables happens as a separate step after Phase A is
-  validated end-to-end.
+  `accuracy_per_show`, and the four split tables) remain in Supabase but receive
+  no new writes from the active pipeline.
+- The website reads exclusively from `setlist_*` tables.
+- The cutover is complete as of v1.0.1 (2026-05-23).
 
 ---
 
@@ -119,11 +117,13 @@ Legacy tables remain read-only on `main`/`dev` until:
 
 ### Frontend
 
-Pages removed: `/compare`, `/replay`.  
+Pages removed: `/compare`, `/explorer` (multi-model comparison routes).  
+Added: `/replay` rebuilt as a single-model historical replay (replaces the
+multi-model side-by-side replay that existed under the same route).  
 Components removed: model picker, model-toggle UI, `ModelAgreeIcon`.  
 `MODEL_CONFIG`, `ACTIVE_MODELS`, `ModelSlug` type, `normalizeModel` helper
 are deleted from `apps/web/src/lib/config.ts`.  
-`apps/web/src/lib/data/replay.ts` is deleted.
+`apps/web/src/lib/data/replay.ts` was rewritten for the single-model contract.
 
 Every Supabase query in `apps/web/src/lib/data/*.ts` drops
 `.eq("model_slug", ...)` filters. Queries become band-only.

@@ -60,8 +60,4 @@ For debugging or more granular control, you can run individual pipeline componen
   - To force a full recompute (e.g. after a data correction or model version bump): add `--no-incremental`
   - To backtest across all historical shows: add `--all-history` (implies full recompute)
 
-> **Branch note (feat/single-model-per-band)**: The `--model` flag has been
-> removed from prediction and backtest scripts. Each band has exactly one
-> registered model.
-
 Refer to the source code of these scripts for their specific command-line arguments.

@@ -4,7 +4,7 @@ Welcome to the JamBandNerd project! This guide will help you get set up and make
 
 ## 1. Project Overview
 
-JamBandNerd is a data platform for collecting, transforming, and predicting jam band setlists. The project is built around Python pipeline code and Supabase-backed storage, and it is now moving toward a website-first frontend strategy.
+JamBandNerd is a data platform for collecting, transforming, and predicting jam band setlists. The project is built around Python pipeline code and Supabase-backed storage, and ships a live website at [jambandnerd.com](https://jambandnerd.com) as the sole public product surface.
 
 The project is designed to be modular and extensible, but the core data
 architecture is intentionally strict:
@@ -112,11 +112,14 @@ To add a new band to the project, you will need to:
 
 ## 6. How to Add a New Model
 
-To add a new prediction model, you will need to:
+The platform ships **one model per band** (ADR 0001, complete). To add or update
+a per-band prediction model:
 
-1. Create a new model in `src/jambandnerd/models/`.
-2. Consume the existing `ModelData` contract rather than creating a
-   band-specific transform path.
-3. Wire the model into the consolidated prediction and evaluation flow.
-4. Add tests and backtest validation for the new model.
-5. Update storage/docs if the model becomes a supported public option.
+1. Create or update the band's predictor class in `src/jambandnerd/models/{band}/model.py`.
+   Implement `PredictionModel` and consume the existing `ModelData` contract.
+2. Update the band's registry entry in `src/jambandnerd/models/registry.py` with
+   a new `model_version`.
+3. Run `scripts/run_backtest.py --band {band}` and document metrics vs the incumbent.
+4. Promote once the Phase B gate is met (F1@25 improvement, p@25 non-regression).
+   See `docs/contributor/model_development.md` for the full promotion workflow.
+5. Update storage/docs if the model version changes the live prediction contract.

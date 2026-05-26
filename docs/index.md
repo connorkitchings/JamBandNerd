@@ -1,6 +1,6 @@
 # JamBandNerd Documentation
 
-Welcome to the comprehensive documentation for JamBandNerd, a cloud-based data platform for collecting, transforming, and predicting jam band setlists.
+Welcome to the comprehensive documentation for JamBandNerd — a data platform for collecting, transforming, and predicting jam band setlists. Live at [jambandnerd.com](https://jambandnerd.com) (v1.0.1).
 
 This documentation is organized into current operating docs first, then historical context.
 
@@ -16,24 +16,19 @@ This documentation is organized into current operating docs first, then historic
 - **[Architecture](contributor/developer_guide/architecture.md)**: System design and component overview.
 - **[Extending the Platform](contributor/developer_guide/extending_the_platform.md)**: Patterns for new bands and models.
 - **[Agentic Development](contributor/developer_guide/ai_sessions.md)**: Canonical AI entrypoints, startup flow, and session logging workflow.
+- **[Model Development](contributor/model_development.md)**: Adding and promoting per-band prediction models.
 
-### ⚙️ [Operations](operations/github_actions.md)
-- **[Daily Pipeline](operations/github_actions.md)**: GitHub Actions workflow and monitoring notes.
-- **[Pipeline Optimization](operations/pipeline_optimization.md)**: Consolidation strategy and performance tips.
-- **[Website Delivery Strategy](operations/website_delivery.md)**: Website architecture and deployment.
-- **[Mobile Verification](operations/mobile_verification.md)**: Real-device and responsive checks for the website.
-
-- **[WSP Recent Fallbacks](operations/tourwrangler_fallback.md)**: PanicStream and TourWrangler recent-gap ingestion runbook for WSP.
+### ⚙️ [Operations](operations/README.md)
+- **[Operations Index](operations/README.md)**: Full list of active runbooks and archived ops docs.
+- **[GitHub Actions](operations/github_actions.md)**: All workflows — schedule, triggers, failure policy.
+- **[Website Delivery](operations/website_delivery.md)**: Website architecture, Vercel setup, env vars, versioning.
+- **[Main Branch Elevation](operations/main_branch_elevation.md)**: Production gate — PR policy, required checks, release flow.
+- **[WSP Fallback](operations/tourwrangler_fallback.md)**: TourWrangler fallback runbook for WSP.
 
 ### 📚 Reference Library
 - **Specs**: [Data Strategy](reference/specifications/data_strategy.md) · [CLI](reference/specifications/cli.md) · [Transformations](reference/specifications/transformations.md) · [Database](reference/specifications/database.md) · [Predictions Schema](reference/specifications/predictions_schema.md).
 - **Schemas**: [Unified Tables](reference/schemas/unified_tables.md) · [Goose API](reference/schemas/goose_api.md) · [Phish API](reference/schemas/phish_api.md) · [WSP Webscrape](reference/schemas/wsp_webscrape.md) · [UM AllThings](reference/schemas/um_allthings.md).
-- **Models**: [Model Overview](reference/models/index.md) plus detailed pages for the [Notebook](reference/models/notebook.md) and [Deal](reference/models/deal.md) predictors.
 - **Supabase Helpers**: [API Guide](reference/guides/supabase_api_guide.md) and [Insert Recipes](reference/guides/supabase_inserts.md).
-
-### 📊 Project Overview
-- **Status Dashboard**: [Implementation Status](overview/implementation_status.md).
-- **Product Docs**: [PRD](overview/project/prd.md) · [Architecture Decisions](overview/project/adr.md) · [Schedule](overview/project/schedule.md).
 
 ### 📊 Reports
 - **Reports**: [Alignment Audit](reports/2026-04-13_alignment_audit.md) · [Improvements Summary](reports/IMPROVEMENTS_SUMMARY.md) · [Validation Improvements](reports/VALIDATION_IMPROVEMENTS.md) · [Validation Test Report](reports/TEST_REPORT_VALIDATION.md).
@@ -43,4 +38,5 @@ This documentation is organized into current operating docs first, then historic
 - **Historical model reference**: [CK+ Model](reference/models/ckplus.md)
 - **Historical product/architecture snapshots**: [Technical Overview](reference/specifications/technical_overview.md) · [ADR](overview/project/adr.md) · [Schedule](overview/project/schedule.md)
 - **Historical Streamlit note**: [Streamlit Notes](operations/streamlit_deploy.md)
+- **Pre-launch operations archive**: `docs/archive/` — v1 punch list, frontend strategy, test results, and other one-time operational artifacts.
 - **Troubleshooting archive**: [Data Quality Checklist](troubleshooting/troubleshooting_data_quality.md) plus targeted historical fixes in `docs/troubleshooting/`

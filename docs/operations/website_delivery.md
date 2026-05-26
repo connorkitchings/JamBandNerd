@@ -55,30 +55,26 @@ Client component rule:
 - **Product rule**: replace Stitch placeholder entities with real JamBandNerd-supported bands and routes before shipping UI work.
 - **Mobile rule**: preserve Stitch layout intent, but adapt navigation and dense modules for touch targets, fixed-bottom nav, and horizontal-scroll-safe tables.
 
-## Product Direction
+## Product State
 
-The website should become the primary public surface for:
+The website is live in production at [jambandnerd.com](https://jambandnerd.com) as v1.0.1
+(shipped 2026-05-23). It is the primary public surface for:
 
 - Multi-band prediction browsing
 - Accuracy and performance views
 - Last-show details and explanatory content
 
-The website is now the default local, contributor-facing, and public product surface. Remaining
-work is deployment hardening, hosted verification, and product refinement on the live website.
+The website is the default local, contributor-facing, and public product surface.
+Ongoing work is stability monitoring, model Phase B refinement, and product
+polish from the v1 punch list (archived at `docs/archive/v1_punch_list.md`).
 
-## Operating Constraints
+## Operational Priorities
 
-- Keep `scripts/run_optimized_pipeline.py` as the canonical pipeline entrypoint.
-- Preserve the single-model `setlist_*` Supabase prediction and accuracy contract unless the website exposes a real gap.
-- Avoid introducing a public API unless external-consumer requirements justify it later.
-- Do not reintroduce Streamlit-specific guidance into primary onboarding or operations docs.
-
-## Current Priorities
-
-1. Keep the website routes and shared shell production-ready.
-2. Make the website the default path in docs, onboarding, and workflow messaging.
-3. Harden Vercel deployment, preview verification, and production env management.
-4. Revisit public API work only after the website creates real external-consumer demand.
+1. Maintain daily pipeline health and Vercel production stability.
+2. Monitor hosted smoke tests (runs daily at 20:30 UTC).
+3. Model Phase B: Phish cleanup ablation when ready.
+4. Product polish: address open punch-list items (see `docs/archive/v1_punch_list.md`).
+5. Revisit public API work only after the website creates real external-consumer demand.
 
 ## Branch Strategy
 
