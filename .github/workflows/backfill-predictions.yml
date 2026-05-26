@@ -105,7 +105,7 @@ jobs:
         if: github.event.inputs.dry_run != 'true'
         run: |
           echo "::group::Validating retained accuracy tables for ${{ matrix.band }}"
-          uv run python scripts/validate_accuracy_tables.py --band ${{ matrix.band }} --skip-freshness
+          uv run python scripts/validate_accuracy_tables.py --band ${{ matrix.band }} --skip-freshness --replay-window 50
           echo "::endgroup::"
 
   summary:
