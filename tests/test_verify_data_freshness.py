@@ -177,6 +177,7 @@ class TestAuditRecentSetlistCompleteness:
             completed_show_window=mock.Mock(return_value=(cutoff, end_date)),
             fetch_table_rows=mock.Mock(side_effect=_ftr),
             fetch_column_values_for_ids=mock.Mock(side_effect=_fcv),
+            get_supabase_client=mock.Mock(return_value=None),
         )
 
     def test_no_shows_in_window(self):
