@@ -57,12 +57,13 @@ def _source_health_url(band: str, config, *, today: date | None = None) -> str:
     return f"{root}/api/v2/setlists/showyear/{year}.json?order_by=showdate"
 
 
-def ensure_source_reachable(band: str, *, timeout: int = 15) -> None:
+def ensure_source_reachable(band: str, *, timeout: int | None = None) -> None:
     """Perform a shallow health check for a band's data source.
 
     Args:
         band: Band identifier (goose/phish/etc.)
-        timeout: Request timeout in seconds.
+        timeout: Request timeout in seconds. Defaults to the band's
+            CollectorConfig.timeout when not provided.
 
     Raises:
         RuntimeError: If the upstream endpoint is unreachable or returns a fatal error.
@@ -73,10 +74,11 @@ def ensure_source_reachable(band: str, *, timeout: int = 15) -> None:
 
     config = get_collector_config(band)
     url = _source_health_url(band, config)
+    effective_timeout = timeout if timeout is not None else config.timeout
     try:
         response = requests.get(
             url,
-            timeout=timeout,
+            timeout=effective_timeout,
             allow_redirects=True,
             headers={"User-Agent": config.user_agent},
         )
