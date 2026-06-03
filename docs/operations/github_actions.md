@@ -29,6 +29,8 @@ The weekly correction sweep runs automatically on Tuesdays staggered hourly by b
 - 18:00 UTC (2:00 PM ET) - Widespread Panic
 - 19:00 UTC (3:00 PM ET) - Umphrey's McGee
 
+Band selection for scheduled runs uses the cron expression (`github.event.schedule`) rather than the current wall-clock time, so runner startup delays (e.g., queue contention with the daily pipeline at 19:00 UTC) do not misroute bands.
+
 It uses the `correction_detector.py` module to perform checksum-based comparison of stored DB raw records with fresh upstream data over a 730-day lookback window. Use `workflow_dispatch` for manual runs or repair validation.
 
 ---
@@ -79,11 +81,12 @@ The primary production workflow. Collects raw data, generates predictions, runs 
 
 ### Failure Policy
 
-- Non-WSP collection failures are hard failures.
+- Non-WSP collection failures are hard failures. On failure, the collection step writes `workflow_state=failed` outputs so downstream steps can distinguish collection failure from regeneration staleness.
 - WSP collector regressions are hard failures.
 - WSP upstream blocking is degraded only when recent completed-show data is still usable.
 - Recent completed-show setlist gaps from upstream blocking remain hard failures.
 - Supported-model freshness is a separate enforcement path from collection success:
+  - When collection itself fails, staleness enforcement is skipped (predictions and accuracy could not be regenerated this run).
   - degraded reuse older than `48h` is a hard failure for supported predictions
   - stale supported accuracy is also a hard failure unless the run was manually dispatched with `skip_accuracy=true`
   - when incremental backtest finds all shows in the window already scored, accuracy staleness is expected and not enforced (scores are immutable; the backtest emits `backtest_incremental_all_scored=true`)

@@ -70,8 +70,8 @@ jobs:
               echo "is_multi=false" >> $GITHUB_OUTPUT
             fi
           else
-            CURRENT_HOUR=$(date -u +%H)
-            case $CURRENT_HOUR in
+            SCHEDULED_HOUR=$(echo "${{ github.event.schedule }}" | awk '{print $2}')
+            case $SCHEDULED_HOUR in
               14) BAND="goose" ;;
               15) BAND="phish" ;;
               16) BAND="eggy" ;;
@@ -81,7 +81,7 @@ jobs:
               *) BAND="unknown" ;;
             esac
             if [[ "$BAND" == "unknown" ]]; then
-              echo "::error::Could not determine band from scheduled hour: $CURRENT_HOUR"
+              echo "::error::Could not determine band from cron schedule: ${{ github.event.schedule }} (hour=$SCHEDULED_HOUR)"
               exit 1
             fi
             BANDS_JSON="[\"$BAND\"]"

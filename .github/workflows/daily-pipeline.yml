@@ -197,10 +197,17 @@ jobs:
               exit $FINAL_EXIT_CODE
             fi
           else
+            FINAL_EXIT_CODE=0
+
             while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
               echo "Attempt $((RETRY_COUNT + 1)) of $MAX_RETRIES for ${BAND} collection"
 
-              if uv run python "$SCRIPT_PATH"; then
+              set +e
+              uv run python "$SCRIPT_PATH"
+              FINAL_EXIT_CODE=$?
+              set -e
+
+              if [[ $FINAL_EXIT_CODE -eq 0 ]]; then
                 echo "✅ Collection for ${BAND} successful"
                 break
               fi
@@ -211,7 +218,12 @@ jobs:
                 sleep $RETRY_DELAY
               else
                 echo "::error::Collection for ${BAND} failed after $MAX_RETRIES attempts"
-                exit 1
+                echo "workflow_state=failed" >> "$STEP_OUTPUT"
+                echo "outcome_code=failed" >> "$STEP_OUTPUT"
+                echo "should_retry_collection=false" >> "$STEP_OUTPUT"
+                echo "recent_data_usable=false" >> "$STEP_OUTPUT"
+                echo "prediction_action=skipped" >> "$STEP_OUTPUT"
+                exit $FINAL_EXIT_CODE
               fi
             done
 
@@ -545,6 +557,11 @@ jobs:
         run: |
           if [[ "${FRESHNESS_STATE}" != "stale" ]]; then
             echo "Supported-model freshness state for ${BAND}: ${FRESHNESS_STATE}"
+            exit 0
+          fi
+
+          if [[ "${WORKFLOW_STATE}" == "failed" ]]; then
+            echo "::warning::${BAND} collection failed — supported-model freshness (predictions & accuracy) could not be regenerated this run. Skipping staleness enforcement."
             exit 0
           fi
 
