@@ -3,18 +3,18 @@ name: Weekly Correction Sweep
 on:
   schedule:
     # Tuesdays at staggered times (UTC)
-    # 14:00 UTC = 10:00 AM ET (Goose)
-    # 15:00 UTC = 11:00 AM ET (Phish)
-    # 16:00 UTC = 12:00 PM ET (Eggy)
-    # 17:00 UTC = 1:00 PM ET (Billy)
-    # 18:00 UTC = 2:00 PM ET (WSP)
-    # 19:00 UTC = 3:00 PM ET (UM)
-    - cron: '0 14 * * 2'  # Tuesday 10 AM ET - Goose
-    - cron: '0 15 * * 2'  # Tuesday 11 AM ET - Phish
-    - cron: '0 16 * * 2'  # Tuesday 12 PM ET - Eggy
-    - cron: '0 17 * * 2'  # Tuesday 1 PM ET - Billy
-    - cron: '0 18 * * 2'  # Tuesday 2 PM ET - WSP
-    - cron: '0 19 * * 2'  # Tuesday 3 PM ET - UM
+    # 13:00 UTC = 9:00 AM ET (Goose)
+    # 14:00 UTC = 10:00 AM ET (Phish)
+    # 15:00 UTC = 11:00 AM ET (Eggy)
+    # 16:00 UTC = 12:00 PM ET (Billy)
+    # 17:00 UTC = 1:00 PM ET (WSP)
+    # 18:00 UTC = 2:00 PM ET (UM)
+    - cron: '0 13 * * 2'  # Tuesday 9 AM ET - Goose
+    - cron: '0 14 * * 2'  # Tuesday 10 AM ET - Phish
+    - cron: '0 15 * * 2'  # Tuesday 11 AM ET - Eggy
+    - cron: '0 16 * * 2'  # Tuesday 12 PM ET - Billy
+    - cron: '0 17 * * 2'  # Tuesday 1 PM ET - WSP
+    - cron: '0 18 * * 2'  # Tuesday 2 PM ET - UM
   workflow_dispatch:
     inputs:
       band:
@@ -72,12 +72,12 @@ jobs:
           else
             SCHEDULED_HOUR=$(echo "${{ github.event.schedule }}" | awk '{print $2}')
             case $SCHEDULED_HOUR in
-              14) BAND="goose" ;;
-              15) BAND="phish" ;;
-              16) BAND="eggy" ;;
-              17) BAND="billy" ;;
-              18) BAND="wsp" ;;
-              19) BAND="um" ;;
+              13) BAND="goose" ;;
+              14) BAND="phish" ;;
+              15) BAND="eggy" ;;
+              16) BAND="billy" ;;
+              17) BAND="wsp" ;;
+              18) BAND="um" ;;
               *) BAND="unknown" ;;
             esac
             if [[ "$BAND" == "unknown" ]]; then

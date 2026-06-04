@@ -63,7 +63,14 @@ case $SCHEDULED_HOUR in
 - `tests/test_data_diagnostics_scripts.py` — 10/10 passed
 - `npm run verify:docs` — passed
 
+## Follow-Up (2026-06-03)
+
+Shifted the entire weekly correction sweep schedule one hour earlier to eliminate queue contention with the daily pipeline:
+- 13:00 UTC Goose, 14:00 Phish, 15:00 Eggy, 16:00 Billy, 17:00 WSP, 18:00 UM
+- All sweeps finish by 19:00 UTC when the daily pipeline starts
+- Updated case statement in `determine-band` step and `github_actions.md` docs
+
 ## Next Step
 
-Monitor the next scheduled Weekly Correction Sweep (2026-06-09) to confirm UM sweep runs at hour 19 without the hour-20 misroute. Also monitor Daily Pipeline to confirm no stale-accuracy false errors when non-WSP collection fails.
+Monitor the next scheduled Weekly Correction Sweep (2026-06-09) and Daily Pipeline to confirm no overlap issues.
 

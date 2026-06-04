@@ -22,14 +22,15 @@ This repository uses 10 GitHub Actions workflows for pipeline automation, CI qua
 ## Weekly Correction Sweep
 
 The weekly correction sweep runs automatically on Tuesdays staggered hourly by band:
-- 14:00 UTC (10:00 AM ET) - Goose
-- 15:00 UTC (11:00 AM ET) - Phish
-- 16:00 UTC (12:00 PM ET) - Eggy
-- 17:00 UTC (1:00 PM ET) - Billy Strings
-- 18:00 UTC (2:00 PM ET) - Widespread Panic
-- 19:00 UTC (3:00 PM ET) - Umphrey's McGee
+- 13:00 UTC (9:00 AM ET) - Goose
+- 14:00 UTC (10:00 AM ET) - Phish
+- 15:00 UTC (11:00 AM ET) - Eggy
+- 16:00 UTC (12:00 PM ET) - Billy Strings
+- 17:00 UTC (1:00 PM ET) - Widespread Panic
+- 18:00 UTC (2:00 PM ET) - Umphrey's McGee
 
-Band selection for scheduled runs uses the cron expression (`github.event.schedule`) rather than the current wall-clock time, so runner startup delays (e.g., queue contention with the daily pipeline at 19:00 UTC) do not misroute bands.
+The sweep completes by 19:00 UTC, avoiding queue contention with the daily pipeline at 19:00 UTC.
+Band selection for scheduled runs uses the cron expression (`github.event.schedule`) rather than the current wall-clock time, so runner startup delays do not misroute bands.
 
 It uses the `correction_detector.py` module to perform checksum-based comparison of stored DB raw records with fresh upstream data over a 730-day lookback window. Use `workflow_dispatch` for manual runs or repair validation.
 
