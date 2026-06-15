@@ -71,6 +71,10 @@ The primary production workflow. Collects raw data, generates predictions, runs 
   - if supported-model prediction freshness exceeds `48h`, the band job fails after the status artifact and summary are written
   - accuracy uses the same `48h` window, except manual `skip_accuracy=true` runs report stale accuracy informationally and do not fail solely for skipped accuracy regeneration
 - The sampled 2026-04-13 WSP Notebook freshness gap should therefore be treated as a real operational defect that requires regeneration or workflow investigation, not as acceptable drift.
+- Recent missing-setlist outcomes are split by diagnosis:
+  - `failed_internal` — the collector saw a parseable EC setlist but did not store it (collector regression; hard fail).
+  - `failed_upstream_stale` — the EC request itself failed (`ec_request_failed`, true bot blocking / network failure; hard fail).
+  - `degraded_upstream_lag` — the EC page loaded cleanly via Playwright but the setlist is not published yet (`upstream_missing_setlist`) or only fallback data exists (`fallback_data_available`). This is upstream lag, not a system defect: the run degrades and reuses fresh prior predictions within the `48h` window. The missing show will age out of the `WSP_BACKUP_WINDOW_DAYS=3` recent window and recover naturally.
 
 ### Eggy Cloudflare Bypass
 
@@ -85,7 +89,10 @@ The primary production workflow. Collects raw data, generates predictions, runs 
 - Non-WSP collection failures are hard failures. On failure, the collection step writes `workflow_state=failed` outputs so downstream steps can distinguish collection failure from regeneration staleness.
 - WSP collector regressions are hard failures.
 - WSP upstream blocking is degraded only when recent completed-show data is still usable.
-- Recent completed-show setlist gaps from upstream blocking remain hard failures.
+- Recent completed-show setlist gaps are classified by the missing-setlist probe (`_probe_everydaycompanion_setlist_status` in `src/jambandnerd/data_collection/wsp/orchestration.py`):
+  - `failed_internal` (collector saw the setlist but did not store it) — hard failure.
+  - `failed_upstream_stale` (`ec_request_failed`: the EC request itself raised an exception, indicating bot blocking or network failure) — hard failure.
+  - `degraded_upstream_lag` (`upstream_missing_setlist`: EC page loaded cleanly via Playwright but has no published setlist yet; or `fallback_data_available`) — degraded; the pipeline reuses fresh prior predictions within the `48h` window and recovers naturally once the show ages out of the `WSP_BACKUP_WINDOW_DAYS=3` recent window.
 - Supported-model freshness is a separate enforcement path from collection success:
   - When collection itself fails, staleness enforcement is skipped (predictions and accuracy could not be regenerated this run).
   - degraded reuse older than `48h` is a hard failure for supported predictions

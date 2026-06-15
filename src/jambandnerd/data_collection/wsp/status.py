@@ -72,11 +72,15 @@ class CollectionStatus:
         if self.request_blocked_missing_setlists > 0:
             return "failed_upstream_stale"
 
+        # EC page loads cleanly but no setlist is published yet (or fallback
+        # data exists for a recent show that hasn't been promoted). This is
+        # upstream lag, not a system defect: degrade so the pipeline reuses
+        # fresh prior predictions instead of failing the whole daily run.
         if (
             self.upstream_missing_setlists > 0
             or self.fallback_available_missing_setlists > 0
         ):
-            return "failed_upstream_stale"
+            return "degraded_upstream_lag"
 
         if self._has_systemic_http_failure():
             return "degraded_upstream_blocked"
