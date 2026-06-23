@@ -203,6 +203,21 @@ class PhishFastPredictor(PredictionModel):
     def _candidate_top_career(self) -> int:
         return _CANDIDATE_TOP_CAREER
 
+    def _eligible_mask_filter(
+        self,
+        candidates: pd.Index,
+        eligible_mask: pd.Series,
+    ) -> pd.Series:
+        """Hook to further filter the eligible-candidate mask.
+
+        Default is identity: subclasses (e.g. WSP) override to drop
+        band-specific noise songs (Drums, Jam, artist collisions) from
+        training/prediction candidates. The filter is applied AFTER the
+        base eligibility mask, so excluded songs never reach the top-K
+        slice or the LightGBM training rows.
+        """
+        return eligible_mask
+
     # ── Extension hooks ────────────────────────────────────────────────────────
 
     def _extra_training_row_features(
@@ -354,6 +369,7 @@ class PhishFastPredictor(PredictionModel):
                 & (gap_at_j.reindex(candidates, fill_value=999) > 0)
                 & (gap_at_j.reindex(candidates, fill_value=999) <= _RETIRED_GAP)
             )
+            eligible_mask = self._eligible_mask_filter(candidates, eligible_mask)
 
             if not eligible_mask.any():
                 continue
@@ -497,6 +513,7 @@ class PhishFastPredictor(PredictionModel):
                 & (gap_at_j.reindex(candidates, fill_value=999) > 0)
                 & (gap_at_j.reindex(candidates, fill_value=999) <= _RETIRED_GAP)
             )
+            eligible_mask = self._eligible_mask_filter(candidates, eligible_mask)
 
             if not eligible_mask.any():
                 continue
@@ -671,6 +688,7 @@ class PhishFastPredictor(PredictionModel):
             & (gap_predict.reindex(candidates, fill_value=999) > 0)
             & (gap_predict.reindex(candidates, fill_value=999) <= _RETIRED_GAP)
         )
+        eligible_mask = self._eligible_mask_filter(candidates, eligible_mask)
 
         eligible_songs = candidates[eligible_mask.reindex(candidates, fill_value=False)]
         if len(eligible_songs) == 0:

@@ -7,13 +7,13 @@ This repository uses 10 GitHub Actions workflows for pipeline automation, CI qua
 | Workflow | File | Schedule | Manual | PR/Push | Bands |
 |----------|------|----------|--------|---------|-------|
 | Daily Data Pipeline | `daily-pipeline.yml` | 19:00 UTC daily | Yes | -- | Active single-model bands |
-| Weekly Correction Sweep | `weekly-correction-sweep.yml` | Tue 14:00-19:00 UTC staggered | Yes | -- | goose, phish, eggy, billy, wsp, um |
+| Weekly Correction Sweep | `weekly-correction-sweep.yml` | Tue 13:00-18:00 UTC staggered | Yes | -- | goose, phish, eggy, billy, wsp, um |
 | Fantasy Goose | `fantasy-goose.yml` | After daily pipeline | Yes | -- | goose |
 | Backfill Predictions | `backfill-predictions.yml` | -- | Yes | -- | Active single-model bands |
 | Live Show Tracker | `live-tracker.yml` | -- | Yes | -- | goose, phish, wsp, billy, um |
 | Repo Quality | `repo-quality.yml` | -- | -- | PR + push main | -- |
 | Website Quality | `web-quality.yml` | -- | -- | PR + push main | -- |
-| Hosted Website Smoke | `hosted-web-smoke.yml` | 20:30 UTC daily | Yes | -- | -- |
+| Hosted Website Smoke | `hosted-web-smoke.yml` | 22:00 UTC daily | Yes | -- | -- |
 | Dependency Audit | `dependency-audit.yml` | Mon 14:00 UTC | Yes | -- | -- |
 | Test Secrets | `test_secrets.yml` | -- | Yes | -- | -- |
 
@@ -146,7 +146,7 @@ Tracks live shows by polling for setlist updates during a performance.
 
 - **Triggers**: `workflow_dispatch` only
 - **Inputs**: `band` (goose, phish, wsp, billy, um), `date` (YYYY-MM-DD), `interval` (default 60s), `max_iterations` (default 300), `bsky_handle` (WSP only)
-- **Behavior**: Runs `scripts/run_live_tracker.py` with Playwright for WSP. Polls for setlist updates and publishes them.
+- **Behavior**: Runs `scripts/run_live_tracker.py`, which polls upstream sources for setlist updates and publishes them. WSP polling uses the in-repo WSP parser directly (`src/jambandnerd/data_collection/wsp/parser.py`); the daily pipeline's Playwright-backed EC scraper is not invoked here, so the live tracker does not require a Playwright install step.
 - **Concurrency**: One tracker per band+date combo; cancels in-progress runs.
 - **Timeout**: 360 minutes (6 hours)
 - **Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`; `PHISH_API_KEY` for Phish only
@@ -185,7 +185,7 @@ CI quality gate for the `apps/web` Next.js website.
 Daily smoke test against the live deployed website.
 
 - **Triggers**:
-  - `schedule`: `30 20 * * *` (daily at 20:30 UTC)
+  - `schedule`: `0 22 * * *` (daily at 22:00 UTC)
   - `workflow_dispatch` with input: `base_url` (default `https://jambandnerd.com`)
 - **Steps**: Runs `npm run test:web:smoke:hosted` with Playwright Chromium
 - Browser binaries are cached in `~/.cache/ms-playwright`; OS dependencies are installed per run.

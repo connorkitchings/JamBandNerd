@@ -121,4 +121,4 @@ jobs:
           echo "Bands: ${{ needs.setup.outputs.bands }}" >> $GITHUB_STEP_SUMMARY
           echo "Dry run: ${{ github.event.inputs.dry_run }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Jobs: ${{ needs.setup.result == 'success' && 'completed' || 'failed' }}" >> $GITHUB_STEP_SUMMARY
+          echo "Jobs: ${{ needs.backfill.result == 'success' && 'completed' || 'failed' }}" >> $GITHUB_STEP_SUMMARY

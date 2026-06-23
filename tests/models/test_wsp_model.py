@@ -333,3 +333,100 @@ class TestRegistryIntegration:
         wsp = build_band_predictor("wsp", persist_artifacts=False)
         assert isinstance(wsp, WSPFastPredictor)
         assert get_band_model_version("wsp") == "wsp_fast_gbm_v2"
+
+
+class TestWSPExcludedSongs:
+    """Verify WSP noise songs (Drums, Jam, artist collisions) are excluded.
+
+    WSP setlists include structural markers ("Drums", "Jam") and billed
+    co-performers ("David Bromberg Band", "J.J. Cale", "The Doors",
+    "New Riders of the Purple Sage") that are not predictable songs.
+    The _eligible_mask_filter hook must drop them from candidates BEFORE
+    the top-K slice so that (a) they never appear in predictions and
+    (b) top_k depth is preserved (the next-ranked real song backfills).
+    Mirrors the canonical filtering test in test_notebook_model.py:195-261.
+    """
+
+    def test_eligible_mask_filter_drops_excluded_names(self):
+        """Unit test: hook drops Drums/Jam/collisions, keeps real songs.
+
+        Verifies case-insensitive and whitespace-tolerant matching against
+        EXCLUDED_SONGS['wsp'] in src/jambandnerd/config/bands.py.
+        """
+        predictor = WSPFastPredictor()
+        candidates = pd.Index(
+            [
+                "Drums",
+                "  JAM  ",
+                "David Bromberg Band",
+                "Song A",
+                "Song B",
+            ]
+        )
+        mask = pd.Series([True] * len(candidates), index=candidates)
+        filtered = predictor._eligible_mask_filter(candidates, mask)
+
+        assert not filtered.iloc[0]
+        assert not filtered.iloc[1]
+        assert not filtered.iloc[2]
+        assert filtered.iloc[3]
+        assert filtered.iloc[4]
+
+    def test_eligible_mask_filter_noop_when_no_exclusions(self):
+        """Unit test: hook returns mask unchanged when no songs are excluded.
+
+        PhishFastPredictor (parent class) has no WSP exclusions configured,
+        so its default _eligible_mask_filter is identity. This guards against
+        accidentally narrowing the contract for the parent class.
+        """
+        from jambandnerd.models.phish.fast_predictor import PhishFastPredictor
+
+        predictor = PhishFastPredictor()
+        candidates = pd.Index(["Drums", "Song A"])
+        mask = pd.Series([True, True], index=candidates)
+        filtered = predictor._eligible_mask_filter(candidates, mask)
+        pd.testing.assert_series_equal(filtered, mask)
+
+    def test_predict_excludes_drums_and_jam_and_preserves_top_k(self):
+        """Integration: trained WSP predictor never emits Drums/Jam in top_k.
+
+        Builds 35 shows where Drums and Jam play far more often than the
+        three real songs, so without the eligibility filter they would
+        dominate the top_k. Asserts the filter excludes them AND that the
+        next-ranked real songs backfill so len(predictions) == top_k.
+        """
+        # 35 shows exceeds _MIN_TRAINING_SHOWS (30) so train() builds a model.
+        # Schedule Drums/Jam to play at every show; real songs less often.
+        # Every song still passes _MIN_PLAYS=3 and is in the candidate pool.
+        play_schedules = {
+            "Drums": range(1, 36),
+            "Jam": range(1, 36),
+            "Song A": range(1, 36, 2),
+            "Song B": range(1, 36, 3),
+            "Song C": range(1, 36, 5),
+        }
+        rows: list[dict] = []
+        for song, show_idxs in play_schedules.items():
+            for show_idx in show_idxs:
+                rows.append(
+                    {
+                        "song_name": song,
+                        "show_index": show_idx,
+                        "show_date": pd.Timestamp("2024-01-01")
+                        + pd.Timedelta(days=show_idx),
+                    }
+                )
+        plays = pd.DataFrame(rows)
+        model_data = _model_data(plays, date(2024, 2, 15))
+
+        predictor = WSPFastPredictor()
+        predictor.train(model_data)
+        assert predictor._model is not None, "Test setup failed: model did not train"
+
+        predictions = predictor.predict(model_data, top_k=3)
+        song_names = [p.song_name for p in predictions]
+
+        assert len(predictions) == 3, "top_k must be preserved after exclusion"
+        assert "Drums" not in song_names
+        assert "Jam" not in song_names
+        assert set(song_names).issubset({"Song A", "Song B", "Song C"})

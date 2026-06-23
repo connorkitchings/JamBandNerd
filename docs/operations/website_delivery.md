@@ -71,7 +71,7 @@ polish from the v1 punch list (archived at `docs/archive/v1_punch_list.md`).
 ## Operational Priorities
 
 1. Maintain daily pipeline health and Vercel production stability.
-2. Monitor hosted smoke tests (runs daily at 20:30 UTC).
+2. Monitor hosted smoke tests (runs daily at 22:00 UTC).
 3. Model Phase B: Phish cleanup ablation when ready.
 4. Product polish: address open punch-list items (see `docs/archive/v1_punch_list.md`).
 5. Revisit public API work only after the website creates real external-consumer demand.

@@ -12,6 +12,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+from jambandnerd.config.bands import get_excluded_songs
 from jambandnerd.models.billy.fast_predictor import _gap_percentile_arr
 from jambandnerd.models.phish.fast_predictor import (
     _LGB_PARAMS,
@@ -72,6 +73,26 @@ class WSPFastPredictor(PhishFastPredictorV2):
 
     def _candidate_top_career(self) -> int:
         return _WSP_CANDIDATE_TOP_CAREER
+
+    def _eligible_mask_filter(
+        self,
+        candidates: pd.Index,
+        eligible_mask: pd.Series,
+    ) -> pd.Series:
+        """Drop WSP noise songs (Drums, Jam, artist collisions) from candidates.
+
+        WSP setlists include structural markers ("Drums", "Jam") and billed
+        co-performers ("David Bromberg Band", etc.) that are not predictable
+        songs. Filtering them at the eligibility mask — before the top-K
+        slice — keeps them out of training rows and predictions while
+        preserving top_k depth (the next-ranked real song backfills in).
+        Mirrors the Goose predictor's exclusion pattern.
+        """
+        excluded_songs = get_excluded_songs(self.band)
+        if not excluded_songs:
+            return eligible_mask
+        song_index = candidates.astype(str).str.lower().str.strip()
+        return eligible_mask & ~song_index.isin(excluded_songs)
 
     def _rotation_features(
         self,
