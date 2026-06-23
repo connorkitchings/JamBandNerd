@@ -1,6 +1,7 @@
 from src.jambandnerd.data_collection.wsp.orchestration import (
     _assign_show_ids,
     _dedupe_show_batch,
+    _probe_everydaycompanion_setlist_status,
     classify_missing_recent_setlists,
 )
 
@@ -266,3 +267,83 @@ def test_classify_missing_recent_setlists_keeps_request_failed_when_all_fallback
             "detail": "Everyday Companion request failed and fallback was empty",
         }
     ]
+
+
+def test_probe_everydaycompanion_routes_through_make_simple_request(monkeypatch):
+    """Probe must use the Playwright-backed request path so CI gets correct diagnoses.
+
+    A direct ``session.get`` would 403 in CI and misclassify every
+    page-missing case as ``ec_request_failed`` (observed in run #27509635859).
+    """
+    from src.jambandnerd.data_collection.wsp import orchestration as wsp_orch
+
+    calls: list[tuple] = []
+
+    class _FakeSession:
+        def close(self):
+            pass
+
+    class _FakeResponse:
+        status_code = 200
+
+        def __init__(self, text: str):
+            self.text = text
+            self.url = "https://www.everydaycompanion.com/setlists/20260613a.asp"
+
+    def fake_make_simple_request(session, url, **kwargs):
+        calls.append((url, kwargs))
+        return _FakeResponse("<html>no set markers here</html>")
+
+    def fake_decode(response):
+        return response.text
+
+    def fake_page_has_setlist_table(_html, _show_id):
+        return False
+
+    def fake_create_session():
+        return _FakeSession()
+
+    def fake_cleanup():
+        return None
+
+    monkeypatch.setattr(wsp_orch, "make_simple_request", fake_make_simple_request)
+    monkeypatch.setattr(wsp_orch, "decode_ec_response", fake_decode)
+    monkeypatch.setattr(
+        wsp_orch, "_page_has_setlist_table", fake_page_has_setlist_table
+    )
+    monkeypatch.setattr(wsp_orch, "create_enhanced_session", fake_create_session)
+    monkeypatch.setattr(wsp_orch, "cleanup_playwright", fake_cleanup)
+
+    url = "https://www.everydaycompanion.com/setlists/20260613a.asp"
+    diagnosis = _probe_everydaycompanion_setlist_status(url, "22464")
+
+    assert diagnosis == "upstream_missing_setlist"
+    assert len(calls) == 1
+    assert calls[0][0] == url
+    assert calls[0][1].get("allow_redirects") is True
+
+
+def test_probe_everydaycompanion_returns_ec_request_failed_on_requestexception(
+    monkeypatch,
+):
+    """When the Playwright-backed request raises, the probe still surfaces ec_request_failed."""
+    import requests
+
+    from src.jambandnerd.data_collection.wsp import orchestration as wsp_orch
+
+    class _FakeSession:
+        def close(self):
+            pass
+
+    def fake_make_simple_request(session, url, **kwargs):
+        raise requests.exceptions.RequestException("boom")
+
+    monkeypatch.setattr(wsp_orch, "make_simple_request", fake_make_simple_request)
+    monkeypatch.setattr(wsp_orch, "create_enhanced_session", lambda: _FakeSession())
+    monkeypatch.setattr(wsp_orch, "cleanup_playwright", lambda: None)
+
+    diagnosis = _probe_everydaycompanion_setlist_status(
+        "https://www.everydaycompanion.com/setlists/20260613a.asp", "22464"
+    )
+
+    assert diagnosis == "ec_request_failed"

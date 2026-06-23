@@ -123,6 +123,36 @@ class TestCollectionStatus:
         assert status.workflow_state() == "failed"
         assert status.outcome_code() == "failed_upstream_stale"
 
+    def test_upstream_missing_recent_setlist_is_degraded_lag(self):
+        """Upstream lag (EC has not published yet) should degrade, not fail."""
+        status = CollectionStatus()
+        status.upstream_missing_setlists = 1
+
+        assert status.outcome_code() == "degraded_upstream_lag"
+        assert status.workflow_state() == "degraded"
+        assert status.should_fail() is False
+        assert status.should_retry_collection() is False
+        assert status.has_recent_data_gap() is True
+
+    def test_fallback_available_recent_setlist_is_degraded_lag(self):
+        """Fallback-only recent coverage should degrade, not fail."""
+        status = CollectionStatus()
+        status.fallback_available_missing_setlists = 1
+
+        assert status.outcome_code() == "degraded_upstream_lag"
+        assert status.workflow_state() == "degraded"
+        assert status.should_fail() is False
+
+    def test_request_blocked_takes_precedence_over_upstream_missing(self):
+        """True EC blocking stays a hard failure even with mixed diagnoses."""
+        status = CollectionStatus()
+        status.request_blocked_missing_setlists = 1
+        status.upstream_missing_setlists = 2
+
+        assert status.outcome_code() == "failed_upstream_stale"
+        assert status.workflow_state() == "failed"
+        assert status.should_fail() is True
+
     def test_as_github_outputs_reports_machine_readable_state(self):
         """GitHub outputs should reflect the workflow-consumable status."""
         status = CollectionStatus()

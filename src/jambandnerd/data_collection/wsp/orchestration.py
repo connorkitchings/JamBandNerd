@@ -37,7 +37,12 @@ from .parser_profile import (
     fingerprint_page,
     validate_fingerprint,
 )
-from .session import cleanup_playwright, create_enhanced_session, decode_ec_response
+from .session import (
+    cleanup_playwright,
+    create_enhanced_session,
+    decode_ec_response,
+    make_simple_request,
+)
 from .status import CollectionStatus
 from .tourwrangler import fetch_setlist_from_tourwrangler
 
@@ -83,11 +88,17 @@ def _page_has_setlist_table(page_html: str, show_id: str) -> bool:
 
 
 def _probe_everydaycompanion_setlist_status(source_url: str, show_id: str) -> str:
-    """Classify whether an EC page has a setlist or is simply unpublished."""
+    """Classify whether an EC page has a setlist or is simply unpublished.
+
+    Routes through ``make_simple_request`` so that in CI the probe uses the
+    same CloudflareBypass (Playwright) path as the real collector. A direct
+    ``session.get`` here would get 403'd by EC in CI and mis-classify every
+    page-missing case as ``ec_request_failed`` even when the page actually
+    loads (just without a published setlist yet).
+    """
     session = create_enhanced_session()
     try:
-        response = session.get(source_url, timeout=30, allow_redirects=True)
-        response.raise_for_status()
+        response = make_simple_request(session, source_url, allow_redirects=True)
         page_html = decode_ec_response(response)
         if _page_has_setlist_table(page_html, show_id):
             return "collector_missed_setlist"
