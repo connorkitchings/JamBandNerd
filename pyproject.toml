@@ -37,7 +37,7 @@ dependencies = [
 dev = [
   "ruff",
   "black",
-  "pytest>=9.0.3",
+  "pytest>=9.1.1",
   "mypy",
   "pytest-cov",
   "types-requests>=2.33.0.20260518",
