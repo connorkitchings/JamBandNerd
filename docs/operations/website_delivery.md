@@ -133,8 +133,19 @@ The internal admin setlist tooling additionally expects:
 
 - `ADMIN_PASSWORD`
 - `ADMIN_SESSION_SECRET`
+- `SUPABASE_SERVICE_ROLE_KEY` (used only by the `/api/admin/setlist` write path to bypass RLS; never expose to the browser)
 
-The admin route now authenticates into an httpOnly cookie-backed session instead of sending bearer credentials with browser-side write requests.
+The admin route authenticates into an httpOnly cookie-backed session instead of sending bearer credentials with browser-side write requests.
+
+### Admin setlist endpoints
+
+All routes under `/admin` and `/api/admin` are auth-gated by `src/proxy.ts` (HMAC-signed session cookie) and re-check the session inside each handler.
+
+- `POST /api/admin/setlist` — upsert a setlist for a show. Body: `{ band, showDate, venueName, city, state, setlistText, showId? }`. When `showId` is supplied it attaches the setlist to that existing show; otherwise it resolves or creates a show by `(show_date, venue_name)`. Returns the parsed rows for read-back verification.
+- `GET /api/admin/shows?band=&date=` — read-only list of existing `{band}_shows_raw` rows on a date (with per-show setlist row counts) so the admin picks the correct show and avoids duplicate show rows.
+- `DELETE /api/admin/setlist?band=&showId=` — clears every setlist row for one show (keeps the show row). Recovery path for a bad manual entry.
+
+The shared setlist text parser lives at `src/lib/admin/setlist-parser.ts` and protects WSP comma-titled songs (mirroring `src/jambandnerd/data_collection/wsp/parser.py`) so titles like "Lawyers, Guns, And Money" survive the comma split.
 
 ## Vercel Project Setup
 

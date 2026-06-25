@@ -3,59 +3,106 @@ import { createHash } from "node:crypto";
 import { type SupabaseClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 
+import { parseSetlistText, type ParsedSong } from "@/lib/admin/setlist-parser";
 import { ADMIN_SESSION_COOKIE, verifyAdminSessionToken } from "@/lib/admin/session";
 import { getServiceRoleClient } from "@/lib/supabase/server";
 
-export async function POST(request: NextRequest) {
-  const sessionSecret = process.env.ADMIN_SESSION_SECRET;
-  if (!process.env.ADMIN_PASSWORD || !sessionSecret) {
-    return NextResponse.json(
-      { error: "Admin not configured" },
-      { status: 503 },
-    );
+function isAuthenticated(request: NextRequest): boolean {
+  const token = request.cookies.get(ADMIN_SESSION_COOKIE)?.value;
+  return verifyAdminSessionToken(token, process.env.ADMIN_SESSION_SECRET);
+}
+
+function notConfigured() {
+  return NextResponse.json({ error: "Admin not configured" }, { status: 503 });
+}
+
+// Read-only: list existing shows on a date so the admin can attach a setlist
+// to the correct show_id instead of creating a duplicate row. Auth-gated by
+// proxy.ts for the /api/admin/** prefix; re-checked here for defense in depth.
+export async function GET(request: NextRequest) {
+  if (!process.env.ADMIN_PASSWORD || !process.env.ADMIN_SESSION_SECRET) {
+    return notConfigured();
+  }
+  if (!isAuthenticated(request)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const sessionToken = request.cookies.get(ADMIN_SESSION_COOKIE)?.value;
-  if (!verifyAdminSessionToken(sessionToken, sessionSecret)) {
-    return NextResponse.json(
-      { error: "Unauthorized" },
-      { status: 401 },
-    );
-  }
-
-  const body = await request.json();
-  const { band, showDate, venueName, city, state, setlistText } = body;
-
-  if (!band || !showDate || !venueName || !city || !state || !setlistText) {
-    return NextResponse.json(
-      { error: "Missing required fields" },
-      { status: 400 },
-    );
+  const band = request.nextUrl.searchParams.get("band");
+  const showDate = request.nextUrl.searchParams.get("date");
+  if (!band || !showDate) {
+    return NextResponse.json({ error: "band and date are required" }, { status: 400 });
   }
 
   const supabase = getServiceRoleClient();
   if (!supabase) {
-    return NextResponse.json(
-      { error: "Database not configured" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Database not configured" }, { status: 500 });
+  }
+
+  const showsTable = `${band}_shows_raw`;
+  const setlistsTable = `${band}_setlists_raw`;
+
+  const { data: shows, error } = await supabase
+    .from(showsTable)
+    .select("show_id, show_date, venue_name, city, state, source_url")
+    .eq("show_date", showDate)
+    .order("show_id");
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  // Attach the current setlist row count per show so the UI can flag shows that
+  // already have data (and would be overwritten by a re-submit).
+  const showsWithCounts = await Promise.all(
+    (shows ?? []).map(async (show) => {
+      const { count } = await supabase
+        .from(setlistsTable)
+        .select("*", { count: "exact", head: true })
+        .eq("show_id", show.show_id);
+      return { ...show, setlistRowCount: count ?? 0 };
+    }),
+  );
+
+  return NextResponse.json({ shows: showsWithCounts });
+}
+
+export async function POST(request: NextRequest) {
+  if (!process.env.ADMIN_PASSWORD || !process.env.ADMIN_SESSION_SECRET) {
+    return notConfigured();
+  }
+  if (!isAuthenticated(request)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const body = await request.json();
+  const { band, showDate, venueName, city, state, setlistText, showId } = body;
+
+  if (!band || !showDate || !setlistText) {
+    return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+  }
+
+  const supabase = getServiceRoleClient();
+  if (!supabase) {
+    return NextResponse.json({ error: "Database not configured" }, { status: 500 });
   }
 
   try {
-    const showId = await ensureShow(
-      supabase,
-      band,
-      showDate,
-      venueName,
-      city,
-      state,
-    );
-    await upsertSetlistRows(supabase, band, showId, setlistText);
+    // If the caller selected an existing show, trust that id. Otherwise resolve
+    // or create by (date, venue) — the legacy path. Attaching to the wrong
+    // show_id is the highest-risk failure mode, so the UI prefers selection.
+    const resolvedShowId =
+      typeof showId === "string" && showId.trim()
+        ? showId
+        : await ensureShow(supabase, band, showDate, venueName, city, state);
+
+    const rows = await upsertSetlistRows(supabase, band, resolvedShowId, setlistText);
 
     return NextResponse.json({
       success: true,
-      showId,
-      message: `Setlist added for ${band} on ${showDate}`,
+      showId: resolvedShowId,
+      rows,
+      rowCount: rows.length,
+      message: `${rows.length} song${rows.length === 1 ? "" : "s"} saved for ${band} on ${showDate}`,
     });
   } catch (error) {
     console.error("Error adding setlist:", error);
@@ -64,6 +111,45 @@ export async function POST(request: NextRequest) {
       { status: 500 },
     );
   }
+}
+
+// Delete every setlist row for one show but keep the show row itself. Recovery
+// path for a bad manual entry: clear, then re-submit. Mirrors the per-show
+// behavior of scripts/admin/repair_wsp_setlists_range.py.
+export async function DELETE(request: NextRequest) {
+  if (!process.env.ADMIN_PASSWORD || !process.env.ADMIN_SESSION_SECRET) {
+    return notConfigured();
+  }
+  if (!isAuthenticated(request)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const band = request.nextUrl.searchParams.get("band");
+  const showId = request.nextUrl.searchParams.get("showId");
+  if (!band || !showId) {
+    return NextResponse.json({ error: "band and showId are required" }, { status: 400 });
+  }
+
+  const supabase = getServiceRoleClient();
+  if (!supabase) {
+    return NextResponse.json({ error: "Database not configured" }, { status: 500 });
+  }
+
+  const { error, count } = await supabase
+    .from(`${band}_setlists_raw`)
+    .delete({ count: "exact" })
+    .eq("show_id", showId);
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json({
+    success: true,
+    showId,
+    deleted: count ?? 0,
+    message: `Cleared ${count ?? 0} setlist row${count === 1 ? "" : "s"} for show ${showId}`,
+  });
 }
 
 async function ensureShow(
@@ -117,7 +203,7 @@ async function upsertSetlistRows(
   band: string,
   showId: string,
   setlistText: string,
-): Promise<void> {
+): Promise<ParsedSong[]> {
   const setsTable = `${band}_setlists_raw`;
   const parsed = parseSetlistText(setlistText);
 
@@ -125,7 +211,7 @@ async function upsertSetlistRows(
     throw new Error("No songs parsed from setlist text");
   }
 
-  const payload = parsed.map((song: { set_number: number; song_position: number; song_name: string; is_segue: boolean; song_notes: string }) => ({
+  const payload = parsed.map((song) => ({
     show_id: showId,
     set_number: song.set_number,
     song_position: song.song_position,
@@ -138,65 +224,6 @@ async function upsertSetlistRows(
     .from(setsTable)
     .upsert(payload, { onConflict: "show_id,set_number,song_position" })
     .select();
-}
 
-function parseSetlistText(text: string): Array<{
-  set_number: number;
-  song_position: number;
-  song_name: string;
-  is_segue: boolean;
-  song_notes: string;
-}> {
-  const rows: Array<{
-    set_number: number;
-    song_position: number;
-    song_name: string;
-    is_segue: boolean;
-    song_notes: string;
-  }> = [];
-
-  const lines = text.split("\n").map((ln) => ln.trim()).filter(Boolean);
-
-  for (const line of lines) {
-    let setNumber: number | null = null;
-    let songsPart: string | null = null;
-
-    const setMatch = line.match(/^Set\s*(\d+)\s+(.*)$/i);
-    if (setMatch) {
-      setNumber = parseInt(setMatch[1], 10);
-      songsPart = setMatch[2];
-    } else {
-      const encoreMatch = line.match(/^Encore\s+(.*)$/i);
-      if (encoreMatch) {
-        setNumber = 99;
-        songsPart = encoreMatch[1];
-      }
-    }
-
-    if (setNumber === null || songsPart === null) {
-      continue;
-    }
-
-    const items = songsPart.split(",").map((s) => s.trim()).filter(Boolean);
-    let pos = 1;
-
-    for (const item of items) {
-      const parts = item.split(">").map((p) => p.trim()).filter(Boolean);
-
-      for (let i = 0; i < parts.length; i++) {
-        const part = parts[i].replace(/[\u2018\u2019]/g, "'").trim();
-
-        rows.push({
-          set_number: setNumber,
-          song_position: pos,
-          song_name: part,
-          is_segue: i < parts.length - 1,
-          song_notes: "",
-        });
-        pos++;
-      }
-    }
-  }
-
-  return rows;
+  return parsed;
 }
