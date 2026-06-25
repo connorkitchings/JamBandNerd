@@ -55,3 +55,4 @@ output/
 # AI Agent artifacts
 .antigravitycli/
 scratch/
+.vercel

@@ -1,7 +1,7 @@
 # Session Log: Harden Admin Setlist Tool for Manual WSP Entry
 
 Date: 2026-06-25
-Branches: `feat/admin-setlist-hardening` (#174, merged)
+Branches: `feat/admin-setlist-hardening` (#174, merged), `fix/admin-shows-route` (#176, merged), `docs/session-log-2026-06-25` (#175)
 Context: WSP plays Red Rocks 2026-06-26. Everyday Companion lags completed shows, so the 6/27 19:00 UTC prediction pipeline would hard-fail (`failed_upstream_stale`) or train on stale history without the 6/26 setlist.
 
 ## Goal
@@ -77,6 +77,35 @@ gh pr merge 174 --squash --delete-branch
 | CI Verify Website | PASS |
 | Vercel Production deploy (commit `2587ad46`) | success |
 
+## Deployment & Operational Setup (production unblock)
+
+After #174 merged, `/admin/setlist` rendered **"Admin Unavailable"** — the production Vercel project was missing the required env vars. Existing Production/Preview vars were only `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_KEY`. Three were added via `vercel` CLI (after `vercel login`):
+
+- `ADMIN_PASSWORD`, `ADMIN_SESSION_SECRET`, `SUPABASE_SERVICE_ROLE_KEY` (Production + Preview).
+
+**Two upload gotchas hit and were fixed:**
+1. **`.env` quote-wrapping.** The local `.env` stored `SUPABASE_SERVICE_ROLE_KEY='sb_secret_...'` (single-quoted). `grep | cut` extracted the value **with literal quotes**, so the first upload sent a quoted (wrong) key. Fix: resolve via `python-dotenv` (`dotenv_values`), which strips the quotes the way the app actually reads them.
+2. **`vercel env add` reads ALL of stdin.** Piping `printf '%s\n\n' "$(cat file)"` appended trailing newlines to the value, so `ADMIN_PASSWORD` and `SUPABASE_SERVICE_ROLE_KEY` were stored with extra bytes and auth silently failed (401). Fix: `vercel env add NAME production --force < /tmp/file` where the file is written with **no trailing newline** (`open().write()` / `printf '%s'`). The Preview environment additionally prompts an interactive git-branch selector that does not accept piped input — left for the dashboard.
+
+Each env-var change requires a new deployment to take effect. `vercel --prod` from the CLI hit a rate limit (it tried uploading the whole monorepo); the reliable path was **`vercel redeploy <prod-url>`**, which rebuilds from the Git source on Vercel's side with current project env vars (no upload). After re-uploading clean values + redeploying, `/api/admin/session` returned `configured:true` and login succeeded.
+
+## Hotfix (#176): misplaced route handler
+
+End-to-end testing after deploy surfaced a **critical bug**: the show-picker GET handler was co-located in `api/admin/setlist/route.ts`, but the client (`AdminSetlistForm.fetchShows`) and the docs call `GET /api/admin/shows` — which **404'd**. In the Next.js App Router each `route.ts` maps to its directory's URL, so the handler was unreachable. With the picker dead, the form fell through to create-mode — silently re-introducing the duplicate-show risk the picker exists to prevent.
+
+Fix: added `apps/web/src/app/api/admin/shows/route.ts` (the read-only show list), removed the misplaced GET from `setlist/route.ts`, and extracted a shared `guardAdmin()` helper (`src/lib/admin/auth-request.ts`) so the session/setlist/shows route files reuse one auth gate instead of duplicating the cookie check. `verify:web` green; merged; Vercel auto-deployed from Git.
+
+## Final Production Verification (commit `d8220ca7`)
+
+```
+login POST /api/admin/session           -> HTTP 200, authenticated:true
+GET /api/admin/shows?band=wsp&date=2026-06-26
+  -> HTTP 200, {"shows":[{"show_id":22466,"venue_name":"Red Rocks",
+      "city":"Morrison","state":"CO","setlistRowCount":0}]}
+```
+
+The tool is **live and functional**: the picker correctly surfaces show 22466 for selection, avoiding the duplicate-show trap.
+
 ## Data-Path Verification (why this is safe for 6/27)
 
 - `POST` with `showId` attaches the setlist to the existing `show_id=22466` → no duplicate show, no date-dedup orphaning.
@@ -86,15 +115,21 @@ gh pr merge 174 --squash --delete-branch
 
 ## Remaining Steps (user action)
 
-1. **Enter the 6/26 setlist** via `jambandnerd.com/admin/setlist` once it's live (Production deploy `2587ad46` = success). Log in → `wsp` + `2026-06-26` → reuse show 22466 → paste setlist → review preview/read-back → submit.
-2. **Verify**: open `/last-show?band=wsp` (or re-run the read-only preflight query for 6/26 setlist rows).
+The tool is live at `jambandnerd.com/admin/setlist` (password authenticated). After the 6/26 show:
+
+1. **Enter the 6/26 setlist**: log in → `wsp` + `2026-06-26` → the picker shows **show 22466 · Red Rocks, Morrison, CO** (select it) → paste setlist → review preview/read-back → submit.
+2. **Verify**: open `/last-show?band=wsp` or re-run the read-only preflight (`show_id=22466` should have setlist rows).
 3. Confirm the 6/27 19:00 UTC daily pipeline stays green and the WSP prediction regenerates with 6/26 in history.
 
 ## Next Step
 
 - (Owner: user) Enter 6/26 setlist after the show; verify per above.
-- (Follow-up, out of scope this PR) Tag web-entered rows with `source='manual'` via schema-sniff; generalize the `if (band === "wsp") source_hash` carve-out into band-schema metadata.
+- (Follow-up, out of scope) Tag web-entered rows with `source='manual'` via schema-sniff; generalize the `if (band === "wsp") source_hash` carve-out into band-schema metadata.
+- (Follow-up) Set the three admin env vars on **Preview** (the git-branch selector blocked CLI piping) via the Vercel dashboard so PR previews exercise the admin path.
 
-## Durable Lesson
+## Durable Lessons (added to PLAYBOOK.md)
 
-Before building a net-new internal tool, audit `/admin` and `src/app/api/admin` for an existing scaffold — this repo already had a deployed, auth-gated, service-role write path that was the correct extension target. Greenfield would have duplicated the auth + parser + Supabase infrastructure and delayed the fix past the show deadline.
+1. Audit `/admin` and `src/app/api/admin` for an existing scaffold before building a net-new internal tool — this repo already had a deployed, auth-gated, service-role write path that was the correct extension target.
+2. `vercel env add NAME env --force < file` (file with no trailing newline) is the reliable non-interactive upload; `printf '%s\n\n' "$(cat file)"` appends newlines to the stored value and silently breaks secret comparison.
+3. Resolve `.env` values through `python-dotenv` (not `grep | cut`) before uploading — dotenv strips quote-wrapping the way the app actually reads the file.
+4. In the Next.js App Router, a `route.ts` serves only its directory's URL. After adding handlers, confirm the build's route table (`next build`) lists the expected path before relying on it.
