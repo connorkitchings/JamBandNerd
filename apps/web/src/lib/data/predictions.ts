@@ -8,8 +8,12 @@ import { selectLivePredictionSeedRow } from "@/lib/prediction-selection";
 import { getEasternTodayIso } from "@/lib/show-status";
 
 import { getClientOrState, getBandContext } from "./bands";
+import { getLatestSetlistPredictionModelVersion } from "./model-version";
 import { asRecord, buildPredictionSnapshotFromCanonicalRow } from "./parsers";
 import type { PredictionSnapshot, RouteState } from "./types";
+
+const SETLIST_PREDICTION_SNAPSHOT_SELECT =
+  "band, target_show_key, target_show_date, reference_date, model_version, generated_at, created_at, predictions";
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -33,27 +37,6 @@ function toSeedRows(data: unknown[]) {
       model_version:
         typeof row.model_version === "string" ? row.model_version : null,
     }));
-}
-
-async function getLatestPredictionModelVersion(
-  client: NonNullable<ReturnType<typeof getSupabaseServerClient>>,
-  band: string,
-) {
-  const { data, error } = await client
-    .from("setlist_predictions")
-    .select("model_version")
-    .eq("band", band)
-    .order("generated_at", { ascending: false })
-    .limit(1);
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  const modelVersion = data?.[0]?.model_version;
-  return typeof modelVersion === "string" && modelVersion.length > 0
-    ? modelVersion
-    : null;
 }
 
 // ---------------------------------------------------------------------------
@@ -121,7 +104,7 @@ export const getLatestPredictions = cache(
 
       const { data, error } = await client
         .from("setlist_predictions")
-        .select("*")
+        .select(SETLIST_PREDICTION_SNAPSHOT_SELECT)
         .eq("band", band)
         .eq("model_version", matchedSeed.model_version)
         .eq("target_show_key", matchedSeed.target_show_key)
@@ -179,10 +162,10 @@ export const getPredictionsForDate = cache(
     }
 
     try {
-      const modelVersion = await getLatestPredictionModelVersion(client, band);
+      const modelVersion = await getLatestSetlistPredictionModelVersion(client, band);
       let resultQuery = client
         .from("setlist_results")
-        .select("*")
+        .select(SETLIST_PREDICTION_SNAPSHOT_SELECT)
         .eq("band", band)
         .eq("target_show_date", targetShowDate)
         .order("generated_at", { ascending: false });
@@ -201,7 +184,7 @@ export const getPredictionsForDate = cache(
       if (!row) {
         let liveQuery = client
           .from("setlist_predictions")
-          .select("*")
+          .select(SETLIST_PREDICTION_SNAPSHOT_SELECT)
           .eq("band", band)
           .eq("target_show_date", targetShowDate)
           .order("generated_at", { ascending: false });

@@ -28,6 +28,7 @@ from jambandnerd.models.shared.matrix_features import (
     build_month_cums,
     build_presence,
     clean_plays,
+    gap_percentile_array,
     precompute_avg_days_between_plays,
     precompute_first_play_col,
     precompute_gap_distributions,
@@ -1005,14 +1006,7 @@ def _gap_percentile_arr(
     gap_e: pd.Series,
     gap_dist: dict[str, np.ndarray],
 ) -> np.ndarray:
-    return np.array(
-        [
-            np.searchsorted(gap_dist.get(s, _EMPTY_ARR), g, side="right")
-            / max(1, len(gap_dist.get(s, _EMPTY_ARR)))
-            for s, g in zip(eligible_songs, gap_e.values)
-        ],
-        dtype=float,
-    )
+    return gap_percentile_array(eligible_songs, gap_e, gap_dist)
 
 
 def _set_dist_arrays(

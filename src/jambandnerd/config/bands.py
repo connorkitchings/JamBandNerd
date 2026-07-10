@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Final, Sequence
 
-# Repo-authoritative automation band list.
+# Repo-authoritative collection band list.
 SUPPORTED_BANDS: Final[tuple[str, ...]] = (
     "goose",
     "eggy",
@@ -14,6 +14,19 @@ SUPPORTED_BANDS: Final[tuple[str, ...]] = (
     "billy",
     "um",
 )
+
+# Repo-authoritative active single-model publishing band list. Eggy remains
+# collectable but excluded until it has a promoted website-facing model.
+ACTIVE_MODEL_BANDS: Final[tuple[str, ...]] = (
+    "goose",
+    "phish",
+    "wsp",
+    "billy",
+    "um",
+)
+
+# Daily automation follows active model publishing, not every collectable band.
+DAILY_PIPELINE_BANDS: Final[tuple[str, ...]] = ACTIVE_MODEL_BANDS
 
 # Band display names (Fallback)
 BAND_DISPLAY_NAMES: Final[dict[str, str]] = {
@@ -86,8 +99,23 @@ COLLECTION_POLICIES: Final[dict[str, CollectionPolicy]] = {
 
 
 def get_repo_supported_bands() -> Sequence[str]:
-    """Return the repo-authoritative workflow and CLI band list."""
+    """Return the repo-authoritative collectable band list."""
     return SUPPORTED_BANDS
+
+
+def get_repo_collectable_bands() -> Sequence[str]:
+    """Return bands with repo-supported collection code."""
+    return SUPPORTED_BANDS
+
+
+def get_repo_active_model_bands() -> Sequence[str]:
+    """Return bands with promoted single-model website publishing support."""
+    return ACTIVE_MODEL_BANDS
+
+
+def get_daily_pipeline_bands() -> Sequence[str]:
+    """Return bands included in the default daily publishing workflow."""
+    return DAILY_PIPELINE_BANDS
 
 
 def get_repo_band_id_column(band: str) -> str:

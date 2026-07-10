@@ -87,7 +87,7 @@ testpaths = ["tests"]
 python_files = "test_*.py"
 python_classes = "Test*"
 python_functions = "test_*"
-addopts = "-v"
+addopts = "-v -m 'not live'"
 filterwarnings = [
   "error",
 ]

@@ -18,6 +18,7 @@ from .live_helpers import (
 )
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
+LIVE_PIPELINE_TIMEOUT_SECONDS = 900
 
 
 @pytest.mark.live
@@ -35,6 +36,7 @@ def test_live_band_pipeline_smoke(band):
         text=True,
         capture_output=True,
         check=False,
+        timeout=LIVE_PIPELINE_TIMEOUT_SECONDS,
     )
 
     if result.returncode != 0:

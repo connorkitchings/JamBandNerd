@@ -6,13 +6,13 @@ This document defines the command-line interface and scripting design for JamBan
 
 The main local helper for running the end-to-end pipeline is
 `scripts/run_optimized_pipeline.py`. It mirrors the promoted daily workflow
-sequence for the active single-model bands. The canonical automation contract lives
-in `.github/workflows/daily-pipeline.yml`.
+sequence for the daily publishing bands. The canonical automation contract
+lives in `.github/workflows/daily-pipeline.yml`.
 
 ### Usage
 
 ```bash
-# Run the complete pipeline for all active single-model bands
+# Run the complete pipeline for all daily publishing bands
 uv run python scripts/run_optimized_pipeline.py --band all
 
 # Run the pipeline for a single band (e.g., Goose)
@@ -21,6 +21,9 @@ uv run python scripts/run_optimized_pipeline.py --band goose
 # Skip accuracy calculations for a faster run
 uv run python scripts/run_optimized_pipeline.py --band all --skip-accuracy
 ```
+
+`--band all` follows `get_daily_pipeline_bands()` from repo config. Eggy remains
+collectable but outside default daily publishing until it is promoted.
 
 ## Consolidated Scripts
 
@@ -34,7 +37,7 @@ The live row stores `target_show_date` as the show being predicted and
 `reference_date` as the model cutoff. On the website, `target_show_date`
 controls whether the board is labeled as next show, tonight, or previous show.
 
-- `--band <active-band-slug>`: (Required) The band to process. The script accepts active single-model bands from `src/jambandnerd/models/metadata.py`.
+- `--band <active-band-slug>`: (Required) The band to process. The script accepts active model bands from `src/jambandnerd/models/metadata.py`.
 - `--exclusion-window {N}`: (Optional) The number of recent shows to exclude songs from. Defaults to 3.
 
 ### `sync_retained_prediction_corpus.py`
@@ -82,7 +85,7 @@ shared model features.
 ### `audit_supabase_tables.py`
 
 Runs the canonical read-only Supabase audit for the public website surfaces.
-By default it targets the active single-model bands,
+By default it targets the active model bands,
 then checks:
 
 - live prediction completeness in `setlist_predictions` and `setlist_prediction_songs`

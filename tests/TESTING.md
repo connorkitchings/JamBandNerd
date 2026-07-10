@@ -25,8 +25,13 @@ npm run verify:all
 # Final tracked-file drift check on a clean baseline
 npm run verify:clean
 
+# Explicit live checks that may touch production-like services
+npm run test:python:live
+npm run verify:python:live
+
 # Component commands used by the verify scripts
 uv run pytest --collect-only -q
+uv run pytest -o addopts=-v -m live tests/pipeline/test_live_band_smoke.py
 npm run test:web:smoke:list
 ```
 
@@ -35,7 +40,7 @@ npm run test:web:smoke:list
 - Use `uv run ...` for Python commands.
 - Run `npx playwright install --with-deps chromium` once after `npm install`
   before using the website smoke commands locally.
-- Live-band or environment-dependent tests are explicitly marked; most of the
-  suite is designed to run without touching production services.
+- `npm run verify:python` excludes tests marked `live` by default. Use the
+  explicit live commands only when Supabase-writing smoke checks are intended.
 - Website smoke coverage is the canonical frontend verification path and is also
   exercised in GitHub Actions.

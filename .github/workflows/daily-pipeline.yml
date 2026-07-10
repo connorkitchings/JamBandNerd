@@ -42,9 +42,9 @@ jobs:
           if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.band || 'all' }}" != "all" ]]; then
             BANDS_JSON='["${{ github.event.inputs.band }}"]'
           else
-            # Active single-model bands. Eggy remains collected on legacy paths but
-            # is intentionally out of scope for the first single-model rollout.
-            BANDS_JSON='["goose","phish","wsp","billy","um"]'
+            # Active single-model bands. Eggy remains collectable but is
+            # intentionally excluded from default daily publishing until promoted.
+            BANDS_JSON="$(python scripts/get_all_bands.py)"
           fi
           echo "bands=$BANDS_JSON" >> $GITHUB_OUTPUT
           echo "bands_list=$BANDS_JSON" >> $GITHUB_OUTPUT

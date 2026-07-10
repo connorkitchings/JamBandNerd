@@ -3,10 +3,11 @@ import "server-only";
 import { cache } from "react";
 
 import type { BandSlug } from "@/lib/config";
-import { getSupabaseServerClient, getServiceRoleClient } from "@/lib/supabase/server";
+import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { getEasternTodayIso } from "@/lib/show-status";
 
 import { getClientOrState, getBandContext } from "./bands";
+import { getLatestSetlistPredictionModelVersion } from "./model-version";
 import {
   asRecord,
   parseNumber,
@@ -30,25 +31,13 @@ function getAccuracyRowKey(row: AccuracyRow) {
   return [row.showDate, row.venueName ?? "", row.city ?? "", row.state ?? ""].join("|");
 }
 
-async function getLatestPredictionModelVersion(
-  client: NonNullable<ReturnType<typeof getSupabaseServerClient>>,
-  band: string,
-) {
-  const { data, error } = await client
-    .from("setlist_predictions")
-    .select("model_version")
-    .eq("band", band)
-    .order("generated_at", { ascending: false })
-    .limit(1);
+const DEFAULT_SHOW_META_COLUMNS =
+  "show_date, venue_name, venue_city, venue_state, venue_country";
+const WSP_SHOW_META_COLUMNS = "show_date, venue_name, city, state";
 
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  const modelVersion = data?.[0]?.model_version;
-  return typeof modelVersion === "string" && modelVersion.length > 0
-    ? modelVersion
-    : null;
+function showMetaColumns(band: BandSlug, idColumn?: string) {
+  const columns = band === "wsp" ? WSP_SHOW_META_COLUMNS : DEFAULT_SHOW_META_COLUMNS;
+  return idColumn ? `${idColumn}, ${columns}` : columns;
 }
 
 export const getRecentAccuracy = cache(
@@ -80,7 +69,7 @@ export const getRecentAccuracy = cache(
     }
 
     try {
-      const modelVersion = await getLatestPredictionModelVersion(client, band);
+      const modelVersion = await getLatestSetlistPredictionModelVersion(client, band);
       const easternToday = getEasternTodayIso();
       let query = client
         .from("setlist_accuracy")
@@ -136,10 +125,9 @@ export const getRecentAccuracy = cache(
       >();
 
       if (showIds.length > 0 && showsTable && idColumn) {
-        const showClient = getServiceRoleClient() ?? client;
-        const { data: showData, error: showError } = await showClient
+        const { data: showData, error: showError } = await client
           .from(showsTable)
-          .select("*")
+          .select(showMetaColumns(band, idColumn))
           .in(idColumn, showIds);
 
         if (showError) {
@@ -171,7 +159,7 @@ export const getRecentAccuracy = cache(
       if (showMetaByShowId.size === 0 && showDates.length > 0 && showsTable) {
         const { data: showData, error: showError } = await client
           .from(showsTable)
-          .select("*")
+          .select(showMetaColumns(band))
           .in("show_date", showDates);
 
         if (showError) {

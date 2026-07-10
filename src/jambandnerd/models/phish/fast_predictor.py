@@ -29,6 +29,8 @@ from jambandnerd.models.shared.matrix_features import (
     precompute_avg_days_between_plays,
     precompute_first_play_col,
     precompute_gap_distributions,
+    run_position,
+    tour_position,
     window_plays,
     window_plays_by_days,
 )
@@ -108,30 +110,12 @@ _precompute_avg_days_between_plays = precompute_avg_days_between_plays
 
 def _run_position(dates: list, target_date: Any, gap_days: int = 1) -> int:
     """Position in current run (consecutive dates within gap_days)."""
-    if not dates or target_date is None:
-        return 1
-    sorted_dates = sorted(dates)
-    position = 1
-    for i in range(len(sorted_dates) - 1, -1, -1):
-        if (target_date - sorted_dates[i]).days <= gap_days:
-            position += 1
-        else:
-            break
-    return position
+    return run_position(dates, target_date, gap_days=gap_days)
 
 
 def _tour_position(dates: list, target_date: Any, tour_gap_days: int = 14) -> int:
     """Position in current tour (dates within tour_gap_days)."""
-    if not dates or target_date is None:
-        return 1
-    sorted_dates = sorted(dates)
-    position = 1
-    for i in range(len(sorted_dates) - 1, -1, -1):
-        if (target_date - sorted_dates[i]).days <= tour_gap_days:
-            position += 1
-        else:
-            break
-    return position
+    return tour_position(dates, target_date, tour_gap_days=tour_gap_days)
 
 
 def _get_candidate_songs(

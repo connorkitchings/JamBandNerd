@@ -15,6 +15,22 @@ import { getClientOrState, getBandContext, bandEntryBySlug, getBands } from "./b
 import { asRecord, parseNumber, parseStringArray } from "./parsers";
 import type { RouteState, SetlistSnapshot, SetlistSong } from "./types";
 
+const DEFAULT_SHOW_DETAILS_COLUMNS =
+  "show_date, venue_name, venue_city, venue_state, venue_country";
+const WSP_SHOW_DETAILS_COLUMNS = "show_date, venue_name, city, state";
+const UM_UPCOMING_SHOW_COLUMNS =
+  "starts_at_local, starts_at, show_date, venue_name, venue, venue_city, city, region, venue_state, state, venue_country, country";
+
+function showDetailsColumns(band: BandSlug, idColumn?: string) {
+  const columns =
+    band === "wsp" ? WSP_SHOW_DETAILS_COLUMNS : DEFAULT_SHOW_DETAILS_COLUMNS;
+  return idColumn ? `${idColumn}, ${columns}` : columns;
+}
+
+function setlistColumns(idColumn: string, positionColumn: string) {
+  return `${idColumn}, song_name, set_number, set_sequence, ${positionColumn}`;
+}
+
 // ---------------------------------------------------------------------------
 // Setlist helpers (used internally and by predictions)
 // ---------------------------------------------------------------------------
@@ -44,7 +60,7 @@ export async function getSetlistForDate(
 
   const { data: showRows, error: showError } = await client
     .from(showsTable)
-    .select("*")
+    .select(showDetailsColumns(band, idColumn))
     .eq("show_date", showDate)
     .limit(1);
 
@@ -59,11 +75,15 @@ export async function getSetlistForDate(
   const [setlistResponse, detailResponse] = await Promise.all([
     client
       .from(setlistTable)
-      .select("*")
+      .select(setlistColumns(idColumn, positionColumn))
       .eq(idColumn, showId)
       .order(sortColumn, { ascending: true })
       .order(positionColumn, { ascending: true }),
-    client.from(showsTable).select("*").eq(idColumn, showId).limit(1),
+    client
+      .from(showsTable)
+      .select(showDetailsColumns(band, idColumn))
+      .eq(idColumn, showId)
+      .limit(1),
   ]);
 
   if (setlistResponse.error || detailResponse.error) {
@@ -94,7 +114,7 @@ export async function getSetlistForDate(
     }) ?? [];
 
   return {
-    showDetails: detailResponse.data?.[0] ?? null,
+    showDetails: asRecord(detailResponse.data?.[0]) ?? null,
     songs,
   };
 }
@@ -154,7 +174,7 @@ export const getShowDetailsByDate = cache(
       const { showsTable } = bandState.bandEntry;
       const { data, error } = await client
         .from(showsTable)
-        .select("*")
+        .select(showDetailsColumns(band, bandState.bandEntry.idColumn))
         .eq("show_date", showDate)
         .limit(1);
 
@@ -205,7 +225,7 @@ export const getNextShowDetails = cache(
       if (bandState.band === "um") {
         const { data: upcomingData, error: upcomingError } = await client
           .from("um_upcoming_shows")
-          .select("*")
+          .select(UM_UPCOMING_SHOW_COLUMNS)
           .gte("starts_at_local", todayIso)
           .order("starts_at_local", { ascending: true })
           .order("starts_at", { ascending: true })
@@ -231,7 +251,7 @@ export const getNextShowDetails = cache(
 
       const { data, error } = await client
         .from(bandState.bandEntry.showsTable)
-        .select("*")
+        .select(showDetailsColumns(bandState.band, bandState.bandEntry.idColumn))
         .gte("show_date", todayIso)
         .order("show_date", { ascending: true })
         .limit(1);

@@ -11,9 +11,9 @@ JamBandNerd pipeline.
 
 ## Legacy Tables (archived — no longer written by active pipeline)
 
-### Prediction Tables
+### Legacy Prediction Tables
 
-Current prediction tables:
+Legacy prediction tables:
 
 - `predictions`
 - `prediction_songs` (derived)
@@ -41,9 +41,9 @@ Notes:
 
 - `predictions` is a ranked JSON array.
 - JSON entry fields differ by model.
-- the current design stores one row per
+- the legacy design stored one row per
   `(band, model_slug, reference_date, model_version)`
-  as the canonical write boundary.
+  as its write boundary.
 
 ### Per-Song Prediction Projection
 
@@ -103,7 +103,7 @@ Notes:
 - `predictions` preserves the exact ranked JSON payload emitted by the model
 - `actual_songs` preserves the setlist snapshot used when the row was scored
 
-## Per-Show Accuracy Table
+## Legacy Per-Show Accuracy Table
 
 ```sql
 CREATE TABLE public.accuracy_per_show (
@@ -139,7 +139,7 @@ CREATE TABLE public.accuracy_per_show (
 
 Notes:
 
-- `accuracy_per_show` is the canonical historical evaluation store.
+- `accuracy_per_show` is the legacy historical evaluation store.
 - `prediction_run_id` links new backtest rows to `historical_prediction_runs`.
 - aggregate summary tables are no longer part of the active write contract.
 
