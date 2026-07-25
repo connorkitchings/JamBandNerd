@@ -73,6 +73,25 @@ def test_daily_workflow_matrix_and_backtest_windows_match_repo_contract() -> Non
     )
 
 
+def test_daily_workflow_limits_degraded_accuracy_warning_to_wsp_upstream_lag() -> None:
+    workflow = WORKFLOW_PATH.read_text()
+    informational_accuracy_condition = (
+        "github.event.inputs.skip_accuracy == 'true' || "
+        "(matrix.band == 'wsp' && "
+        "steps.collection.outputs.outcome_code == 'degraded_upstream_lag')"
+    )
+
+    assert workflow.count(informational_accuracy_condition) == 2
+    assert (
+        workflow.count('if [[ "${ACCURACY_FRESHNESS_IS_INFORMATIONAL}" == "true" ]]')
+        == 1
+    )
+    assert (
+        'if [[ "${ACCURACY_FRESHNESS_IS_INFORMATIONAL}" == "true" || '
+        '"${BACKTEST_INCREMENTAL_ALL_SCORED}" == "true" ]]'
+    ) in workflow
+
+
 def test_active_docs_do_not_reference_retired_storage_contract_terms() -> None:
     offenders: list[str] = []
     for path in ACTIVE_DOC_PATHS:

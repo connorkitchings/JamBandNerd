@@ -93,7 +93,7 @@ JamBandNerd has a production-ready website-first product surface and a productio
 - The website at `apps/web` is the sole maintained product surface.
 - WSP remains part of the supported catalog, but CI now handles Everyday Companion blocking as an explicit degraded state instead of treating it as a full cross-band outage.
 - Daily workflow commands now require fresh output for each active band's registered model version so silent no-op runs fail fast instead of leaving stale rows behind.
-- Degraded-mode reuse is no longer unbounded: supported predictions and accuracy are audited against a `48h` freshness window, and stale supported predictions now escalate the band job even when collection degraded gracefully.
-- Manual `skip_accuracy=true` dispatches still record stale supported accuracy, but they do not fail solely because accuracy regeneration was explicitly skipped.
+- Degraded-mode reuse is no longer unbounded: supported predictions are audited against a `48h` freshness window and stale predictions escalate the band job even when collection degraded gracefully. During WSP's explicit upstream-publication lag, stale immutable accuracy is reported as a warning until the missing setlist arrives.
+- Manual `skip_accuracy=true` dispatches also record stale supported accuracy without failing solely because accuracy regeneration was explicitly skipped.
 - Pipeline and schema stability remain the priority during ongoing website operations.
 - Phish now uses `show_id` consistently with all other bands (migration applied 2026-04-06).

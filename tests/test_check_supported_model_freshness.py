@@ -191,6 +191,22 @@ def test_audit_supported_model_freshness_treats_skip_accuracy_as_warning(
     assert "skip_accuracy=true" in result.freshness_reason
 
 
+def test_audit_supported_model_freshness_keeps_stale_predictions_failing_when_accuracy_is_skipped(
+    monkeypatch,
+):
+    _install_registry(monkeypatch)
+    result = audit_supported_model_freshness(
+        band="wsp",
+        max_age_hours=48,
+        skip_accuracy=True,
+        client=_ClientStub(_freshness_rows(prediction_hours=60, accuracy_hours=60)),
+    )
+
+    assert result.freshness_state == "stale"
+    assert result.stale_prediction_models == (MODEL_VERSION,)
+    assert result.stale_accuracy_models == (MODEL_VERSION,)
+
+
 def test_audit_supported_model_freshness_skips_live_check_without_upcoming_show(
     monkeypatch,
 ):

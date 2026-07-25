@@ -69,7 +69,7 @@ The primary production workflow. Collects raw data, generates predictions, runs 
 - Supported-model reuse during degraded mode is now bounded:
   - if reused prediction freshness stays within `48h`, the band can remain degraded but non-failing
   - if supported-model prediction freshness exceeds `48h`, the band job fails after the status artifact and summary are written
-  - accuracy uses the same `48h` window, except manual `skip_accuracy=true` runs report stale accuracy informationally and do not fail solely for skipped accuracy regeneration
+  - accuracy uses the same `48h` window, except manual `skip_accuracy=true` runs and WSP `degraded_upstream_lag` outcomes report stale immutable accuracy informationally until it can be regenerated
 - The sampled 2026-04-13 WSP Notebook freshness gap should therefore be treated as a real operational defect that requires regeneration or workflow investigation, not as acceptable drift.
 - Recent missing-setlist outcomes are split by diagnosis:
   - `failed_internal` — the collector saw a parseable EC setlist but did not store it (collector regression; hard fail).
@@ -96,7 +96,8 @@ The primary production workflow. Collects raw data, generates predictions, runs 
 - Supported-model freshness is a separate enforcement path from collection success:
   - When collection itself fails, staleness enforcement is skipped (predictions and accuracy could not be regenerated this run).
   - degraded reuse older than `48h` is a hard failure for supported predictions
-  - stale supported accuracy is also a hard failure unless the run was manually dispatched with `skip_accuracy=true`
+  - stale supported accuracy is a warning, rather than a failure, for a manual `skip_accuracy=true` run or WSP's explicit `degraded_upstream_lag` outcome; it remains visible in the status artifact and Supabase audit because it cannot be safely regenerated until the upstream setlist arrives
+  - stale supported accuracy remains a hard failure for normal regeneration runs, collector regressions, and true upstream blocking
   - when incremental backtest finds all shows in the window already scored, accuracy staleness is expected and not enforced (scores are immutable; the backtest emits `backtest_incremental_all_scored=true`)
   - the `backtest_incremental_all_scored` signal gates three steps: `Validate Accuracy Tables` (uses `--skip-freshness`), `Audit Website Supabase Tables` (uses `--skip-accuracy`), and `Enforce Supported Model Freshness` (exits early)
   - the signal uses default-true semantics: the workflow writes `true` before running backtest, and the scorer writes `false` when it finds new shows
