@@ -6,12 +6,12 @@ This guide provides instructions for running the JamBandNerd data pipelines.
 
 The primary local helper for running the data pipeline is
 `run_optimized_pipeline.py`. It mirrors the promoted GitHub Actions daily
-workflow for the repo-supported bands, while `.github/workflows/daily-pipeline.yml`
+workflow for the daily publishing bands, while `.github/workflows/daily-pipeline.yml`
 remains the canonical automation contract.
 
 ### Usage
 
-- **Run the complete pipeline for all supported bands**:
+- **Run the complete pipeline for all daily publishing bands**:
 
     ```bash
     uv run python scripts/run_optimized_pipeline.py --band all
@@ -32,6 +32,10 @@ remains the canonical automation contract.
 When collection preflight determines a band is idle, the local helper uses a
 verify-only path and does not regenerate predictions or backtests. To force a
 full local regeneration anyway, pass `--force`.
+
+`--band all` follows `get_daily_pipeline_bands()` from repo config. Eggy remains
+collectable through its collection scripts, but is not part of default daily
+publishing until it has a promoted website-facing model.
 
 ## Website Direction
 

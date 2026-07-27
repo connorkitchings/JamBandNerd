@@ -42,9 +42,9 @@ jobs:
           if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.band || 'all' }}" != "all" ]]; then
             BANDS_JSON='["${{ github.event.inputs.band }}"]'
           else
-            # Active single-model bands. Eggy remains collected on legacy paths but
-            # is intentionally out of scope for the first single-model rollout.
-            BANDS_JSON='["goose","phish","wsp","billy","um"]'
+            # Active single-model bands. Eggy remains collectable but is
+            # intentionally excluded from default daily publishing until promoted.
+            BANDS_JSON="$(python scripts/get_all_bands.py)"
           fi
           echo "bands=$BANDS_JSON" >> $GITHUB_OUTPUT
           echo "bands_list=$BANDS_JSON" >> $GITHUB_OUTPUT
@@ -325,11 +325,13 @@ jobs:
       - name: Audit Supported Model Freshness
         id: freshness_audit
         if: always() && steps.preflight.outputs.should_run_collection == 'true'
+        env:
+          ACCURACY_FRESHNESS_IS_INFORMATIONAL: ${{ github.event.inputs.skip_accuracy == 'true' || (matrix.band == 'wsp' && steps.collection.outputs.outcome_code == 'degraded_upstream_lag') }}
         run: |
           echo "::group::Auditing supported-model freshness for ${{ matrix.band }}"
 
           ARGS=(--band ${{ matrix.band }} --max-age-hours 48)
-          if [[ "${{ github.event.inputs.skip_accuracy }}" == "true" ]]; then
+          if [[ "${ACCURACY_FRESHNESS_IS_INFORMATIONAL}" == "true" ]]; then
             ARGS+=(--skip-accuracy)
           fi
 
@@ -343,12 +345,13 @@ jobs:
         env:
           AUDIT_PATH: .github/workflow-audits/${{ matrix.band }}.json
           BACKTEST_INCREMENTAL_ALL_SCORED: ${{ steps.accuracy_calc.outputs.backtest_incremental_all_scored }}
+          ACCURACY_FRESHNESS_IS_INFORMATIONAL: ${{ github.event.inputs.skip_accuracy == 'true' || (matrix.band == 'wsp' && steps.collection.outputs.outcome_code == 'degraded_upstream_lag') }}
         run: |
           echo "::group::Auditing website-facing Supabase tables for ${{ matrix.band }}"
 
           mkdir -p .github/workflow-audits
           ARGS=(--band ${{ matrix.band }} --max-age-hours 72 --replay-window 50 --output "$AUDIT_PATH")
-          if [[ "${{ github.event.inputs.skip_accuracy }}" == "true" || "${BACKTEST_INCREMENTAL_ALL_SCORED}" == "true" ]]; then
+          if [[ "${ACCURACY_FRESHNESS_IS_INFORMATIONAL}" == "true" || "${BACKTEST_INCREMENTAL_ALL_SCORED}" == "true" ]]; then
             ARGS+=(--skip-accuracy)
           fi
 

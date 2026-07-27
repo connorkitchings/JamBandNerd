@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+import json
 import re
+import subprocess
+import sys
 from pathlib import Path
 
+from jambandnerd.config.bands import get_daily_pipeline_bands
 from jambandnerd.models.registry import list_active_bands
 
 WORKFLOW_PATH = Path(".github/workflows/daily-pipeline.yml")
@@ -40,10 +44,19 @@ FORBIDDEN_ACTIVE_DOC_TERMS = (
 def test_daily_workflow_matrix_and_backtest_windows_match_repo_contract() -> None:
     workflow = WORKFLOW_PATH.read_text()
 
-    assert "Active single-model bands" in workflow
-    for band in list_active_bands():
-        assert f'"{band}"' in workflow
-    assert '"eggy"' not in workflow
+    assert "python scripts/get_all_bands.py" in workflow
+
+    result = subprocess.run(
+        [sys.executable, "scripts/get_all_bands.py"],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    matrix_bands = json.loads(result.stdout)
+
+    assert matrix_bands == list(get_daily_pipeline_bands())
+    assert matrix_bands == list_active_bands()
+    assert "eggy" not in matrix_bands
 
     assert (
         "uv run python scripts/generate_live_predictions.py "
@@ -60,6 +73,25 @@ def test_daily_workflow_matrix_and_backtest_windows_match_repo_contract() -> Non
     )
 
 
+def test_daily_workflow_limits_degraded_accuracy_warning_to_wsp_upstream_lag() -> None:
+    workflow = WORKFLOW_PATH.read_text()
+    informational_accuracy_condition = (
+        "github.event.inputs.skip_accuracy == 'true' || "
+        "(matrix.band == 'wsp' && "
+        "steps.collection.outputs.outcome_code == 'degraded_upstream_lag')"
+    )
+
+    assert workflow.count(informational_accuracy_condition) == 2
+    assert (
+        workflow.count('if [[ "${ACCURACY_FRESHNESS_IS_INFORMATIONAL}" == "true" ]]')
+        == 1
+    )
+    assert (
+        'if [[ "${ACCURACY_FRESHNESS_IS_INFORMATIONAL}" == "true" || '
+        '"${BACKTEST_INCREMENTAL_ALL_SCORED}" == "true" ]]'
+    ) in workflow
+
+
 def test_active_docs_do_not_reference_retired_storage_contract_terms() -> None:
     offenders: list[str] = []
     for path in ACTIVE_DOC_PATHS:
@@ -74,8 +106,9 @@ def test_active_docs_do_not_reference_retired_storage_contract_terms() -> None:
 def test_github_actions_docs_match_current_deal_window_and_band_authority() -> None:
     contents = Path("docs/operations/github_actions.md").read_text()
 
-    assert "active single-model bands" in contents
-    assert "Eggy remains excluded" in contents
+    assert "scripts/get_all_bands.py" in contents
+    assert "get_daily_pipeline_bands()" in contents
+    assert "Eggy remains collectable" in contents
 
 
 def test_weekly_correction_sweep_is_not_scheduled_without_detector() -> None:

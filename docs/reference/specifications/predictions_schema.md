@@ -1,9 +1,8 @@
 # Predictions and Accuracy Schema
 
-This document defines the storage contract for predictions and evaluation data
-on the `feat/single-model-per-band` branch. The active backend write boundary
-is the `setlist_*` table family; legacy tables remain read-only on this branch
-until the frontend cutover.
+This document defines the active storage contract for predictions and
+evaluation data. The backend write boundary is the `setlist_*` table family;
+legacy prediction and accuracy tables are read-only archive material.
 
 ## Current Canonical Tables
 
@@ -147,17 +146,17 @@ Uniqueness:
 
 - `(band, model_slug, model_version, reference_date, target_show_id)`
 
-This table is the canonical lineage store for historical backtests. It preserves
-the exact ranked board that was scored without overloading the live
-`predictions` table or `prediction_songs`.
+This table is a legacy lineage store for historical backtests. New
+website-facing scored history is written to `setlist_results`.
 
 ## Versioning
 
-The active single-model path uses explicit per-band model version strings such as:
+The active single-model path uses explicit per-band model version strings such
+as:
 
-- `goose_notebook_floor_v1`
-- `phish_baseline_v1`
-- `wsp_baseline_v1`
+- `goose_fast_rank_v1_candidate_relaxed_special_nbtop10`
+- `phish_fast_gbm_v2_feat_notebook_rank_venue_run`
+- `wsp_fast_gbm_v2`
 
 Changing output semantics, feature logic, or scoring behavior should produce a
 new `model_version`.

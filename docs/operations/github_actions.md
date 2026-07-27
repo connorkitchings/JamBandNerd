@@ -6,10 +6,10 @@ This repository uses 10 GitHub Actions workflows for pipeline automation, CI qua
 
 | Workflow | File | Schedule | Manual | PR/Push | Bands |
 |----------|------|----------|--------|---------|-------|
-| Daily Data Pipeline | `daily-pipeline.yml` | 19:00 UTC daily | Yes | -- | Active single-model bands |
+| Daily Data Pipeline | `daily-pipeline.yml` | 19:00 UTC daily | Yes | -- | Daily publishing bands |
 | Weekly Correction Sweep | `weekly-correction-sweep.yml` | Tue 13:00-18:00 UTC staggered | Yes | -- | goose, phish, eggy, billy, wsp, um |
 | Fantasy Goose | `fantasy-goose.yml` | After daily pipeline | Yes | -- | goose |
-| Backfill Predictions | `backfill-predictions.yml` | -- | Yes | -- | Active single-model bands |
+| Backfill Predictions | `backfill-predictions.yml` | -- | Yes | -- | Active model bands |
 | Live Show Tracker | `live-tracker.yml` | -- | Yes | -- | goose, phish, wsp, billy, um |
 | Repo Quality | `repo-quality.yml` | -- | -- | PR + push main | -- |
 | Website Quality | `web-quality.yml` | -- | -- | PR + push main | -- |
@@ -38,7 +38,7 @@ It uses the `correction_detector.py` module to perform checksum-based comparison
 
 ## Daily Data Pipeline
 
-The primary production workflow. Collects raw data, generates predictions, runs backtests, and validates freshness for the active single-model bands.
+The primary production workflow. Collects raw data, generates predictions, runs backtests, and validates freshness for the daily publishing bands.
 
 - **Triggers**:
   - `schedule`: `0 19 * * *` (daily at 19:00 UTC / 3:00 PM ET during DST)
@@ -56,7 +56,7 @@ The primary production workflow. Collects raw data, generates predictions, runs 
   10. Audit website Supabase tables via `scripts/audit_supabase_tables.py` (passes `--skip-accuracy` when all shows already scored)
   11. Write per-band status summary and enforce stale-freshness escalation after artifacts are uploaded
 
-- **Band matrix**: Built from the active single-model bands in the workflow setup job. Current bands: goose, phish, wsp, billy, um. Eggy remains excluded from the first single-model rollout.
+- **Band matrix**: Built by `scripts/get_all_bands.py`, which reads `get_daily_pipeline_bands()` from repo config. Eggy remains collectable but excluded from default daily publishing until promoted.
 - **Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`; `PHISH_API_KEY` for Phish only.
 
 ### WSP Degraded-Mode Handling
@@ -69,7 +69,7 @@ The primary production workflow. Collects raw data, generates predictions, runs 
 - Supported-model reuse during degraded mode is now bounded:
   - if reused prediction freshness stays within `48h`, the band can remain degraded but non-failing
   - if supported-model prediction freshness exceeds `48h`, the band job fails after the status artifact and summary are written
-  - accuracy uses the same `48h` window, except manual `skip_accuracy=true` runs report stale accuracy informationally and do not fail solely for skipped accuracy regeneration
+  - accuracy uses the same `48h` window, except manual `skip_accuracy=true` runs and WSP `degraded_upstream_lag` outcomes report stale immutable accuracy informationally until it can be regenerated
 - The sampled 2026-04-13 WSP Notebook freshness gap should therefore be treated as a real operational defect that requires regeneration or workflow investigation, not as acceptable drift.
 - Recent missing-setlist outcomes are split by diagnosis:
   - `failed_internal` — the collector saw a parseable EC setlist but did not store it (collector regression; hard fail).
@@ -96,7 +96,8 @@ The primary production workflow. Collects raw data, generates predictions, runs 
 - Supported-model freshness is a separate enforcement path from collection success:
   - When collection itself fails, staleness enforcement is skipped (predictions and accuracy could not be regenerated this run).
   - degraded reuse older than `48h` is a hard failure for supported predictions
-  - stale supported accuracy is also a hard failure unless the run was manually dispatched with `skip_accuracy=true`
+  - stale supported accuracy is a warning, rather than a failure, for a manual `skip_accuracy=true` run or WSP's explicit `degraded_upstream_lag` outcome; it remains visible in the status artifact and Supabase audit because it cannot be safely regenerated until the upstream setlist arrives
+  - stale supported accuracy remains a hard failure for normal regeneration runs, collector regressions, and true upstream blocking
   - when incremental backtest finds all shows in the window already scored, accuracy staleness is expected and not enforced (scores are immutable; the backtest emits `backtest_incremental_all_scored=true`)
   - the `backtest_incremental_all_scored` signal gates three steps: `Validate Accuracy Tables` (uses `--skip-freshness`), `Audit Website Supabase Tables` (uses `--skip-accuracy`), and `Enforce Supported Model Freshness` (exits early)
   - the signal uses default-true semantics: the workflow writes `true` before running backtest, and the scorer writes `false` when it finds new shows
@@ -134,7 +135,7 @@ Automatically plays Fantasy Goose using JamBandNerd's Goose prediction board.
 
 ## Backfill Predictions
 
-Regenerates the retained completed-show corpus for one or more active single-model bands.
+Regenerates the retained completed-show corpus for one or more active model bands.
 
 - **Triggers**: `workflow_dispatch` only
 - **Inputs**: `band` (all or specific), `dry_run` (boolean)

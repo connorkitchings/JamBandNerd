@@ -233,3 +233,48 @@ def tour_position_continuous(
             break
         pos += 1
     return pos
+
+
+def run_position(dates: list, target_date: Any, gap_days: int = 1) -> int:
+    """Return position in a consecutive run ending at ``target_date``."""
+    if not dates or target_date is None:
+        return 1
+    sorted_dates = sorted(dates)
+    position = 1
+    for i in range(len(sorted_dates) - 1, -1, -1):
+        if (target_date - sorted_dates[i]).days <= gap_days:
+            position += 1
+        else:
+            break
+    return position
+
+
+def tour_position(dates: list, target_date: Any, tour_gap_days: int = 14) -> int:
+    """Return position in a tour-like stretch ending at ``target_date``."""
+    if not dates or target_date is None:
+        return 1
+    sorted_dates = sorted(dates)
+    position = 1
+    for i in range(len(sorted_dates) - 1, -1, -1):
+        if (target_date - sorted_dates[i]).days <= tour_gap_days:
+            position += 1
+        else:
+            break
+    return position
+
+
+def gap_percentile_array(
+    eligible_songs: pd.Index,
+    gap_e: pd.Series,
+    gap_distributions: dict[str, np.ndarray],
+) -> np.ndarray:
+    """Return each song's current-gap percentile within its historical gaps."""
+    gap_values = gap_e.values if hasattr(gap_e, "values") else gap_e
+    return np.array(
+        [
+            np.searchsorted(gap_distributions.get(s, EMPTY_ARR), g, side="right")
+            / max(1, len(gap_distributions.get(s, EMPTY_ARR)))
+            for s, g in zip(eligible_songs, gap_values)
+        ],
+        dtype=float,
+    )

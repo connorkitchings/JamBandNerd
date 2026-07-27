@@ -14,9 +14,13 @@ from jambandnerd.models.phish.fast_predictor import (
     _LGB_PARAMS,
     PHISH_FAST_V2_FEATURE_COLS,
     PhishFastPredictorV2,
-    _run_position,
-    _tour_position,
     _window_plays,
+)
+from jambandnerd.models.shared.matrix_features import (
+    run_position as _run_position,
+)
+from jambandnerd.models.shared.matrix_features import (
+    tour_position as _tour_position,
 )
 from jambandnerd.transformations.run_context import (
     normalize_target_show_context,

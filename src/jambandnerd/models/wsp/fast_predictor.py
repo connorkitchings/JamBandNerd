@@ -13,7 +13,6 @@ import numpy as np
 import pandas as pd
 
 from jambandnerd.config.bands import get_excluded_songs
-from jambandnerd.models.billy.fast_predictor import _gap_percentile_arr
 from jambandnerd.models.phish.fast_predictor import (
     _LGB_PARAMS,
     PHISH_FAST_V2_FEATURE_COLS,
@@ -21,6 +20,7 @@ from jambandnerd.models.phish.fast_predictor import (
     _window_plays,
     _window_plays_by_days,
 )
+from jambandnerd.models.shared.matrix_features import gap_percentile_array
 from jambandnerd.transformations.run_context import (
     normalize_target_show_context,
     normalized_venue_key,
@@ -431,6 +431,14 @@ def _gap_vs_median_arr(
         else:
             result[i] = 1.0
     return result
+
+
+def _gap_percentile_arr(
+    eligible_songs: pd.Index,
+    gap_e: pd.Series,
+    gap_dist: dict[str, np.ndarray],
+) -> np.ndarray:
+    return gap_percentile_array(eligible_songs, gap_e, gap_dist)
 
 
 class WSPFastGapDecoupled(WSPFastPredictor):

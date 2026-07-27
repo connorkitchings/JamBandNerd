@@ -49,13 +49,14 @@ A cloud-based data platform for collecting, transforming, and predicting jam ban
 ### Optimized Pipeline (Recommended)
 
 The primary local helper for running the data pipeline is `run_optimized_pipeline.py`.
-It mirrors the promoted daily workflow sequence for the active single-model
-bands. Eggy remains excluded from this first rollout slice.
+It mirrors the promoted daily workflow sequence for active model publishing
+bands. Eggy remains collectable but excluded from default daily publishing until
+promoted.
 The canonical automation contract itself lives in
 `.github/workflows/daily-pipeline.yml`.
 
 ```bash
-# Run the complete pipeline for all active single-model bands
+# Run the complete pipeline for all daily publishing bands
 uv run python scripts/run_optimized_pipeline.py --band all
 
 # Run the pipeline for a single band (e.g., Goose)

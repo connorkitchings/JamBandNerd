@@ -38,7 +38,7 @@ from scripts.run_um_collection import run_um_collection
 from scripts.run_wsp_collection import run_wsp_collection
 from scripts.validate_accuracy_tables import validate_accuracy
 from scripts.validate_prediction_tables import validate_predictions
-from src.jambandnerd.models.registry import list_active_bands
+from src.jambandnerd.config.bands import get_daily_pipeline_bands
 
 logging.basicConfig(
     level=logging.INFO,
@@ -288,7 +288,7 @@ def main():
     )
     parser.add_argument(
         "--band",
-        choices=[*list_active_bands(), "all"],
+        choices=[*get_daily_pipeline_bands(), "all"],
         default="all",
         help="Band to process (default: all)",
     )
@@ -307,7 +307,7 @@ def main():
     overall_start_time = time.time()
     log_with_timestamp("🚀 Starting JamBandNerd Pipeline Orchestrator")
 
-    all_bands = list_active_bands()
+    all_bands = list(get_daily_pipeline_bands())
     bands_to_process = all_bands if args.band == "all" else [args.band]
     results = {}
 

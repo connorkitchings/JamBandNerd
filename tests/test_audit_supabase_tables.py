@@ -307,6 +307,30 @@ def test_run_supabase_audit_treats_stale_accuracy_as_warning_when_skipped(
     assert "expected immutable freshness drift" in captured
 
 
+def test_run_supabase_audit_keeps_stale_predictions_blocking_when_accuracy_is_skipped(
+    monkeypatch,
+):
+    _install_audit_stubs(
+        monkeypatch,
+        latest_row=_prediction_row(),
+        freshness_result=_freshness_result(
+            state="stale",
+            stale_prediction_models=(MODEL_VERSION,),
+            stale_accuracy_models=(MODEL_VERSION,),
+        ),
+    )
+
+    report = module.run_supabase_audit(bands=["goose"], skip_accuracy=True)
+
+    assert report.state == "failed"
+    assert (
+        f"goose:{MODEL_VERSION}:supported_prediction_freshness_stale" in report.blockers
+    )
+    assert (
+        f"goose:{MODEL_VERSION}:supported_accuracy_freshness_warning" in report.warnings
+    )
+
+
 def test_run_supabase_audit_default_scope_uses_active_bands(monkeypatch):
     _install_audit_stubs(
         monkeypatch,

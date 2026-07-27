@@ -10,6 +10,25 @@ def _reset_band_caches() -> None:
 
 def test_repo_supported_bands_are_repo_authoritative() -> None:
     assert tuple(band_config.get_repo_supported_bands()) == band_config.SUPPORTED_BANDS
+    assert (
+        tuple(band_config.get_repo_collectable_bands()) == band_config.SUPPORTED_BANDS
+    )
+
+
+def test_band_scopes_are_explicit_and_consistent() -> None:
+    assert tuple(band_config.get_repo_active_model_bands()) == (
+        band_config.ACTIVE_MODEL_BANDS
+    )
+    assert tuple(band_config.get_daily_pipeline_bands()) == (
+        band_config.DAILY_PIPELINE_BANDS
+    )
+    assert set(band_config.ACTIVE_MODEL_BANDS).issubset(band_config.SUPPORTED_BANDS)
+    assert set(band_config.DAILY_PIPELINE_BANDS).issubset(
+        band_config.ACTIVE_MODEL_BANDS
+    )
+    assert "eggy" in band_config.SUPPORTED_BANDS
+    assert "eggy" not in band_config.ACTIVE_MODEL_BANDS
+    assert "eggy" not in band_config.DAILY_PIPELINE_BANDS
 
 
 def test_runtime_band_metadata_prefers_registry(monkeypatch) -> None:
