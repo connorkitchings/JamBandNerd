@@ -34,6 +34,7 @@ class CollectionPreflight:
     missing_recent_setlist_count: int
     upcoming_show_count: int
     has_upcoming_show_soon: bool
+    has_upcoming_show: bool
     last_successful_collection_at: str | None
     supports_upstream_update_timestamp: bool
     skip_existing_setlists: bool
@@ -156,6 +157,32 @@ def compute_band_preflight(
         allows_verify_only_when_idle=policy.allows_verify_only_when_idle,
     )
 
+    # Unbounded "any future show" signal for the prediction gate. Distinct from
+    # the lookahead-bounded has_upcoming_show_soon: a band can legitimately have
+    # a show beyond the window but no show inside it. For UM, allthings only
+    # archives played shows, so fall back to the Seated-backed um_upcoming_shows
+    # table (mirrors scripts/validate_prediction_tables.py:_has_upcoming_show).
+    if upcoming_rows:
+        has_upcoming_show = True
+    else:
+        future_rows = fetch_table_rows(
+            f"{band}_shows_raw",
+            select=id_column,
+            filters=[("gte", "show_date", today.isoformat())],
+            limit=1,
+            client=client,
+        )
+        has_upcoming_show = bool(future_rows)
+        if not has_upcoming_show and band == "um":
+            um_future = fetch_table_rows(
+                "um_upcoming_shows",
+                select="starts_at_local",
+                filters=[("gte", "starts_at_local", today.isoformat())],
+                limit=1,
+                client=client,
+            )
+            has_upcoming_show = bool(um_future)
+
     return CollectionPreflight(
         band=band,
         collection_mode=policy.collection_mode,
@@ -165,6 +192,7 @@ def compute_band_preflight(
         missing_recent_setlist_count=missing_recent_setlist_count,
         upcoming_show_count=len(upcoming_rows),
         has_upcoming_show_soon=bool(upcoming_rows),
+        has_upcoming_show=has_upcoming_show,
         last_successful_collection_at=_fetch_last_successful_collection_at(
             client=client, band=band
         ),
