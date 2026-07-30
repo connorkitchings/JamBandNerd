@@ -59,6 +59,15 @@ The primary production workflow. Collects raw data, generates predictions, runs 
 - **Band matrix**: Built by `scripts/get_all_bands.py`, which reads `get_daily_pipeline_bands()` from repo config. Eggy remains collectable but excluded from default daily publishing until promoted.
 - **Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`; `PHISH_API_KEY` for Phish only.
 
+### Bands With No Upcoming Show (Idle Predictions)
+
+Collection is driven by recent activity (recent completed shows, missing recent setlists, or upcoming shows), so a band can legitimately have `should_run_collection=true` even when its upcoming-show lookahead window is empty — for example, between tour legs.
+
+- The preflight output `has_upcoming_show_soon` gates `Generate Predictions` and `Validate Prediction Tables`.
+- When a band has no upcoming show in the lookahead window, those two steps are **skipped** rather than failed. `scripts/generate_live_predictions.py --require-output` is never invoked without a target show, so it cannot raise `No upcoming show found`.
+- The `Run Backtest and Save Per-Show Accuracy` step is intentionally **not** gated on upcoming shows, so per-show accuracy for completed shows is still regenerated and stays within the freshness window.
+- The supported-model freshness auditor mirrors this: predictions are reported as fresh when no upcoming show exists, so staleness enforcement does not escalate.
+
 ### WSP Degraded-Mode Handling
 
 - WSP installs Playwright (Firefox) for scraping reliability.

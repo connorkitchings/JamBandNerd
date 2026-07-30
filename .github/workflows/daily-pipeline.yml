@@ -275,7 +275,7 @@ jobs:
           
       - name: Generate Predictions
         id: predictions
-        if: steps.preflight.outputs.should_run_collection == 'true' && steps.collection.outputs.workflow_state != 'degraded'
+        if: steps.preflight.outputs.should_run_collection == 'true' && steps.preflight.outputs.has_upcoming_show_soon == 'true' && steps.collection.outputs.workflow_state != 'degraded'
         run: |
           echo "::group::Generating live next-show predictions for ${{ matrix.band }}"
 
@@ -285,7 +285,7 @@ jobs:
 
       - name: Validate Prediction Tables
         id: prediction_validation
-        if: steps.preflight.outputs.should_run_collection == 'true' && steps.collection.outputs.workflow_state != 'degraded'
+        if: steps.preflight.outputs.should_run_collection == 'true' && steps.preflight.outputs.has_upcoming_show_soon == 'true' && steps.collection.outputs.workflow_state != 'degraded'
         run: |
           echo "::group::Validating prediction table freshness for ${{ matrix.band }}"
           uv run python scripts/validate_prediction_tables.py --band ${{ matrix.band }} --max-age-hours 72
