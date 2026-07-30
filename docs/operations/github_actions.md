@@ -61,12 +61,20 @@ The primary production workflow. Collects raw data, generates predictions, runs 
 
 ### Bands With No Upcoming Show (Idle Predictions)
 
-Collection is driven by recent activity (recent completed shows, missing recent setlists, or upcoming shows), so a band can legitimately have `should_run_collection=true` even when its upcoming-show lookahead window is empty — for example, between tour legs.
+Collection is driven by recent activity (recent completed shows, missing recent setlists, or upcoming shows), so a band can legitimately have `should_run_collection=true` even when it has no upcoming show at all — for example, between tour legs.
 
-- The preflight output `has_upcoming_show_soon` gates `Generate Predictions` and `Validate Prediction Tables`.
-- When a band has no upcoming show in the lookahead window, those two steps are **skipped** rather than failed. `scripts/generate_live_predictions.py --require-output` is never invoked without a target show, so it cannot raise `No upcoming show found`.
+- The preflight emits two distinct upcoming signals:
+  - `has_upcoming_show_soon`: a show exists inside the `CollectionPolicy.upcoming_lookahead_days` window (default 14 days). Used for the **collection** execution-mode decision.
+  - `has_upcoming_show`: a show exists on record **anywhere in the future**. Used to gate prediction generation.
+- `Generate Predictions` and `Validate Prediction Tables` gate on `has_upcoming_show`. When a band has no future show on record, those two steps are **skipped** rather than failed. `scripts/generate_live_predictions.py --require-output` is never invoked without a target show, so it cannot raise `No upcoming show found`.
+- UM's future shows live in the dedicated `um_upcoming_shows` table (Seated), since allthings.umphreys.com only archives played shows. The preflight's `has_upcoming_show` falls back to `um_upcoming_shows` for UM, mirroring `scripts/validate_prediction_tables.py` and `scripts/generate_live_predictions.py`.
 - The `Run Backtest and Save Per-Show Accuracy` step is intentionally **not** gated on upcoming shows, so per-show accuracy for completed shows is still regenerated and stays within the freshness window.
 - The supported-model freshness auditor mirrors this: predictions are reported as fresh when no upcoming show exists, so staleness enforcement does not escalate.
+
+### WSP Show Collection Window
+
+- The default WSP collection window spans the prior year through **next year** (`default_wsp_year_window` in `scripts/run_wsp_collection.py`). This eliminates a Jan-1 blind spot where next year's tours would be invisible until New Year's Day.
+- Everyday Companion typically does not publish `tour{YY+1}.asp` until late in the year; the collector treats an unpublished tour page (HTTP 404) as a soft skip and continues, so scanning next year is safe year-round.
 
 ### WSP Degraded-Mode Handling
 

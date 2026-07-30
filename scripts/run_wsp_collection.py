@@ -24,6 +24,18 @@ logging.basicConfig(
 )
 
 
+def default_wsp_year_window(*, today: datetime | None = None) -> tuple[int, int]:
+    """Return the default (year_start, year_end) show collection window.
+
+    Spans the prior year through next year so newly-published future tours are
+    picked up immediately (no Jan-1 blind spot). The collector treats an
+    unpublished tour page (404) as a soft skip, so scanning next year is safe
+    even before everydaycompanion.com has posted it.
+    """
+    current_year = (today or datetime.now()).year
+    return current_year - 1, current_year + 1
+
+
 def run_wsp_collection(
     skip_existing_setlists: bool = True,
     year_start: int | None = None,
@@ -32,9 +44,7 @@ def run_wsp_collection(
 ) -> CollectionStatus:
     """Runs the Widespread Panic data collection pipeline."""
     if not full_backfill and year_start is None and year_end is None:
-        current_year = datetime.now().year
-        year_start = current_year - 1
-        year_end = current_year
+        year_start, year_end = default_wsp_year_window()
         logging.info(
             f"Defaulting to show collection for years: {year_start}-{year_end}"
         )

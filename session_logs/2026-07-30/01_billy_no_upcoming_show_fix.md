@@ -69,3 +69,41 @@ gh run watch 30545379994 --exit-status --interval 15
 - Watch the next scheduled runs for Phish/Goose/UM off-tour windows to confirm the same idle-prediction path keeps them green.
 - The pre-existing numbering gap in the "Steps per band" list in `docs/operations/github_actions.md` (jumps 6 -> 8) is out of scope here; fix separately if desired.
 - The upstream lag on Billy 2026-07-24 (show_id 27105) is unrelated to this fix; it will age out of the recent window naturally.
+
+## Follow-Up: Per-Band Future-Show Capture (Same Day)
+
+The initial fix gated predictions on `has_upcoming_show_soon` (14-day window). A per-band investigation (see explore-agent findings) surfaced two problems with that signal and one latent collection gap:
+
+1. **UM structural mismatch (would have broken UM predictions).** UM's `{um_shows_raw}` comes from allthings.umphreys.com (a setlist archive; future shows only). UM's real future-show source is Seated, written to a separate `um_upcoming_shows` table. The preflight only read `{band}_shows_raw`, so `has_upcoming_show_soon` was routinely false for UM. `scripts/generate_live_predictions.py` and `scripts/validate_prediction_tables.py` already special-cased UM with a Seated fallback; the preflight did not. Today (2026-07-30) Seated lists UM shows Aug 8/12/13/14/15 that the 14-day gate could not see.
+2. **14-day window was the wrong signal.** `generate_live_predictions._resolve_next_show` looks for *any* future show (unbounded), so the gate was stricter than the script. WSP's next show (2026-08-14) sat 15 days out, so WSP predictions would have falsely idled.
+3. **WSP year-boundary blind spot.** The default WSP window was `(current_year - 1, current_year)`, so next year's tours were invisible until Jan 1.
+
+### Changes shipped (same branch)
+
+- `scripts/collection_preflight.py`
+  - New `CollectionPreflight.has_upcoming_show` field (unbounded; distinct from `has_upcoming_show_soon`).
+  - `compute_band_preflight` short-circuits to `True` when the 14-day window already found a show; otherwise runs an unbounded `show_date >= today` (limit 1) existence check. For UM with no future `{um_shows_raw}` rows, falls back to `um_upcoming_shows` (`starts_at_local >= today`, limit 1), mirroring `scripts/validate_prediction_tables.py:51-77`.
+- `.github/workflows/daily-pipeline.yml` (lines 278, 288): gate switched from `has_upcoming_show_soon` to `has_upcoming_show`.
+- `scripts/run_wsp_collection.py`: extracted `default_wsp_year_window()` returning `(current_year - 1, current_year + 1)`. Safe because `wsp/collector.py:433-437` treats an unpublished `tour{YY+1}.asp` (404) as a soft skip.
+- `docs/operations/github_actions.md`: rewrote the idle-predictions subsection to document both signals + the UM Seated fallback, and added a WSP window subsection.
+
+### Tests added
+
+- `tests/test_collection_preflight.py`: `has_upcoming_show` true when a future show is in raw; false when only past shows; UM Seated fallback fires when `{um_shows_raw}` is empty but `um_upcoming_shows` has a future row (the UM regression test).
+- `tests/pipeline/test_run_wsp_collection.py`: `default_wsp_year_window()` extends into next year.
+
+### Validation
+
+- `verify:python`: 611 + 4 new tests passing.
+- Live dispatches for `um`, `wsp`, `billy` on this branch (see run links added once dispatched).
+
+### Net behavior matrix
+
+| Band | Future-show source | Prediction gate result |
+| --- | --- | --- |
+| billy | bmfsdb upcoming view -> `billy_shows_raw` | idle when no future show (correct) |
+| goose | elgoose.net API -> `goose_shows_raw` | runs when API lists any future show |
+| phish | phish.net API -> `phish_shows_raw` | runs when API lists any future show |
+| um | Seated -> `um_upcoming_shows` (fallback) | runs when Seated lists any future show (fixed) |
+| wsp | everydaycompanion.com -> `wsp_shows_raw`, now spanning next year | runs when any future show collected (fixed window + year-boundary) |
+| eggy | thecarton.net API -> `eggy_shows_raw` | n/a (not in daily pipeline yet) |
