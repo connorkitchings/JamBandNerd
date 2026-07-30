@@ -94,8 +94,12 @@ The initial fix gated predictions on `has_upcoming_show_soon` (14-day window). A
 
 ### Validation
 
-- `verify:python`: 611 + 4 new tests passing.
-- Live dispatches for `um`, `wsp`, `billy` on this branch (see run links added once dispatched).
+- `verify:python`: 616 passed (611 baseline + 5 new), 10 deselected.
+- `verify:docs`: exit 0.
+- Live dispatches on `fix/billy-no-upcoming-show-pipeline` (all `success`):
+  - UM run <https://github.com/connorkitchings/JamBandNerd/actions/runs/30547597954>: preflight `upcoming_soon=0` (allthings has no future shows), yet `Generate Predictions` ran via the Seated fallback and `Saved live next-show prediction for 2026-08-08`.
+  - WSP run <https://github.com/connorkitchings/JamBandNerd/actions/runs/30547605845>: preflight `upcoming_soon=0` (next show 15 days out, outside the old 14-day window), yet `Generate Predictions` ran via the unbounded `has_upcoming_show` signal and `Saved live next-show prediction for 2026-08-14`. Collection now scans `2025-2027` (3 tour pages); `tour27.asp` 404-skip is graceful.
+  - Billy run <https://github.com/connorkitchings/JamBandNerd/actions/runs/30547613707>: preflight `upcoming_soon=0`, `Generate Predictions` correctly skipped, freshness audit `predictions: fresh (no upcoming show; live prediction not required)`, accuracy fresh.
 
 ### Net behavior matrix
 
