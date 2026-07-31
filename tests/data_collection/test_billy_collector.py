@@ -159,3 +159,115 @@ class TestBillyCollector:
             collector.collect_songs()
 
             assert mock_get.call_args.args[0] == "https://bmfsdb.com/songs/"
+
+    def test_parse_upcoming_cards_extracts_show(self, collector):
+        from bs4 import BeautifulSoup
+
+        # bmfsdb card structure: a.link-unstyled > div.badge (3 spans) + venue block.
+        html = """
+        <html>
+            <a class="link-unstyled" href="/setlist/uuid-future-1">
+                <div class="badge">
+                    <span>Aug 15</span>
+                    <span></span>
+                    <span>2026</span>
+                </div>
+                <div class="col-8">
+                    Red Rocks Amphitheatre<br>
+                    Morrison, CO, USA
+                </div>
+            </a>
+            <a class="link-unstyled" href="/setlist/uuid-past-1">
+                <div class="badge">
+                    <span>Jul 1</span>
+                    <span></span>
+                    <span>2026</span>
+                </div>
+                <div class="col-8">
+                    Past Venue<br>
+                    Somewhere, ST, USA
+                </div>
+            </a>
+        </html>
+        """
+        soup = BeautifulSoup(html, "html.parser")
+
+        upcoming = collector._parse_upcoming_cards(soup, min_date=date(2026, 7, 30))
+
+        # Past-dated card is filtered out by min_date; future card is kept.
+        assert len(upcoming) == 1
+        show = upcoming[0]
+        assert show["show_date"] == "2026-08-15"
+        assert show["venue_name"] == "Red Rocks Amphitheatre"
+        assert show["venue_city"] == "Morrison"
+        assert show["venue_state"] == "CO"
+        assert show["source_url"] == "https://bmfsdb.com/setlist/uuid-future-1"
+
+    def test_collect_upcoming_shows_falls_back_to_browser_when_ssr_empty(
+        self, collector
+    ):
+        # SSR response has the page shell but zero link-unstyled cards (Livewire).
+        ssr_html = "<html><body><div>No server-rendered cards</div></body></html>"
+        hydrated_html = """
+        <html>
+            <a class="link-unstyled" href="/setlist/uuid-future-1">
+                <div class="badge">
+                    <span>Sep 5</span><span></span><span>2026</span>
+                </div>
+                <div class="col-8">The Capitol Theatre<br>Pelham, NY, USA</div>
+            </a>
+        </html>
+        """
+
+        with patch.object(collector.session, "get") as mock_get:
+            ssr_response = MagicMock()
+            ssr_response.text = ssr_html
+            ssr_response.status_code = 200
+            mock_get.return_value = ssr_response
+
+            with patch(
+                "src.jambandnerd.data_collection.browser.CloudflareBypass.render_html"
+            ) as mock_render:
+                rendered = MagicMock()
+                rendered.text = hydrated_html
+                rendered.status_code = 200
+                mock_render.return_value = rendered
+
+                upcoming = collector._collect_upcoming_shows(min_date=date(2026, 7, 30))
+
+        assert len(upcoming) == 1
+        assert upcoming[0]["show_date"] == "2026-09-05"
+        assert upcoming[0]["venue_name"] == "The Capitol Theatre"
+        # The browser fallback must have been invoked because SSR had no cards.
+        mock_render.assert_called_once()
+        call_kwargs = mock_render.call_args.kwargs
+        assert call_kwargs["wait_for_selector"] == "a.link-unstyled"
+        assert call_kwargs["wait_until"] == "networkidle"
+
+    def test_collect_upcoming_shows_uses_ssr_when_cards_present(self, collector):
+        # If SSR returns cards, the browser fallback must NOT be used.
+        ssr_html = """
+        <html>
+            <a class="link-unstyled" href="/setlist/uuid-future-1">
+                <div class="badge">
+                    <span>Oct 10</span><span></span><span>2026</span>
+                </div>
+                <div class="col-8">Mock Venue<br>Asheville, NC, USA</div>
+            </a>
+        </html>
+        """
+
+        with patch.object(collector.session, "get") as mock_get:
+            ssr_response = MagicMock()
+            ssr_response.text = ssr_html
+            ssr_response.status_code = 200
+            mock_get.return_value = ssr_response
+
+            with patch(
+                "src.jambandnerd.data_collection.browser.CloudflareBypass.render_html"
+            ) as mock_render:
+                upcoming = collector._collect_upcoming_shows(min_date=date(2026, 7, 30))
+
+        assert len(upcoming) == 1
+        assert upcoming[0]["show_date"] == "2026-10-10"
+        mock_render.assert_not_called()

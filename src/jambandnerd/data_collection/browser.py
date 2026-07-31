@@ -151,6 +151,79 @@ class CloudflareBypass:
             page.close()
 
     @staticmethod
+    def render_html(
+        url: str,
+        *,
+        wait_for_selector: Optional[str] = None,
+        wait_until: str = "load",
+        selector_timeout_ms: int = 15000,
+        extra_headers: Optional[Dict[str, str]] = None,
+        timeout_ms: int = 60000,
+    ) -> requests.Response:
+        """Navigate to *url* with Playwright and return the fully-rendered HTML.
+
+        Like :meth:`make_request` (which is tuned for Cloudflare challenges) but
+        waits for *wait_for_selector* to appear before reading the DOM, so
+        JS-rendered content (Livewire/Alpine/Vue) is present. Used by collectors
+        whose listing pages hydrate client-side (e.g. bmfsdb's upcoming view).
+
+        If the selector never appears — for example the source legitimately has
+        no results to show — the current DOM is returned without raising so the
+        caller can distinguish "rendered but empty" from a fetch failure.
+        """
+        _enforce_rate_limit()
+        _get_browser()
+
+        page: Page = _context.new_page()
+        if extra_headers:
+            page.set_extra_http_headers(extra_headers)
+
+        try:
+            logger.debug("Playwright rendering: %s", url)
+            pw_response = page.goto(url, wait_until=wait_until, timeout=timeout_ms)
+
+            if pw_response is None:
+                raise requests.exceptions.RequestException(
+                    f"Playwright returned no response for {url}"
+                )
+
+            if wait_for_selector:
+                try:
+                    page.wait_for_selector(
+                        wait_for_selector, timeout=selector_timeout_ms
+                    )
+                except Exception as selector_error:  # selector timeout / not found
+                    logger.info(
+                        "Selector %r not found within %sms for %s; reading "
+                        "current DOM (%s)",
+                        wait_for_selector,
+                        selector_timeout_ms,
+                        url,
+                        selector_error,
+                    )
+
+            status_code = pw_response.status
+            content = page.content()
+
+            mock = requests.Response()
+            mock.status_code = status_code
+            mock.url = url
+            mock._content = content.encode("utf-8")
+            mock.headers = dict(pw_response.headers)
+            mock.encoding = "utf-8"
+
+            if status_code >= 400:
+                logger.error("Playwright received %s for %s", status_code, url)
+
+            return mock
+
+        except Exception:
+            logger.error("Playwright render failed for %s", url)
+            raise
+        finally:
+            page.close()
+
+    @staticmethod
     def cleanup() -> None:
         """Close the shared browser and context. Call at end of collection."""
         global _pw, _browser, _context

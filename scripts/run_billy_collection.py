@@ -26,6 +26,7 @@ from src.jambandnerd.data_collection.billy.normalizer import (
     normalize_shows,
     normalize_songs,
 )
+from src.jambandnerd.data_collection.browser import CloudflareBypass
 from src.jambandnerd.data_collection.utils import CollectionTimer, compute_source_hash
 from src.jambandnerd.db.connection import get_supabase_client
 from src.jambandnerd.db.operations import (
@@ -284,6 +285,8 @@ def run_billy_collection(
     )
     print(f"Upserted {len(setlists_df)} rows into billy_setlists_raw.")
 
+    # Release the shared Playwright browser if the upcoming-shows fallback used it.
+    CloudflareBypass.cleanup()
     timer.log("billy")
 
 
