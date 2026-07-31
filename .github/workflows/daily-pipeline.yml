@@ -108,11 +108,11 @@ jobs:
         run: uv sync --locked --no-dev
 
       - name: Install Playwright OS Dependencies
-        if: matrix.band == 'wsp' || matrix.band == 'eggy'
+        if: matrix.band == 'wsp' || matrix.band == 'eggy' || matrix.band == 'billy'
         run: uv run python -m playwright install-deps firefox
 
       - name: Cache Playwright Browsers
-        if: matrix.band == 'wsp' || matrix.band == 'eggy'
+        if: matrix.band == 'wsp' || matrix.band == 'eggy' || matrix.band == 'billy'
         uses: actions/cache@v6
         id: playwright-cache
         with:
@@ -120,7 +120,7 @@ jobs:
           key: playwright-${{ runner.os }}-firefox-${{ hashFiles('uv.lock') }}
 
       - name: Install Playwright Browsers
-        if: (matrix.band == 'wsp' || matrix.band == 'eggy') && steps.playwright-cache.outputs.cache-hit != 'true'
+        if: (matrix.band == 'wsp' || matrix.band == 'eggy' || matrix.band == 'billy') && steps.playwright-cache.outputs.cache-hit != 'true'
         run: uv run python -m playwright install firefox
 
       - name: Compute Collection Preflight

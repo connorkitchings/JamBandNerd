@@ -386,18 +386,59 @@ class BillyCollector(BandCollector):
         return city, state, country
 
     def _collect_upcoming_shows(self, min_date: date) -> List[Dict[str, Any]]:
-        try:
-            response = self.session.get(
-                f"{self.BASE_URL}/setlists",
-                params={"view": "upcoming"},
-                timeout=self.config.timeout,
-            )
-            response.raise_for_status()
-        except RequestException as exc:
-            logger.error("Failed to fetch upcoming shows: %s", exc)
+        soup = self._fetch_upcoming_soup()
+        if soup is None:
             return []
+        return self._parse_upcoming_cards(soup, min_date)
 
-        soup = BeautifulSoup(response.text, "html.parser")
+    def _fetch_upcoming_soup(self) -> Optional[BeautifulSoup]:
+        """Fetch the upcoming-shows page as a parsed soup.
+
+        bmfsdb renders the upcoming view client-side via Livewire, so a plain
+        ``requests.get`` returns a page shell with no show cards. Try the
+        lightweight request first (cheap, and works if SSR is ever restored);
+        if it yields no cards, fall back to a JS-capable browser that lets the
+        Livewire component hydrate before reading the DOM.
+        """
+        url = f"{self.BASE_URL}/setlists"
+        params = {"view": "upcoming"}
+
+        try:
+            response = self.session.get(url, params=params, timeout=self.config.timeout)
+            response.raise_for_status()
+            soup = BeautifulSoup(response.text, "html.parser")
+            if soup.select("a.link-unstyled"):
+                return soup
+            logger.debug(
+                "Upcoming SSR returned no cards; falling back to browser render."
+            )
+        except RequestException as exc:
+            logger.warning(
+                "requests-based upcoming fetch failed (%s); trying browser render.",
+                exc,
+            )
+
+        try:
+            from ..browser import CloudflareBypass
+
+            rendered = CloudflareBypass.render_html(
+                f"{url}?view=upcoming",
+                wait_for_selector="a.link-unstyled",
+                wait_until="networkidle",
+                selector_timeout_ms=8000,
+            )
+            return BeautifulSoup(rendered.text, "html.parser")
+        except Exception as exc:
+            logger.error(
+                "Browser render of upcoming shows failed; no upcoming shows "
+                "captured: %s",
+                exc,
+            )
+            return None
+
+    def _parse_upcoming_cards(
+        self, soup: BeautifulSoup, min_date: date
+    ) -> List[Dict[str, Any]]:
         upcoming: List[Dict[str, Any]] = []
         for link in soup.select("a.link-unstyled"):
             badge = link.select_one("div.badge")

@@ -97,9 +97,15 @@ Collection is driven by recent activity (recent completed shows, missing recent 
 
 - Eggy (`thecarton.net`) is behind Cloudflare bot protection with JS challenges.
 - The Eggy collector tries standard HTTP requests first; on 403 it falls back to Playwright (Firefox) via the shared `data_collection/browser.py` module.
-- Playwright is installed in CI for both WSP and Eggy bands.
+- Playwright is installed in CI for WSP, Eggy, and Billy bands.
 - Because browser-backed collection and automation import Playwright directly at runtime, it is a locked runtime dependency rather than a dev-only tool.
 - If Cloudflare is lifted, Eggy automatically skips Playwright and uses direct HTTP.
+
+### Billy Upcoming-Shows Hydration
+
+- bmfsdb.com renders the upcoming-shows view client-side via Livewire 3. The paginated past-shows listing is still server-rendered, but `?view=upcoming` returns an empty Livewire component to a plain HTTP client.
+- `BillyCollector._collect_upcoming_shows` therefore tries a lightweight `requests.get` first; if it yields no `a.link-unstyled` cards, it falls back to `CloudflareBypass.render_html` (Firefox), which waits for Livewire hydration before reading the DOM. Parsing logic is identical for both paths.
+- This fixes a latent breakage: once bmfsdb lists future Billy shows again, they are captured automatically. It does not create upstream data — when bmfsdb's community has not yet entered a tour, the upcoming list is legitimately empty and Billy predictions idle until shows appear.
 
 ### Failure Policy
 
