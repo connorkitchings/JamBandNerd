@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 
 from scripts import audit_supabase_tables as module
@@ -199,6 +199,36 @@ def test_run_supabase_audit_allows_missing_prediction_without_upcoming_show(
     report = module.run_supabase_audit(bands=["goose"])
 
     assert "canonical_predictions_missing" not in " ".join(report.blockers)
+
+
+def test_run_supabase_audit_fails_on_stale_prediction_with_upcoming_show(monkeypatch):
+    # A prediction older than max_age_hours IS a blocker when a fresh prediction
+    # is required (the band has an upcoming show).
+    _install_audit_stubs(
+        monkeypatch,
+        latest_row=_prediction_row(generated_at=NOW - timedelta(hours=100)),
+        projection_rows=_projection_rows(),
+    )
+
+    report = module.run_supabase_audit(bands=["goose"])
+
+    assert report.state == "failed"
+    assert f"goose:{MODEL_VERSION}:canonical_predictions_stale" in report.blockers
+
+
+def test_run_supabase_audit_allows_stale_prediction_without_upcoming_show(monkeypatch):
+    # With no upcoming show, regeneration is intentionally idle, so a stale
+    # canonical prediction for the last show must NOT be a blocker.
+    _install_audit_stubs(
+        monkeypatch,
+        latest_row=_prediction_row(generated_at=NOW - timedelta(hours=100)),
+        projection_rows=_projection_rows(),
+        has_upcoming_show=False,
+    )
+
+    report = module.run_supabase_audit(bands=["goose"])
+
+    assert "canonical_predictions_stale" not in " ".join(report.blockers)
 
 
 def test_run_supabase_audit_fails_on_invalid_latest_json(monkeypatch):

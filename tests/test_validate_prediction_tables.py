@@ -171,3 +171,22 @@ def test_validate_predictions_flags_stale_row(monkeypatch, capsys):
 
     assert failures == 1
     assert "[STALE] goose:" in capsys.readouterr().out
+
+
+def test_validate_predictions_allows_stale_row_without_upcoming_show(
+    monkeypatch, capsys
+):
+    # Stale canonical prediction, but the band has no upcoming show, so
+    # regeneration is intentionally idle and the stale row is not a failure.
+    rows = _rows(generated_at=datetime.now(timezone.utc) - timedelta(days=3))
+    rows["goose_shows_raw"] = []  # no future show on record
+
+    monkeypatch.setattr(
+        "scripts.validate_prediction_tables.get_supabase_client",
+        lambda: _ClientStub(rows),
+    )
+
+    failures = validate_predictions(bands=["goose"], max_age_hours=48)
+
+    assert failures == 0
+    assert "[OK] goose:" in capsys.readouterr().out

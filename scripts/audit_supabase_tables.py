@@ -252,7 +252,14 @@ def _derive_setlist_model_audit(
             latest_prediction_age_hours = (
                 datetime.now(timezone.utc) - generated_at
             ).total_seconds() / 3600
-            if latest_prediction_age_hours > max_age_hours:
+            # A stale canonical prediction is only a blocker when a fresh
+            # prediction is actually required (i.e. the band has an upcoming
+            # show). With no upcoming show, regeneration is intentionally idle
+            # and the existing prediction for the last show is allowed to age.
+            # Mirrors the "missing" check above and check_supported_model_freshness.
+            if latest_prediction_age_hours > max_age_hours and _has_upcoming_show(
+                client, band=band
+            ):
                 _append_unique(blockers, "canonical_predictions_stale")
 
         projection_rows = _latest_projection_rows(
