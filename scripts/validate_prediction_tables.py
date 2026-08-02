@@ -186,8 +186,14 @@ def validate_predictions(
             continue
 
         freshness_ok = age_hrs is not None and age_hrs <= max_age_hours
-        status = "OK" if freshness_ok else "STALE"
-        if not freshness_ok:
+        if freshness_ok:
+            status = "OK"
+        elif not _has_upcoming_show(client, band=band):
+            # No upcoming show: regeneration is intentionally idle, so a stale
+            # prediction for the last show is informational, not a failure.
+            status = "OK"
+        else:
+            status = "STALE"
             failures += 1
 
         age_display = f"{age_hrs:.1f}h" if age_hrs is not None else "unknown age"
