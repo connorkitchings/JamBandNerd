@@ -31,6 +31,8 @@ dependencies = [
     "idna>=3.18",
     "urllib3>=2.7.0",
     "pyjwt>=2.13.0",
+    "cryptography>=50.0.0",
+    "h2>=4.4.1",
 ]
 
 [project.optional-dependencies]
