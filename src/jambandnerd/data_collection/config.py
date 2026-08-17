@@ -60,7 +60,7 @@ COLLECTOR_CONFIGS = {
         cache_dir=CACHE_DIR,
     ),
     "billy": CollectorConfig(
-        base_url="https://bmfsdb.com",
+        base_url="https://billybase.net",
         timeout=120,
         max_retries=4,
         backoff_factor=2.0,

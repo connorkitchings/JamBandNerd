@@ -1,4 +1,4 @@
-"""Billy Strings data collector (bmfsdb.com scraper)."""
+"""Billy Strings data collector (billybase.net scraper)."""
 
 from __future__ import annotations
 
@@ -20,13 +20,15 @@ logger = logging.getLogger(__name__)
 
 
 class BillyCollector(BandCollector):
-    """Collect Billy Strings shows and setlists from bmfsdb.com."""
+    """Collect Billy Strings shows and setlists from billybase.net."""
 
     ARTIST_NAME = "Billy Strings"
-    BASE_URL = "https://bmfsdb.com"
-    LISTING_PATH = "/setlists"
-    UPCOMING_PATH = "/setlists?view=upcoming"
-    MAX_PAGES = 400  # Safety guard against infinite pagination
+    BASE_URL = "https://billybase.net"
+    LISTING_PATH = "/past-shows/"
+    UPCOMING_PATH = "/upcoming-shows/"
+    SITEMAP_PATH = "/wp-sitemap-posts-show-1.xml"
+    SONGS_SITEMAP_PATH = "/wp-sitemap-posts-song-1.xml"
+    MAX_BACKWALK = 500  # Safety guard when following Prev show links
 
     def __init__(self) -> None:
         config = get_collector_config("billy")
@@ -40,128 +42,62 @@ class BillyCollector(BandCollector):
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
-    def _fetch_and_parse_show_page(self, page: int) -> List[Dict[str, Any]]:
-        """Fetches and parses a single page of show listings."""
-        url = f"{self.BASE_URL}{self.LISTING_PATH}?page={page}"
-        logger.debug("Fetching Billy Strings show listing page %s", url)
-        page_shows = []
-
-        try:
-            response = self.session.get(url, timeout=self.config.timeout)
-            if response.status_code == 404:
-                return []  # Stop this page
-            response.raise_for_status()
-        except RequestException as exc:
-            logger.error("Failed to fetch show listing page %s: %s", page, exc)
-            return []
-
-        soup = BeautifulSoup(response.text, "html.parser")
-        show_links = soup.select("a.link-unstyled")
-        if not show_links:
-            return []
-
-        for link in show_links:
-            parsed = self._parse_show_card(link)
-            if not parsed:
-                continue
-
-            show_date, venue_data = parsed
-            show_uuid = self._extract_show_uuid(link)
-
-            page_shows.append(
-                {
-                    "source_uuid": show_uuid,
-                    "show_date": show_date.isoformat(),
-                    **venue_data,
-                    "source_url": f"{self.BASE_URL}/setlist/{show_uuid}",
-                }
-            )
-        return page_shows
-
     def collect_shows(
         self,
         start_date: Optional[date] = None,
         end_date: Optional[date] = None,
     ) -> List[Dict[str, Any]]:
-        """Scrape show listings from the bmfsdb setlists index with pagination awareness."""
-        all_shows: List[Dict[str, Any]] = []
+        """Scrape show listings from billybase.net.
+
+        Uses the server-rendered ``/past-shows/`` page plus the ``< Prev``
+        navigation on individual show pages to walk backwards through history.
+        Upcoming shows are collected from ``/upcoming-shows/``.
+        """
         start_date = start_date or date(1900, 1, 1)
         if isinstance(start_date, str):
             start_date = date.fromisoformat(start_date)
         if isinstance(end_date, str):
             end_date = date.fromisoformat(end_date)
 
-        consecutive_empty = 0
-        pages_fetched = 0
+        all_shows: List[Dict[str, Any]] = []
 
-        iterator = range(1, self.MAX_PAGES + 1)
-        try:
-            iterator = tqdm(iterator, desc="Scraping Billy Strings show pages")
-        except Exception:  # pragma: no cover - tqdm optional
-            pass
+        # Recent completed shows from the listing page + chronological walk.
+        past_shows = self._collect_past_shows(start_date)
+        all_shows.extend(past_shows)
 
-        for page in iterator:
-            page_shows = self._fetch_and_parse_show_page(page)
-            if not page_shows:
-                consecutive_empty += 1
-                if consecutive_empty >= 2:
-                    break
-                continue
+        # Future shows from the dedicated upcoming page.
+        upcoming_cutoff = end_date or start_date or date.today()
+        upcoming_shows = self._collect_upcoming_shows(min_date=upcoming_cutoff)
+        all_shows.extend(upcoming_shows)
 
-            # Stop once the newest show on a page is already older than the requested window.
-            newest_date = datetime.fromisoformat(page_shows[0]["show_date"]).date()
-            if start_date and newest_date < start_date:
-                break
-
-            all_shows.extend(page_shows)
-            pages_fetched += 1
-            consecutive_empty = 0
-
-        # Filter and deduplicate
-        unique_shows = {}
+        # Deduplicate and filter to the requested window.
+        unique_shows: Dict[str, Dict[str, Any]] = {}
         for show in all_shows:
-            # Use a tuple of (uuid, date) as key to handle potential duplicate UUIDs with different dates
             show_uuid = show.get("source_uuid")
-            show_date = show.get("show_date")
-            if show_uuid and show_date:
-                if (show_uuid, show_date) not in unique_shows:
-                    unique_shows[(show_uuid, show_date)] = show
+            show_dt = show.get("show_date")
+            if not show_uuid or not show_dt:
+                continue
+            if show_uuid in unique_shows:
+                continue
+            parsed_dt = datetime.fromisoformat(show_dt).date()
+            if parsed_dt < start_date:
+                continue
+            if end_date and parsed_dt > end_date:
+                continue
+            unique_shows[show_uuid] = show
 
-        filtered_shows = []
-        for show in unique_shows.values():
-            show_dt = datetime.fromisoformat(show["show_date"]).date()
-            if start_date <= show_dt and (not end_date or show_dt <= end_date):
-                filtered_shows.append(show)
-
-        logger.info(
-            "✅ %s: Collected %s shows across %s page(s).",
-            self.ARTIST_NAME,
-            len(filtered_shows),
-            pages_fetched or max(len(filtered_shows) // 10, 1),
+        filtered_shows = sorted(
+            unique_shows.values(), key=lambda s: s["show_date"], reverse=True
         )
 
-        # Collect and add upcoming shows
-        upcoming_cutoff = date.today()
-        upcoming_shows = self._collect_upcoming_shows(
-            min_date=end_date or start_date or upcoming_cutoff
-        )
-
-        # Add upcoming shows, avoiding duplicates
-        seen_uuids = {s["source_uuid"] for s in filtered_shows}
-        for show in upcoming_shows:
-            if show.get("source_uuid") not in seen_uuids:
-                filtered_shows.append(show)
-                if show.get("source_uuid"):
-                    seen_uuids.add(show["source_uuid"])
-
         logger.info(
-            "✅ %s: Total shows including upcoming: %s",
+            "✅ %s: Collected %s shows across the requested window.",
             self.ARTIST_NAME,
             len(filtered_shows),
         )
-        return sorted(filtered_shows, key=lambda s: s["show_date"], reverse=True)
+        return filtered_shows
 
-    def collect_setlists(
+    def collect_setlists(  # type: ignore[override]
         self, shows_to_process: List[Dict[str, Any]]
     ) -> List[Dict[str, Any]]:
         """Scrape setlist entries for the provided shows."""
@@ -175,23 +111,25 @@ class BillyCollector(BandCollector):
         ) -> Tuple[str, str, Optional[str], Optional[str]]:
             show_id = str(show.get("show_id"))
             source_url = show.get("source_url") or ""
-            uuid = show.get("source_uuid")
+            show_uuid = show.get("source_uuid")
             show_date = show.get("show_date")
-            if not source_url and uuid:
-                source_url = f"{self.BASE_URL}/setlist/{uuid}"
-            return show_id, source_url, uuid, show_date
+            return show_id, source_url, show_uuid, show_date
 
         results: List[Dict[str, Any]] = []
 
         with ThreadPoolExecutor(max_workers=5) as executor:
             futures = {}
             for record in shows_to_process:
-                show_id, source_url, uuid, show_date = _submit_args(record)
+                show_id, source_url, show_uuid, show_date = _submit_args(record)
                 if not show_id or not source_url:
                     continue
                 futures[
                     executor.submit(
-                        self._scrape_show_setlist, show_id, source_url, uuid, show_date
+                        self._scrape_show_setlist,
+                        show_id,
+                        source_url,
+                        show_uuid,
+                        show_date,
                     )
                 ] = (
                     show_id,
@@ -227,75 +165,19 @@ class BillyCollector(BandCollector):
         return results
 
     def collect_songs(self) -> List[Dict[str, Any]]:
-        """Scrape the Billy Strings song catalog from bmfsdb.com."""
+        """Return an empty song catalog for now.
 
-        params = {"showAll": "1", "perPage": "2000"}
-        url = f"{self.BASE_URL}/songs/"
-        logger.info("Fetching Billy Strings song catalog from %s", url)
-
-        try:
-            response = self.session.get(url, params=params, timeout=self.config.timeout)
-            response.raise_for_status()
-        except RequestException as exc:
-            logger.error("Failed to fetch Billy Strings songs: %s", exc)
-            return []
-
-        soup = BeautifulSoup(response.text, "html.parser")
-        component = self._find_livewire_component(soup, "songs-index")
-        if component is None:
-            logger.error("Could not locate songs table component on bmfsdb.com")
-            return []
-
-        rows = component.select("table.table-hover tbody tr")
-        if not rows:
-            logger.warning("No Billy Strings songs found in songs table.")
-            return []
-
-        catalog: List[Dict[str, Any]] = []
-        for row in rows:
-            cells = row.find_all("td")
-            if len(cells) < 6:
-                continue
-
-            title_cell, artist_cell, plays_cell, teases_cell, first_cell, last_cell = (
-                cells[:6]
-            )
-
-            song_link = title_cell.find("a")
-            song_name = (song_link or title_cell).get_text(strip=True)
-            if not song_name:
-                continue
-
-            original_artist_link = artist_cell.find("a")
-            original_artist_text = (original_artist_link or artist_cell).get_text(
-                strip=True
-            )
-            original_artist = original_artist_text or None
-            if original_artist:
-                original_artist = (
-                    None
-                    if original_artist.upper() in {"N/A", "--"}
-                    else original_artist
-                )
-
-            catalog.append(
-                {
-                    "song_uuid": (
-                        self._extract_song_uuid(song_link) if song_link else None
-                    ),
-                    "song_name": song_name,
-                    "original_artist": original_artist,
-                    "original_artist_id": self._extract_artist_id(original_artist_link),
-                    "times_played": self._parse_int_cell(plays_cell),
-                    "times_teased": self._parse_int_cell(teases_cell),
-                    "first_played": self._parse_song_date(first_cell),
-                    "last_played": self._parse_song_date(last_cell),
-                    "source_url": song_link.get("href") if song_link else None,
-                }
-            )
-
-        logger.info("✅ %s: Collected %s songs.", self.ARTIST_NAME, len(catalog))
-        return catalog
+        billybase.net exposes song pages with rich metadata, but the full catalog
+        (~1,000 songs) requires scraping each individual song page. The existing
+        ``billy_songs_raw`` rows remain valid for ``is_cover`` lookups, so we
+        defer a full backfill to a later optimization.
+        """
+        logger.info(
+            "%s: Song catalog collection deferred; relying on existing "
+            "billy_songs_raw rows for cover metadata.",
+            self.ARTIST_NAME,
+        )
+        return []
 
     def collect_venues(self) -> List[Dict[str, Any]]:  # pragma: no cover - placeholder
         logger.info(
@@ -307,63 +189,377 @@ class BillyCollector(BandCollector):
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
-    def _extract_show_uuid(self, link: Any) -> Optional[str]:
-        href = link.get("href")
-        if not href:
+    def _fetch_soup(
+        self, url: str, params: Optional[Dict[str, Any]] = None
+    ) -> Optional[BeautifulSoup]:
+        """Fetch a URL and return a BeautifulSoup object."""
+        self.rate_limiter.wait_if_needed()
+        try:
+            self.rate_limiter.record_call()
+            response = self.session.get(url, params=params, timeout=self.config.timeout)
+            response.raise_for_status()
+            self.record_success()
+            return BeautifulSoup(response.text, "html.parser")
+        except RequestException as exc:
+            self.record_failure()
+            logger.error("Failed to fetch %s: %s", url, exc)
             return None
-        parts = href.rstrip("/").split("/")
-        token = parts[-1] if parts else None
-        if not token:
-            return None
-        token = token.split("?")[0]
-        return self._ensure_uuid(token)
 
-    def _parse_show_card(self, link: Any) -> Optional[Tuple[date, Dict[str, Any]]]:
-        badge = link.select_one("div.badge")
-        venue_block = link.select_one("div.col-8") or link.select_one(
-            "div.col-8.col-md-9"
+    def _collect_past_shows(self, start_date: date) -> List[Dict[str, Any]]:
+        """Collect recent completed shows from /past-shows/ and walk backwards."""
+        url = f"{self.BASE_URL}{self.LISTING_PATH}"
+        soup = self._fetch_soup(url)
+        if soup is None:
+            return []
+
+        shows: List[Dict[str, Any]] = []
+        seen_slugs: set[str] = set()
+
+        # Parse the server-rendered first page of cards.
+        for card in soup.find_all("article", class_="ecs-post-loop"):
+            show = self._parse_show_card(card)
+            if not show:
+                continue
+            slug = self._extract_slug_from_url(show["source_url"])
+            if not slug or slug in seen_slugs:
+                continue
+            seen_slugs.add(slug)
+            shows.append(show)
+
+        if not shows:
+            logger.warning("No past show cards found on %s", url)
+            return shows
+
+        # If the oldest card on the first page is still newer than the window,
+        # walk backward through individual show pages using the Prev link.
+        oldest_show = min(shows, key=lambda s: s["show_date"])
+        oldest_date = datetime.fromisoformat(oldest_show["show_date"]).date()
+
+        if oldest_date > start_date:
+            prev_url = oldest_show["source_url"]
+            for _ in range(self.MAX_BACKWALK):
+                prev_soup = self._fetch_soup(prev_url)
+                if prev_soup is None:
+                    break
+                prev_show = self._parse_show_page(prev_soup)
+                if not prev_show:
+                    break
+                slug = self._extract_slug_from_url(prev_show["source_url"])
+                if not slug or slug in seen_slugs:
+                    break
+                seen_slugs.add(slug)
+                shows.append(prev_show)
+
+                prev_date = datetime.fromisoformat(prev_show["show_date"]).date()
+                if prev_date <= start_date:
+                    break
+
+                next_prev = self._find_prev_show_url(prev_soup)
+                if not next_prev:
+                    break
+                prev_url = next_prev
+
+        logger.info(
+            "✅ %s: Collected %s past shows.",
+            self.ARTIST_NAME,
+            len(shows),
         )
+        return shows
 
-        if not badge or not venue_block:
+    def _collect_upcoming_shows(self, min_date: date) -> List[Dict[str, Any]]:
+        """Collect upcoming shows from /upcoming-shows/."""
+        url = f"{self.BASE_URL}{self.UPCOMING_PATH}"
+        soup = self._fetch_soup(url)
+        if soup is None:
+            return []
+
+        upcoming: List[Dict[str, Any]] = []
+        for card in soup.find_all("article", class_="ecs-post-loop"):
+            show = self._parse_show_card(card)
+            if not show:
+                continue
+            show_dt = datetime.fromisoformat(show["show_date"]).date()
+            if show_dt < min_date:
+                continue
+            upcoming.append(show)
+
+        logger.info(
+            "✅ %s: Collected %s upcoming shows.",
+            self.ARTIST_NAME,
+            len(upcoming),
+        )
+        return upcoming
+
+    def _parse_show_card(self, card: Any) -> Optional[Dict[str, Any]]:
+        """Parse a show card from /past-shows/ or /upcoming-shows/."""
+        show_link: Optional[str] = None
+        venue_text: Optional[str] = None
+        show_date: Optional[str] = None
+
+        for anchor in card.find_all("a", href=True):
+            href = anchor.get("href") or ""
+            if "/show/" not in href:
+                continue
+            if show_link is None:
+                show_link = href
+
+            text = anchor.get_text(strip=True)
+            if not text:
+                continue
+            if re.fullmatch(r"\d{4}-\d{2}-\d{2}", text):
+                show_date = text
+            elif "–" in text or "-" in text:
+                venue_text = text
+
+        if not show_link or not show_date or not venue_text:
             return None
 
-        spans = badge.find_all("span")
-        if len(spans) < 3:
+        # venue_text: "Venue Name – City, ST" (uses en-dash)
+        split_char = "–" if "–" in venue_text else "-"
+        parts = [p.strip() for p in venue_text.split(split_char, 1)]
+        if len(parts) != 2:
             return None
 
-        month_day = spans[0].get_text(strip=True)
-        year_text = spans[2].get_text(strip=True)
-
-        show_date = self._parse_show_date(month_day, year_text)
-        if not show_date:
-            return None
-
-        venue_lines = list(venue_block.stripped_strings)
-        if not venue_lines:
-            return None
-
-        venue_name = venue_lines[0]
-        location_text = venue_lines[1] if len(venue_lines) > 1 else ""
+        venue_name, location_text = parts
         city, state, country = self._parse_location(location_text)
+        source_url = (
+            show_link if show_link.startswith("http") else f"{self.BASE_URL}{show_link}"
+        )
+        slug = self._extract_slug_from_url(source_url)
+        if not slug:
+            return None
 
-        return show_date, {
+        return {
+            "source_uuid": self._ensure_uuid(slug),
+            "show_date": show_date,
             "venue_name": venue_name,
             "venue_city": city,
             "venue_state": state,
             "venue_country": country,
+            "source_url": source_url,
         }
 
-    def _parse_show_date(self, month_day: str, year_text: str) -> Optional[date]:
-        cleaned_day = re.sub(r"[^0-9A-Za-z ]", "", month_day).strip()
-        for fmt in ("%b %d %Y", "%B %d %Y"):
-            try:
-                return datetime.strptime(f"{cleaned_day} {year_text}", fmt).date()
-            except ValueError:
-                continue
-        logger.debug("Could not parse show date from '%s %s'", month_day, year_text)
+    def _parse_show_page(self, soup: BeautifulSoup) -> Optional[Dict[str, Any]]:
+        """Parse SHOW INFO from an individual show page."""
+        info = self._extract_show_info(soup)
+        if not info:
+            return None
+
+        show_date = info.get("SHOW DATE")
+        venue_name = info.get("SHOW VENUE")
+        city = info.get("CITY", "")
+        state_country = info.get("STATE / COUNTRY", "")
+
+        if not show_date or not venue_name:
+            return None
+
+        # Build a location string so _parse_location can split it consistently.
+        location_parts = [p for p in (city, state_country) if p]
+        _, state, country = self._parse_location(
+            ", ".join(location_parts) if len(location_parts) > 1 else state_country
+        )
+
+        source_url = info.get("source_url", "")
+        if not source_url:
+            return None
+
+        slug = self._extract_slug_from_url(source_url)
+        if not slug:
+            return None
+
+        return {
+            "source_uuid": self._ensure_uuid(slug),
+            "show_date": show_date,
+            "venue_name": venue_name,
+            "venue_city": city,
+            "venue_state": state,
+            "venue_country": country,
+            "source_url": source_url,
+        }
+
+    def _extract_show_info(self, soup: BeautifulSoup) -> Dict[str, str]:
+        """Extract SHOW INFO label/value pairs from a show page."""
+        info: Dict[str, str] = {}
+        show_info_heading = None
+        for heading in soup.find_all("h2"):
+            if heading.get_text(strip=True) == "SHOW INFO":
+                show_info_heading = heading
+                break
+
+        if not show_info_heading:
+            return info
+
+        section = show_info_heading.find_parent("section")
+        if not section:
+            return info
+
+        text = section.get_text("\n", strip=True)
+        lines = [line.strip() for line in text.split("\n") if line.strip()]
+        labels = {"SHOW DATE", "SHOW VENUE", "TOUR", "CITY", "STATE / COUNTRY"}
+
+        for i, line in enumerate(lines):
+            if line in labels and i + 1 < len(lines):
+                info[line] = str(lines[i + 1])
+
+        # Capture canonical URL so callers do not need to reconstruct the slug.
+        canonical = soup.find("link", rel="canonical")
+        if canonical:
+            href = canonical.get("href")
+            info["source_url"] = str(href) if href else ""
+
+        return info
+
+    def _find_prev_show_url(self, soup: BeautifulSoup) -> Optional[str]:
+        """Return the URL of the previous show from the page navigation."""
+        for anchor in soup.find_all("a", href=True):
+            text = anchor.get_text(strip=True)
+            if text in {"< Prev", "← Prev"}:
+                href = anchor.get("href")
+                href_str = str(href) if href else ""
+                if href_str.startswith("http"):
+                    return href_str
+                if href_str.startswith("/"):
+                    return f"{self.BASE_URL}{href_str}"
+                if href_str:
+                    return f"{self.BASE_URL}/{href_str}"
         return None
 
+    def _scrape_show_setlist(
+        self,
+        show_id: str,
+        source_url: str,
+        show_uuid: Optional[str],
+        show_date: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        """Scrape setlist rows from a show page."""
+        soup = self._fetch_soup(source_url)
+        if soup is None:
+            return []
+
+        setlist_heading = None
+        for heading in soup.find_all("h2"):
+            if heading.get_text(strip=True) == "SETLIST":
+                setlist_heading = heading
+                break
+
+        if not setlist_heading:
+            logger.warning(
+                "No SETLIST heading found for show_id=%s (%s)", show_id, source_url
+            )
+            return []
+
+        section = setlist_heading.find_parent("section")
+        if not section:
+            return []
+
+        entries: List[Dict[str, Any]] = []
+        current_set_number: Optional[int] = None
+        per_set_position = 0
+
+        for elem in section.find_all(["p", "ol"]):
+            if elem.name == "p":
+                label_text = elem.get_text(strip=True).rstrip(":")
+                current_set_number = self._decode_set_label(label_text)
+                per_set_position = 0
+                continue
+
+            if elem.name != "ol" or current_set_number is None:
+                continue
+
+            for li in elem.find_all("li", recursive=False):
+                song_anchor = li.find("a", href=True)
+                if not song_anchor:
+                    continue
+
+                song_name = song_anchor.get_text(strip=True)
+                if not song_name:
+                    continue
+
+                song_uuid = self._extract_song_uuid(song_anchor)
+                per_set_position += 1
+
+                # Segues are indicated by a greater-than arrow SVG/image.
+                is_segue = bool(li.find("img", src=re.compile(r"greater-than", re.I)))
+
+                notes_sup = li.find("sup", class_="item-notes")
+                song_notes = notes_sup.get_text(strip=True) if notes_sup else ""
+
+                entries.append(
+                    {
+                        "show_id": show_id,
+                        "source_uuid": show_uuid,
+                        "song_uuid": song_uuid,
+                        "set_number": current_set_number,
+                        "song_position": per_set_position,
+                        "song_name": song_name,
+                        "is_segue": is_segue,
+                        "encore": current_set_number >= 90,
+                        "song_notes": song_notes,
+                    }
+                )
+
+        if not entries:
+            parsed_date = None
+            if show_date:
+                try:
+                    parsed_date = datetime.fromisoformat(show_date).date()
+                except ValueError:
+                    parsed_date = None
+            if not parsed_date or parsed_date < date.today():
+                logger.warning(
+                    "No setlist rows parsed for show_id=%s (%s)", show_id, source_url
+                )
+
+        return entries
+
+    def _extract_show_uuid(self, link: Any) -> Optional[str]:
+        """Derive a stable source_uuid from a show link."""
+        href = link.get("href")
+        if not href:
+            return None
+        slug = self._extract_slug_from_url(href)
+        if not slug:
+            return None
+        return self._ensure_uuid(slug)
+
+    def _extract_song_uuid(self, anchor: Any) -> Optional[str]:
+        """Derive a stable song_uuid from a song link."""
+        href = anchor.get("href")
+        if not href or "/song/" not in href:
+            return None
+        after = href.split("/song/")[-1]
+        token = after.split("?")[0].strip("/")
+        if not token:
+            return None
+        return self._ensure_uuid(token)
+
+    def _extract_slug_from_url(self, url: str) -> Optional[str]:
+        """Extract the show/song slug from a billybase.net URL."""
+        if not url:
+            return None
+        cleaned = url.split("?")[0].rstrip("/")
+        parts = cleaned.split("/")
+        return parts[-1] if parts else None
+
+    def _ensure_uuid(self, value: str) -> str:
+        """Return a UUID string for the given token.
+
+        If ``value`` is already a valid UUID it is returned unchanged; otherwise
+        a deterministic UUIDv5 is generated from the billybase URL namespace.
+        """
+        try:
+            return str(uuid.UUID(value))
+        except (ValueError, AttributeError):
+            normalized = (value or "").strip()
+            if not normalized:
+                normalized = "unknown"
+            generated = uuid.uuid5(
+                uuid.NAMESPACE_URL, f"{self.BASE_URL}/setlist/{normalized}"
+            )
+            return str(generated)
+
     def _parse_location(self, location: str) -> Tuple[str, str, str]:
+        """Split a location string into city, state, country."""
         if not location:
             return "", "", ""
 
@@ -385,267 +581,12 @@ class BillyCollector(BandCollector):
         country = parts[-1]
         return city, state, country
 
-    def _collect_upcoming_shows(self, min_date: date) -> List[Dict[str, Any]]:
-        soup = self._fetch_upcoming_soup()
-        if soup is None:
-            return []
-        return self._parse_upcoming_cards(soup, min_date)
-
-    def _fetch_upcoming_soup(self) -> Optional[BeautifulSoup]:
-        """Fetch the upcoming-shows page as a parsed soup.
-
-        bmfsdb renders the upcoming view client-side via Livewire, so a plain
-        ``requests.get`` returns a page shell with no show cards. Try the
-        lightweight request first (cheap, and works if SSR is ever restored);
-        if it yields no cards, fall back to a JS-capable browser that lets the
-        Livewire component hydrate before reading the DOM.
-        """
-        url = f"{self.BASE_URL}/setlists"
-        params = {"view": "upcoming"}
-
-        try:
-            response = self.session.get(url, params=params, timeout=self.config.timeout)
-            response.raise_for_status()
-            soup = BeautifulSoup(response.text, "html.parser")
-            if soup.select("a.link-unstyled"):
-                return soup
-            logger.debug(
-                "Upcoming SSR returned no cards; falling back to browser render."
-            )
-        except RequestException as exc:
-            logger.warning(
-                "requests-based upcoming fetch failed (%s); trying browser render.",
-                exc,
-            )
-
-        try:
-            from ..browser import CloudflareBypass
-
-            rendered = CloudflareBypass.render_html(
-                f"{url}?view=upcoming",
-                wait_for_selector="a.link-unstyled",
-                wait_until="networkidle",
-                selector_timeout_ms=8000,
-            )
-            return BeautifulSoup(rendered.text, "html.parser")
-        except Exception as exc:
-            logger.error(
-                "Browser render of upcoming shows failed; no upcoming shows "
-                "captured: %s",
-                exc,
-            )
-            return None
-
-    def _parse_upcoming_cards(
-        self, soup: BeautifulSoup, min_date: date
-    ) -> List[Dict[str, Any]]:
-        upcoming: List[Dict[str, Any]] = []
-        for link in soup.select("a.link-unstyled"):
-            badge = link.select_one("div.badge")
-            spans = badge.find_all("span") if badge else []
-            if len(spans) < 3:
-                continue
-            month_day = spans[0].get_text(strip=True)
-            year_text = spans[2].get_text(strip=True)
-            show_date = self._parse_show_date(month_day, year_text)
-            if not show_date or show_date < min_date:
-                continue
-
-            venue_block = link.select_one("div.col-8") or link.select_one(
-                "div.col-8.col-md-9"
-            )
-            venue_lines = list(venue_block.stripped_strings) if venue_block else []
-            venue_name = venue_lines[0] if venue_lines else ""
-            location_text = venue_lines[1] if len(venue_lines) > 1 else ""
-            city, state, country = self._parse_location(location_text)
-
-            href = link.get("href") or ""
-            source_url = href if href.startswith("http") else f"{self.BASE_URL}{href}"
-            source_uuid = self._extract_show_uuid(link)
-
-            upcoming.append(
-                {
-                    "source_uuid": source_uuid,
-                    "show_date": show_date.isoformat(),
-                    "venue_name": venue_name,
-                    "venue_city": city,
-                    "venue_state": state,
-                    "venue_country": country,
-                    "source_url": source_url,
-                }
-            )
-
-        logger.info(
-            "✅ %s: Collected %s upcoming shows.", self.ARTIST_NAME, len(upcoming)
-        )
-        return upcoming
-
-    def _scrape_show_setlist(
-        self,
-        show_id: str,
-        source_url: str,
-        uuid: Optional[str],
-        show_date: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
-        try:
-            response = self.session.get(source_url, timeout=self.config.timeout)
-            response.raise_for_status()
-        except RequestException as exc:
-            logger.error(
-                "Failed to fetch setlist for show_id=%s (%s): %s",
-                show_id,
-                source_url,
-                exc,
-            )
-            return []
-
-        soup = BeautifulSoup(response.text, "html.parser")
-
-        panel = soup.select_one("#shows-panel")
-        if not panel:
-            logger.warning(
-                "No setlist panel found for show_id=%s (%s)", show_id, source_url
-            )
-            return []
-
-        entries: List[Dict[str, Any]] = []
-        current_set_number: Optional[int] = None
-        per_set_position = 0
-        show_position = 0
-
-        for child in panel.children:
-            if not hasattr(child, "get"):
-                continue
-            classes = child.get("class", [])
-            if "alert" in classes and "alert-info" in classes:
-                label_text = child.get_text(strip=True).rstrip(":")
-                current_set_number = self._decode_set_label(label_text)
-                per_set_position = 0
-                continue
-
-            if "song-stripe" not in classes or current_set_number is None:
-                continue
-
-            per_set_position += 1
-            show_position += 1
-
-            row = child.select_one("div.row.mb-2")
-            if not row:
-                continue
-
-            song_anchor = row.find("a")
-            if not song_anchor:
-                continue
-
-            song_name = song_anchor.get_text(strip=True)
-            song_uuid = self._extract_song_uuid(song_anchor)
-
-            notes_section = row.select_one("div.col-11.col-md-2")
-            song_notes = (
-                notes_section.get_text(" ", strip=True) if notes_section else ""
-            )
-
-            entries.append(
-                {
-                    "show_id": show_id,
-                    "source_uuid": uuid,
-                    "song_uuid": song_uuid,
-                    "set_number": current_set_number,
-                    "song_position": per_set_position,
-                    "song_name": song_name,
-                    "is_segue": False,
-                    "encore": current_set_number >= 90,
-                    "song_notes": song_notes,
-                }
-            )
-        if not entries:
-            parsed_date = None
-            if show_date:
-                try:
-                    parsed_date = datetime.fromisoformat(show_date).date()
-                except ValueError:
-                    parsed_date = None
-            if not parsed_date or parsed_date < date.today():
-                logger.warning(
-                    "No setlist rows parsed for show_id=%s (%s)", show_id, source_url
-                )
-        return entries
-
-    def _extract_song_notes(self, stripe: Any, primary_text: str) -> str:
-        notes_container = stripe.select_one("div.col-10.col-md-6")
-        if not notes_container:
-            return ""
-
-        notes: List[str] = []
-        for anchor in notes_container.select("a"):
-            text = anchor.get_text(strip=True)
-            if text and text != primary_text:
-                notes.append(text)
-
-        if not notes:
-            return ""
-
-        return ", ".join(dict.fromkeys(notes))  # Preserve order, remove duplicates
-
-    def _extract_song_uuid(self, anchor: Any) -> Optional[str]:
-        href = anchor.get("href")
-        if not href or "/song/" not in href:
-            return None
-        after = href.split("/song/")[-1]
-        return after.split("?")[0]
-
-    def _ensure_uuid(self, value: str) -> str:
-        try:
-            return str(uuid.UUID(value))
-        except (ValueError, AttributeError):
-            normalized = value.strip()
-            if not normalized:
-                normalized = "unknown"
-            generated = uuid.uuid5(
-                uuid.NAMESPACE_URL, f"{self.BASE_URL}/setlist/{normalized}"
-            )
-            return str(generated)
-
-    def _extract_artist_id(self, anchor: Any) -> Optional[str]:
-        if not anchor:
-            return None
-        href = anchor.get("href")
-        if not href or "/artist/" not in href:
-            return None
-        return href.rstrip("/").split("/")[-1] or None
-
-    def _find_livewire_component(self, soup: Any, component_name: str) -> Optional[Any]:
-        for candidate in soup.select("div[wire\\:id]"):
-            snapshot = candidate.get("wire:snapshot") or ""
-            if component_name in snapshot:
-                return candidate
-        return None
-
-    def _parse_int_cell(self, cell: Any) -> int:
-        text = (cell.get_text(strip=True) if cell else "").replace(",", "")
-        if not text or text.upper() in {"N/A", "--"}:
-            return 0
-        try:
-            return int(text)
-        except (TypeError, ValueError):
-            return 0
-
-    def _parse_song_date(self, cell: Any) -> Optional[str]:
-        text = (cell.get_text(strip=True) if cell else "").strip()
-        if not text or text.upper() in {"N/A", "--"}:
-            return None
-        try:
-            parsed = datetime.strptime(text, "%Y-%m-%d").date()
-            return parsed.isoformat()
-        except ValueError:
-            return None
-
     def _decode_set_label(self, label: str) -> int:
+        """Map set labels (Set 1, Encore, Soundcheck) to set numbers."""
         normalized = label.strip().lower()
         if "soundcheck" in normalized:
             return 0
         if "encore" in normalized:
-            # Encore 1, Encore 2 => 90 + index, default 99
             match = re.search(r"(\d+)", normalized)
             if match:
                 return 90 + int(match.group(1))

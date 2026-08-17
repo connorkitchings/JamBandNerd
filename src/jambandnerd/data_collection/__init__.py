@@ -8,7 +8,7 @@ Supported bands:
 - eggy: Eggy data from thecarton.net API
 - phish: Phish data from phish.net API
 - wsp: Widespread Panic data from everydaycompanion.com
-- billy: Billy Strings data from bmfsdb.com
+- billy: Billy Strings data from billybase.net
 - um: Umphrey's McGee data from allthings.umphreys.com
 
 Core components:

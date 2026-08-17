@@ -164,7 +164,7 @@ uv run python scripts/report_model_headroom.py --backtests-dir backtests --out-d
 This report reads existing backtest artifacts, lists incumbent metrics and
 worst-show segments, and records the current recommendation per band. WSP stays
 on hold until Everyday Companion has the missing recent setlists; Billy stays on
-hold until `bmfsdb.com` source reachability recovers. Goose architecture spikes
+hold until `billybase.net` source reachability recovers. Goose architecture spikes
 should only follow if diagnostics show an actionable miss pattern.
 
 ## Final Web Promotion
