@@ -235,7 +235,9 @@ EXCLUDED_PREDICTION_SHOW_IDS: Final[dict[str, list[str]]] = {
         "1730168333",  # 2024-11-24 MSG short set (5 songs)
     ],
     "eggy": [],
-    "phish": [],
+    "phish": [
+        "1785867540",  # 2026-10-10 Huntsville show postponed to 2026-10-12
+    ],
     "wsp": [],
     "billy": [],
     "um": [],

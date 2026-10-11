@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
+from typing import Any
 
 import pandas as pd
 
@@ -21,13 +22,13 @@ class _BillyCollectorStub:
                 "source_uuid": "existing-show",
                 "show_date": "2024-03-01",
                 "venue_name": "Venue 1",
-                "source_url": "https://bmfsdb.com/setlist/existing-show",
+                "source_url": "https://billybase.net/show/existing-show/",
             },
             {
                 "source_uuid": "new-show",
                 "show_date": "2024-03-02",
                 "venue_name": "Venue 2",
-                "source_url": "https://bmfsdb.com/setlist/new-show",
+                "source_url": "https://billybase.net/show/new-show/",
             },
         ]
 
@@ -180,13 +181,13 @@ def test_run_billy_collection_uses_paginated_existing_setlist_reads(monkeypatch)
                 {
                     "show_id": 1001,
                     "source_uuid": "existing-show",
-                    "source_url": "https://bmfsdb.com/setlist/existing-show",
+                    "source_url": "https://billybase.net/show/existing-show/",
                     "show_date": "2024-03-01",
                 },
                 {
                     "show_id": 1002,
                     "source_uuid": "new-show",
-                    "source_url": "https://bmfsdb.com/setlist/new-show",
+                    "source_url": "https://billybase.net/show/new-show/",
                     "show_date": "2024-03-02",
                 },
             ]
@@ -227,6 +228,29 @@ def test_run_billy_collection_uses_paginated_existing_setlist_reads(monkeypatch)
         "validate_and_upsert_dataframe",
         lambda *_args, **_kwargs: None,
     )
+
+    class _ReconcileQueryStub:
+        def select(self, *_args, **_kwargs):
+            return self
+
+        def gte(self, *_args, **_kwargs):
+            return self
+
+        def lte(self, *_args, **_kwargs):
+            return self
+
+        def execute(self):
+            return SimpleNamespace(data=[])
+
+    class _ReconcileClientStub:
+        def table(self, _name):
+            return _ReconcileQueryStub()
+
+    monkeypatch.setattr(
+        run_billy_collection,
+        "get_supabase_client",
+        lambda: _ReconcileClientStub(),
+    )
     monkeypatch.setattr(
         run_billy_collection,
         "CollectionTimer",
@@ -250,7 +274,7 @@ def test_run_billy_collection_uses_paginated_existing_setlist_reads(monkeypatch)
         [
             {
                 "show_id": 1002,
-                "source_url": "https://bmfsdb.com/setlist/new-show",
+                "source_url": "https://billybase.net/show/new-show/",
                 "source_uuid": "new-show",
                 "show_date": "2024-03-02",
             }
@@ -422,6 +446,105 @@ def test_run_billy_collection_preserves_existing_song_name_on_uuid_conflict(
         "song_name": "Miss the Mississippi and You",
         "conflict_columns": ("song_name",),
     }
+
+
+def test_run_billy_collection_reconciles_show_uuids_by_date_venue(monkeypatch):
+    """A BillyBase slug-derived UUID is replaced by the existing bmfsdb UUID."""
+
+    class _ReconcilingCollectorStub:
+        def collect_songs(self):
+            return []
+
+        def collect_shows(self, start_date=None, end_date=None):
+            return [
+                {
+                    "source_uuid": "11111111-1111-1111-1111-111111111111",
+                    "show_date": "2024-03-01",
+                    "venue_name": "Venue 1",
+                    "source_url": "https://billybase.net/show/venue-1-2024-03-01/",
+                },
+            ]
+
+    collector = _ReconcilingCollectorStub()
+    upserted_shows: dict[str, Any] = {}
+
+    class _ReconcileQueryStub:
+        def select(self, *_args, **_kwargs):
+            return self
+
+        def gte(self, *_args, **_kwargs):
+            return self
+
+        def lte(self, *_args, **_kwargs):
+            return self
+
+        def execute(self):
+            return SimpleNamespace(
+                data=[
+                    {
+                        "show_id": 1234,
+                        "source_uuid": "existing-bmfsdb-uuid",
+                        "show_date": "2024-03-01",
+                        "venue_name": "Venue 1",
+                    }
+                ]
+            )
+
+    class _ReconcileClientStub:
+        def table(self, _name):
+            return _ReconcileQueryStub()
+
+    def fake_fetch_rows_by_column_values(
+        table_name, *, select_columns, filter_column, values, chunk_size=200
+    ):
+        assert table_name == "billy_shows_raw"
+        assert filter_column == "source_uuid"
+        return [
+            {
+                "show_id": 1234,
+                "source_uuid": "existing-bmfsdb-uuid",
+                "source_url": "https://billybase.net/show/venue-1-2024-03-01/",
+                "show_date": "2024-03-01",
+            }
+        ]
+
+    def fake_upsert(table_name, df, conflict_columns, **_kwargs):
+        upserted_shows["table_name"] = table_name
+        upserted_shows["source_uuid"] = df.iloc[0]["source_uuid"]
+        upserted_shows["source_url"] = df.iloc[0]["source_url"]
+        upserted_shows["conflict_columns"] = tuple(conflict_columns)
+
+    monkeypatch.setattr(
+        run_billy_collection, "ensure_source_reachable", lambda *_args, **_kwargs: None
+    )
+    monkeypatch.setattr(run_billy_collection, "BillyCollector", lambda: collector)
+    monkeypatch.setattr(
+        run_billy_collection,
+        "fetch_rows_by_column_values",
+        fake_fetch_rows_by_column_values,
+    )
+    monkeypatch.setattr(
+        run_billy_collection, "get_supabase_client", lambda: _ReconcileClientStub()
+    )
+    monkeypatch.setattr(
+        run_billy_collection,
+        "validate_and_upsert_dataframe",
+        fake_upsert,
+    )
+    monkeypatch.setattr(
+        run_billy_collection,
+        "CollectionTimer",
+        lambda *_args, **_kwargs: type("T", (), {"log": lambda *a, **k: None})(),
+    )
+
+    run_billy_collection.run_billy_collection(skip_validation=True, skip_setlists=True)
+
+    assert upserted_shows["table_name"] == "billy_shows_raw"
+    assert upserted_shows["source_uuid"] == "existing-bmfsdb-uuid"
+    assert upserted_shows["source_url"] == (
+        "https://billybase.net/show/venue-1-2024-03-01/"
+    )
+    assert upserted_shows["conflict_columns"] == ("source_uuid",)
 
 
 def test_wsp_process_uses_paginated_existing_setlist_reads(monkeypatch):

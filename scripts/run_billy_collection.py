@@ -2,7 +2,7 @@
 
 This script mirrors the goose/wsp collectors by normalizing scraped data and
 persisting it into the Supabase raw tables. It focuses on shows and setlists,
-with placeholders for songs/venues should bmfsdb.com expose richer endpoints
+with placeholders for songs/venues should billybase.net expose richer endpoints
 in the future.
 """
 
@@ -16,8 +16,9 @@ sys.path.insert(0, project_root)
 
 import argparse
 import os
+import re
 from datetime import date, datetime, timedelta
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 
 from scripts.common import ensure_source_reachable
 from src.jambandnerd.data_collection.billy.collector import BillyCollector
@@ -137,6 +138,73 @@ def _sync_existing_song_names_by_uuid(songs_df):
     return adjusted
 
 
+def _normalize_venue_key(name: Optional[str]) -> str:
+    """Normalize a venue name for stable matching across sources."""
+    return re.sub(r"[^a-z0-9]", "", (name or "").lower())
+
+
+def _reconcile_existing_show_uuids_by_date_venue(
+    shows_data: List[Dict[str, Any]],
+) -> List[Dict[str, Any]]:
+    """Reuse existing billy_shows_raw source_uuid when date+venue matches.
+
+    BillyBase uses slug-derived UUIDs while the historical corpus was keyed on
+    bmfsdb UUIDs. Matching by natural key preserves ``show_id`` continuity for
+    the prediction corpus while still updating venue/source_url from BillyBase.
+    """
+    if not shows_data:
+        return shows_data
+
+    dates = [show["show_date"] for show in shows_data if show.get("show_date")]
+    if not dates:
+        return shows_data
+
+    min_date = min(dates)
+    max_date = max(dates)
+
+    try:
+        client = get_supabase_client()
+        response = (
+            client.table("billy_shows_raw")
+            .select("show_id, source_uuid, show_date, venue_name")
+            .gte("show_date", min_date)
+            .lte("show_date", max_date)
+            .execute()
+        )
+        existing_rows = cast(List[Dict[str, Any]], response.data or [])
+    except Exception as exc:  # pragma: no cover - supabase connectivity
+        print(
+            f"Warning: could not fetch existing Billy shows for reconciliation ({exc})."
+        )
+        return shows_data
+
+    existing_by_key: Dict[tuple[str, str], str] = {}
+    for row in existing_rows:
+        key = (
+            row["show_date"],
+            _normalize_venue_key(row.get("venue_name")),
+        )
+        existing_by_key[key] = row["source_uuid"]
+
+    updated = 0
+    for show in shows_data:
+        key = (
+            show["show_date"],
+            _normalize_venue_key(show.get("venue_name")),
+        )
+        existing_uuid = existing_by_key.get(key)
+        if existing_uuid and existing_uuid != show.get("source_uuid"):
+            show["source_uuid"] = existing_uuid
+            updated += 1
+
+    if updated:
+        print(
+            f"Reconciled {updated} BillyBase show(s) to existing source_uuid "
+            "by date+venue."
+        )
+    return shows_data
+
+
 def run_billy_collection(
     skip_validation: bool = False,
     start_date: Optional[str] = None,
@@ -187,6 +255,7 @@ def run_billy_collection(
 
     # Shows
     shows_data = collector.collect_shows(start_date=start_dt, end_date=end_dt)
+    shows_data = _reconcile_existing_show_uuids_by_date_venue(shows_data)
     if shows_data:
         shows_df = normalize_shows(shows_data)
         validate_and_upsert_dataframe(

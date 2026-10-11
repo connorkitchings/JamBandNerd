@@ -101,11 +101,12 @@ Collection is driven by recent activity (recent completed shows, missing recent 
 - Because browser-backed collection and automation import Playwright directly at runtime, it is a locked runtime dependency rather than a dev-only tool.
 - If Cloudflare is lifted, Eggy automatically skips Playwright and uses direct HTTP.
 
-### Billy Upcoming-Shows Hydration
+### Billy Data Source
 
-- bmfsdb.com renders the upcoming-shows view client-side via Livewire 3. The paginated past-shows listing is still server-rendered, but `?view=upcoming` returns an empty Livewire component to a plain HTTP client.
-- `BillyCollector._collect_upcoming_shows` therefore tries a lightweight `requests.get` first; if it yields no `a.link-unstyled` cards, it falls back to `CloudflareBypass.render_html` (Firefox), which waits for Livewire hydration before reading the DOM. Parsing logic is identical for both paths.
-- This fixes a latent breakage: once bmfsdb lists future Billy shows again, they are captured automatically. It does not create upstream data — when bmfsdb's community has not yet entered a tour, the upcoming list is legitimately empty and Billy predictions idle until shows appear.
+- Billy Strings data is collected from `billybase.net`, a server-rendered WordPress/Elementor site.
+- Shows are enumerated from the `/past-shows/` listing and the chronological `< Prev` navigation on individual show pages. Upcoming shows are parsed directly from `/upcoming-shows/`; no JS hydration or Playwright fallback is required.
+- Setlists are scraped from each `/show/<slug>/` page. `SHOW INFO` provides `show_date`, `venue_name`, `city`, and `state/country`; the `SETLIST` section provides `Set 1`/`Set 2`/`Encore` markers and per-song segue indicators.
+- `source_uuid` continuity is preserved by reconciling BillyBase shows against existing `billy_shows_raw` rows by `(show_date, venue_name)` before upsert, so the existing prediction corpus keyed on `show_id` remains intact.
 
 ### Failure Policy
 
