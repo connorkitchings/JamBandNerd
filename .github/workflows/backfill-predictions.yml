@@ -24,7 +24,7 @@ on:
 jobs:
   setup:
     name: Setup Matrix
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       bands: ${{ steps.set_bands.outputs.bands }}
     steps:
@@ -49,7 +49,7 @@ jobs:
   backfill:
     name: Sync retained corpus - ${{ matrix.band }}
     needs: setup
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 120
     strategy:
       matrix:
@@ -111,7 +111,7 @@ jobs:
   summary:
     name: Backfill Summary
     needs: [setup, backfill]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: always()
     steps:
       - name: Summary

@@ -41,7 +41,7 @@ concurrency:
 jobs:
   run-tracker:
     name: "Live Tracker: ${{ github.event.inputs.band }} on ${{ github.event.inputs.date }}"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     
     # GitHub Actions limit is 6 hours; set timeout slightly below to allow graceful fail
     timeout-minutes: 360

@@ -11,7 +11,7 @@ permissions:
 jobs:
   pip-audit:
     name: Audit Locked Python Dependencies
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
 
     steps:
