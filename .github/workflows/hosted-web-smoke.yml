@@ -17,7 +17,7 @@ permissions:
 jobs:
   verify-hosted-web:
     name: Verify Hosted Website
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
 
     env:

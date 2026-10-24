@@ -26,7 +26,7 @@ on:
 jobs:
   setup:
     name: Setup Dynamic Matrix
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       bands: ${{ steps.get_bands.outputs.bands }}
       bands_list: ${{ steps.get_bands.outputs.bands_list }}
@@ -52,7 +52,7 @@ jobs:
   daily-pipeline:
     name: Daily Pipeline - ${{ matrix.band }}
     needs: setup
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 120
     strategy:
       matrix:
@@ -597,7 +597,7 @@ jobs:
     name: Pipeline Summary
     needs: [setup, daily-pipeline]
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
