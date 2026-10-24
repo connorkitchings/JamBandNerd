@@ -165,7 +165,7 @@ class CloudflareBypass:
         Like :meth:`make_request` (which is tuned for Cloudflare challenges) but
         waits for *wait_for_selector* to appear before reading the DOM, so
         JS-rendered content (Livewire/Alpine/Vue) is present. Used by collectors
-        whose listing pages hydrate client-side (e.g. bmfsdb's upcoming view).
+        whose listing pages hydrate client-side (e.g. a Livewire-based upcoming view).
 
         If the selector never appears — for example the source legitimately has
         no results to show — the current DOM is returned without raising so the

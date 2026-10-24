@@ -70,8 +70,9 @@ JamBandNerd has a production-ready website-first product surface and a productio
 - WSP full-audit readiness is blocked by recent Everyday Companion pages that
   expose show pages but no setlist table for May 8 and May 9, 2026. Treat this
   as an upstream data-availability blocker, not a model-promotion blocker.
-- Billy full-audit readiness is blocked by `bmfsdb.com` returning HTTP 500
-  during source reachability preflight.
+- Billy collection was blocked by `bmfsdb.com` returning HTTP 500; the source
+  has been migrated to `billybase.net` and collection should resume on the next
+  daily run.
 - Until both upstreams can publish current website-facing rows again, defer the
   full five-band Supabase audit and preserve the already-validated Goose,
   Phish, and UM readiness fixes.
