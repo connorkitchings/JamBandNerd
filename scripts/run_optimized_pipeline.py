@@ -38,6 +38,7 @@ from scripts.run_um_collection import run_um_collection
 from scripts.run_wsp_collection import run_wsp_collection
 from scripts.validate_accuracy_tables import validate_accuracy
 from scripts.validate_prediction_tables import validate_predictions
+from scripts.verify_data_freshness import audit_recent_setlist_completeness
 from src.jambandnerd.config.bands import get_daily_pipeline_bands
 
 logging.basicConfig(
@@ -220,6 +221,35 @@ def run_band_pipeline(
         traceback.print_exc()
 
         return False
+
+    try:
+        completeness = audit_recent_setlist_completeness(band, emit_text=False)
+    except Exception as exc:
+        log_with_timestamp(
+            f"{log_prefix} WARNING: recent setlist completeness check failed: {exc}"
+        )
+        completeness = None
+
+    if completeness is not None and not completeness.ok and not force:
+        log_with_timestamp(
+            f"{log_prefix} Degraded upstream lag: "
+            f"missing_recent_setlists={completeness.missing_show_count} "
+            f"partial_recent_setlists={completeness.partial_show_count}. "
+            "Holding off on prediction and backtest regeneration; reusing existing board."
+        )
+        if not run_step(
+            _audit_band_supabase,
+            band,
+            "Supabase Audit",
+            max_age_hours=72,
+            skip_accuracy=True,
+        ):
+            return False
+
+        log_with_timestamp(
+            f"{log_prefix} ⚠️ Completed pipeline in degraded mode (reused existing predictions)."
+        )
+        return True
 
     # Step 2: Generate Predictions, Backtest, and Calculate Accuracy
     backtest_incremental_all_scored = True

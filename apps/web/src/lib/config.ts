@@ -34,3 +34,33 @@ export function normalizeBand(value?: string): BandSlug {
   const normalized = value?.trim().toLowerCase();
   return normalized && normalized.length > 0 ? normalized : DEFAULT_BAND_SLUG;
 }
+
+/**
+ * Show IDs and dates excluded from prediction/backtest windows (mirrors
+ * `src/jambandnerd/config/bands.py`).
+ */
+export const EXCLUDED_PREDICTION_SHOW_IDS: Record<string, readonly string[]> = {
+  goose: [
+    "1755099318", // 2025-08-13 TV appearance
+    "1748090458", // 2025-05-25 Napa short set (4 songs; full show same day)
+    "1745685585", // 2025-04-25 short set (3 songs)
+    "1741108426", // 2025-03-11 promo (1 song)
+    "1730168333", // 2024-11-24 MSG short set (5 songs)
+  ],
+  eggy: [],
+  phish: [
+    "1785867540", // 2026-10-10 Huntsville show postponed to 2026-10-12
+  ],
+  wsp: [],
+  billy: [],
+  um: [],
+};
+
+export const EXCLUDED_PREDICTION_SHOW_DATES: Record<string, readonly string[]> = {
+  goose: [],
+  eggy: [],
+  phish: [],
+  wsp: [],
+  billy: [],
+  um: [],
+};

@@ -15,7 +15,7 @@ import pandas as pd
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, project_root)
 
-from scripts.common import fetch_table, prepare_band_data
+from scripts.common import completed_show_window, fetch_table, prepare_band_data
 from src.jambandnerd.config import (
     SETLIST_PREDICTION_SONGS_TABLE,
     SETLIST_PREDICTIONS_TABLE,
@@ -122,6 +122,88 @@ def _resolve_next_show(
     return None
 
 
+def _find_recent_missing_setlist_shows(
+    shows_df: pd.DataFrame,
+    setlists_df: pd.DataFrame,
+    *,
+    today: date | None = None,
+    days: int = 7,
+    min_unique_songs: int = 3,
+) -> list[dict[str, str | None]]:
+    """Return recent completed shows that do not yet have a complete setlist."""
+    if shows_df.empty:
+        return []
+
+    cutoff_str, end_str = completed_show_window(today=today, days=days)
+    cutoff_dt = date.fromisoformat(cutoff_str)
+    end_dt = date.fromisoformat(end_str)
+
+    shows = shows_df.copy()
+    shows["_show_date_dt"] = pd.to_datetime(shows["show_date"], errors="coerce").dt.date
+    recent = shows[
+        shows["_show_date_dt"].notna()
+        & (shows["_show_date_dt"] >= cutoff_dt)
+        & (shows["_show_date_dt"] <= end_dt)
+    ].sort_values(by=["_show_date_dt", "show_id"])
+    if recent.empty:
+        return []
+
+    song_counts: dict[str, int] = {}
+    if not setlists_df.empty and {"show_id", "song_name"}.issubset(setlists_df.columns):
+        recent_ids = set(recent["show_id"].astype(str))
+        relevant_setlists = setlists_df[
+            setlists_df["show_id"].astype(str).isin(recent_ids)
+        ].dropna(subset=["show_id", "song_name"])
+        if not relevant_setlists.empty:
+            song_counts = (
+                relevant_setlists.assign(show_id=lambda d: d["show_id"].astype(str))
+                .groupby("show_id")["song_name"]
+                .nunique()
+                .to_dict()
+            )
+
+    covered_dates = {
+        row["_show_date_dt"]
+        for _, row in recent.iterrows()
+        if song_counts.get(str(row["show_id"]), 0) >= min_unique_songs
+    }
+
+    missing: list[dict[str, str | None]] = []
+    seen_dates: set[date] = set()
+    for _, row in recent.iterrows():
+        show_date = row["_show_date_dt"]
+        if (
+            not isinstance(show_date, date)
+            or show_date in covered_dates
+            or show_date in seen_dates
+        ):
+            continue
+        seen_dates.add(show_date)
+        missing.append(
+            {
+                "show_id": str(row["show_id"]),
+                "show_date": show_date.isoformat(),
+                "venue_name": _first_string(row, ("venue_name", "venue")),
+                "city": _first_string(row, ("city", "venue_city")),
+                "state": _first_string(row, ("state", "venue_state", "region")),
+            }
+        )
+    return missing
+
+
+def _format_missing_show_summary(missing_shows: list[dict[str, str | None]]) -> str:
+    parts: list[str] = []
+    for item in missing_shows:
+        show_date = item.get("show_date") or "unknown-date"
+        location = ", ".join(
+            part for part in (item.get("city"), item.get("state")) if part
+        )
+        venue = item.get("venue_name")
+        detail = location or venue
+        parts.append(f"{show_date} ({detail})" if detail else show_date)
+    return ", ".join(parts)
+
+
 def generate_live_predictions(
     *,
     band: str,
@@ -130,6 +212,7 @@ def generate_live_predictions(
     require_output: bool = False,
     today: date | None = None,
     dry_run: bool = False,
+    allow_missing_recent_setlists: bool = False,
 ) -> bool:
     """Generate and store one active single-model next-show prediction board."""
     band = band.lower()
@@ -156,6 +239,21 @@ def generate_live_predictions(
         return False
 
     shows_df, setlists_df = prepare_band_data(shows_df, setlists_df, band=band)
+    if not allow_missing_recent_setlists:
+        missing_recent = _find_recent_missing_setlist_shows(
+            shows_df, setlists_df, today=today
+        )
+        if missing_recent:
+            summary = _format_missing_show_summary(missing_recent)
+            message = (
+                f"{log_prefix} Holding off on live prediction board generation: "
+                f"recent completed show setlist data is still missing upstream for {summary}."
+            )
+            print(message)
+            if require_output:
+                raise RuntimeError(message)
+            return False
+
     target = _resolve_next_show(band, shows_df, upcoming_df=upcoming_df, today=today)
     if target is None:
         message = f"{log_prefix} No upcoming show found; no live board written."
@@ -242,6 +340,11 @@ def main() -> None:
         action="store_true",
         help="Compute and report the live prediction payload without writing tables.",
     )
+    parser.add_argument(
+        "--allow-missing-recent-setlists",
+        action="store_true",
+        help="Generate predictions even if a recent completed show is missing setlist data.",
+    )
     args = parser.parse_args()
 
     generate_live_predictions(
@@ -249,6 +352,7 @@ def main() -> None:
         exclusion_window=args.exclusion_window,
         require_output=args.require_output,
         dry_run=args.dry_run,
+        allow_missing_recent_setlists=args.allow_missing_recent_setlists,
     )
 
 

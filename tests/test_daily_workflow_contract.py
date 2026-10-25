@@ -77,11 +77,11 @@ def test_daily_workflow_limits_degraded_accuracy_warning_to_wsp_upstream_lag() -
     workflow = WORKFLOW_PATH.read_text()
     informational_accuracy_condition = (
         "github.event.inputs.skip_accuracy == 'true' || "
-        "(matrix.band == 'wsp' && "
-        "steps.collection.outputs.outcome_code == 'degraded_upstream_lag')"
+        "steps.data_check.outputs.missing_data == 'true' || "
+        "steps.collection.outputs.outcome_code == 'degraded_upstream_lag'"
     )
 
-    assert workflow.count(informational_accuracy_condition) == 2
+    assert workflow.count(informational_accuracy_condition) == 3
     assert (
         workflow.count('if [[ "${ACCURACY_FRESHNESS_IS_INFORMATIONAL}" == "true" ]]')
         == 1

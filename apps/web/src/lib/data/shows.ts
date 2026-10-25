@@ -9,7 +9,12 @@ import { cache } from "react";
 import type { BandSlug } from "@/lib/config";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { buildShowDetails, selectUmUpcomingShowRow, type ShowDetails } from "@/lib/next-show";
-import { getEasternTodayIso } from "@/lib/show-status";
+import {
+  findMissingSetlistShows,
+  getEasternDateOffsetIso,
+  getEasternTodayIso,
+  type MissingSetlistShow,
+} from "@/lib/show-status";
 
 import { getClientOrState, getBandContext, bandEntryBySlug, getBands } from "./bands";
 import { asRecord, parseNumber, parseStringArray } from "./parsers";
@@ -329,6 +334,76 @@ export const getLastShowSetlist = cache(
         status: "error",
         message: error instanceof Error ? error.message : "Unknown error",
       };
+    }
+  },
+);
+
+export const getRecentMissingSetlistShows = cache(
+  async (
+    bandInput: string | undefined,
+    latestPredictionTargetDate: string | null = null,
+  ): Promise<MissingSetlistShow[]> => {
+    const client = getSupabaseServerClient();
+    if (!client) {
+      return [];
+    }
+
+    const bandState = await getBandContext(bandInput);
+    if (bandState.status !== "ready") {
+      return [];
+    }
+
+    const { band, bandEntry } = bandState;
+    const { showsTable, idColumn } = bandEntry;
+    const setlistTable = `${band}_setlists_raw`;
+    const now = new Date();
+    const todayIso = getEasternTodayIso(now);
+    const cutoffIso = getEasternDateOffsetIso(-7, now);
+
+    try {
+      const { data: showData, error: showError } = await client
+        .from(showsTable)
+        .select(showDetailsColumns(band, idColumn))
+        .gte("show_date", cutoffIso)
+        .lt("show_date", todayIso)
+        .order("show_date", { ascending: true });
+
+      if (showError || !showData || showData.length === 0) {
+        return [];
+      }
+
+      const showRows = showData
+        .map((item) => asRecord(item))
+        .filter((item): item is Record<string, unknown> => item !== null);
+
+      const showIds = showRows
+        .map((row) => row[idColumn] ?? row.show_id)
+        .filter((value): value is string | number => value !== undefined && value !== null);
+
+      if (showIds.length === 0) {
+        return [];
+      }
+
+      const { data: setlistData, error: setlistError } = await client
+        .from(setlistTable)
+        .select(`${idColumn}, song_name`)
+        .in(idColumn, showIds);
+
+      if (setlistError) {
+        return [];
+      }
+
+      const setlistRows = (setlistData ?? [])
+        .map((item) => asRecord(item))
+        .filter((item): item is Record<string, unknown> => item !== null);
+
+      return findMissingSetlistShows(band, showRows, setlistRows, {
+        idColumn,
+        now,
+        latestPredictionTargetDate,
+      });
+    } catch {
+      return [];
     }
   },
 );
