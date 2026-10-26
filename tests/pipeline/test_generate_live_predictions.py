@@ -80,3 +80,121 @@ def test_generate_live_predictions_dry_run_skips_writes(monkeypatch, capsys):
     assert "target_show_key=future-show" in output
     assert "top_k=2" in output
     assert "top_song=Song A" in output
+
+
+def test_generate_live_predictions_holds_off_when_recent_completed_show_missing_setlist(
+    monkeypatch, capsys
+):
+    rows_by_table = {
+        "wsp_shows_raw": [
+            {
+                "show_id": "22488",
+                "show_date": "2026-10-23",
+                "venue_name": "The Riverside Theater",
+                "city": "Milwaukee",
+                "state": "WI",
+            },
+            {
+                "show_id": "22489",
+                "show_date": "2026-10-24",
+                "venue_name": "The Riverside Theater",
+                "city": "Milwaukee",
+                "state": "WI",
+            },
+        ],
+        "wsp_setlists_raw": [
+            {"show_id": "22400", "song_name": "Chilly Water"},
+            {"show_id": "22400", "song_name": "Porch Song"},
+            {"show_id": "22400", "song_name": "Tall Boy"},
+        ],
+    }
+
+    monkeypatch.setattr(module, "fetch_table", lambda table: rows_by_table[table])
+    monkeypatch.setattr(
+        module,
+        "prepare_band_data",
+        lambda shows_df, setlists_df, band: (shows_df, setlists_df),
+    )
+    monkeypatch.setattr(
+        module,
+        "get_band_metadata",
+        lambda band: type(
+            "Metadata", (), {"model_version": "wsp_deal_v2", "default_top_k": 50}
+        )(),
+    )
+    monkeypatch.setattr(module, "get_band_serializer", lambda band: lambda preds: preds)
+    monkeypatch.setattr(
+        module,
+        "generate_model_data",
+        lambda *a, **kw: pytest.fail("should hold off before generate_model_data"),
+    )
+
+    result = module.generate_live_predictions(
+        band="wsp",
+        today=date(2026, 10, 24),
+        dry_run=True,
+    )
+
+    assert result is False
+    output = capsys.readouterr().out
+    assert "Holding off on live prediction board generation" in output
+    assert "2026-10-23 (Milwaukee, WI)" in output
+
+    with pytest.raises(
+        RuntimeError, match="Holding off on live prediction board generation"
+    ):
+        module.generate_live_predictions(
+            band="wsp",
+            today=date(2026, 10, 24),
+            require_output=True,
+        )
+
+
+def test_generate_live_predictions_allows_override_when_recent_setlist_missing(
+    monkeypatch,
+):
+    rows_by_table = {
+        "wsp_shows_raw": [
+            {"show_id": "22488", "show_date": "2026-10-23"},
+            {"show_id": "22489", "show_date": "2026-10-24"},
+        ],
+        "wsp_setlists_raw": [
+            {"show_id": "22400", "song_name": "Chilly Water"},
+        ],
+    }
+
+    monkeypatch.setattr(module, "fetch_table", lambda table: rows_by_table[table])
+    monkeypatch.setattr(
+        module,
+        "prepare_band_data",
+        lambda shows_df, setlists_df, band: (shows_df, setlists_df),
+    )
+    monkeypatch.setattr(module, "generate_model_data", lambda *a, **kw: object())
+    monkeypatch.setattr(
+        module, "build_band_predictor", lambda band, **kwargs: _PredictorStub()
+    )
+    monkeypatch.setattr(
+        module,
+        "get_band_serializer",
+        lambda band: (
+            lambda preds: [
+                {"rank": index + 1, "song_name": pred.song_name}
+                for index, pred in enumerate(preds)
+            ]
+        ),
+    )
+    monkeypatch.setattr(
+        module,
+        "get_band_metadata",
+        lambda band: type(
+            "Metadata", (), {"model_version": "wsp_deal_v2", "default_top_k": 2}
+        )(),
+    )
+
+    result = module.generate_live_predictions(
+        band="wsp",
+        today=date(2026, 10, 24),
+        dry_run=True,
+        allow_missing_recent_setlists=True,
+    )
+    assert result is True

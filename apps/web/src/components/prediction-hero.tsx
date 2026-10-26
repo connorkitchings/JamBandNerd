@@ -1,10 +1,20 @@
-import type { PredictionDisplayState } from "@/lib/show-status";
-import { TONIGHT_STATUS_LABEL } from "@/lib/show-status";
+import { buildLocationLabel, formatCompactDateLabel } from "@/lib/format";
+import type { MissingSetlistShow, PredictionDisplayState } from "@/lib/show-status";
+import {
+  shouldShowAfternoonUpdateScheduled,
+  TONIGHT_STATUS_LABEL,
+} from "@/lib/show-status";
 
 type MetricCard = {
   title: string;
   avgHits: string;
   coverage: string;
+};
+
+type PendingNextShowInfo = {
+  dateLabel: string;
+  venueName: string | null;
+  locationLabel: string | null;
 };
 
 type Props = {
@@ -14,7 +24,34 @@ type Props = {
   statusLabel: string;
   snapshotLabel: string;
   displayState: PredictionDisplayState | null;
+  heroShowDate?: string | null;
+  missingSetlistShows?: readonly MissingSetlistShow[];
+  pendingNextShow?: PendingNextShowInfo | null;
 };
+
+export function formatMissingShowSummary(
+  shows: readonly MissingSetlistShow[],
+): string {
+  const parts = shows.map((show) => {
+    const dateText = formatCompactDateLabel(show.showDate);
+    const locationText =
+      buildLocationLabel([show.city, show.state ?? show.country]) ||
+      show.venueName ||
+      "";
+    return locationText ? `${dateText} in ${locationText}` : dateText;
+  });
+
+  if (parts.length === 0) {
+    return "";
+  }
+  if (parts.length === 1) {
+    return parts[0];
+  }
+  if (parts.length === 2) {
+    return `${parts[0]} and ${parts[1]}`;
+  }
+  return `${parts.slice(0, -1).join(", ")}, and ${parts[parts.length - 1]}`;
+}
 
 type MetricPanelProps = {
   performanceWindowLabel: string;
@@ -103,9 +140,18 @@ export function PredictionHero({
   statusLabel,
   snapshotLabel,
   displayState,
+  heroShowDate = null,
+  missingSetlistShows = [],
+  pendingNextShow = null,
 }: Props) {
   const headlineLocation = venueName || locationLabel;
   const dateDetail = [dateLabel, locationLabel].filter(Boolean).join(" • ");
+  const hasMissingSetlists = missingSetlistShows.length > 0;
+  const showAfternoonScheduled = shouldShowAfternoonUpdateScheduled(
+    heroShowDate,
+    new Date(),
+    hasMissingSetlists,
+  );
 
   return (
     <section className="mb-10">
@@ -137,14 +183,20 @@ export function PredictionHero({
                 {statusLabel}
               </span>
             )}
-            {displayState === "previous" && (
-              <span className="inline-flex items-center rounded-full border border-outline-variant/20 bg-surface/45 px-3 py-1.5 font-label text-[10px] font-semibold uppercase tracking-[0.12rem] text-on-surface">
-                <svg className="mr-1.5 size-3.5 text-on-surface-variant" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6l4 2" />
-                  <circle cx="12" cy="12" r="9" />
-                </svg>
-                Update scheduled for afternoon
+            {hasMissingSetlists ? (
+              <span className="inline-flex items-center rounded-full border border-amber-500/35 bg-amber-500/12 px-3 py-1.5 font-label text-[10px] font-semibold uppercase tracking-[0.12rem] text-amber-400">
+                Awaiting Upstream Setlist
               </span>
+            ) : (
+              showAfternoonScheduled && (
+                <span className="inline-flex items-center rounded-full border border-outline-variant/20 bg-surface/45 px-3 py-1.5 font-label text-[10px] font-semibold uppercase tracking-[0.12rem] text-on-surface">
+                  <svg className="mr-1.5 size-3.5 text-on-surface-variant" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6l4 2" />
+                    <circle cx="12" cy="12" r="9" />
+                  </svg>
+                  Update scheduled for afternoon
+                </span>
+              )
             )}
           </div>
 
@@ -162,6 +214,29 @@ export function PredictionHero({
               {snapshotLabel}
             </span>
           </div>
+
+          {hasMissingSetlists && (
+            <div
+              role="status"
+              className="mx-auto mt-5 max-w-2xl rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-left text-xs leading-relaxed text-on-surface md:px-5 md:py-3.5 md:text-sm"
+            >
+              <p className="font-label text-[10px] font-bold uppercase tracking-[0.16rem] text-amber-400">
+                Setlist Data Delay
+              </p>
+              <p className="mt-1 text-on-surface/90">
+                The upstream setlist data source had not published the{" "}
+                <span className="font-semibold text-on-surface">
+                  {formatMissingShowSummary(missingSetlistShows)}
+                </span>{" "}
+                {missingSetlistShows.length === 1 ? "setlist" : "setlists"} when
+                the daily ingestion ran. Because missing setlist data affects
+                song gaps and rotation calculations,{" "}
+                {pendingNextShow
+                  ? `predictions for the upcoming ${pendingNextShow.dateLabel}${pendingNextShow.locationLabel ? ` (${pendingNextShow.locationLabel})` : ""} show are held back until ${missingSetlistShows.length === 1 ? "that setlist is" : "those setlists are"} available.`
+                  : `next-show predictions are held back and existing predictions do not yet reflect ${missingSetlistShows.length === 1 ? "that show" : "those shows"} until ${missingSetlistShows.length === 1 ? "the setlist is" : "the setlists are"} available.`}
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </section>

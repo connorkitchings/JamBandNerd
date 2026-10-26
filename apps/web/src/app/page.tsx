@@ -7,8 +7,13 @@ import {
   getBands,
   getLatestPredictions,
   getNextShowDetails,
+  getRecentMissingSetlistShows,
 } from "@/lib/data";
-import { buildLocationLabel, formatDateLabel } from "@/lib/format";
+import {
+  buildLocationLabel,
+  formatCompactDateLabel,
+  formatDateLabel,
+} from "@/lib/format";
 
 export const revalidate = 3600;
 
@@ -81,6 +86,12 @@ export default async function HomePage({ searchParams }: Props) {
     getLatestPredictions(teaserBandSlug),
     getNextShowDetails(teaserBandSlug),
   ]);
+  const teaserMissingShows = await getRecentMissingSetlistShows(
+    teaserBandSlug,
+    teaserPredictionState.status === "ready"
+      ? teaserPredictionState.snapshot.targetShowDate
+      : null,
+  );
   const teaserNextShow =
     teaserNextShowState.status === "ready" ? teaserNextShowState.show : null;
   const teaserSongs =
@@ -160,6 +171,17 @@ export default async function HomePage({ searchParams }: Props) {
                   <p className="mt-0.5 text-xs text-on-surface-variant">
                     {teaserLocationLabel ?? "Location unavailable"}
                   </p>
+                  {teaserMissingShows.length > 0 && (
+                    <p
+                      role="status"
+                      className="mt-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-[11px] leading-relaxed text-amber-300"
+                    >
+                      Awaiting upstream setlist for{" "}
+                      {teaserMissingShows
+                        .map((show) => formatCompactDateLabel(show.showDate))
+                        .join(", ")}
+                    </p>
+                  )}
                 </div>
 
                 <div className="editorial-chip mt-4 rounded-[1.5rem] p-4">

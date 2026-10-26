@@ -2,6 +2,7 @@
 export type {
   AccuracyRow,
   BandEntry,
+  MissingSetlistShow,
   PredictionRow,
   PredictionSnapshot,
   RouteState,
@@ -51,6 +52,7 @@ export {
   buildFallbackSetlistFromHistoricalRow,
   getLastShowSetlist,
   getNextShowDetails,
+  getRecentMissingSetlistShows,
   getSetlistForDate,
   getShowDetailsByDate,
 } from "./shows";

@@ -86,7 +86,8 @@ Collection is driven by recent activity (recent completed shows, missing recent 
 - Supported-model reuse during degraded mode is now bounded:
   - if reused prediction freshness stays within `48h`, the band can remain degraded but non-failing
   - if supported-model prediction freshness exceeds `48h`, the band job fails after the status artifact and summary are written
-  - accuracy uses the same `48h` window, except manual `skip_accuracy=true` runs and WSP `degraded_upstream_lag` outcomes report stale immutable accuracy informationally until it can be regenerated
+  - accuracy uses the same `48h` window, except manual `skip_accuracy=true` runs and `degraded_upstream_lag` outcomes (when any band's recent completed show is still missing setlist data in `verify_data_freshness.py`) report stale immutable accuracy informationally until it can be regenerated
+- Across all bands, when `scripts/verify_data_freshness.py` reports `missing_data=true` for a recent completed show (excluding configured excluded show IDs/dates and duplicate show rows on a date that already has a valid setlist), `daily-pipeline.yml` skips prediction and backtest regeneration and records `workflow_state=degraded`, `outcome_code=degraded_upstream_lag`, and `prediction_action=reused_existing` so the website retains the prior prediction board and displays an upstream setlist delay notice.
 - The sampled 2026-04-13 WSP Notebook freshness gap should therefore be treated as a real operational defect that requires regeneration or workflow investigation, not as acceptable drift.
 - Recent missing-setlist outcomes are split by diagnosis:
   - `failed_internal` — the collector saw a parseable EC setlist but did not store it (collector regression; hard fail).

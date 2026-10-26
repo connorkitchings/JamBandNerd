@@ -8,6 +8,7 @@
 import type { LikelihoodTier } from "@/lib/config";
 
 export type { ShowDetails } from "@/lib/next-show";
+export type { MissingSetlistShow } from "@/lib/show-status";
 
 type JsonPrediction = Record<string, unknown>;
 export type ProjectionRow = Record<string, unknown>;

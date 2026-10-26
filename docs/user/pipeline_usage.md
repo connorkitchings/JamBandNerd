@@ -56,6 +56,7 @@ For debugging or more granular control, you can run individual pipeline componen
 
 - **Data Collection**: `run_goose_collection.py`, `run_phish_collection.py`, `run_wsp_collection.py`, `run_eggy_collection.py`, `run_billy_collection.py`, `run_um_collection.py`
 - **Live Prediction Generation**: `scripts/generate_live_predictions.py --band <band>`
+  - When a recent completed show within the 7-day lookback window is missing setlist data (`< 3` unique songs), prediction generation holds off by default so the existing board in `setlist_predictions` is preserved until the upstream setlist arrives. Pass `--allow-missing-recent-setlists` to override locally.
 - **Retained Completed-Show Corpus**: `scripts/sync_retained_prediction_corpus.py --band <band> --window 50`
 - **Backtesting & Accuracy internals**: `scripts/run_backtest.py --band <band>`
 

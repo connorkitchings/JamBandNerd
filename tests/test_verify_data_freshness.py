@@ -343,3 +343,52 @@ class TestAuditRecentSetlistCompleteness:
         assert result.missing_show_ids == ("c",)
         assert result.partial_show_count == 1
         assert result.partial_show_ids == ("b",)
+        assert len(result.missing_shows) == 2
+        assert result.missing_shows[0]["show_date"] == "2026-05-21"
+        assert result.missing_shows[1]["show_date"] == "2026-05-22"
+
+    def test_ignores_duplicate_show_on_date_that_has_complete_setlist(self):
+        shows = [
+            {
+                "show_id": "29233",
+                "show_date": "2026-05-22",
+                "venue_name": "Oakland Arena",
+            },
+            {
+                "show_id": "30645",
+                "show_date": "2026-05-22",
+                "venue_name": "Oakland Arena",
+            },
+        ]
+        setlist_rows = [
+            {"show_id": "30645", "song_name": "Dust in a Baggie"},
+            {"show_id": "30645", "song_name": "Meet Me at the Creek"},
+            {"show_id": "30645", "song_name": "Turmoil & Tinfoil"},
+        ]
+        with self._patch_helpers(
+            shows=shows,
+            setlist_ids={"30645"},
+            setlist_rows=setlist_rows,
+        ):
+            result = audit_recent_setlist_completeness(
+                "billy", client=None, emit_text=False
+            )
+        assert result.ok is True
+        assert result.missing_show_count == 0
+        assert result.missing_shows == ()
+
+    def test_filters_excluded_prediction_show_ids(self):
+        shows = [
+            {"show_id": "1785867540", "show_date": "2026-05-22"},
+        ]
+        with self._patch_helpers(
+            shows=shows,
+            setlist_ids=set(),
+            setlist_rows=[],
+        ):
+            result = audit_recent_setlist_completeness(
+                "phish", client=None, emit_text=False
+            )
+        assert result.ok is True
+        assert result.recent_show_count == 0
+        assert result.missing_show_count == 0

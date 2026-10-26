@@ -13,6 +13,7 @@ import {
   getBands,
   getLatestPredictions,
   getNextShowDetails,
+  getRecentMissingSetlistShows,
   getShowDetailsByDate,
   getRecentAccuracy,
   resolveBandSelection,
@@ -20,6 +21,7 @@ import {
 import {
   average,
   buildLocationLabel,
+  formatCompactDateLabel,
   formatDateLabel,
   formatAvgHits,
   formatPercent,
@@ -106,11 +108,19 @@ export default async function PredictionsPage({ searchParams }: Props) {
   };
   const bandName = bandEntry.displayName;
 
-  const [nextShowState, specificShowState, accuracyState] = await Promise.all([
-    getNextShowDetails(predictionState.band),
-    getShowDetailsByDate(predictionState.band, predictionState.snapshot.targetShowDate),
-    getRecentAccuracy(predictionState.band, 50),
-  ]);
+  const [nextShowState, specificShowState, accuracyState, missingSetlistShows] =
+    await Promise.all([
+      getNextShowDetails(predictionState.band),
+      getShowDetailsByDate(
+        predictionState.band,
+        predictionState.snapshot.targetShowDate,
+      ),
+      getRecentAccuracy(predictionState.band, 50),
+      getRecentMissingSetlistShows(
+        predictionState.band,
+        predictionState.snapshot.targetShowDate,
+      ),
+    ]);
   const nextShow = nextShowState.status === "ready" ? nextShowState.show : null;
   const specificShow = specificShowState.status === "ready" ? specificShowState.show : null;
 
@@ -119,6 +129,18 @@ export default async function PredictionsPage({ searchParams }: Props) {
     : specificShow;
 
   const heroDate = predictionState.snapshot.targetShowDate;
+  const pendingNextShow =
+    nextShow && nextShow.showDate && nextShow.showDate !== heroDate
+      ? {
+          dateLabel: formatCompactDateLabel(nextShow.showDate),
+          venueName: nextShow.venueName,
+          locationLabel:
+            buildLocationLabel([
+              nextShow.city,
+              nextShow.state ?? nextShow.country,
+            ]) || null,
+        }
+      : null;
   const dateLabel = formatDateLabel(heroDate);
   const locationLabel = buildLocationLabel([
     targetShow?.city ?? null,
@@ -190,6 +212,9 @@ export default async function PredictionsPage({ searchParams }: Props) {
         statusLabel={statusLabel}
         snapshotLabel={snapshotLabel}
         displayState={displayState}
+        heroShowDate={heroDate}
+        missingSetlistShows={missingSetlistShows}
+        pendingNextShow={pendingNextShow}
       />
       <PredictionHeroMetrics
         performanceWindowLabel={performanceWindowLabel}

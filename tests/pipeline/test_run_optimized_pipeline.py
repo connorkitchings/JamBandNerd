@@ -6,6 +6,7 @@ import pytest
 
 from scripts import run_optimized_pipeline
 from scripts.collection_preflight import CollectionPreflight
+from scripts.verify_data_freshness import RecentSetlistCompletenessResult
 
 from .fixtures import BANDS
 
@@ -40,6 +41,18 @@ def preflight_stub(monkeypatch):
             recent_window_start="2026-03-10",
             recent_window_end="2026-03-16",
             lookahead_end="2026-03-31",
+        ),
+    )
+    monkeypatch.setattr(
+        run_optimized_pipeline,
+        "audit_recent_setlist_completeness",
+        lambda band, emit_text=False: RecentSetlistCompletenessResult(
+            band=band,
+            cutoff="2026-03-10",
+            end_date="2026-03-16",
+            recent_show_count=0,
+            missing_show_count=0,
+            missing_show_ids=(),
         ),
     )
 
@@ -172,6 +185,18 @@ def test_run_band_pipeline_skips_prediction_work_for_verify_only_preflight(
             lookahead_end="2026-03-31",
         ),
     )
+    monkeypatch.setattr(
+        run_optimized_pipeline,
+        "audit_recent_setlist_completeness",
+        lambda band, emit_text=False: RecentSetlistCompletenessResult(
+            band=band,
+            cutoff="2026-03-10",
+            end_date="2026-03-16",
+            recent_show_count=0,
+            missing_show_count=0,
+            missing_show_ids=(),
+        ),
+    )
 
     success = run_optimized_pipeline.run_band_pipeline(band)
 
@@ -202,6 +227,18 @@ def test_run_band_pipeline_force_overrides_verify_only_preflight(
             recent_window_start="2026-03-10",
             recent_window_end="2026-03-16",
             lookahead_end="2026-03-31",
+        ),
+    )
+    monkeypatch.setattr(
+        run_optimized_pipeline,
+        "audit_recent_setlist_completeness",
+        lambda band, emit_text=False: RecentSetlistCompletenessResult(
+            band=band,
+            cutoff="2026-03-10",
+            end_date="2026-03-16",
+            recent_show_count=0,
+            missing_show_count=0,
+            missing_show_ids=(),
         ),
     )
 
@@ -311,3 +348,34 @@ def test_run_band_pipeline_stops_after_prediction_failure(
 
     assert success is False
     assert events == [("collect", band), ("generate", band)]
+
+
+def test_run_band_pipeline_holds_off_predictions_when_recent_setlists_missing(
+    monkeypatch, pipeline_recorder
+):
+    band = "wsp"
+    monkeypatch.setattr(
+        run_optimized_pipeline,
+        "audit_recent_setlist_completeness",
+        lambda band, emit_text=False: RecentSetlistCompletenessResult(
+            band=band,
+            cutoff="2026-10-17",
+            end_date="2026-10-23",
+            recent_show_count=1,
+            missing_show_count=1,
+            missing_show_ids=("22488",),
+        ),
+    )
+
+    success = run_optimized_pipeline.run_band_pipeline(band)
+
+    assert success is True
+    assert [event[0] for event in pipeline_recorder] == [
+        "wsp:collect",
+        "audit_supabase",
+    ]
+    assert pipeline_recorder[-1][1]["kwargs"] == {
+        "band": "wsp",
+        "max_age_hours": 72,
+        "skip_accuracy": True,
+    }
