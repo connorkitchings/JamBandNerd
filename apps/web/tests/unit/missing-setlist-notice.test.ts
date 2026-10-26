@@ -2,6 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  buildSetlistSelectColumns,
+  parseSetNumber,
+} from "../../src/lib/data/parsers.ts";
+import {
   findMissingSetlistShows,
   hasDailyIngestionWindowPassed,
   shouldShowAfternoonUpdateScheduled,
@@ -193,5 +197,34 @@ test("findMissingSetlistShows ignores excluded shows and duplicate show rows whe
       now: new Date("2026-10-24T20:00:00Z"),
     }),
     [],
+  );
+});
+
+test("buildSetlistSelectColumns and parseSetNumber handle band-specific set schemas and Encore labels", () => {
+  assert.equal(
+    buildSetlistSelectColumns("wsp", "show_id", "song_position"),
+    "show_id, song_name, set_number, song_position",
+  );
+  assert.equal(
+    buildSetlistSelectColumns("phish", "show_id", "position"),
+    "show_id, song_name, set_number, position",
+  );
+  assert.equal(
+    buildSetlistSelectColumns("um", "show_id", "song_position"),
+    "show_id, song_name, set_label, set_sequence, encore, song_position",
+  );
+
+  assert.equal(parseSetNumber({ set_number: "1" }), 1);
+  assert.equal(parseSetNumber({ set_number: "2" }), 2);
+  assert.equal(parseSetNumber({ set_number: "E" }), 99);
+  assert.equal(parseSetNumber({ set_number: "E1" }), 99);
+  assert.equal(parseSetNumber({ set_number: 99 }), 99);
+  assert.equal(
+    parseSetNumber({ set_label: "E", set_sequence: 3, encore: true }),
+    99,
+  );
+  assert.equal(
+    parseSetNumber({ set_label: "One Set", set_sequence: 1, encore: false }),
+    1,
   );
 });
