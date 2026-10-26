@@ -229,10 +229,11 @@ export function PredictionHero({
                   {formatMissingShowSummary(missingSetlistShows)}
                 </span>{" "}
                 {missingSetlistShows.length === 1 ? "setlist" : "setlists"} when
-                the daily ingestion ran.{" "}
+                the daily ingestion ran. Because missing setlist data affects
+                song gaps and rotation calculations,{" "}
                 {pendingNextShow
-                  ? `Predictions for the upcoming ${pendingNextShow.dateLabel}${pendingNextShow.locationLabel ? ` (${pendingNextShow.locationLabel})` : ""} show are held back until ${missingSetlistShows.length === 1 ? "that setlist is" : "those setlists are"} available.`
-                  : `Next-show predictions are held back until ${missingSetlistShows.length === 1 ? "that setlist is" : "those setlists are"} available.`}
+                  ? `predictions for the upcoming ${pendingNextShow.dateLabel}${pendingNextShow.locationLabel ? ` (${pendingNextShow.locationLabel})` : ""} show are held back until ${missingSetlistShows.length === 1 ? "that setlist is" : "those setlists are"} available.`
+                  : `next-show predictions are held back and existing predictions do not yet reflect ${missingSetlistShows.length === 1 ? "that show" : "those shows"} until ${missingSetlistShows.length === 1 ? "the setlist is" : "the setlists are"} available.`}
               </p>
             </div>
           )}
