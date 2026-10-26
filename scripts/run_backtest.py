@@ -156,7 +156,7 @@ def build_scored_run_records(
             model_data = generate_model_data(
                 shows_df,
                 sets_df,
-                prediction_date,
+                ref_date,
                 exclusion_window=exclusion_window,
                 band=band,
                 target_show_context=show_row,

@@ -16,6 +16,7 @@ export {
   asRecord,
   buildPredictionSnapshotFromCanonicalRow,
   buildPredictionSnapshotFromProjectionRows,
+  buildSetlistSelectColumns,
   computeTier,
   getVenueCityFromRow,
   getVenueNameFromRow,
@@ -24,6 +25,7 @@ export {
   normalizeProjectedPredictionRows,
   parseNumber,
   parsePredictions,
+  parseSetNumber,
   parseStringArray,
 } from "./parsers";
 

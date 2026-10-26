@@ -6,7 +6,7 @@
  * no Supabase dependency and can be unit-tested in isolation.
  */
 
-import type { LikelihoodTier } from "@/lib/config";
+import type { BandSlug, LikelihoodTier } from "@/lib/config";
 import type {
   JsonPrediction,
   PredictionRow,
@@ -17,6 +17,51 @@ import type {
 // ---------------------------------------------------------------------------
 // Primitive parsers
 // ---------------------------------------------------------------------------
+
+export function buildSetlistSelectColumns(
+  band: BandSlug,
+  idColumn: string,
+  positionColumn: string,
+): string {
+  const setColumns =
+    band === "um" ? "set_label, set_sequence, encore" : "set_number";
+  return `${idColumn}, song_name, ${setColumns}, ${positionColumn}`;
+}
+
+export function parseSetNumber(row: Record<string, unknown>): number | null {
+  if (
+    row.encore === true ||
+    (typeof row.encore === "string" && row.encore.trim().toLowerCase() === "true")
+  ) {
+    return 99;
+  }
+
+  const rawSetValue =
+    row.set_number !== undefined && row.set_number !== null
+      ? row.set_number
+      : row.set_label !== undefined && row.set_label !== null
+        ? row.set_label
+        : row.set_sequence;
+
+  if (typeof rawSetValue === "string") {
+    const normalized = rawSetValue.trim().toUpperCase();
+    if (
+      normalized === "E" ||
+      normalized === "E1" ||
+      normalized === "E2" ||
+      normalized === "E3" ||
+      normalized === "ENCORE" ||
+      normalized === "99"
+    ) {
+      return 99;
+    }
+    if (normalized === "ONE SET" || normalized === "SET") {
+      return parseNumber(row.set_sequence) ?? 1;
+    }
+  }
+
+  return parseNumber(rawSetValue) ?? parseNumber(row.set_sequence);
+}
 
 export function parsePredictions(value: unknown): JsonPrediction[] {
   if (typeof value === "string") {

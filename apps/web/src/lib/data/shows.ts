@@ -17,7 +17,13 @@ import {
 } from "@/lib/show-status";
 
 import { getClientOrState, getBandContext, bandEntryBySlug, getBands } from "./bands";
-import { asRecord, parseNumber, parseStringArray } from "./parsers";
+import {
+  asRecord,
+  buildSetlistSelectColumns,
+  parseNumber,
+  parseSetNumber,
+  parseStringArray,
+} from "./parsers";
 import type { RouteState, SetlistSnapshot, SetlistSong } from "./types";
 
 const DEFAULT_SHOW_DETAILS_COLUMNS =
@@ -30,10 +36,6 @@ function showDetailsColumns(band: BandSlug, idColumn?: string) {
   const columns =
     band === "wsp" ? WSP_SHOW_DETAILS_COLUMNS : DEFAULT_SHOW_DETAILS_COLUMNS;
   return idColumn ? `${idColumn}, ${columns}` : columns;
-}
-
-function setlistColumns(idColumn: string, positionColumn: string) {
-  return `${idColumn}, song_name, set_number, set_sequence, ${positionColumn}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -66,60 +68,76 @@ export async function getSetlistForDate(
   const { data: showRows, error: showError } = await client
     .from(showsTable)
     .select(showDetailsColumns(band, idColumn))
-    .eq("show_date", showDate)
-    .limit(1);
+    .eq("show_date", showDate);
 
-  const showRow = asRecord(showRows?.[0]);
-  const showId = showRow?.[idColumn];
+  const normalizedShowRows = (showRows ?? [])
+    .map((item) => asRecord(item))
+    .filter((item): item is Record<string, unknown> => item !== null);
+  const showIds = normalizedShowRows
+    .map((row) => row[idColumn])
+    .filter(
+      (value): value is string | number =>
+        value !== undefined && value !== null,
+    );
 
-  if (showError || !showId) {
+  if (showError || showIds.length === 0) {
     return null;
   }
 
   const sortColumn = band === "um" ? "set_sequence" : "set_number";
-  const [setlistResponse, detailResponse] = await Promise.all([
-    client
-      .from(setlistTable)
-      .select(setlistColumns(idColumn, positionColumn))
-      .eq(idColumn, showId)
-      .order(sortColumn, { ascending: true })
-      .order(positionColumn, { ascending: true }),
-    client
-      .from(showsTable)
-      .select(showDetailsColumns(band, idColumn))
-      .eq(idColumn, showId)
-      .limit(1),
-  ]);
+  const setlistResponse = await client
+    .from(setlistTable)
+    .select(buildSetlistSelectColumns(band, idColumn, positionColumn))
+    .in(idColumn, showIds)
+    .order(sortColumn, { ascending: true })
+    .order(positionColumn, { ascending: true });
 
-  if (setlistResponse.error || detailResponse.error) {
+  if (setlistResponse.error) {
     return null;
   }
 
-  const seen = new Set<string>();
-  const songs: SetlistSong[] =
-    setlistResponse.data?.flatMap((item) => {
-      const row = asRecord(item);
-      if (!row) {
-        return [];
-      }
+  const rawSetlistRows = (setlistResponse.data ?? [])
+    .map((item) => asRecord(item))
+    .filter((item): item is Record<string, unknown> => item !== null);
 
-      const setNumRaw = row.set_number !== undefined ? row.set_number : row.set_sequence;
-      const key = `${setNumRaw}-${row[positionColumn]}`;
-      if (seen.has(key)) {
-        return [];
-      }
-      seen.add(key);
-      return [
-        {
-          setNumber: parseNumber(setNumRaw),
-          position: parseNumber(row[positionColumn]),
-          songName: String(row.song_name ?? "Unknown Song"),
-        },
-      ];
-    }) ?? [];
+  if (rawSetlistRows.length === 0) {
+    return null;
+  }
+
+  const targetShowId = String(rawSetlistRows[0][idColumn] ?? showIds[0]);
+  const matchingShowRow =
+    normalizedShowRows.find((row) => String(row[idColumn]) === targetShowId) ??
+    normalizedShowRows[0] ??
+    null;
+
+  const seen = new Set<string>();
+  const songs: SetlistSong[] = rawSetlistRows.flatMap((row) => {
+    if (String(row[idColumn] ?? targetShowId) !== targetShowId) {
+      return [];
+    }
+
+    const setNumber = parseSetNumber(row);
+    const position = parseNumber(row[positionColumn]);
+    const key = `${setNumber ?? "unknown"}-${position ?? "unknown"}-${String(row.song_name ?? "")}`;
+    if (seen.has(key)) {
+      return [];
+    }
+    seen.add(key);
+    return [
+      {
+        setNumber,
+        position,
+        songName: String(row.song_name ?? "Unknown Song"),
+      },
+    ];
+  });
+
+  if (songs.length === 0) {
+    return null;
+  }
 
   return {
-    showDetails: asRecord(detailResponse.data?.[0]) ?? null,
+    showDetails: matchingShowRow,
     songs,
   };
 }

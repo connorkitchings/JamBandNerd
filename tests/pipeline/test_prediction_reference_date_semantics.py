@@ -85,12 +85,12 @@ def notebook_song_names_for_reference_date(
 def test_backtest_rows_use_previous_day_reference_date_for_completed_show() -> None:
     shows_df, setlists_df = build_notebook_semantics_fixture()
 
-    direct_for_previous_day = notebook_song_names_for_reference_date(
+    direct_for_prior_show = notebook_song_names_for_reference_date(
         shows_df,
         setlists_df,
         date(2024, 1, 10),
     )
-    direct_for_same_day = notebook_song_names_for_reference_date(
+    direct_for_target_show = notebook_song_names_for_reference_date(
         shows_df,
         setlists_df,
         date(2024, 1, 11),
@@ -110,8 +110,21 @@ def test_backtest_rows_use_previous_day_reference_date_for_completed_show() -> N
     assert scored_runs[0]["reference_date"] == "2024-01-10"
     assert [
         row["song_name"] for row in scored_runs[0]["predictions"]
-    ] == direct_for_previous_day
-    assert direct_for_same_day != direct_for_previous_day
+    ] == direct_for_target_show
+    assert direct_for_target_show != direct_for_prior_show
+
+    consecutive_targets = shows_df[
+        shows_df["show_date"].isin([date(2024, 1, 10), date(2024, 1, 11)])
+    ].copy()
+    consecutive_runs = build_scored_run_records(
+        band="goose",
+        shows_df=shows_df,
+        sets_df=setlists_df,
+        target_shows=consecutive_targets,
+        exclusion_window=3,
+    )
+    assert len(consecutive_runs) == 2
+    assert consecutive_runs[0]["predictions"] != consecutive_runs[1]["predictions"]
 
 
 def test_backtest_passes_target_show_context_without_target_setlist(
