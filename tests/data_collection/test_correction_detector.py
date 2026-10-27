@@ -376,7 +376,7 @@ class TestBandColumnMapping:
             (
                 "eggy",
                 {"set_number": 99, "song_position": 1, "song_name": "B"},
-                ("99", 1, "b", False),
+                ("E", 1, "b", False),
             ),
             (
                 "phish",
@@ -883,3 +883,47 @@ class TestLimitedUpstreamHistory:
     def test_unlimited_band_high_skip_rate_still_fails(self):
         result = self._run("um", matched=[1])
         assert any("Blind sweep" in e for e in result.errors)
+
+
+class TestEncoreAndChangedFields:
+    def test_wsp_encore_e_vs_99_is_not_a_diff(self):
+        stored = [
+            {"set_number": "E", "song_position": 1, "song_name": "Big Wooly Mammoth"},
+            {"set_number": "E", "song_position": 2, "song_name": "Porch Song"},
+        ]
+        upstream = [dict(r, set_number=99) for r in stored]
+        diff = diff_setlists("wsp", stored, upstream)
+        assert diff == {"added": [], "removed": [], "changed": []}
+
+    @pytest.mark.parametrize("label", ["E", "E2", "Encore", "Encore 1", "e", 99, "99"])
+    def test_encore_spellings_share_one_label(self, label):
+        row = {"set_number": label, "song_position": 1, "song_name": "x"}
+        assert row_to_tuple("wsp", row)[0] == "E"
+
+    def test_changed_encore_song_is_still_a_diff(self):
+        stored = [{"set_number": "E", "song_position": 1, "song_name": "Porch Song"}]
+        upstream = [{"set_number": 99, "song_position": 1, "song_name": "Down"}]
+        (change,) = diff_setlists("wsp", stored, upstream)["changed"]
+        assert change["fields"] == ["song_name"]
+
+    def test_changed_rows_name_the_differing_field(self):
+        base = {"set_number": 1, "song_position": 1, "song_name": "Henry Parsons Died"}
+        diff = diff_setlists(
+            "wsp", [dict(base, is_segue=True)], [dict(base, is_segue=False)]
+        )
+        (change,) = diff["changed"]
+        assert change["fields"] == ["is_segue"]
+        assert change["from"]["is_segue"] is True
+        assert change["to"]["is_segue"] is False
+        assert set(change["from"]) == {
+            "set_number",
+            "position",
+            "song_name",
+            "is_segue",
+        }
+
+    def test_um_set_relabel_with_same_songs_is_still_a_diff(self):
+        stored = [{"set_label": "1", "show_position": 9, "song_name": "Slacker"}]
+        upstream = [{"set_label": "2", "show_position": 9, "song_name": "Slacker"}]
+        diff = diff_setlists("um", stored, upstream)
+        assert len(diff["added"]) == 1 and len(diff["removed"]) == 1
