@@ -21,6 +21,7 @@ import importlib
 import json
 import logging
 import re
+import unicodedata
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from datetime import date, timedelta
@@ -63,6 +64,7 @@ class CorrectionResult:
     errors: List[str] = field(default_factory=list)
     details: List[Dict[str, Any]] = field(default_factory=list)
     skipped: List[Dict[str, Any]] = field(default_factory=list)
+    warnings: List[str] = field(default_factory=list)
 
     def summary(self) -> Dict[str, Any]:
         """Counts of stored shows compared vs skipped, by skip reason."""
@@ -91,6 +93,7 @@ class CorrectionResult:
             "corrections_found": self.corrections_found,
             "corrections_applied": self.corrections_applied,
             "errors": self.errors,
+            "warnings": self.warnings,
             "details": self.details,
             "skipped": self.skipped,
         }
@@ -202,14 +205,34 @@ def _normalize_bool(value: Any) -> bool:
     return bool(value)
 
 
+_TRAILING_SEGUE = re.compile(r"\s*(?:->|>)\s*$")
+
+
+def canonical_song(name: Any) -> Tuple[str, bool]:
+    """Return ``(comparison key, trailing_segue)`` for a raw song name.
+
+    The key is NFKC-normalized, casefolded and reduced to letters and digits,
+    so quotes ("I\u2019m" vs "I'm"), dashes, spacing, periods and other
+    punctuation never count as a difference. Trailing ``>`` / ``->`` markers
+    are removed and reported as a segue. Raw names are never altered; this is
+    only used to compare.
+    """
+    text = unicodedata.normalize("NFKC", str(name or "")).strip()
+    stripped = _TRAILING_SEGUE.sub("", text)
+    segue = stripped != text and bool(stripped)
+    key = re.sub(r"[\W_]+", "", (stripped if segue else text).casefold())
+    return key, segue
+
+
 def row_to_tuple(band: str, row: Dict[str, Any]) -> SongTuple:
     """Normalize a stored or upstream row to ``(set, position, song, segue)``."""
     schema = SETLIST_SCHEMAS[band]
+    song, name_segue = canonical_song(row.get(schema.song_column))
     return (
         _normalize_set(row.get(schema.set_column)),
         _normalize_position(row.get(schema.position_column)),
-        str(row.get(schema.song_column) or "").strip(),
-        _normalize_bool(schema.segue(row)),
+        song,
+        _normalize_bool(schema.segue(row)) or name_segue,
     )
 
 
@@ -228,16 +251,29 @@ def diff_setlists(
     ``changed`` (same set and position, different song or segue flag).
     All three are empty when the setlists match.
     """
-    stored = Counter(row_to_tuple(band, r) for r in stored_rows)
-    upstream = Counter(row_to_tuple(band, r) for r in upstream_rows)
+    schema = SETLIST_SCHEMAS[band]
+    raw_names: Dict[Tuple[str, SongTuple], str] = {}
+
+    def keyed(side: str, rows: List[Dict[str, Any]]) -> Counter:
+        items = []
+        for row in rows:
+            item = row_to_tuple(band, row)
+            raw_names.setdefault(
+                (side, item), str(row.get(schema.song_column) or "").strip()
+            )
+            items.append(item)
+        return Counter(items)
+
+    stored = keyed("stored", stored_rows)
+    upstream = keyed("upstream", upstream_rows)
     stored_only = sorted((stored - upstream).elements(), key=_sort_key)
     upstream_only = sorted((upstream - stored).elements(), key=_sort_key)
 
-    def describe(item: SongTuple) -> Dict[str, Any]:
+    def describe(item: SongTuple, side: str) -> Dict[str, Any]:
         return {
             "set_number": item[0],
             "position": item[1],
-            "song_name": item[2],
+            "song_name": raw_names[(side, item)],
             "is_segue": item[3],
         }
 
@@ -253,11 +289,16 @@ def diff_setlists(
     for item in stored_only:
         candidates = upstream_by_slot.get((item[0], item[1]))
         if candidates:
-            changed.append({"from": describe(item), "to": describe(candidates.pop(0))})
+            changed.append(
+                {
+                    "from": describe(item, "stored"),
+                    "to": describe(candidates.pop(0), "upstream"),
+                }
+            )
         else:
-            removed.append(describe(item))
+            removed.append(describe(item, "stored"))
     for leftovers in upstream_by_slot.values():
-        added.extend(describe(item) for item in leftovers)
+        added.extend(describe(item, "upstream") for item in leftovers)
     added.sort(key=lambda d: (d["set_number"] or "", d["position"] or 0))
 
     return {"added": added, "removed": removed, "changed": changed}
@@ -429,7 +470,38 @@ NATURAL_KEY_KINDS: Dict[str, Tuple[str, ...]] = {
     "um": ("source_url",),
     "wsp": ("source_url", "date_venue"),
 }
-SHOW_MATCH_COLUMNS = ("show_date", "venue_name", "source_url", "source_uuid")
+
+# Columns each natural-key kind reads from a show row.
+KEY_KIND_COLUMNS: Dict[str, Tuple[str, ...]] = {
+    "source_uuid": ("source_uuid",),
+    "source_url": ("source_url",),
+    "date_venue": ("show_date", "venue_name"),
+}
+
+# Columns that really exist on each band's ``*_shows_raw`` table (see
+# supabase/migrations). Only billy has ``source_uuid``; selecting a column a
+# table lacks fails the whole sweep.
+SHOWS_TABLE_COLUMNS: Dict[str, frozenset] = {
+    "billy": frozenset(
+        {"show_id", "show_date", "venue_name", "source_url", "source_uuid"}
+    ),
+    "um": frozenset({"show_id", "show_date", "venue_name", "source_url"}),
+    "wsp": frozenset({"show_id", "show_date", "venue_name", "source_url"}),
+}
+
+
+def show_match_columns(band: str) -> Tuple[str, ...]:
+    """Columns to select from the band's shows table for natural-key matching."""
+    return tuple(
+        dict.fromkeys(c for k in NATURAL_KEY_KINDS[band] for c in KEY_KIND_COLUMNS[k])
+    )
+
+
+# Bands whose upstream source only exposes recent history (billy: BillyBase
+# lists ~11 of 152 stored shows). A high not_in_upstream share is structural
+# there, so the blind-sweep guard only warns, and still fails if nothing at all
+# could be compared.
+LIMITED_UPSTREAM_HISTORY = frozenset({"billy"})
 
 
 def _venue_key(name: Any) -> str:
@@ -496,7 +568,7 @@ def fetch_upstream_setlists(
 ) -> Dict[str, List[Dict[str, Any]]]:
     """Fetch upstream setlists for the stored shows, as DB-shaped rows by show id.
 
-    ``stored_shows`` (rows with ``SHOW_MATCH_COLUMNS``) is required for bands
+    ``stored_shows`` (rows with ``show_match_columns(band)``) is required for bands
     outside the show-id collectors: their upstream shows are mapped to stored
     show ids by natural key.
     """
@@ -656,7 +728,7 @@ def run_correction_sweep(
                 continue
             stored_shows = (
                 fetch_stored_shows(
-                    band, since, until, client=client, columns=SHOW_MATCH_COLUMNS
+                    band, since, until, client=client, columns=show_match_columns(band)
                 )
                 if band in NATURAL_KEY_KINDS
                 else None
@@ -675,12 +747,23 @@ def run_correction_sweep(
             )
             if result.is_blind():
                 summary = result.summary()
-                result.errors.append(
-                    f"Blind sweep: {summary['skipped_by_reason']['not_in_upstream']}"
+                message = (
+                    f"{summary['skipped_by_reason']['not_in_upstream']}"
                     f" of {summary['stored_shows']} stored shows had no upstream "
-                    f"setlist (> {MAX_NOT_IN_UPSTREAM_RATIO:.0%}); "
-                    "upstream matching or collection is likely broken."
+                    f"setlist (> {MAX_NOT_IN_UPSTREAM_RATIO:.0%})"
                 )
+                if band not in LIMITED_UPSTREAM_HISTORY:
+                    result.errors.append(
+                        f"Blind sweep: {message}; upstream matching or "
+                        "collection is likely broken."
+                    )
+                elif summary["compared"] == 0:
+                    result.errors.append(f"Blind sweep: {message}; nothing compared.")
+                else:
+                    result.warnings.append(
+                        f"Limited upstream history for {band}: {message}; "
+                        f"compared {summary['compared']}."
+                    )
             results[table_name] = result
         except Exception as exc:
             message = _sanitize_error(exc)
