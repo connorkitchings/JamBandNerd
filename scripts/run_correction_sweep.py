@@ -124,6 +124,10 @@ def main():
 
     print(f"\nDetailed report saved to: {output_path}")
 
+    for result in results.values():
+        for warning in result.warnings:
+            print(f"::warning::{result.table_name}: {warning}")
+
     # Exit non-zero on any error (fetch failures, refused or failed applies)
     total_errors = sum(len(r.errors) for r in results.values())
     if total_errors > 0 or not results:

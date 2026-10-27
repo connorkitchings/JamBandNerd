@@ -10,9 +10,14 @@ import pytest
 
 from src.jambandnerd.config.bands import SUPPORTED_BANDS
 from src.jambandnerd.data_collection.correction_detector import (
+    KEY_KIND_COLUMNS,
+    LIMITED_UPSTREAM_HISTORY,
+    NATURAL_KEY_KINDS,
     SETLIST_SCHEMAS,
+    SHOWS_TABLE_COLUMNS,
     CorrectionFetchError,
     CorrectionResult,
+    canonical_song,
     compute_record_checksum,
     detect_setlist_corrections,
     diff_setlists,
@@ -21,6 +26,7 @@ from src.jambandnerd.data_collection.correction_detector import (
     match_upstream_shows,
     row_to_tuple,
     run_correction_sweep,
+    show_match_columns,
 )
 
 WINDOW = (date(2020, 1, 1), date(2100, 1, 1))
@@ -365,17 +371,17 @@ class TestBandColumnMapping:
             (
                 "goose",
                 {"set_number": 1, "song_position": 2, "song_name": " A "},
-                ("1", 2, "A", False),
+                ("1", 2, "a", False),
             ),
             (
                 "eggy",
                 {"set_number": 99, "song_position": 1, "song_name": "B"},
-                ("99", 1, "B", False),
+                ("99", 1, "b", False),
             ),
             (
                 "phish",
                 {"set_number": "1", "position": 3, "song_name": "C", "transition": ">"},
-                ("1", 3, "C", True),
+                ("1", 3, "c", True),
             ),
             (
                 "phish",
@@ -385,7 +391,7 @@ class TestBandColumnMapping:
                     "song_name": "D",
                     "transition": ",",
                 },
-                (None, 1, "D", False),
+                (None, 1, "d", False),
             ),
             (
                 "wsp",
@@ -395,7 +401,7 @@ class TestBandColumnMapping:
                     "song_name": "E",
                     "is_segue": True,
                 },
-                ("2", 4, "E", True),
+                ("2", 4, "e", True),
             ),
             (
                 "billy",
@@ -405,7 +411,7 @@ class TestBandColumnMapping:
                     "song_name": "F",
                     "is_segue": False,
                 },
-                ("1", 5, "F", False),
+                ("1", 5, "f", False),
             ),
             (
                 "um",
@@ -415,7 +421,7 @@ class TestBandColumnMapping:
                     "song_name": "G",
                     "is_segue": True,
                 },
-                ("E", 9, "G", True),
+                ("E", 9, "g", True),
             ),
         ],
     )
@@ -699,3 +705,181 @@ class TestBlindSweepGuard:
         result = _sweep(_goose_client(), _goose_upstream_raw())
         assert result.summary()["not_in_upstream_ratio"] == 0.0
         assert result.errors == []
+
+
+class TestSongNameCanonicalization:
+    @pytest.mark.parametrize(
+        "stored,upstream",
+        [
+            ("I'm One Of Those", "I\u2019m One Of Those"),
+            ("Dust in a Baggie", "Dust In A Baggie"),
+            ("L.a. Woman", "L.A. Woman"),
+            ("Lonesome L.A. Cowboy", "Lonesome LA Cowboy"),
+            ("Don't Be Calling Me (At 4am)", "Don\u2019t Be Calling Me (at 4 AM)"),
+            ("Ole Slew-Foot", "Ole Slew Foot"),
+            (
+                "Smoke! Smoke! Smoke! (That Cigarette)",
+                "Smoke, Smoke, Smoke That Cigarette",
+            ),
+        ],
+    )
+    def test_cosmetic_name_differences_are_not_diffs(self, stored, upstream):
+        row = {"set_number": 1, "song_position": 1}
+        diff = diff_setlists(
+            "billy",
+            [dict(row, song_name=stored, is_segue=False)],
+            [dict(row, song_name=upstream, is_segue=False)],
+        )
+        assert diff == {"added": [], "removed": [], "changed": []}
+
+    def test_stored_trailing_segue_marker_folds_into_is_segue(self):
+        row = {"set_number": 1, "song_position": 1}
+        stored = [dict(row, song_name="Freeborn Man >", is_segue=False)]
+        upstream = [dict(row, song_name="Freeborn Man", is_segue=True)]
+        assert diff_setlists("billy", stored, upstream)["changed"] == []
+        assert canonical_song("Freeborn Man ->") == ("freebornman", True)
+        assert canonical_song("Freeborn Man") == ("freebornman", False)
+
+    def test_segue_flag_difference_without_marker_is_still_a_diff(self):
+        row = {"set_number": 1, "song_position": 1, "song_name": "Psycho"}
+        diff = diff_setlists(
+            "billy", [dict(row, is_segue=False)], [dict(row, is_segue=True)]
+        )
+        assert len(diff["changed"]) == 1
+
+    def test_real_song_changes_survive_and_report_raw_names(self):
+        row = {"set_number": 1, "is_segue": False}
+        stored = [dict(row, song_position=1, song_name="Ruby Are You Mad")]
+        upstream = [dict(row, song_position=1, song_name="Ruby")]
+        (change,) = diff_setlists("billy", stored, upstream)["changed"]
+        assert change["from"]["song_name"] == "Ruby Are You Mad"
+        assert change["to"]["song_name"] == "Ruby"
+
+    def test_genuinely_added_songs_are_still_reported(self):
+        row = {"set_number": 1, "is_segue": False}
+        stored = [dict(row, song_position=1, song_name="A")]
+        upstream = [
+            dict(row, song_position=1, song_name="A"),
+            dict(row, song_position=2, song_name="Pigeon Roost"),
+        ]
+        diff = diff_setlists("billy", stored, upstream)
+        assert [a["song_name"] for a in diff["added"]] == ["Pigeon Roost"]
+
+    def test_replacement_payload_keeps_upstream_raw_names(self):
+        client = _goose_client()
+        raw = _goose_upstream_raw(songs=("Song 1", "Song 2", "Hot Tea", "Song 4"))
+        _sweep(client, raw)
+        names = [r["song_name"] for r in client.rpc_calls[0][1]["p_rows"]]
+        assert names == ["Song 1", "Song 2", "Hot Tea", "Song 4"]
+
+
+class TestShowsTableColumns:
+    @pytest.mark.parametrize("band", sorted(NATURAL_KEY_KINDS))
+    def test_selected_columns_exist_on_the_bands_shows_table(self, band):
+        assert set(show_match_columns(band)) <= SHOWS_TABLE_COLUMNS[band]
+
+    @pytest.mark.parametrize("band", sorted(NATURAL_KEY_KINDS))
+    def test_every_key_kind_has_declared_columns_on_the_table(self, band):
+        for kind in NATURAL_KEY_KINDS[band]:
+            assert set(KEY_KIND_COLUMNS[kind]) <= SHOWS_TABLE_COLUMNS[band]
+
+    def test_only_billy_selects_source_uuid(self):
+        assert "source_uuid" in show_match_columns("billy")
+        assert "source_uuid" not in show_match_columns("um")
+        assert "source_uuid" not in show_match_columns("wsp")
+
+    def test_stored_shows_select_is_limited_to_band_columns(self):
+        selected = []
+
+        class Q(_Query):
+            def select(self, cols, *_):
+                selected.append(cols)
+                return self
+
+        class C(FakeClient):
+            def table(self, name):
+                return Q(self, name)
+
+        today = date.today().isoformat()
+        client = C(
+            {
+                "um_shows_raw": [_stored_show(1, today, "V", url="u")],
+                "um_setlists_raw": [],
+            }
+        )
+        run_correction_sweep(
+            "um", client=client, collector=FakeCollector([]), normalizer=pd.DataFrame
+        )
+        assert all("source_uuid" not in c for c in selected)
+
+
+class TestLimitedUpstreamHistory:
+    def _run(self, band, matched):
+        today = date.today().isoformat()
+        shows = [_stored_show(i, today, f"V{i}", url=f"u{i}") for i in (1, 2, 3, 4)]
+        rows = [
+            {
+                "id": i * 10 + p,
+                "show_id": i,
+                "set_number": 1,
+                "set_label": "1",
+                "song_position": p,
+                "show_position": p,
+                "song_name": f"S{p}",
+                "is_segue": False,
+            }
+            for i in (1, 2, 3, 4)
+            for p in (1, 2, 3)
+        ]
+        client = FakeClient({f"{band}_shows_raw": shows, f"{band}_setlists_raw": rows})
+        up = [
+            {
+                "show_id": i,
+                "show_date": today,
+                "venue_name": f"V{i}",
+                "source_url": f"u{i}",
+                "source_uuid": f"u{i}",
+            }
+            for i in matched
+        ]
+
+        class Collector(FakeCollector):
+            def collect_setlists(self, shows, *a, **kw):
+                return [
+                    {
+                        "show_id": s["show_id"],
+                        "set_number": 1,
+                        "set_label": "1",
+                        "song_position": p,
+                        "show_position": p,
+                        "song_name": f"S{p}",
+                        "is_segue": False,
+                    }
+                    for s in shows
+                    for p in (1, 2, 3)
+                ]
+
+        return run_correction_sweep(
+            band,
+            client=client,
+            collector=Collector([], shows=up),
+            normalizer=pd.DataFrame,
+        )[f"{band}_setlists_raw"]
+
+    def test_billy_is_declared_limited_and_others_are_not(self):
+        assert LIMITED_UPSTREAM_HISTORY == {"billy"}
+
+    def test_limited_band_high_skip_rate_warns_but_does_not_fail(self):
+        result = self._run("billy", matched=[1])
+        assert result.errors == []
+        assert any("Limited upstream history" in w for w in result.warnings)
+        summary = result.summary()
+        assert summary["compared"] == 1 and summary["skipped"] == 3
+
+    def test_limited_band_fails_when_nothing_compared(self):
+        result = self._run("billy", matched=[])
+        assert any("nothing compared" in e for e in result.errors)
+
+    def test_unlimited_band_high_skip_rate_still_fails(self):
+        result = self._run("um", matched=[1])
+        assert any("Blind sweep" in e for e in result.errors)
