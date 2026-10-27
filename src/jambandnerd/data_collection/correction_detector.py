@@ -44,7 +44,9 @@ REPLACE_RPC = "replace_show_setlist"
 # treated as a blind sweep (matching/collection broken), not a clean result.
 MAX_NOT_IN_UPSTREAM_RATIO = 0.5
 
-# Comparison tuple: (set_number, position, song_name, is_segue)
+# Comparison tuple: (set_number, position, song_name, is_segue); song_name is the
+# canonical comparison key (see canonical_song).
+TUPLE_FIELDS = ("set_number", "position", "song_name", "is_segue")
 SongTuple = Tuple[Optional[str], Optional[int], str, bool]
 
 
@@ -162,6 +164,14 @@ SETLIST_SCHEMAS: Dict[str, SetlistSchema] = {
 }
 
 
+# Encores are stored as "E"/"E2"/"Encore 1" by scrapers and as 99 by the wsp
+# (and eggy) normalizers, so every spelling compares as one label. Positions
+# still distinguish songs across multiple encores.
+ENCORE_LABEL = "E"
+ENCORE_SET_NUMBER = 99
+_ENCORE_TEXT = re.compile(r"E\d*|ENCORE\s*\d*")
+
+
 def _to_int(value: Any) -> Optional[int]:
     """Parse ints, integral floats and float-stringified ints ("1.0")."""
     if value is None or isinstance(value, bool):
@@ -184,10 +194,14 @@ def _normalize_set(value: Any) -> Optional[str]:
     if value is None:
         return None
     as_int = _to_int(value)
+    if as_int == ENCORE_SET_NUMBER:
+        return ENCORE_LABEL
     if as_int is not None:
         return str(as_int)
     text = str(value).strip().upper()
-    return text if text and text not in {"NAN", "NONE", "<NA>"} else None
+    if not text or text in {"NAN", "NONE", "<NA>"}:
+        return None
+    return ENCORE_LABEL if _ENCORE_TEXT.fullmatch(text) else text
 
 
 def _normalize_position(value: Any) -> Optional[int]:
@@ -289,10 +303,14 @@ def diff_setlists(
     for item in stored_only:
         candidates = upstream_by_slot.get((item[0], item[1]))
         if candidates:
+            match = candidates.pop(0)
             changed.append(
                 {
                     "from": describe(item, "stored"),
-                    "to": describe(candidates.pop(0), "upstream"),
+                    "to": describe(match, "upstream"),
+                    "fields": [
+                        name for name, a, b in zip(TUPLE_FIELDS, item, match) if a != b
+                    ],
                 }
             )
         else:
