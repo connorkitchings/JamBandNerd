@@ -4,8 +4,15 @@ import { type SupabaseClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 
 import { guardAdmin } from "@/lib/admin/auth-request";
+import { isAdminBand } from "@/lib/admin/bands";
 import { parseSetlistText, type ParsedSong } from "@/lib/admin/setlist-parser";
 import { getServiceRoleClient } from "@/lib/supabase/server";
+
+class NoSongsParsedError extends Error {
+  constructor() {
+    super("No songs parsed from setlist text");
+  }
+}
 
 export async function POST(request: NextRequest) {
   const gate = guardAdmin(request);
@@ -13,12 +20,35 @@ export async function POST(request: NextRequest) {
     return gate;
   }
 
-  const body = await request.json();
+  let body: Record<string, unknown>;
+  try {
+    const parsed: unknown = await request.json();
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      throw new Error("Body must be an object");
+    }
+    body = parsed as Record<string, unknown>;
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
+
   const { band, showDate, venueName, city, state, setlistText, showId } = body;
 
-  if (!band || !showDate || !setlistText) {
+  if (
+    typeof band !== "string" ||
+    typeof showDate !== "string" ||
+    typeof setlistText !== "string" ||
+    !band ||
+    !showDate ||
+    !setlistText
+  ) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
+  if (!isAdminBand(band)) {
+    return NextResponse.json({ error: "Unsupported band" }, { status: 400 });
+  }
+  const venue = typeof venueName === "string" ? venueName : "";
+  const cityValue = typeof city === "string" ? city : "";
+  const stateValue = typeof state === "string" ? state : "";
 
   const supabase = getServiceRoleClient();
   if (!supabase) {
@@ -32,7 +62,7 @@ export async function POST(request: NextRequest) {
     const resolvedShowId =
       typeof showId === "string" && showId.trim()
         ? showId
-        : await ensureShow(supabase, band, showDate, venueName, city, state);
+        : await ensureShow(supabase, band, showDate, venue, cityValue, stateValue);
 
     const rows = await upsertSetlistRows(supabase, band, resolvedShowId, setlistText);
 
@@ -45,10 +75,12 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error("Error adding setlist:", error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to add setlist" },
-      { status: 500 },
-    );
+    // Raw Supabase text stays in the server log; the parse failure is
+    // actionable input feedback, everything else gets a fixed message.
+    if (error instanceof NoSongsParsedError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+    return NextResponse.json({ error: "Failed to save setlist" }, { status: 500 });
   }
 }
 
@@ -66,6 +98,9 @@ export async function DELETE(request: NextRequest) {
   if (!band || !showId) {
     return NextResponse.json({ error: "band and showId are required" }, { status: 400 });
   }
+  if (!isAdminBand(band)) {
+    return NextResponse.json({ error: "Unsupported band" }, { status: 400 });
+  }
 
   const supabase = getServiceRoleClient();
   if (!supabase) {
@@ -78,7 +113,8 @@ export async function DELETE(request: NextRequest) {
     .eq("show_id", showId);
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("Error clearing setlist:", error);
+    return NextResponse.json({ error: "Failed to clear setlist" }, { status: 500 });
   }
 
   return NextResponse.json({
@@ -99,13 +135,17 @@ async function ensureShow(
 ): Promise<string> {
   const showsTable = `${band}_shows_raw`;
 
-  const { data: existing } = await supabase
+  const { data: existing, error: lookupError } = await supabase
     .from(showsTable)
     .select("show_id")
     .eq("show_date", showDate)
     .eq("venue_name", venueName)
     .limit(1)
-    .single();
+    .maybeSingle();
+
+  if (lookupError) {
+    throw lookupError;
+  }
 
   if (existing) {
     return existing.show_id;
@@ -113,19 +153,21 @@ async function ensureShow(
 
   const showId = generateShowId(showDate, venueName);
 
-  const row: Record<string, unknown> = {
+  const row = {
     show_id: showId,
     show_date: showDate,
     venue_name: venueName,
-    city: city,
-    state: state,
+    city,
+    state,
+    source_hash: null,
   };
 
-  if (band === "wsp") {
-    row["source_hash"] = null;
+  const { error: upsertError } = await supabase
+    .from(showsTable)
+    .upsert(row, { onConflict: "show_id" });
+  if (upsertError) {
+    throw upsertError;
   }
-
-  await supabase.from(showsTable).upsert(row, { onConflict: "show_id" }).select();
 
   return showId;
 }
@@ -145,7 +187,7 @@ async function upsertSetlistRows(
   const parsed = parseSetlistText(setlistText);
 
   if (parsed.length === 0) {
-    throw new Error("No songs parsed from setlist text");
+    throw new NoSongsParsedError();
   }
 
   const payload = parsed.map((song) => ({
@@ -157,10 +199,12 @@ async function upsertSetlistRows(
     song_notes: song.song_notes,
   }));
 
-  await supabase
+  const { error } = await supabase
     .from(setsTable)
-    .upsert(payload, { onConflict: "show_id,set_number,song_position" })
-    .select();
+    .upsert(payload, { onConflict: "show_id,set_number,song_position" });
+  if (error) {
+    throw error;
+  }
 
   return parsed;
 }

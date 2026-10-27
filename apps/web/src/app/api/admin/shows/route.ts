@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { guardAdmin } from "@/lib/admin/auth-request";
+import { isAdminBand } from "@/lib/admin/bands";
 import { getServiceRoleClient } from "@/lib/supabase/server";
 
 // Read-only: list existing shows on a date so the admin can attach a setlist
@@ -15,6 +16,10 @@ export async function GET(request: NextRequest) {
   const showDate = request.nextUrl.searchParams.get("date");
   if (!band || !showDate) {
     return NextResponse.json({ error: "band and date are required" }, { status: 400 });
+  }
+
+  if (!isAdminBand(band)) {
+    return NextResponse.json({ error: "Unsupported band" }, { status: 400 });
   }
 
   const supabase = getServiceRoleClient();
@@ -32,20 +37,29 @@ export async function GET(request: NextRequest) {
     .order("show_id");
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("Error listing admin shows:", error);
+    return NextResponse.json({ error: "Failed to load shows" }, { status: 500 });
   }
 
   // Attach the current setlist row count per show so the UI can flag shows that
   // already have data (and would be overwritten by a re-submit).
-  const showsWithCounts = await Promise.all(
+  const countResults = await Promise.all(
     (shows ?? []).map(async (show) => {
-      const { count } = await supabase
+      const { count, error: countError } = await supabase
         .from(setlistsTable)
         .select("*", { count: "exact", head: true })
         .eq("show_id", show.show_id);
-      return { ...show, setlistRowCount: count ?? 0 };
+      return { show, count, countError };
     }),
   );
 
-  return NextResponse.json({ shows: showsWithCounts });
+  const failed = countResults.find((result) => result.countError);
+  if (failed) {
+    console.error("Error counting setlist rows:", failed.countError);
+    return NextResponse.json({ error: "Failed to load shows" }, { status: 500 });
+  }
+
+  return NextResponse.json({
+    shows: countResults.map(({ show, count }) => ({ ...show, setlistRowCount: count ?? 0 })),
+  });
 }

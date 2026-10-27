@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 
 import { AccuracyTable } from "@/components/accuracy-table";
 import { SongBoard } from "@/components/song-board";
@@ -98,6 +99,11 @@ const setlistSongs = [
 ];
 
 export default function TablePreviewPage() {
+  // Internal design preview: not part of the public site.
+  if (process.env.NODE_ENV !== "development") {
+    notFound();
+  }
+
   return (
     <div className="mx-auto max-w-6xl space-y-8">
       <section className="rounded-xl border border-outline-variant/30 bg-surface-container p-6">

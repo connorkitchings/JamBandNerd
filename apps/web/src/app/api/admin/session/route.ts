@@ -46,7 +46,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Admin not configured" }, { status: 503 });
   }
 
-  const body = await request.json();
+  let body: { password?: unknown } | null;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
   const password = typeof body?.password === "string" ? body.password : "";
   if (!password || !verifyPassword(password, process.env.ADMIN_PASSWORD!)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

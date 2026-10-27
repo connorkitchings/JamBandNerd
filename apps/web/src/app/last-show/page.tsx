@@ -114,6 +114,12 @@ export default async function LastShowPage({ searchParams }: Props) {
               <p className="mt-3 font-headline text-2xl font-semibold text-on-surface">
                 {state.setlist.songs.length}
               </p>
+              {state.pendingShowDate ? (
+                <p role="status" className="mt-2 text-xs text-amber-300">
+                  The setlist for {formatDateLabel(state.pendingShowDate)} is pending, so
+                  this shows the latest show with a published setlist.
+                </p>
+              ) : null}
             </div>
             <div className="editorial-panel p-5">
               <p className="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">
