@@ -517,7 +517,9 @@ def process_wsp_data(
         logging.error(
             "Could not retrieve shows from database. Aborting setlist collection."
         )
-        return
+        raise RuntimeError(
+            "Could not retrieve shows from database for WSP setlist collection."
+        )
 
     # 5. Check for existing setlists to avoid re-scraping
     if skip_existing_setlists:
@@ -607,7 +609,7 @@ def process_wsp_data(
         logging.warning(f"EC-over-TW promotion step encountered an error: {exc}")
 
     # 7. PanicStream / TourWrangler fallback for missing recent historical setlists
-    fallback_rows, fallback_shows = tourwrangler_fallback(client)
+    fallback_rows, fallback_shows = tourwrangler_fallback(client) or (0, 0)
     status.fallback_setlists_collected = fallback_rows
     status.fallback_shows_filled = fallback_shows
     status.setlists_collected += fallback_rows

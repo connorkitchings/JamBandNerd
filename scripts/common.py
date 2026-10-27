@@ -32,6 +32,59 @@ def completed_show_window(
     return cutoff.isoformat(), end_date.isoformat()
 
 
+MIN_COMPLETE_SETLIST_SONGS = 3
+
+
+def select_shows_needing_setlist_fetch(
+    show_dates: Dict[str, Any],
+    setlist_row_counts: Dict[str, int],
+    *,
+    today: date | None = None,
+    min_songs: int = MIN_COMPLETE_SETLIST_SONGS,
+) -> set[str]:
+    """Return show IDs whose setlists must be (re-)fetched.
+
+    A show is re-fetched when it has fewer than ``min_songs`` stored setlist rows
+    (including none) or when it falls in the recent completed-show window, because
+    upstream sources publish setlists incrementally. Older complete shows are
+    skipped.
+
+    Args:
+        show_dates: Mapping of show_id to its show date (ISO string or date).
+        setlist_row_counts: Mapping of show_id to stored setlist row count.
+        today: Reference date (defaults to today).
+        min_songs: Minimum row count for a setlist to be considered complete.
+    """
+    cutoff, _ = completed_show_window(today=today)
+    selected: set[str] = set()
+    for show_id, show_date in show_dates.items():
+        sid = str(show_id)
+        is_recent = show_date is not None and str(show_date)[:10] >= cutoff
+        if is_recent or setlist_row_counts.get(sid, 0) < min_songs:
+            selected.add(sid)
+    return selected
+
+
+def fetch_setlist_row_counts(
+    table_name: str, show_ids: Iterable[Any]
+) -> Dict[str, int]:
+    """Return stored setlist row counts per show_id for the given shows."""
+    from src.jambandnerd.db.operations import fetch_rows_by_column_values
+
+    rows = fetch_rows_by_column_values(
+        table_name,
+        select_columns=["show_id"],
+        filter_column="show_id",
+        values=list(show_ids),
+    )
+    counts: Dict[str, int] = {}
+    for row in rows:
+        if row.get("show_id") is not None:
+            sid = str(row["show_id"])
+            counts[sid] = counts.get(sid, 0) + 1
+    return counts
+
+
 def batched_values(values: Iterable[Any], batch_size: int = 50) -> List[List[Any]]:
     """Split values into stable batches for Supabase `in_` queries.
 
@@ -254,11 +307,14 @@ def fetch_table(
     from src.jambandnerd.db.connection import get_supabase_client
 
     client = get_supabase_client()
-    all_data = []
+    all_data: List[Dict] = []
     offset = 0
+    # PostgREST may cap rows per request (default max_rows is 1000), so a short
+    # page cannot be trusted as the last page; request at most 1000 per page and
+    # stop on the exact count (or an empty page when no count is available).
+    page_size = min(chunk_size, 1000)
 
     try:
-        # Correctly pass count as a keyword argument
         count_response = (
             client.table(table_name).select("*", count="exact").limit(0).execute()
         )
@@ -268,43 +324,29 @@ def fetch_table(
         logger.warning(
             "Could not get count from %s: %s. Fetching until empty.", table_name, e
         )
-        total_rows = -1
+        total_rows = None
 
-    logger.info(
-        "Fetching all records from %s in chunks of %s...", table_name, chunk_size
-    )
+    logger.info("Fetching all records from %s in pages of %s...", table_name, page_size)
     while True:
-        try:
-            logger.debug("Fetching rows from offset %s...", offset)
-            response = (
-                client.table(table_name)
-                .select("*")
-                .range(offset, offset + chunk_size - 1)
-                .execute()
-            )
-
-            if not response.data:
-                logger.debug("Received no more data. Ending fetch.")
-                break
-
-            num_fetched = len(response.data)
-            all_data.extend(response.data)
-            logger.debug(
-                "Fetched %s rows. Total so far: %s.", num_fetched, len(all_data)
-            )
-
-            if total_rows != -1 and len(all_data) >= total_rows:
-                logger.debug("Fetched all expected rows based on count. Ending fetch.")
-                break
-            if num_fetched < chunk_size:
-                logger.debug("Fetched last chunk. Ending fetch.")
-                break
-
-            offset += num_fetched
-
-        except Exception as e:
-            logger.error("An error occurred during fetch: %s", e)
+        response = (
+            client.table(table_name)
+            .select("*")
+            .range(offset, offset + page_size - 1)
+            .execute()
+        )
+        page = response.data or []
+        if not page:
             break
+
+        all_data.extend(page)
+        offset += len(page)
+        if total_rows is not None and len(all_data) >= total_rows:
+            break
+
+    if total_rows is not None and len(all_data) < total_rows:
+        raise RuntimeError(
+            f"Fetched {len(all_data)} of {total_rows} rows from {table_name}."
+        )
 
     logger.info("Fetched a total of %s records from %s.", len(all_data), table_name)
     return all_data

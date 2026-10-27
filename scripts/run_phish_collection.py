@@ -20,7 +20,11 @@ import pandas as pd
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, project_root)
 
-from scripts.common import ensure_source_reachable
+from scripts.common import (
+    ensure_source_reachable,
+    fetch_setlist_row_counts,
+    select_shows_needing_setlist_fetch,
+)
 from src.jambandnerd.data_collection.phish.collector import PhishCollector
 from src.jambandnerd.data_collection.phish.normalizer import (
     normalize_setlists,
@@ -31,7 +35,6 @@ from src.jambandnerd.data_collection.phish.normalizer import (
 from src.jambandnerd.data_collection.utils import CollectionTimer
 from src.jambandnerd.db.connection import get_supabase_client
 from src.jambandnerd.db.operations import (
-    fetch_existing_values,
     upsert_dataframe,
     validate_and_upsert_dataframe,
 )
@@ -163,21 +166,24 @@ def run_phish_collection(
     # Collect setlists for the (optionally filtered) shows
     show_ids = filtered_shows_df["show_id"].dropna().astype(str).tolist()
 
-    # Incremental: skip shows that already have setlists in the DB
+    # Incremental: skip older shows whose setlists are already complete; always
+    # re-fetch recent shows and shows with partial setlists.
     if show_ids and not clear_setlists:
         try:
-            existing_ids = fetch_existing_values(
-                "phish_setlists_raw",
-                value_column="show_id",
-                candidate_values=show_ids,
-            )
-            before = len(show_ids)
-            show_ids = [sid for sid in show_ids if sid not in existing_ids]
-            if existing_ids:
-                logging.info(
-                    f"Skipping {len(existing_ids)} shows with existing setlists "
-                    f"({len(show_ids)}/{before} remaining for collection)."
+            show_dates = dict(
+                zip(
+                    filtered_shows_df["show_id"].astype(str),
+                    filtered_shows_df["show_date"],
                 )
+            )
+            counts = fetch_setlist_row_counts("phish_setlists_raw", show_ids)
+            needed = select_shows_needing_setlist_fetch(show_dates, counts)
+            before = len(show_ids)
+            show_ids = [sid for sid in show_ids if sid in needed]
+            logging.info(
+                f"Skipping {before - len(show_ids)} shows with complete setlists "
+                f"({len(show_ids)}/{before} remaining for collection)."
+            )
         except Exception as exc:
             logging.warning(f"Could not check existing setlists; fetching all ({exc}).")
 

@@ -159,7 +159,7 @@ class _WSPClientStub:
         return _WSPQueryStub(self.responses.get(name, []))
 
 
-def test_run_billy_collection_uses_paginated_existing_setlist_reads(monkeypatch):
+def test_run_billy_collection_skips_only_old_complete_setlists(monkeypatch):
     collector = _BillyCollectorStub()
     lookup_calls = []
 
@@ -193,21 +193,10 @@ def test_run_billy_collection_uses_paginated_existing_setlist_reads(monkeypatch)
             ]
         raise AssertionError(f"unexpected lookup for {table_name}")
 
-    def fake_fetch_existing_values(
-        table_name, *, value_column, candidate_values, chunk_size=200
-    ):
-        lookup_calls.append(
-            (
-                "existing",
-                table_name,
-                value_column,
-                tuple(candidate_values),
-                chunk_size,
-            )
-        )
+    def fake_fetch_setlist_row_counts(table_name, show_ids):
+        lookup_calls.append(("counts", table_name, tuple(show_ids)))
         assert table_name == "billy_setlists_raw"
-        assert value_column == "show_id"
-        return {"1001"}
+        return {"1001": 12}
 
     monkeypatch.setattr(
         run_billy_collection, "ensure_source_reachable", lambda *_args, **_kwargs: None
@@ -220,8 +209,8 @@ def test_run_billy_collection_uses_paginated_existing_setlist_reads(monkeypatch)
     )
     monkeypatch.setattr(
         run_billy_collection,
-        "fetch_existing_values",
-        fake_fetch_existing_values,
+        "fetch_setlist_row_counts",
+        fake_fetch_setlist_row_counts,
     )
     monkeypatch.setattr(
         run_billy_collection,
@@ -268,7 +257,7 @@ def test_run_billy_collection_uses_paginated_existing_setlist_reads(monkeypatch)
             ("existing-show", "new-show"),
             200,
         ),
-        ("existing", "billy_setlists_raw", "show_id", (1001, 1002), 200),
+        ("counts", "billy_setlists_raw", ("1001", "1002")),
     ]
     assert collector.setlist_calls == [
         [

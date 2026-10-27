@@ -51,7 +51,7 @@ def run_eggy_collection(skip_validation: bool = False) -> None:
             raw_data = collector_func()
         except Exception as e:
             print(f"Error collecting {table_name}: {e}")
-            return
+            raise
         df = normalizer_func(raw_data)
         print(f"Prepared {len(df)} records for {table_name}.")
         if df.empty:
@@ -69,23 +69,29 @@ def run_eggy_collection(skip_validation: bool = False) -> None:
             print(f"Upserted data into {table_name}.")
         except Exception as exc:
             print(f"Error upserting to {table_name}: {exc}")
+            raise
 
-    upsert_table(
-        "eggy_songs_raw", collector.collect_songs, normalize_songs, ["api_song_id"]
-    )
-    upsert_table(
-        "eggy_shows_raw", collector.collect_shows, normalize_shows, ["show_id"]
-    )
-    upsert_table(
-        "eggy_venues_raw", collector.collect_venues, normalize_venues, ["venue_id"]
-    )
-    upsert_table(
-        "eggy_setlists_raw",
-        collector.collect_setlists,
-        normalize_setlists,
-        ["show_id", "set_number", "song_position"],
-        required_columns=["set_number", "song_position"],
-    )
+    try:
+        upsert_table(
+            "eggy_songs_raw", collector.collect_songs, normalize_songs, ["api_song_id"]
+        )
+        upsert_table(
+            "eggy_shows_raw", collector.collect_shows, normalize_shows, ["show_id"]
+        )
+        upsert_table(
+            "eggy_venues_raw", collector.collect_venues, normalize_venues, ["venue_id"]
+        )
+        upsert_table(
+            "eggy_setlists_raw",
+            collector.collect_setlists,
+            normalize_setlists,
+            ["show_id", "set_number", "song_position"],
+            required_columns=["set_number", "song_position"],
+        )
+    except Exception:
+        CloudflareBypass.cleanup()
+        timer.log("eggy", status="failed")
+        raise
 
     CloudflareBypass.cleanup()
     timer.log("eggy")
