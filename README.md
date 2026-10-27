@@ -79,9 +79,6 @@ uv run python scripts/sync_retained_prediction_corpus.py --band goose --window 5
 
 # Backfill Eggy raw tables without validation warnings
 uv run python scripts/run_eggy_collection.py --skip-validation
-
-# Convenience wrappers for Billy Strings predictions
-uv run predict-billy -- --date 2025-10-24
 ```
 
 For detailed usage, please refer to the full documentation.
