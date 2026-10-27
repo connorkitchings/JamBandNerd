@@ -114,6 +114,7 @@ def main():
         "window_days": args.window_days,
         "dry_run": dry_run,
         "tables": args.tables,
+        "summary": {name: result.summary() for name, result in results.items()},
         "results": {name: result.to_dict() for name, result in results.items()},
     }
 
@@ -126,6 +127,9 @@ def main():
     # Exit non-zero on any error (fetch failures, refused or failed applies)
     total_errors = sum(len(r.errors) for r in results.values())
     if total_errors > 0 or not results:
+        for result in results.values():
+            for error in result.errors:
+                print(f"::error::{result.table_name}: {error}")
         print(f"\n⚠️  Completed with {total_errors} errors")
         sys.exit(1)
 

@@ -18,6 +18,7 @@ from src.jambandnerd.data_collection.correction_detector import (
     diff_setlists,
     fetch_stored_setlists,
     fetch_upstream_setlists,
+    match_upstream_shows,
     row_to_tuple,
     run_correction_sweep,
 )
@@ -437,23 +438,6 @@ class TestUpstreamAdapters:
         assert collector.setlist_args == ((), {"show_ids": ["1"]})
         assert len(out["1"]) == 4
 
-    def test_show_dict_bands_collect_shows_first_and_filter_to_stored(self):
-        shows = [
-            {"show_id": "7", "source_url": "u7"},
-            {"show_id": "8", "source_url": "u8"},
-        ]
-        rows = [
-            {"show_id": "7", "song_name": "A", "set_number": 1, "song_position": i}
-            for i in (1, 2, 3)
-        ]
-        collector = FakeCollector(rows, shows=shows)
-        out = fetch_upstream_setlists(
-            "billy", ["7"], *WINDOW, collector=collector, normalizer=pd.DataFrame
-        )
-        args, _ = collector.setlist_args
-        assert [s["show_id"] for s in args[0]] == ["7"]
-        assert len(out["7"]) == 3
-
     def test_na_values_become_none(self):
         out = fetch_upstream_setlists(
             "phish",
@@ -470,3 +454,248 @@ class TestUpstreamAdapters:
     def test_detect_rejects_unknown_band(self):
         with pytest.raises(ValueError):
             detect_setlist_corrections("nope", {}, {})
+
+
+# ---------------------------------------------------------------------------
+# Representation mismatches (stored "1.0" vs upstream 1)
+# ---------------------------------------------------------------------------
+
+
+class TestCanonicalization:
+    def test_phish_float_stringified_set_matches_int_set(self):
+        stored = [
+            {
+                "set_number": "1.0",
+                "position": "1.0",
+                "song_name": "Sand ",
+                "transition": ">",
+            },
+            {
+                "set_number": "2.0",
+                "position": 2.0,
+                "song_name": "Free",
+                "transition": "",
+            },
+        ]
+        upstream = [
+            {"set_number": 1, "position": 1, "song_name": "Sand", "transition": "->"},
+            {"set_number": 2, "position": 2, "song_name": "Free", "transition": None},
+        ]
+        diff = diff_setlists("phish", stored, upstream)
+        assert diff == {"added": [], "removed": [], "changed": []}
+
+    def test_phish_sweep_with_float_sets_reports_zero_corrections(self):
+        stored = [
+            {
+                "api_unique_id": f"u{i}",
+                "show_id": 9,
+                "set_number": "1.0",
+                "position": i,
+                "song_name": f"S{i}",
+                "transition": ",",
+            }
+            for i in (1, 2, 3, 4)
+        ]
+        client = FakeClient(
+            {
+                "phish_shows_raw": [
+                    {"show_id": 9, "show_date": date.today().isoformat()}
+                ],
+                "phish_setlists_raw": stored,
+            }
+        )
+        raw = [
+            {
+                "uniqueid": f"u{i}",
+                "showid": 9,
+                "showdate": "2026-01-01",
+                "set": "1",
+                "position": i,
+                "song": f"S{i}",
+                "trans_mark": ",",
+            }
+            for i in (1, 2, 3, 4)
+        ]
+        result = run_correction_sweep(
+            "phish", client=client, collector=FakeCollector(raw)
+        )["phish_setlists_raw"]
+        assert result.corrections_found == 0
+        assert result.errors == []
+
+    def test_real_song_change_still_detected_despite_float_sets(self):
+        stored = [
+            {"set_number": "1.0", "position": 1, "song_name": "A", "transition": ","},
+            {"set_number": "1.0", "position": 2, "song_name": "B", "transition": ","},
+        ]
+        upstream = [
+            {"set_number": 1, "position": 1, "song_name": "A", "transition": ","},
+            {"set_number": 1, "position": 2, "song_name": "C", "transition": ","},
+        ]
+        diff = diff_setlists("phish", stored, upstream)
+        assert [c["to"]["song_name"] for c in diff["changed"]] == ["C"]
+        assert diff["added"] == [] and diff["removed"] == []
+
+    def test_string_booleans_are_parsed(self):
+        row = {"set_number": 1, "song_position": 1, "song_name": "A"}
+        stored = [dict(row, is_segue="false")]
+        upstream = [dict(row, is_segue=False)]
+        assert diff_setlists("billy", stored, upstream)["changed"] == []
+
+
+# ---------------------------------------------------------------------------
+# Natural-key matching for bands that assign their own show ids
+# ---------------------------------------------------------------------------
+
+
+def _stored_show(show_id, show_date, venue, url=None, uuid=None):
+    return {
+        "show_id": show_id,
+        "show_date": show_date,
+        "venue_name": venue,
+        "source_url": url,
+        "source_uuid": uuid,
+    }
+
+
+class TestNaturalKeyMatching:
+    def test_billy_matches_on_date_and_normalized_venue(self):
+        stored = [_stored_show(501, "2026-05-01", "The Fillmore!")]
+        upstream = [
+            {
+                "show_date": "2026-05-01",
+                "venue_name": "fillmore",
+                "source_uuid": "slug-uuid",
+                "source_url": "u",
+            }
+        ]
+        (matched,) = match_upstream_shows("billy", upstream, stored)
+        assert matched["show_id"] == 501
+
+    def test_um_matches_on_source_url(self):
+        stored = [_stored_show(7, "2026-05-01", "x", url="https://um/a")]
+        upstream = [{"show_date": "2026-05-01", "source_url": "https://um/a"}]
+        (matched,) = match_upstream_shows("um", upstream, stored)
+        assert matched["show_id"] == 7
+
+    def test_wsp_falls_back_to_date_venue_when_url_differs(self):
+        stored = [_stored_show(3, "2026-05-01", "Fox Theatre", url="old")]
+        upstream = [
+            {
+                "show_date": "2026-05-01",
+                "venue_name": "fox theatre",
+                "source_url": "new",
+            }
+        ]
+        (matched,) = match_upstream_shows("wsp", upstream, stored)
+        assert matched["show_id"] == 3
+
+    def test_unmatched_and_ambiguous_shows_are_dropped(self):
+        stored = [
+            _stored_show(1, "2026-05-01", "Hall"),
+            _stored_show(2, "2026-05-01", "Hall"),
+        ]
+        upstream = [
+            {"show_date": "2026-05-01", "venue_name": "Hall"},
+            {"show_date": "2026-06-01", "venue_name": "Elsewhere"},
+        ]
+        assert match_upstream_shows("billy", upstream, stored) == []
+
+    @pytest.mark.parametrize("band", ["billy", "um", "wsp"])
+    def test_sweep_compares_using_stored_id_not_upstream_id(self, band):
+        today = date.today().isoformat()
+        stored_show = _stored_show(
+            501, today, "Venue", url="https://x/show", uuid="u-1"
+        )
+        stored_rows = [
+            {
+                "id": i,
+                "show_id": 501,
+                "set_number": 1,
+                "set_label": "1",
+                "song_position": i,
+                "show_position": i,
+                "song_name": f"S{i}",
+                "is_segue": False,
+            }
+            for i in (1, 2, 3)
+        ]
+        client = FakeClient(
+            {
+                f"{band}_shows_raw": [stored_show],
+                f"{band}_setlists_raw": stored_rows,
+            }
+        )
+        upstream_show = {
+            "show_id": 999,  # differs from the stored id
+            "show_date": today,
+            "venue_name": "Venue",
+            "source_url": "https://x/show",
+            "source_uuid": "u-1",
+        }
+
+        class Collector(FakeCollector):
+            def collect_setlists(self, shows, *a, **kw):
+                self.setlist_args = shows
+                return [
+                    {
+                        "show_id": s["show_id"],
+                        "set_number": 1,
+                        "set_label": "1",
+                        "song_position": i,
+                        "show_position": i,
+                        "song_name": name,
+                        "is_segue": False,
+                    }
+                    for s in shows
+                    for i, name in enumerate(("S1", "S2", "Changed"), start=1)
+                ]
+
+        collector = Collector([], shows=[upstream_show])
+        result = run_correction_sweep(
+            band,
+            dry_run=True,
+            client=client,
+            collector=collector,
+            normalizer=pd.DataFrame,
+        )[f"{band}_setlists_raw"]
+
+        assert [s["show_id"] for s in collector.setlist_args] == [501]
+        assert result.skipped == []
+        assert result.corrections_found == 1
+        assert result.details[0]["show_id"] == "501"
+        assert result.summary()["compared"] == 1
+
+
+class TestBlindSweepGuard:
+    def test_high_not_in_upstream_rate_is_an_error_and_summarized(self):
+        today = date.today().isoformat()
+        shows = [_stored_show(i, today, f"V{i}", url=f"u{i}") for i in (1, 2, 3)]
+        rows = [
+            {
+                "id": i,
+                "show_id": i,
+                "set_label": "1",
+                "show_position": p,
+                "song_name": "S",
+                "is_segue": False,
+            }
+            for i in (1, 2, 3)
+            for p in (1, 2, 3)
+        ]
+        client = FakeClient({"um_shows_raw": shows, "um_setlists_raw": rows})
+        # Upstream knows none of the stored urls.
+        collector = FakeCollector(
+            [], shows=[{"show_date": today, "source_url": "other"}]
+        )
+        result = run_correction_sweep(
+            "um", client=client, collector=collector, normalizer=pd.DataFrame
+        )["um_setlists_raw"]
+        summary = result.to_dict()["summary"]
+        assert summary["compared"] == 0
+        assert summary["skipped_by_reason"] == {"not_in_upstream": 3}
+        assert any("Blind sweep" in e for e in result.errors)
+
+    def test_low_not_in_upstream_rate_is_not_an_error(self):
+        result = _sweep(_goose_client(), _goose_upstream_raw())
+        assert result.summary()["not_in_upstream_ratio"] == 0.0
+        assert result.errors == []

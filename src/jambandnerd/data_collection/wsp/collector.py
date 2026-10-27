@@ -71,24 +71,25 @@ class WSPCollector(BandCollector):
         if not show_url or not show_id:
             return []
 
-        # More efficient: check for existing setlist before making any web requests
-        try:
-            response = (
-                self.supabase_client.table("wsp_setlists_raw")
-                .select("show_id")
-                .eq("show_id", show_id)
-                .limit(1)
-                .execute()
-            )
-            if response.data:
-                logger.info(
-                    f"Setlist for show_id {show_id} already exists. Skipping scrape."
+        if getattr(self, "skip_existing_setlists", True):
+            # More efficient: check for existing setlist before making any web requests
+            try:
+                response = (
+                    self.supabase_client.table("wsp_setlists_raw")
+                    .select("show_id")
+                    .eq("show_id", show_id)
+                    .limit(1)
+                    .execute()
                 )
-                return []
-        except Exception as e:
-            logger.warning(
-                f"Could not check for existing setlist for show_id {show_id}: {e}"
-            )
+                if response.data:
+                    logger.info(
+                        f"Setlist for show_id {show_id} already exists. Skipping scrape."
+                    )
+                    return []
+            except Exception as e:
+                logger.warning(
+                    f"Could not check for existing setlist for show_id {show_id}: {e}"
+                )
 
         try:
             response = make_request(self.session, show_url, allow_redirects=True)
