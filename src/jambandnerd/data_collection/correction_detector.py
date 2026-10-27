@@ -20,6 +20,7 @@ import hashlib
 import importlib
 import json
 import logging
+import re
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from datetime import date, timedelta
@@ -38,6 +39,9 @@ MIN_UPSTREAM_ROWS = 3
 PAGE_SIZE = 1000
 ID_CHUNK_SIZE = 100
 REPLACE_RPC = "replace_show_setlist"
+# A table where more than this share of stored shows has no upstream setlist is
+# treated as a blind sweep (matching/collection broken), not a clean result.
+MAX_NOT_IN_UPSTREAM_RATIO = 0.5
 
 # Comparison tuple: (set_number, position, song_name, is_segue)
 SongTuple = Tuple[Optional[str], Optional[int], str, bool]
@@ -60,8 +64,27 @@ class CorrectionResult:
     details: List[Dict[str, Any]] = field(default_factory=list)
     skipped: List[Dict[str, Any]] = field(default_factory=list)
 
+    def summary(self) -> Dict[str, Any]:
+        """Counts of stored shows compared vs skipped, by skip reason."""
+        by_reason = Counter(item["reason"] for item in self.skipped)
+        return {
+            "stored_shows": self.records_checked,
+            "compared": self.records_checked - len(self.skipped),
+            "skipped": len(self.skipped),
+            "skipped_by_reason": dict(by_reason),
+            "not_in_upstream_ratio": (
+                round(by_reason["not_in_upstream"] / self.records_checked, 3)
+                if self.records_checked
+                else 0.0
+            ),
+        }
+
+    def is_blind(self) -> bool:
+        return self.summary()["not_in_upstream_ratio"] > MAX_NOT_IN_UPSTREAM_RATIO
+
     def to_dict(self) -> Dict[str, Any]:
         return {
+            "summary": self.summary(),
             "band": self.band,
             "table_name": self.table_name,
             "records_checked": self.records_checked,
@@ -100,7 +123,7 @@ def _phish_is_segue(row: Dict[str, Any]) -> bool:
 
 
 def _column_segue(column: str) -> Callable[[Dict[str, Any]], bool]:
-    return lambda row: bool(row.get(column))
+    return lambda row: _normalize_bool(row.get(column))
 
 
 def _no_segue(row: Dict[str, Any]) -> bool:
@@ -136,22 +159,47 @@ SETLIST_SCHEMAS: Dict[str, SetlistSchema] = {
 }
 
 
+def _to_int(value: Any) -> Optional[int]:
+    """Parse ints, integral floats and float-stringified ints ("1.0")."""
+    if value is None or isinstance(value, bool):
+        return None
+    try:
+        number = float(str(value).strip())
+    except ValueError:
+        return None
+    if number != number or not number.is_integer():  # NaN or fractional
+        return None
+    return int(number)
+
+
 def _normalize_set(value: Any) -> Optional[str]:
+    """Canonical set label: numeric sets as "1"/"2"; others stripped, upper-cased.
+
+    Stored rows may hold float-stringified sets ("1.0") while upstream rows
+    carry ints, so both sides must pass through this one function.
+    """
     if value is None:
         return None
-    if isinstance(value, float) and value.is_integer():
-        return str(int(value))
-    text = str(value).strip()
-    return text or None
+    as_int = _to_int(value)
+    if as_int is not None:
+        return str(as_int)
+    text = str(value).strip().upper()
+    return text if text and text not in {"NAN", "NONE", "<NA>"} else None
 
 
 def _normalize_position(value: Any) -> Optional[int]:
-    if value is None:
-        return None
+    return _to_int(value)
+
+
+def _normalize_bool(value: Any) -> bool:
+    if isinstance(value, str):
+        return value.strip().lower() in {"true", "t", "1", "yes", "y"}
     try:
-        return int(value)
+        if pd.isna(value):
+            return False
     except (TypeError, ValueError):
-        return None
+        pass
+    return bool(value)
 
 
 def row_to_tuple(band: str, row: Dict[str, Any]) -> SongTuple:
@@ -161,7 +209,7 @@ def row_to_tuple(band: str, row: Dict[str, Any]) -> SongTuple:
         _normalize_set(row.get(schema.set_column)),
         _normalize_position(row.get(schema.position_column)),
         str(row.get(schema.song_column) or "").strip(),
-        bool(schema.segue(row)),
+        _normalize_bool(schema.segue(row)),
     )
 
 
@@ -254,6 +302,28 @@ def _fetch_all(build_query: Callable[[], Any], what: str) -> List[Dict[str, Any]
         offset += PAGE_SIZE
 
 
+def fetch_stored_shows(
+    band: str,
+    since: date,
+    until: date,
+    client=None,
+    columns: Iterable[str] = (),
+) -> List[Dict[str, Any]]:
+    """Return ``{band}_shows_raw`` rows (id column plus ``columns``) in a window."""
+    client = client or get_supabase_client()
+    id_col = get_repo_band_id_column(band)
+    select = ", ".join(dict.fromkeys([id_col, *columns]))
+    shows_table = f"{band}_shows_raw"
+    return _fetch_all(
+        lambda: client.table(shows_table)
+        .select(select)
+        .gte("show_date", since.isoformat())
+        .lte("show_date", until.isoformat())
+        .order(id_col),
+        shows_table,
+    )
+
+
 def fetch_stored_setlists(
     band: str,
     since: date,
@@ -268,17 +338,9 @@ def fetch_stored_setlists(
     client = client or get_supabase_client()
     schema = SETLIST_SCHEMAS[band]
     id_col = get_repo_band_id_column(band)
-    shows_table = f"{band}_shows_raw"
     setlists_table = f"{band}_setlists_raw"
 
-    shows = _fetch_all(
-        lambda: client.table(shows_table)
-        .select(id_col)
-        .gte("show_date", since.isoformat())
-        .lte("show_date", until.isoformat())
-        .order(id_col),
-        shows_table,
-    )
+    shows = fetch_stored_shows(band, since, until, client=client)
     show_ids = sorted({str(s[id_col]) for s in shows if s.get(id_col) is not None})
 
     grouped: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
@@ -300,7 +362,8 @@ def fetch_stored_setlists(
 # Upstream data (per-band adapters)
 # ---------------------------------------------------------------------------
 
-# Bands whose collect_setlists takes show_ids (the rest take show dicts).
+# Bands whose collect_setlists takes show_ids (the rest take show dicts and are
+# matched to stored shows by natural key, see NATURAL_KEY_KINDS).
 _SHOW_ID_COLLECTORS = {"goose", "eggy", "phish"}
 
 _COLLECTOR_CLASSES = {
@@ -320,7 +383,12 @@ def _get_collector_for_band(band: str):
         raise CorrectionFetchError(f"No collector available for band: {band}")
     module_path, class_name = path.rsplit(".", 1)
     try:
-        return getattr(importlib.import_module(module_path), class_name)()
+        collector = getattr(importlib.import_module(module_path), class_name)()
+        # WSP's collector skips any show that already has stored setlist rows,
+        # which would make every comparison come back empty.
+        if band == "wsp":
+            collector.skip_existing_setlists = False
+        return collector
     except Exception as exc:
         raise CorrectionFetchError(
             f"Failed to load collector for {band}: {_sanitize_error(exc)}"
@@ -351,6 +419,72 @@ def _jsonable(value: Any) -> Any:
     return value
 
 
+# Bands whose show ids are assigned locally at normalization time, so upstream
+# shows carry no stored ``show_id``. They are matched to stored shows by these
+# natural keys, tried in order (mirrors each band's collection reconciliation:
+# billy by source_uuid/date+venue, um by source_url, wsp by source_url then
+# date+venue).
+NATURAL_KEY_KINDS: Dict[str, Tuple[str, ...]] = {
+    "billy": ("source_uuid", "date_venue"),
+    "um": ("source_url",),
+    "wsp": ("source_url", "date_venue"),
+}
+SHOW_MATCH_COLUMNS = ("show_date", "venue_name", "source_url", "source_uuid")
+
+
+def _venue_key(name: Any) -> str:
+    key = re.sub(r"[^a-z0-9]+", " ", str(name or "").lower()).strip()
+    return re.sub(r"^the ", "", key).replace(" ", "")
+
+
+def _natural_key(kind: str, show: Dict[str, Any]) -> Optional[Tuple[Any, ...]]:
+    if kind == "date_venue":
+        show_date = str(show.get("show_date") or "")[:10]
+        venue = _venue_key(show.get("venue_name"))
+        return (kind, show_date, venue) if show_date and venue else None
+    value = str(show.get(kind) or "").strip()
+    return (kind, value) if value else None
+
+
+def match_upstream_shows(
+    band: str,
+    upstream_shows: Iterable[Dict[str, Any]],
+    stored_shows: Iterable[Dict[str, Any]],
+) -> List[Dict[str, Any]]:
+    """Return upstream shows re-keyed with the STORED show id.
+
+    A key that matches more than one stored show is ambiguous and ignored; an
+    upstream show matching no stored show is dropped. Each stored show is
+    claimed by at most one upstream show.
+    """
+    id_col = get_repo_band_id_column(band)
+    kinds = NATURAL_KEY_KINDS[band]
+    index: Dict[Tuple[Any, ...], set] = defaultdict(set)
+    stored_id: Dict[str, Any] = {}
+    for stored in stored_shows:
+        if stored.get(id_col) is None:
+            continue
+        stored_id[str(stored[id_col])] = stored[id_col]
+        for kind in kinds:
+            key = _natural_key(kind, stored)
+            if key:
+                index[key].add(str(stored[id_col]))
+
+    matched: List[Dict[str, Any]] = []
+    claimed: set = set()
+    for show in upstream_shows:
+        for kind in kinds:
+            key = _natural_key(kind, show)
+            ids = index.get(key, set()) if key else set()
+            if len(ids) == 1:
+                (sid,) = ids
+                if sid not in claimed:
+                    claimed.add(sid)
+                    matched.append({**show, id_col: stored_id[sid]})
+                break
+    return matched
+
+
 def fetch_upstream_setlists(
     band: str,
     stored_show_ids: Iterable[str],
@@ -358,8 +492,14 @@ def fetch_upstream_setlists(
     until: date,
     collector=None,
     normalizer: Optional[Callable[[List[Dict[str, Any]]], pd.DataFrame]] = None,
+    stored_shows: Optional[List[Dict[str, Any]]] = None,
 ) -> Dict[str, List[Dict[str, Any]]]:
-    """Fetch upstream setlists for the stored shows, as DB-shaped rows by show id."""
+    """Fetch upstream setlists for the stored shows, as DB-shaped rows by show id.
+
+    ``stored_shows`` (rows with ``SHOW_MATCH_COLUMNS``) is required for bands
+    outside the show-id collectors: their upstream shows are mapped to stored
+    show ids by natural key.
+    """
     collector = collector or _get_collector_for_band(band)
     id_col = get_repo_band_id_column(band)
     wanted = {str(i) for i in stored_show_ids}
@@ -371,7 +511,7 @@ def fetch_upstream_setlists(
             raw = collector.collect_setlists(show_ids=sorted(wanted))
         else:
             shows = collector.collect_shows(start_date=since, end_date=until)
-            to_process = [s for s in shows if str(s.get(id_col)) in wanted]
+            to_process = match_upstream_shows(band, shows, stored_shows or [])
             raw = collector.collect_setlists(to_process) if to_process else []
         df = (normalizer or _default_normalizer(band))(list(raw or []))
     except Exception as exc:
@@ -514,6 +654,13 @@ def run_correction_sweep(
                 logger.info("No %s records found in window", table_name)
                 results[table_name] = CorrectionResult(band, table_name, 0, 0, 0)
                 continue
+            stored_shows = (
+                fetch_stored_shows(
+                    band, since, until, client=client, columns=SHOW_MATCH_COLUMNS
+                )
+                if band in NATURAL_KEY_KINDS
+                else None
+            )
             upstream = fetch_upstream_setlists(
                 band,
                 stored.keys(),
@@ -521,10 +668,20 @@ def run_correction_sweep(
                 until,
                 collector=collector,
                 normalizer=normalizer,
+                stored_shows=stored_shows,
             )
-            results[table_name] = detect_setlist_corrections(
+            result = detect_setlist_corrections(
                 band, upstream, stored, dry_run=dry_run, client=client
             )
+            if result.is_blind():
+                summary = result.summary()
+                result.errors.append(
+                    f"Blind sweep: {summary['skipped_by_reason']['not_in_upstream']}"
+                    f" of {summary['stored_shows']} stored shows had no upstream "
+                    f"setlist (> {MAX_NOT_IN_UPSTREAM_RATIO:.0%}); "
+                    "upstream matching or collection is likely broken."
+                )
+            results[table_name] = result
         except Exception as exc:
             message = _sanitize_error(exc)
             logger.error("Correction sweep failed for %s: %s", table_name, message)
@@ -571,7 +728,11 @@ def format_correction_report(results: Dict[str, CorrectionResult]) -> str:
                 lines.append(f"    - Show {show_id}: {action} ({counts})")
 
         if result.skipped:
-            lines.append(f"  Skipped shows: {len(result.skipped)}")
+            summary = result.summary()
+            lines.append(
+                f"  Compared: {summary['compared']} of {summary['stored_shows']};"
+                f" skipped {summary['skipped']} {summary['skipped_by_reason']}"
+            )
 
     lines.append("")
     lines.append("=" * 60)

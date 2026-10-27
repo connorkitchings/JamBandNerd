@@ -32,7 +32,7 @@ The weekly correction sweep runs automatically on Tuesdays staggered hourly by b
 The sweep completes by 19:00 UTC, avoiding queue contention with the daily pipeline at 19:00 UTC.
 Band selection for scheduled runs uses the cron expression (`github.event.schedule`) rather than the current wall-clock time, so runner startup delays do not misroute bands.
 
-It uses the `correction_detector.py` module to perform checksum-based comparison of stored DB raw records with fresh upstream data over a 730-day lookback window. Use `workflow_dispatch` for manual runs or repair validation.
+It uses the `correction_detector.py` module to compare each stored show's setlist (canonicalized set, position, song, segue) with a fresh upstream fetch over a 730-day lookback window. Bands that assign their own show ids (billy, um, wsp) are matched to stored shows by natural key (`source_url`, `source_uuid`, or date plus normalized venue). The JSON report carries a per-table `summary` of compared vs skipped shows by reason, and the job fails with an `::error::` annotation when more than 50% of a table's stored shows are `not_in_upstream`. Use `workflow_dispatch` for manual runs or repair validation.
 
 ---
 
