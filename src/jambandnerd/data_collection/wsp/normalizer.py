@@ -154,4 +154,24 @@ def normalize_setlists(raw: Iterable[Dict[str, Any]]) -> pd.DataFrame:
             "updated_at": item.get("updated_at"),  # Not in API, will be None
         }
         normalized.append(record)
+    _resequence_colliding_encores(normalized)
     return pd.DataFrame(normalized)
+
+
+def _resequence_colliding_encores(records: List[Dict[str, Any]]) -> None:
+    """Give multi-encore shows unique positions within set 99.
+
+    The parser numbers each encore label (``E``, ``E2``) from 1, but every
+    label normalizes to set 99, so ``(show_id, 99, position)`` collides. When it
+    does, renumber that show's encore rows 1..n in input (page) order.
+    Single-encore shows are left untouched.
+    """
+    by_show: Dict[str, List[Dict[str, Any]]] = {}
+    for record in records:
+        if record["set_number"] == 99:
+            by_show.setdefault(record["show_id"], []).append(record)
+    for rows in by_show.values():
+        positions = [r["song_position"] for r in rows]
+        if len(set(positions)) != len(positions):
+            for position, record in enumerate(rows, start=1):
+                record["song_position"] = position
