@@ -213,3 +213,19 @@ This file stores persistent lessons and operating patterns that should survive a
 - **Per-band upcoming-show source splits must be reflected in every "has upcoming show?" consumer**: UM's future shows live in `um_upcoming_shows` (Seated), not `um_shows_raw` (allthings only archives played shows). `generate_live_predictions`, `validate_prediction_tables._has_upcoming_show`, and now `collection_preflight.has_upcoming_show` all carry a UM-specific Seated fallback. Any NEW consumer that asks "does this band have a future show?" must mirror that fallback or it silently returns False for UM and predictions get skipped. Centralize the check (don't copy the fallback into a fourth place) when a fifth consumer appears.
 
 - **When switching a band's primary data source, reconcile by natural key before upsert to preserve downstream identity**: `billy_shows_raw.source_uuid` is the unique upsert key, and the prediction/accuracy corpus is keyed on the derived `show_id`. A new source (BillyBase slugs) produces different `source_uuid` values than the old source (bmfsdb UUIDs), so a naive upsert would create duplicate shows and orphan the existing corpus. Before upserting, match collected shows to existing rows by `(show_date, normalized venue_name)` and reuse the existing `source_uuid`; new shows get the new source's slug-derived UUID. This keeps `show_id` continuity intact without a full re-backfill.
+
+- **A green run hides silent failure paths — grep for `except Exception: continue`, bare `return`, and `return {}` on error**: This review found a weekly correction sweep whose query failed with Postgres 42703 on every run and still reported success, a backtest that swallowed per-show exceptions, and collectors that printed and returned on error so retry logic never fired. Treat "CI green for N runs" as evidence the job exits 0, not that it works; check what the job actually changed or compared.
+
+- **Dry-run defaults make "live" claims unreliable — read the effective flag, not the workflow's wording**: The correction-sweep workflow said scheduled runs were live, but the script defaulted to `--dry-run` and the workflow never passed `--no-dry-run`. Before turning a job live (or planning around it being live), confirm the flag that actually reaches the script.
+
+- **Evaluation cutoffs must live in one helper**: The previous-night cutoff was fixed in `run_backtest.py` but the same off-by-one stayed in five offline scripts, so every promotion metric excluded the previous night's show. `build_model_data_for_target` in `models/evaluation.py` is now the single place that decides the cutoff.
+
+- **Training and prediction must share the code that builds a feature's inputs, not copies of it**: `same_venue_run_position` was built from the venue name only in training but from venue, city and state at prediction, so training saw a near-constant 1.0. Copying the block between predictors spread the bug. Use `models/shared/venue_context.py` and keep a parity test comparing both paths for a fixture show.
+
+- **`notFound()` cannot set a 404 on a prerendered page under a root `loading.tsx`**: the loading boundary streams a 200 first. Enforce hard 404s in `src/proxy.ts`, and confirm against a production build (`next build && next start`) rather than dev.
+
+- **Check a stale `.next` build before trusting a local production check**: a `x-nextjs-cache: HIT` header on a route you just changed means the response came from an old prerender; rebuild first.
+
+- **BSD `sed` (macOS) has no `\b`**: a word-boundary replace silently matches nothing. Use `perl -pi -e` for multi-file regex edits and check `git diff --stat` afterwards.
+
+- **A `MODEL_VERSION` bump touches more than metadata**: it appears in class attributes, `metadata.py`, tests that build experiment-suffix versions, and docs. Grep every old version string and run the full suite after the bump.
