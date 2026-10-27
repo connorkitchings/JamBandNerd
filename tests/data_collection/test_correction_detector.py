@@ -1001,3 +1001,55 @@ class TestReplacementPayloadColumns:
             [{"show_id": "1", "song_position": float("nan"), "song_name": "A"}]
         )
         assert payload == [{"show_id": "1", "song_position": None, "song_name": "A"}]
+
+
+class TestCollidingPositionsAreResequenced:
+    @staticmethod
+    def _wsp_rows(show_id):
+        from src.jambandnerd.data_collection.wsp.normalizer import normalize_setlists
+
+        def enc(label, songs):
+            return [
+                {
+                    "show_id": show_id,
+                    "set_number": label,
+                    "song_position": i,
+                    "song_name": n,
+                }
+                for i, n in enumerate(songs, start=1)
+            ]
+
+        raw = enc("E", ["Cosmic Confidante", "Soul Kitchen", "Postcard"]) + enc(
+            "E2", ["Love Tractor"]
+        )
+        return normalize_setlists(raw).to_dict("records")
+
+    def test_two_encore_wsp_show_applies_without_duplicate_keys(self):
+        stored = [
+            {"show_id": "22020", "set_number": 99, "song_position": i, "song_name": n}
+            for i, n in enumerate(["Love Tractor", "Soul Kitchen", "Postcard"], 1)
+        ]
+        client = FakeClient({})
+        result = detect_setlist_corrections(
+            "wsp",
+            {"22020": self._wsp_rows("22020")},
+            {"22020": stored},
+            dry_run=False,
+            client=client,
+        )
+        assert result.corrections_applied == 1
+        ((_, params),) = client.rpc_calls
+        keys = [(r["set_number"], r["song_position"]) for r in params["p_rows"]]
+        assert keys == [(99, 1), (99, 2), (99, 3), (99, 4)]
+        assert params["p_rows"][-1]["song_name"] == "Love Tractor"
+
+    def test_payload_guard_resequences_only_colliding_sets(self):
+        rows = [
+            {"show_id": "1", "set_number": 1, "song_position": 1, "song_name": "A"},
+            {"show_id": "1", "set_number": 1, "song_position": 2, "song_name": "B"},
+            {"show_id": "1", "set_number": 99, "song_position": 1, "song_name": "C"},
+            {"show_id": "1", "set_number": 99, "song_position": 1, "song_name": "D"},
+        ]
+        out = _replacement_payload(rows)
+        assert [r["song_position"] for r in out] == [1, 2, 1, 2]
+        assert [r["song_name"] for r in out] == ["A", "B", "C", "D"]

@@ -168,3 +168,45 @@ class TestWSPNormalization:
         assert len(df) == 1
         assert df["song_position"].iloc[0] == 1
         assert df["song_name"].iloc[0] == "Valid Song"
+
+
+def _wsp_encore_raw(show_id, label, songs):
+    return [
+        {
+            "show_id": show_id,
+            "set_number": label,
+            "song_position": i,
+            "song_name": name,
+        }
+        for i, name in enumerate(songs, start=1)
+    ]
+
+
+def test_two_encores_get_unique_running_positions_in_set_99():
+    raw = _wsp_encore_raw(
+        "22020", "E", ["Cosmic Confidante", "Soul Kitchen", "Postcard"]
+    ) + _wsp_encore_raw("22020", "E2", ["Love Tractor"])
+    df = normalize_setlists(raw)
+    assert list(df["set_number"]) == [99, 99, 99, 99]
+    assert list(df["song_position"]) == [1, 2, 3, 4]
+    assert list(df["song_name"]) == [
+        "Cosmic Confidante",
+        "Soul Kitchen",
+        "Postcard",
+        "Love Tractor",
+    ]
+
+
+def test_single_encore_and_other_shows_keep_positions():
+    raw = (
+        _wsp_encore_raw("1", "1", ["A", "B"])
+        + _wsp_encore_raw("1", "E", ["C", "D"])
+        + _wsp_encore_raw("2", "E", ["X", "Y"])
+        + _wsp_encore_raw("3", "E", ["P"])
+        + _wsp_encore_raw("3", "E2", ["Q"])
+    )
+    df = normalize_setlists(raw)
+    by_show = {
+        sid: list(g["song_position"]) for sid, g in df.groupby("show_id", sort=False)
+    }
+    assert by_show == {"1": [1, 2, 1, 2], "2": [1, 2], "3": [1, 2]}

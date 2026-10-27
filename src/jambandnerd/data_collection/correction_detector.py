@@ -486,11 +486,27 @@ SERVER_MANAGED_COLUMNS = frozenset({"id", "created_at", "updated_at"})
 
 
 def _replacement_payload(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Build the ``p_rows`` payload: no server-managed keys, JSON-safe values."""
-    return [
+    """Build the ``p_rows`` payload: no server-managed keys, JSON-safe values.
+
+    Rows that still share a ``(set_number, song_position)`` key (e.g. a show with
+    two encores that both restart at 1) would violate the table's unique
+    constraint and roll the whole replacement back, so such sets are re-sequenced
+    1..n in upstream (page) order.
+    """
+    payload = [
         {k: _jsonable(v) for k, v in row.items() if k not in SERVER_MANAGED_COLUMNS}
         for row in rows
     ]
+    by_set: Dict[Any, List[Dict[str, Any]]] = {}
+    for row in payload:
+        if "set_number" in row and "song_position" in row:
+            by_set.setdefault((row.get("show_id"), row["set_number"]), []).append(row)
+    for set_rows in by_set.values():
+        positions = [r["song_position"] for r in set_rows]
+        if len(set(positions)) != len(positions):
+            for position, row in enumerate(set_rows, start=1):
+                row["song_position"] = position
+    return payload
 
 
 # Bands whose show ids are assigned locally at normalization time, so upstream
