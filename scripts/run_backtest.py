@@ -12,6 +12,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import logging
 import os
 import sys
 from datetime import date, timedelta, timezone
@@ -41,6 +42,7 @@ from src.jambandnerd.models.accuracy import (
     dual_objective_score_for_band,
 )
 from src.jambandnerd.models.evaluation import (
+    build_model_data_for_target,
     get_evaluation_reference_date,
     list_completed_shows,
     select_target_shows,
@@ -50,7 +52,14 @@ from src.jambandnerd.models.registry import (
     get_band_metadata,
     get_band_serializer,
 )
-from src.jambandnerd.transformations.gaps import generate_model_data
+
+logger = logging.getLogger(__name__)
+
+# Maximum share of attempted shows allowed to fail before the run is rejected.
+MAX_FAILED_SHOW_FRACTION = 0.10
+# Completed shows this recent are always re-scored: their setlists may have
+# been scored while only partly posted.
+RESCORE_WINDOW_DAYS = 7
 
 _SUPABASE_WRITE_KEY_PREFIXES = ("sb_secret_", "eyJ")
 
@@ -112,17 +121,26 @@ def build_scored_run_records(
     target_shows: pd.DataFrame,
     exclusion_window: int | None,
     show_progress: bool = False,
+    fail_on_any_error: bool = False,
 ) -> list[dict[str, Any]]:
-    """Build detailed per-show scored-run records without writing to Supabase."""
+    """Build detailed per-show scored-run records without writing to Supabase.
+
+    A fresh predictor is built for every target show (as the live path does) so
+    a ``train()`` that returns early cannot reuse the previous show's model.
+    Shows that raise are logged and counted; the run raises ``RuntimeError`` if
+    any fail (``fail_on_any_error``) or more than ``MAX_FAILED_SHOW_FRACTION``
+    of attempted shows fail.
+    """
 
     band_metadata = get_band_metadata(band)
-    predictor = build_band_predictor(band, persist_artifacts=False)
     model_version = band_metadata.model_version
     serializer = get_band_serializer(band)
     top_k = band_metadata.default_top_k
 
     scored_run_records: list[dict[str, Any]] = []
     total_shows = len(target_shows)
+    attempted = 0
+    failed_show_ids: list[str] = []
 
     for index, (_, show_row) in enumerate(target_shows.iterrows(), start=1):
         ref_date = show_row["show_date"]
@@ -152,8 +170,10 @@ def build_scored_run_records(
 
         prediction_date = get_evaluation_reference_date(ref_date)
 
+        attempted += 1
         try:
-            model_data = generate_model_data(
+            predictor = build_band_predictor(band, persist_artifacts=False)
+            model_data = build_model_data_for_target(
                 shows_df,
                 sets_df,
                 ref_date,
@@ -180,9 +200,15 @@ def build_scored_run_records(
             pred_songs = [
                 prediction["song_name"] for prediction in serialized_predictions
             ]
-        except (ValueError, AttributeError, KeyError, TypeError):
-            continue
         except Exception:
+            logger.exception(
+                "[%s/%s] Failed to score show_id=%s target_show_date=%s",
+                band.upper(),
+                model_version,
+                show_id,
+                ref_date,
+            )
+            failed_show_ids.append(show_id)
             continue
 
         metrics_by_k: dict[str, dict[str, float]] = {}
@@ -207,6 +233,17 @@ def build_scored_run_records(
             "metrics": metrics_by_k,
         }
         scored_run_records.append(record)
+
+    if failed_show_ids:
+        message = (
+            f"[{band.upper()}/{model_version}] {len(failed_show_ids)} of "
+            f"{attempted} show(s) failed to score: {failed_show_ids}"
+        )
+        if fail_on_any_error or len(failed_show_ids) > (
+            MAX_FAILED_SHOW_FRACTION * attempted
+        ):
+            raise RuntimeError(message)
+        logger.warning(message)
 
     return scored_run_records
 
@@ -390,11 +427,20 @@ def run_backtest(
             candidate_target_show_keys=candidate_ids,
             table_name=SETLIST_ACCURACY_TABLE,
         )
-        new_ids = candidate_ids - already_scored
+        rescore_cutoff = date.today() - timedelta(days=RESCORE_WINDOW_DAYS)
+        recent_ids = set(
+            target_shows.loc[
+                pd.to_datetime(target_shows["show_date"]).dt.date >= rescore_cutoff,
+                "show_id",
+            ].astype(str)
+        )
+        new_ids = (candidate_ids - already_scored) | recent_ids
         skipped = len(candidate_ids) - len(new_ids)
         if skipped:
             print(
-                f"{log_prefix} Incremental: {skipped} show(s) already scored, {len(new_ids)} new."
+                f"{log_prefix} Incremental: {skipped} show(s) already scored, "
+                f"{len(new_ids)} to score (new or within last "
+                f"{RESCORE_WINDOW_DAYS} days)."
             )
         if not new_ids:
             print(f"{log_prefix} All shows in window already scored. Nothing to do.")
@@ -425,6 +471,7 @@ def run_backtest(
         target_shows=target_shows,
         exclusion_window=exclusion_window,
         show_progress=True,
+        fail_on_any_error=require_results,
     )
 
     if scored_run_records:

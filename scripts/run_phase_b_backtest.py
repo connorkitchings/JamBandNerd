@@ -41,11 +41,11 @@ from jambandnerd.models.accuracy import (
 )
 from jambandnerd.models.base import PredictionModel
 from jambandnerd.models.evaluation import (
+    build_model_data_for_target,
     get_evaluation_reference_date,
     list_completed_shows,
     select_target_shows,
 )
-from jambandnerd.transformations.gaps import generate_model_data
 from scripts.common import fetch_table, prepare_band_data
 
 
@@ -128,10 +128,10 @@ def run_phase_b_backtest(
         prediction_date = get_evaluation_reference_date(ref_date)
 
         try:
-            model_data = generate_model_data(
+            model_data = build_model_data_for_target(
                 shows_df,
                 sets_df,
-                prediction_date,
+                ref_date,
                 band=band,
                 target_show_context=show_row,
             )
