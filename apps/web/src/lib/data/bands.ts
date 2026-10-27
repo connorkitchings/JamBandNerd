@@ -83,10 +83,6 @@ export function bandEntryBySlug(
   return bands.find((b) => b.slug === slug);
 }
 
-export function isValidBandSlug(bands: BandEntry[], slug: string): boolean {
-  return bands.some((b) => b.slug === slug);
-}
-
 type BandSelection = {
   requestedSlug: string;
   bandEntry: BandEntry | null;

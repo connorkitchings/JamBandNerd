@@ -28,7 +28,6 @@ import {
   buildSetlistSelectColumns,
   parseNumber,
   parseSetNumber,
-  parseStringArray,
 } from "./parsers";
 import type { RouteState, SetlistSnapshot, SetlistSong } from "./types";
 
@@ -179,28 +178,6 @@ async function lookupSetlistForDate(
   }
 
   return { status: "ready", setlist: { showDetails: matchingShowRow, songs } };
-}
-
-export function buildFallbackSetlistFromHistoricalRow(
-  row: Record<string, unknown> | null,
-): SetlistSnapshot | null {
-  if (!row) {
-    return null;
-  }
-
-  const actualSongs = parseStringArray(row.actual_songs);
-  if (actualSongs.length === 0) {
-    return null;
-  }
-
-  return {
-    showDetails: null,
-    songs: actualSongs.map((songName, index) => ({
-      setNumber: null,
-      position: index + 1,
-      songName,
-    })),
-  };
 }
 
 // ---------------------------------------------------------------------------
@@ -513,5 +490,3 @@ export const getRecentMissingSetlistShows = cache(
     }
   },
 );
-
-export { getVenueNameFromRow } from "./parsers";

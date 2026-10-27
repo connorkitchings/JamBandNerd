@@ -15,14 +15,12 @@ export type {
 export {
   asRecord,
   buildPredictionSnapshotFromCanonicalRow,
-  buildPredictionSnapshotFromProjectionRows,
   buildSetlistSelectColumns,
   computeTier,
   getVenueCityFromRow,
   getVenueNameFromRow,
   getVenueRegionFromRow,
   normalizePredictionRows,
-  normalizeProjectedPredictionRows,
   parseNumber,
   parsePredictions,
   parseSetNumber,
@@ -35,14 +33,12 @@ export {
   getBandContext,
   getBands,
   getClientOrState,
-  isValidBandSlug,
   resolveBandSelection,
 } from "./bands";
 
 // --- Predictions ---
 export {
   getLatestPredictions,
-  getPredictionDates,
   getPredictionsForDate,
 } from "./predictions";
 
@@ -51,7 +47,6 @@ export { getRecentAccuracy } from "./accuracy";
 
 // --- Shows ---
 export {
-  buildFallbackSetlistFromHistoricalRow,
   getLastShowSetlist,
   getNextShowDetails,
   getRecentMissingSetlistShows,

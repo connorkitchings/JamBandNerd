@@ -130,10 +130,11 @@ Every Supabase query in `apps/web/src/lib/data/*.ts` drops
 
 ### Legacy predictor classes
 
-CK+, Notebook, and Deal predictor classes are moved to
-`src/jambandnerd/models/legacy/` after Phase A completes. They remain
-importable for `scripts/compare_to_legacy_baselines.py` until per-band models
-have met the promotion gate for all bands.
+The CK+ predictor package was removed from the tree. The Notebook and Deal
+packages stay in place at `src/jambandnerd/models/notebook/` and
+`src/jambandnerd/models/deal/`; there is no `src/jambandnerd/models/legacy/`
+directory. `models/deal/` is imported by several per-band predictors, so it is
+not archived. No `scripts/compare_to_legacy_baselines.py` exists.
 
 ### Metric edge case
 

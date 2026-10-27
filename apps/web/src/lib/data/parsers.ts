@@ -11,7 +11,6 @@ import type {
   JsonPrediction,
   PredictionRow,
   PredictionSnapshot,
-  ProjectionRow,
 } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -214,37 +213,6 @@ export function normalizePredictionRows(rows: JsonPrediction[]): PredictionRow[]
   });
 }
 
-export function normalizeProjectedPredictionRows(rows: ProjectionRow[]): PredictionRow[] {
-  return rows.map((row, index) => {
-    const payload = asRecord(row.prediction_payload) ?? {};
-    const rank = parseNumber(row.rank) ?? parseNumber(payload.rank) ?? index + 1;
-    const probability = parseNumber(payload.probability);
-
-    return {
-      rank,
-      songName:
-        typeof row.song_name === "string"
-          ? row.song_name
-          : String(payload.song_name ?? "Unknown Song"),
-      lastPlayed:
-        typeof payload.LTP === "string"
-          ? payload.LTP
-          : typeof payload.last_played_date === "string"
-            ? payload.last_played_date
-            : null,
-      currentGap: parseNumber(payload.current_gap),
-      recentPlays50: parseNumber(payload.recent_plays_50),
-      playsPastYear: parseNumber(payload.plays_past_year),
-      avgGap: parseNumber(payload.avg_gap),
-      recentAvgGap: parseNumber(payload.recent_avg_gap),
-      gapRatio: parseNumber(payload.gap_ratio),
-      gapZScore: parseNumber(payload.gap_z_score),
-      probability,
-      tier: computeTier(rank),
-    };
-  });
-}
-
 // ---------------------------------------------------------------------------
 // Snapshot builders
 // ---------------------------------------------------------------------------
@@ -270,57 +238,5 @@ export function buildPredictionSnapshotFromCanonicalRow(
     modelVersion: typeof row.model_version === "string" ? row.model_version : null,
     predictions: normalizePredictionRows(parsePredictions(row.predictions)),
     raw: row,
-  };
-}
-
-export function buildPredictionSnapshotFromProjectionRows(rows: ProjectionRow[]): PredictionSnapshot {
-  const firstRow = rows[0] ?? null;
-
-  return {
-    targetShowDate:
-      firstRow && typeof firstRow.target_show_date === "string"
-        ? firstRow.target_show_date
-        : null,
-    targetShowKey:
-      firstRow && typeof firstRow.target_show_key === "string"
-        ? firstRow.target_show_key
-        : null,
-    referenceDate:
-      firstRow && typeof firstRow.reference_date === "string"
-        ? firstRow.reference_date
-        : null,
-    predictedAt:
-      firstRow && typeof firstRow.predicted_at === "string"
-        ? firstRow.predicted_at
-        : null,
-    modelVersion:
-      firstRow && typeof firstRow.model_version === "string"
-        ? firstRow.model_version
-        : null,
-    predictions: normalizeProjectedPredictionRows(rows),
-    raw: {
-      source: "prediction_songs",
-      rowCount: rows.length,
-      targetShowDate:
-        firstRow && typeof firstRow.target_show_date === "string"
-          ? firstRow.target_show_date
-          : null,
-      targetShowKey:
-        firstRow && typeof firstRow.target_show_key === "string"
-          ? firstRow.target_show_key
-          : null,
-      referenceDate:
-        firstRow && typeof firstRow.reference_date === "string"
-          ? firstRow.reference_date
-          : null,
-      predictedAt:
-        firstRow && typeof firstRow.predicted_at === "string"
-          ? firstRow.predicted_at
-          : null,
-      modelVersion:
-        firstRow && typeof firstRow.model_version === "string"
-          ? firstRow.model_version
-          : null,
-    },
   };
 }

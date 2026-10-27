@@ -127,10 +127,10 @@ model per supported band. Each entry carries `band`, `model_version`, lifecycle
 flags, and `default_top_k`.
 
 Per-band predictor classes live under `src/jambandnerd/models/{band}/` and
-implement `PredictionModel` from `src/jambandnerd/models/base.py`. Legacy
-multi-model classes (Notebook, Deal, CK+) are archived in
-`src/jambandnerd/models/legacy/` for offline reference only; they are not
-registered production predictors.
+implement `PredictionModel` from `src/jambandnerd/models/base.py`. The CK+
+predictor package is no longer in the tree. Notebook and Deal code remains in
+`src/jambandnerd/models/notebook/` and `src/jambandnerd/models/deal/`; there is
+no `models/legacy/` directory.
 
 Billy's accepted baseline is `BillyFastBaselinePredictor`, an alias for
 `BillyFastPredictorV10` with model version `billy_fast_gbm_v10_hp_tuned`. V3
