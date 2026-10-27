@@ -169,13 +169,13 @@ jobs:
           WINDOW_DAYS="${{ github.event.inputs.window_days || '730' }}"
           MODE_FLAG="--no-dry-run"
 
-          if [[ "${{ github.event_name }}" == "schedule" ]]; then
-            echo "Running in LIVE mode (scheduled)"
-          elif [[ "${{ github.event.inputs.dry_run }}" != "false" ]]; then
+          # Scheduled runs stay dry-run until the reported diffs have been
+          # reviewed; only a manual dispatch with dry_run=false applies fixes.
+          if [[ "${{ github.event_name }}" != "schedule" && "${{ github.event.inputs.dry_run }}" == "false" ]]; then
+            echo "Running in LIVE mode (manual)"
+          else
             MODE_FLAG="--dry-run"
             echo "Running in DRY-RUN mode (corrections will be detected but not applied)"
-          else
-            echo "Running in LIVE mode (manual)"
           fi
 
           echo "::group::Running correction sweep for $BAND (window: $WINDOW_DAYS days)"
