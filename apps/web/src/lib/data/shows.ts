@@ -16,6 +16,12 @@ import {
   type MissingSetlistShow,
 } from "@/lib/show-status";
 
+import {
+  countRowsByShowId,
+  filterExcludedShows,
+  pickShowWithMostSongs,
+} from "@/lib/show-selection";
+
 import { getClientOrState, getBandContext, bandEntryBySlug, getBands } from "./bands";
 import {
   asRecord,
@@ -38,27 +44,49 @@ function showDetailsColumns(band: BandSlug, idColumn?: string) {
   return idColumn ? `${idColumn}, ${columns}` : columns;
 }
 
+// Raw error text stays in server logs; callers render a generic message.
+function failedQuery(
+  label: string,
+  error: unknown,
+): { status: "error"; message: string } {
+  console.error(`${label} failed:`, error);
+  return { status: "error", message: "Data query failed" };
+}
+
 // ---------------------------------------------------------------------------
 // Setlist helpers (used internally and by predictions)
 // ---------------------------------------------------------------------------
+
+type SetlistLookup =
+  | { status: "ready"; setlist: SetlistSnapshot }
+  | { status: "empty" }
+  | { status: "error" };
 
 export async function getSetlistForDate(
   band: BandSlug,
   showDate: string,
 ): Promise<SetlistSnapshot | null> {
+  const lookup = await lookupSetlistForDate(band, showDate);
+  return lookup.status === "ready" ? lookup.setlist : null;
+}
+
+async function lookupSetlistForDate(
+  band: BandSlug,
+  showDate: string,
+): Promise<SetlistLookup> {
   const client = getSupabaseServerClient();
   if (!client) {
-    return null;
+    return { status: "empty" };
   }
 
   const bandsState = await getBands();
   if (bandsState.status !== "ready") {
-    return null;
+    return { status: "error" };
   }
 
   const bandEntry = bandEntryBySlug(bandsState.bands, band);
   if (!bandEntry) {
-    return null;
+    return { status: "empty" };
   }
 
   const { idColumn, showsTable } = bandEntry;
@@ -70,9 +98,18 @@ export async function getSetlistForDate(
     .select(showDetailsColumns(band, idColumn))
     .eq("show_date", showDate);
 
-  const normalizedShowRows = (showRows ?? [])
-    .map((item) => asRecord(item))
-    .filter((item): item is Record<string, unknown> => item !== null);
+  if (showError) {
+    console.error(`Setlist show lookup failed (${band} ${showDate}):`, showError);
+    return { status: "error" };
+  }
+
+  const normalizedShowRows = filterExcludedShows(
+    band,
+    (showRows ?? [])
+      .map((item) => asRecord(item))
+      .filter((item): item is Record<string, unknown> => item !== null),
+    idColumn,
+  );
   const showIds = normalizedShowRows
     .map((row) => row[idColumn])
     .filter(
@@ -80,8 +117,8 @@ export async function getSetlistForDate(
         value !== undefined && value !== null,
     );
 
-  if (showError || showIds.length === 0) {
-    return null;
+  if (showIds.length === 0) {
+    return { status: "empty" };
   }
 
   const sortColumn = band === "um" ? "set_sequence" : "set_number";
@@ -93,7 +130,11 @@ export async function getSetlistForDate(
     .order(positionColumn, { ascending: true });
 
   if (setlistResponse.error) {
-    return null;
+    console.error(
+      `Setlist rows lookup failed (${band} ${showDate}):`,
+      setlistResponse.error,
+    );
+    return { status: "error" };
   }
 
   const rawSetlistRows = (setlistResponse.data ?? [])
@@ -101,14 +142,15 @@ export async function getSetlistForDate(
     .filter((item): item is Record<string, unknown> => item !== null);
 
   if (rawSetlistRows.length === 0) {
-    return null;
+    return { status: "empty" };
   }
 
-  const targetShowId = String(rawSetlistRows[0][idColumn] ?? showIds[0]);
-  const matchingShowRow =
-    normalizedShowRows.find((row) => String(row[idColumn]) === targetShowId) ??
-    normalizedShowRows[0] ??
-    null;
+  const matchingShowRow = pickShowWithMostSongs(
+    normalizedShowRows,
+    idColumn,
+    countRowsByShowId(rawSetlistRows, idColumn),
+  );
+  const targetShowId = String(matchingShowRow?.[idColumn] ?? showIds[0]);
 
   const seen = new Set<string>();
   const songs: SetlistSong[] = rawSetlistRows.flatMap((row) => {
@@ -133,13 +175,10 @@ export async function getSetlistForDate(
   });
 
   if (songs.length === 0) {
-    return null;
+    return { status: "empty" };
   }
 
-  return {
-    showDetails: matchingShowRow,
-    songs,
-  };
+  return { status: "ready", setlist: { showDetails: matchingShowRow, songs } };
 }
 
 export function buildFallbackSetlistFromHistoricalRow(
@@ -198,14 +237,40 @@ export const getShowDetailsByDate = cache(
       const { data, error } = await client
         .from(showsTable)
         .select(showDetailsColumns(band, bandState.bandEntry.idColumn))
-        .eq("show_date", showDate)
-        .limit(1);
+        .eq("show_date", showDate);
 
       if (error) {
-        return { status: "error", message: error.message };
+        return failedQuery("getShowDetailsByDate", error);
       }
 
-      const row = asRecord(data?.[0]);
+      const { idColumn } = bandState.bandEntry;
+      const candidates = filterExcludedShows(
+        band,
+        (data ?? [])
+          .map((item) => asRecord(item))
+          .filter((item): item is Record<string, unknown> => item !== null),
+        idColumn,
+      );
+
+      let songCounts = new Map<string, number>();
+      if (candidates.length > 1) {
+        const ids = candidates.map((candidate) => candidate[idColumn] as string | number);
+        const { data: countRows, error: countError } = await client
+          .from(`${band}_setlists_raw`)
+          .select(idColumn)
+          .in(idColumn, ids);
+        if (countError) {
+          return failedQuery("getShowDetailsByDate song counts", countError);
+        }
+        songCounts = countRowsByShowId(
+          (countRows ?? [])
+            .map((item) => asRecord(item))
+            .filter((item): item is Record<string, unknown> => item !== null),
+          idColumn,
+        );
+      }
+
+      const row = pickShowWithMostSongs(candidates, idColumn, songCounts);
       if (!row) {
         return { status: "empty" };
       }
@@ -216,10 +281,7 @@ export const getShowDetailsByDate = cache(
         show: buildShowDetails(row),
       };
     } catch (error) {
-      return {
-        status: "error",
-        message: error instanceof Error ? error.message : "Unknown error",
-      };
+      return failedQuery("getShowDetailsByDate", error);
     }
   },
 );
@@ -255,7 +317,7 @@ export const getNextShowDetails = cache(
           .limit(25);
 
         if (upcomingError) {
-          return { status: "error", message: upcomingError.message };
+          return failedQuery("getNextShowDetails (um upcoming)", upcomingError);
         }
 
         const upcomingRows = (upcomingData ?? [])
@@ -280,7 +342,7 @@ export const getNextShowDetails = cache(
         .limit(1);
 
       if (error) {
-        return { status: "error", message: error.message };
+        return failedQuery("getNextShowDetails", error);
       }
 
       const row = asRecord(data?.[0]);
@@ -294,24 +356,31 @@ export const getNextShowDetails = cache(
         show: buildShowDetails(row),
       };
     } catch (error) {
-      return {
-        status: "error",
-        message: error instanceof Error ? error.message : "Unknown error",
-      };
+      return failedQuery("getNextShowDetails", error);
     }
   },
 );
 
+// How many recent past show dates to scan for one that has a setlist.
+const LAST_SHOW_LOOKBACK_DATES = 10;
+
+type LastShowData = {
+  band: BandSlug;
+  setlist: SetlistSnapshot;
+  /** Most recent past show date whose setlist is not published yet. */
+  pendingShowDate: string | null;
+};
+
 export const getLastShowSetlist = cache(
-  async (bandInput: string | undefined): Promise<RouteState<{ band: BandSlug; setlist: SetlistSnapshot }>> => {
-    const missingEnv = getClientOrState<{ band: BandSlug; setlist: SetlistSnapshot }>();
+  async (bandInput: string | undefined): Promise<RouteState<LastShowData>> => {
+    const missingEnv = getClientOrState<LastShowData>();
     if (missingEnv) {
       return missingEnv;
     }
 
     const bandState = await getBandContext(bandInput);
     if (bandState.status !== "ready") {
-      return bandState as RouteState<{ band: BandSlug; setlist: SetlistSnapshot }>;
+      return bandState as RouteState<LastShowData>;
     }
 
     const band = bandState.band;
@@ -322,36 +391,49 @@ export const getLastShowSetlist = cache(
     }
 
     try {
-      const { showsTable } = bandState.bandEntry;
+      const { showsTable, idColumn } = bandState.bandEntry;
       const todayIso = getEasternTodayIso();
 
       const { data: recentShows, error } = await client
         .from(showsTable)
-        .select("show_date")
+        .select(`${idColumn}, show_date`)
         .lt("show_date", todayIso)
         .order("show_date", { ascending: false })
-        .limit(1);
+        .limit(LAST_SHOW_LOOKBACK_DATES * 3);
 
       if (error) {
-        return { status: "error", message: error.message };
+        return failedQuery("getLastShowSetlist", error);
       }
 
-      const selectedDate = recentShows?.[0]?.show_date;
-      if (typeof selectedDate !== "string") {
-        return { status: "empty" };
+      const recentDates = [
+        ...new Set(
+          filterExcludedShows(
+            band,
+            (recentShows ?? [])
+              .map((item) => asRecord(item))
+              .filter((item): item is Record<string, unknown> => item !== null),
+            idColumn,
+          )
+            .map((row) => row.show_date)
+            .filter((value): value is string => typeof value === "string"),
+        ),
+      ].slice(0, LAST_SHOW_LOOKBACK_DATES);
+
+      let pendingShowDate: string | null = null;
+      for (const showDate of recentDates) {
+        const lookup = await lookupSetlistForDate(band, showDate);
+        if (lookup.status === "error") {
+          return { status: "error", message: "Setlist lookup failed" };
+        }
+        if (lookup.status === "ready") {
+          return { status: "ready", band, setlist: lookup.setlist, pendingShowDate };
+        }
+        pendingShowDate ??= showDate;
       }
 
-      const setlist = await getSetlistForDate(band, selectedDate);
-      if (!setlist) {
-        return { status: "empty" };
-      }
-
-      return { status: "ready", band, setlist };
+      return { status: "empty" };
     } catch (error) {
-      return {
-        status: "error",
-        message: error instanceof Error ? error.message : "Unknown error",
-      };
+      return failedQuery("getLastShowSetlist", error);
     }
   },
 );
@@ -386,7 +468,11 @@ export const getRecentMissingSetlistShows = cache(
         .lt("show_date", todayIso)
         .order("show_date", { ascending: true });
 
-      if (showError || !showData || showData.length === 0) {
+      if (showError) {
+        console.error("getRecentMissingSetlistShows show query failed:", showError);
+        return [];
+      }
+      if (!showData || showData.length === 0) {
         return [];
       }
 
@@ -408,6 +494,7 @@ export const getRecentMissingSetlistShows = cache(
         .in(idColumn, showIds);
 
       if (setlistError) {
+        console.error("getRecentMissingSetlistShows setlist query failed:", setlistError);
         return [];
       }
 
@@ -420,7 +507,8 @@ export const getRecentMissingSetlistShows = cache(
         now,
         latestPredictionTargetDate,
       });
-    } catch {
+    } catch (error) {
+      console.error("getRecentMissingSetlistShows failed:", error);
       return [];
     }
   },

@@ -129,11 +129,51 @@ test("mobile navigation uses thumb-first ordering", async ({ page }, testInfo) =
 
 
 
-test("preview tables remain scrollable on mobile", async ({ page }, testInfo) => {
+test("internal table preview is hidden outside development", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "mobile-chromium", "mobile-only table check");
 
   await bootstrapHostedPreviewBypass(page);
-  await page.goto("/preview/tables");
+  const response = await page.goto("/preview/tables");
 
-  await expect(page.getByRole("heading", { name: "Song board" })).toBeVisible();
+  expect(response?.status()).toBe(404);
+});
+
+test("every active band renders predictions, last show, and replay without query errors", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop-chromium", "desktop-only band sweep");
+  test.setTimeout(180_000);
+
+  await bootstrapHostedPreviewBypass(page);
+  await page.goto("/");
+
+  // The home page lists every active band as /predictions?band=<slug>.
+  const hrefs = await page
+    .locator('a[href^="/predictions?band="]')
+    .evaluateAll((links) => links.map((link) => link.getAttribute("href") ?? ""));
+  const bandSlugs = [
+    ...new Set(
+      hrefs.map((href) => new URL(href, "http://x").searchParams.get("band") ?? ""),
+    ),
+  ].filter(Boolean);
+
+  // No bands means the registry could not load (e.g. missing env locally).
+  test.skip(bandSlugs.length === 0, "band registry unavailable in this environment");
+
+  for (const band of bandSlugs) {
+    for (const route of ["/predictions", "/last-show", "/replay"]) {
+      await page.goto(`${route}?band=${encodeURIComponent(band)}`);
+      await expectPrimaryHeadingOrMissingEnv(page);
+
+      const failures = page
+        .getByRole("heading", { name: /query failed/i })
+        .or(page.getByRole("heading", { name: "Band not found" }));
+      await expect(failures, `${band}${route}`).toHaveCount(0);
+    }
+
+    await page.goto(`/last-show?band=${encodeURIComponent(band)}`);
+    // Setlist rows render as table rows; the header row is not a song.
+    await expect(
+      page.locator("main table tbody tr").first(),
+      `${band} /last-show shows at least one song`,
+    ).toBeVisible();
+  }
 });

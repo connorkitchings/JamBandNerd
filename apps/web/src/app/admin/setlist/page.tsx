@@ -1,11 +1,14 @@
 import { AdminSetlistForm } from "@/components/admin-setlist-form";
+import { isAdminBand } from "@/lib/admin/bands";
 import { getBands } from "@/lib/data";
 
 export default async function AdminSetlistPage() {
   const bandsResult = await getBands();
   const bands =
     bandsResult.status === "ready"
-      ? bandsResult.bands.map((b) => ({ value: b.slug, label: b.displayName }))
+      ? bandsResult.bands
+          .filter((b) => isAdminBand(b.slug))
+          .map((b) => ({ value: b.slug, label: b.displayName }))
       : [];
 
   if (bands.length === 0) {

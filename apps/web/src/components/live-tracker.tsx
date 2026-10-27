@@ -12,6 +12,10 @@ type Props = {
   targetShowDate?: string | null;
 };
 
+// Bursts of row changes (a snapshot rewrites many rows) collapse into one
+// trailing refresh.
+const REFRESH_DEBOUNCE_MS = 3000;
+
 let browserSupabase: SupabaseClient | null = null;
 
 function getBrowserSupabase() {
@@ -40,6 +44,17 @@ export function LiveTracker({
       return;
     }
 
+    let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+    const scheduleRefresh = () => {
+      if (refreshTimer !== null) {
+        clearTimeout(refreshTimer);
+      }
+      refreshTimer = setTimeout(() => {
+        refreshTimer = null;
+        router.refresh();
+      }, REFRESH_DEBOUNCE_MS);
+    };
+
     const channel = supabase
       .channel(`live-updates-${band}-${targetShowKey ?? targetShowDate}`)
       .on(
@@ -63,13 +78,16 @@ export function LiveTracker({
               targetShowDate,
             });
           if (scopedUpdate) {
-            router.refresh();
+            scheduleRefresh();
           }
         }
       )
       .subscribe();
 
     return () => {
+      if (refreshTimer !== null) {
+        clearTimeout(refreshTimer);
+      }
       supabase.removeChannel(channel);
     };
   }, [band, targetShowKey, targetShowDate, router]);

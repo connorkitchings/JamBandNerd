@@ -8,12 +8,14 @@ import {
   getLatestPredictions,
   getNextShowDetails,
   getRecentMissingSetlistShows,
+  getShowDetailsByDate,
 } from "@/lib/data";
 import {
   buildLocationLabel,
   formatCompactDateLabel,
   formatDateLabel,
 } from "@/lib/format";
+import { selectTeaserShow } from "@/lib/show-selection";
 
 export const revalidate = 3600;
 
@@ -59,7 +61,7 @@ export default async function HomePage({ searchParams }: Props) {
   const params = await searchParams;
 
   if (params.band) {
-    redirect(`/predictions?band=${params.band}`);
+    redirect(`/predictions?band=${encodeURIComponent(params.band)}`);
   }
 
   const bandsResult = await getBands();
@@ -86,14 +88,24 @@ export default async function HomePage({ searchParams }: Props) {
     getLatestPredictions(teaserBandSlug),
     getNextShowDetails(teaserBandSlug),
   ]);
-  const teaserMissingShows = await getRecentMissingSetlistShows(
-    teaserBandSlug,
+  const teaserTargetDate =
     teaserPredictionState.status === "ready"
       ? teaserPredictionState.snapshot.targetShowDate
-      : null,
-  );
+      : null;
+  const [teaserMissingShows, teaserTargetShowState] = await Promise.all([
+    getRecentMissingSetlistShows(teaserBandSlug, teaserTargetDate),
+    getShowDetailsByDate(teaserBandSlug, teaserTargetDate),
+  ]);
+  // The songs come from the latest prediction snapshot, so the header must
+  // describe that snapshot's target show, not simply the next scheduled show.
   const teaserNextShow =
-    teaserNextShowState.status === "ready" ? teaserNextShowState.show : null;
+    teaserTargetDate !== null
+      ? selectTeaserShow(
+          teaserTargetDate,
+          teaserNextShowState.status === "ready" ? teaserNextShowState.show : null,
+          teaserTargetShowState.status === "ready" ? teaserTargetShowState.show : null,
+        )
+      : null;
   const teaserSongs =
     teaserPredictionState.status === "ready"
       ? teaserPredictionState.snapshot.predictions.slice(0, 3)
@@ -159,17 +171,14 @@ export default async function HomePage({ searchParams }: Props) {
               <>
                 <div className="editorial-chip mt-5 rounded-[1.5rem] p-4 text-center">
                   <p className="mt-1.5 font-headline text-xl font-bold text-primary md:text-2xl">
-                    {formatDateLabel(
-                      teaserNextShow?.showDate ??
-                        teaserPredictionState.snapshot.targetShowDate,
-                    )}
+                    {formatDateLabel(teaserPredictionState.snapshot.targetShowDate)}
                   </p>
                   <p className="mt-1 font-headline text-base text-on-surface">
-                    {teaserNextShow?.venueName ??
+                    {teaserNextShow?.venueName ||
                       `${teaserBandEntry.displayName} next show`}
                   </p>
                   <p className="mt-0.5 text-xs text-on-surface-variant">
-                    {teaserLocationLabel ?? "Location unavailable"}
+                    {teaserLocationLabel || "Location unavailable"}
                   </p>
                   {teaserMissingShows.length > 0 && (
                     <p
@@ -243,7 +252,7 @@ export default async function HomePage({ searchParams }: Props) {
             {bandsResult.status === "missing_env"
               ? "Set SUPABASE_URL and SUPABASE_ANON_KEY to load the supported bands."
               : bandsResult.status === "error"
-                ? bandsResult.message
+                ? "We couldn't load the band list right now. Please try again in a few minutes."
                 : "No active bands were returned from the bands table."}
           </p>
         </SectionCard>

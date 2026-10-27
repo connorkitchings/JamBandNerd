@@ -110,15 +110,15 @@ test.describe("mobile flows", () => {
 
 
 
-  test("preview tables remain scrollable on mobile", async ({ page }, testInfo) => {
+  test("internal table preview is hidden outside development", async ({ page }, testInfo) => {
     test.skip(
       testInfo.project.name !== "mobile-chromium",
       "mobile-only test",
     );
 
     await bootstrapHostedPreviewBypass(page);
-    await page.goto("/preview/tables");
+    const response = await page.goto("/preview/tables");
 
-    await expect(page.getByRole("heading", { name: "Song board" })).toBeVisible();
+    expect(response?.status()).toBe(404);
   });
 });
