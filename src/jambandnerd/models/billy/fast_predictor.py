@@ -34,6 +34,10 @@ from jambandnerd.models.shared.matrix_features import (
     precompute_gap_distributions,
     window_plays,
 )
+from jambandnerd.models.shared.venue_context import (
+    same_venue_run_position,
+    training_target_show_context,
+)
 from jambandnerd.transformations.gaps import ModelData
 from jambandnerd.transformations.run_context import (
     normalize_target_show_context,
@@ -805,7 +809,6 @@ class BillyFastPredictorV2(BillyFastPredictor):
         target_show_index: int,
     ) -> dict:
         col_dates = cache["col_dates"]
-        col_venues = cache["col_venues"]
 
         prior_dates = [d for d in col_dates[:j] if d is not None]
         if target_date is None:
@@ -819,19 +822,10 @@ class BillyFastPredictorV2(BillyFastPredictor):
         pct50 = p50 / max(1, min(50, j))
         diff = (pct25 - pct50).values
 
-        target_venue = col_venues[j] if j < len(col_venues) else None
-        if target_venue:
-            target_context = normalize_target_show_context({"venue_name": target_venue})
-            if normalized_venue_key(target_context):
-                sub_plays = plays[plays["show_index"] < target_show_index]
-                same_run_indices = same_venue_run_show_indices(
-                    sub_plays, target_context
-                )
-                same_run_position = float(len(same_run_indices) + 1)
-            else:
-                same_run_position = 0.0
-        else:
-            same_run_position = 0.0
+        same_run_position = same_venue_run_position(
+            plays[plays["show_index"] < target_show_index],
+            training_target_show_context(plays, target_show_index),
+        )
 
         return {
             "tour_position": tour_pos,
@@ -867,7 +861,9 @@ class BillyFastPredictorV2(BillyFastPredictor):
             "tour_position": tour_pos,
             "diff_25_to_50": diff,
             "show_position_in_run": run_pos,
-            "same_venue_run_position": 0.0,
+            "same_venue_run_position": same_venue_run_position(
+                plays, target_show_context
+            ),
         }
 
 
@@ -949,12 +945,7 @@ class BillyFastPredictorV3(BillyFastPredictorV2):
         pct50 = p50 / max(1, min(50, n_shows))
         diff = (pct25 - pct50).values
 
-        normalized_ctx = normalize_target_show_context(target_show_context or {})
-        if normalized_venue_key(normalized_ctx):
-            same_run_indices = same_venue_run_show_indices(plays, normalized_ctx)
-            same_run_position = float(len(same_run_indices) + 1)
-        else:
-            same_run_position = 0.0
+        same_run_position = same_venue_run_position(plays, target_show_context)
 
         cum = cache["cum"]
         p3 = _window_plays(cum, n_shows, 3).loc[eligible_songs]

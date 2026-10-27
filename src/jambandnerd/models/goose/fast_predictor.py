@@ -19,11 +19,14 @@ from jambandnerd.models.shared.matrix_features import (
     clean_plays,
     window_plays,
 )
+from jambandnerd.models.shared.venue_context import (
+    same_venue_run_position,
+    training_target_show_context,
+)
 from jambandnerd.transformations.gaps import ModelData
 from jambandnerd.transformations.run_context import (
     normalize_target_show_context,
     normalized_venue_key,
-    same_venue_run_show_indices,
 )
 from jambandnerd.transformations.set_position import (
     SET_POSITION_FEATURES,
@@ -602,22 +605,19 @@ class GooseFastPredictor(PredictionModel):
                 venue = col_venues[int(target_col[0])]
                 normalized_ctx = normalize_target_show_context({"venue_name": venue})
 
-        if normalized_venue_key(normalized_ctx):
-            sub_plays = (
-                plays[plays["show_index"] < target_show_index]
-                if target_show_index is not None
-                else plays
-            )
-            same_run_indices = same_venue_run_show_indices(sub_plays, normalized_ctx)
-            same_venue_run_position = float(len(same_run_indices) + 1)
-        else:
-            same_venue_run_position = 0.0
+        sub_plays = (
+            plays[plays["show_index"] < target_show_index]
+            if target_show_index is not None
+            else plays
+        )
 
         return {
             "diff_25_to_50": (pct25 - pct50).values,
             "show_position_in_run": show_position,
             "tour_position": tour_position,
-            "same_venue_run_position": same_venue_run_position,
+            "same_venue_run_position": same_venue_run_position(
+                sub_plays, normalized_ctx
+            ),
         }
 
     def _candidate_min_plays(self, target_show_context: Any) -> int:
@@ -728,12 +728,7 @@ class GooseFastPredictor(PredictionModel):
                 if target_date_raw is not None
                 else None
             )
-            target_rows = plays[plays["show_index"] == target_show_index]
-            target_context = (
-                normalize_target_show_context(target_rows.iloc[0])
-                if not target_rows.empty
-                else {}
-            )
+            target_context = training_target_show_context(plays, target_show_index)
             min_plays = self._candidate_min_plays(target_context)
             recent_gap_floor = self._candidate_recent_gap_floor(target_context)
             recent_plays = _window_plays(cum, col, recent_gap_floor)
