@@ -51,13 +51,13 @@ def main():
         default=730,
         help="Number of days to look back for corrections (default: 730)",
     )
-    parser.add_argument(
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument(
         "--dry-run",
         action="store_true",
-        default=True,
-        help="Detect corrections but don't apply them (default: True)",
+        help="Detect corrections but don't apply them (default)",
     )
-    parser.add_argument(
+    mode.add_argument(
         "--no-dry-run",
         action="store_true",
         help="Actually apply detected corrections",
@@ -81,7 +81,7 @@ def main():
     if args.output is None:
         args.output = f"correction_sweep_report_{args.band}.json"
 
-    dry_run = args.dry_run and not args.no_dry_run
+    dry_run = not args.no_dry_run
 
     print(f"Starting correction sweep for {args.band}")
     print(f"  Window: {args.window_days} days")
@@ -123,9 +123,9 @@ def main():
 
     print(f"\nDetailed report saved to: {output_path}")
 
-    # Exit with error code if there were errors
+    # Exit non-zero on any error (fetch failures, refused or failed applies)
     total_errors = sum(len(r.errors) for r in results.values())
-    if total_errors > 0:
+    if total_errors > 0 or not results:
         print(f"\n⚠️  Completed with {total_errors} errors")
         sys.exit(1)
 
