@@ -47,7 +47,7 @@ class WSPFastPredictor(PhishFastPredictorV2):
     V2 (19 feats, lr=0.03, rounds=700): dual=0.448 (+0.014)
     """
 
-    MODEL_VERSION = "wsp_fast_gbm_v2"
+    MODEL_VERSION = "wsp_fast_gbm_v2_venuefix"
 
     _FEATURE_COLS: list[str] = [
         *PHISH_FAST_V2_FEATURE_COLS,

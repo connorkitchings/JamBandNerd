@@ -155,8 +155,8 @@ The active single-model path uses explicit per-band model version strings such
 as:
 
 - `goose_fast_rank_v1_candidate_relaxed_special_nbtop10`
-- `phish_fast_gbm_v2_feat_notebook_rank_venue_run`
-- `wsp_fast_gbm_v2`
+- `phish_fast_gbm_v2_feat_notebook_rank_venue_run_venuefix`
+- `wsp_fast_gbm_v2_venuefix`
 
 Changing output semantics, feature logic, or scoring behavior should produce a
 new `model_version`.

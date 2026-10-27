@@ -235,7 +235,7 @@ def test_registry_returns_billy_fast_predictor() -> None:
         "billy", songs_df=_SONGS_DF, persist_artifacts=False
     )
     assert isinstance(predictor, BillyFastPredictorV12)
-    assert predictor.MODEL_VERSION == "billy_fast_gbm_v12_gap_scaled_p50"
+    assert predictor.MODEL_VERSION == "billy_fast_gbm_v12_gap_scaled_p50_venuefix"
 
 
 def test_billy_fast_diagnostic_frame_includes_active_and_candidate_features() -> None:
@@ -648,7 +648,7 @@ class TestV10ExperimentSubclasses:
 
     def test_baseline_is_v12(self):
         predictor = BillyFastBaselinePredictor()
-        assert predictor.MODEL_VERSION == "billy_fast_gbm_v12_gap_scaled_p50"
+        assert predictor.MODEL_VERSION == "billy_fast_gbm_v12_gap_scaled_p50_venuefix"
         assert predictor._LGB_PARAMS["num_leaves"] == 15
         assert predictor._FEATURE_COLS == BILLY_FAST_V12_FEATURE_COLS
 

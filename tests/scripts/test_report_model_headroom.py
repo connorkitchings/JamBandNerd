@@ -33,7 +33,7 @@ def test_build_report_uses_frozen_band_baselines(tmp_path) -> None:
     _write_summary(
         tmp_path,
         band="phish",
-        model_version="phish_fast_gbm_v2_feat_notebook_rank_venue_run",
+        model_version="phish_fast_gbm_v2_feat_notebook_rank_venue_run_venuefix",
         dual=0.419,
         f1_25=0.283,
     )
@@ -49,7 +49,9 @@ def test_build_report_uses_frozen_band_baselines(tmp_path) -> None:
     phish = next(row for row in rows if row.band == "phish")
     goose = next(row for row in rows if row.band == "goose")
 
-    assert phish.model_version == "phish_fast_gbm_v2_feat_notebook_rank_venue_run"
+    assert (
+        phish.model_version == "phish_fast_gbm_v2_feat_notebook_rank_venue_run_venuefix"
+    )
     assert phish.recommendation == "cleanup_ablation"
     assert phish.delta_dual == pytest.approx(0.014)
     assert phish.candidate_miss_proxy == pytest.approx(0.45)
@@ -91,7 +93,7 @@ def test_write_report_outputs_markdown_and_json(tmp_path) -> None:
     _write_summary(
         tmp_path,
         band="phish",
-        model_version="phish_fast_gbm_v2_feat_notebook_rank_venue_run",
+        model_version="phish_fast_gbm_v2_feat_notebook_rank_venue_run_venuefix",
         dual=0.419,
         f1_25=0.283,
     )
