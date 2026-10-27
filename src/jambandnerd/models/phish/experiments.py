@@ -342,7 +342,7 @@ class PhishFastPlusVenueRun(PhishFastPredictorV2):
 class PhishFastPlusNotebookRankVenueRun(PhishFastPlusNotebookRank):
     """Stack notebook_rank + venue_run features on top of PhishFast V2."""
 
-    MODEL_VERSION = "phish_fast_gbm_v2_feat_notebook_rank_venue_run"
+    MODEL_VERSION = "phish_fast_gbm_v2_feat_notebook_rank_venue_run_venuefix"
     _FEATURE_COLS: list[str] = [
         *PhishFastPlusNotebookRank._FEATURE_COLS,
         "same_venue_run_prior_played",

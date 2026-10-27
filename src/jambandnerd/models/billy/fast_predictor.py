@@ -1406,7 +1406,7 @@ class BillyFastPredictorV12(BillyFastPredictorV2):
     Total: 14 features. Same HP params as V10 (leaves=15, min_leaf=10).
     """
 
-    MODEL_VERSION = "billy_fast_gbm_v12_gap_scaled_p50"
+    MODEL_VERSION = "billy_fast_gbm_v12_gap_scaled_p50_venuefix"
     _FEATURE_COLS: list[str] = BILLY_FAST_V12_FEATURE_COLS
     _LGB_PARAMS: dict[str, Any] = _BILLY_FAST_V10_LGB_PARAMS
 

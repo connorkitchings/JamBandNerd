@@ -37,7 +37,7 @@ class TestWSPFastPredictor:
     def test_init_defaults(self):
         predictor = WSPFastPredictor()
         assert predictor.band == "wsp"
-        assert predictor.MODEL_VERSION == "wsp_fast_gbm_v2"
+        assert predictor.MODEL_VERSION == "wsp_fast_gbm_v2_venuefix"
         assert predictor._model is None
         assert "plays_past_100" in predictor._FEATURE_COLS
         assert "diff_50_to_100" in predictor._FEATURE_COLS
@@ -49,7 +49,7 @@ class TestWSPFastPredictor:
 
     def test_model_version_property(self):
         predictor = WSPFastPredictor()
-        assert predictor.MODEL_VERSION == "wsp_fast_gbm_v2"
+        assert predictor.MODEL_VERSION == "wsp_fast_gbm_v2_venuefix"
 
     def test_diagnostic_feature_columns(self):
         predictor = WSPFastPredictor()
@@ -243,7 +243,7 @@ class TestWSPExperiments:
         )
         assert cls._EARLY_STOPPING_ROUNDS is None
         assert cls._VALIDATION_FRACTION == 0.1
-        assert cls.MODEL_VERSION == "wsp_fast_gbm_v2_test_es"
+        assert cls.MODEL_VERSION == "wsp_fast_gbm_v2_venuefix_test_es"
 
     def test_gap_decoupled_sweep_uses_explicit_predictors(self):
         from jambandnerd.models.wsp.experiments import WSP_SWEEPS
@@ -332,7 +332,7 @@ class TestRegistryIntegration:
 
         wsp = build_band_predictor("wsp", persist_artifacts=False)
         assert isinstance(wsp, WSPFastPredictor)
-        assert get_band_model_version("wsp") == "wsp_fast_gbm_v2"
+        assert get_band_model_version("wsp") == "wsp_fast_gbm_v2_venuefix"
 
 
 class TestWSPExcludedSongs:

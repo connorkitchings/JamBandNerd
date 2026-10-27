@@ -331,7 +331,7 @@ class UMFastPredictorV12(UMFastPredictor):
     Total: 14 features. Same HP params as V2 (leaves=15, lr=0.07, lambda=0.1).
     """
 
-    MODEL_VERSION = "um_fast_gbm_v12_gap_scaled_p50"
+    MODEL_VERSION = "um_fast_gbm_v12_gap_scaled_p50_venuefix"
     _FEATURE_COLS: list[str] = UM_FAST_V12_FEATURE_COLS
     _LGB_PARAMS: dict[str, Any] = _UM_V12_LGB_PARAMS
 

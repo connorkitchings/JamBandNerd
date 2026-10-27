@@ -137,8 +137,8 @@ comparison set for any future Phase B experiments:
 | Band | Model Version |
 |------|---------------|
 | Goose | `goose_fast_rank_v1` |
-| Phish | `phish_fast_gbm_v2_feat_notebook_rank_venue_run` |
-| WSP | `wsp_fast_gbm_v2` |
+| Phish | `phish_fast_gbm_v2_feat_notebook_rank_venue_run_venuefix` |
+| WSP | `wsp_fast_gbm_v2_venuefix` |
 | Billy | `billy_fast_gbm_v10_hp_tuned` |
 | UM | `um_fast_gbm_v2` |
 
