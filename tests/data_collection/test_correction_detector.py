@@ -17,6 +17,7 @@ from src.jambandnerd.data_collection.correction_detector import (
     SHOWS_TABLE_COLUMNS,
     CorrectionFetchError,
     CorrectionResult,
+    _replacement_payload,
     canonical_song,
     compute_record_checksum,
     detect_setlist_corrections,
@@ -927,3 +928,76 @@ class TestEncoreAndChangedFields:
         upstream = [{"set_label": "2", "show_position": 9, "song_name": "Slacker"}]
         diff = diff_setlists("um", stored, upstream)
         assert len(diff["added"]) == 1 and len(diff["removed"]) == 1
+
+
+class TestReplacementPayloadColumns:
+    """The RPC inserts every key of the first row, so server-managed keys must not be sent."""
+
+    @staticmethod
+    def _band_row(band, position, song):
+        schema = SETLIST_SCHEMAS[band]
+        return {
+            schema.set_column: "1",
+            schema.position_column: position,
+            schema.song_column: song,
+        }
+
+    @pytest.mark.parametrize("band", sorted(SETLIST_SCHEMAS))
+    def test_server_managed_keys_are_not_sent_and_other_fields_are_unchanged(
+        self, band
+    ):
+        stored = [
+            dict(self._band_row(band, i, f"Song {i}"), show_id="1") for i in (1, 2, 3)
+        ]
+        upstream = [
+            dict(
+                self._band_row(band, i, name),
+                show_id="1",
+                id=123,
+                created_at=None,
+                updated_at=None,
+            )
+            for i, name in ((1, "Song 1"), (2, "Hot Tea"), (3, "Song 3"))
+        ]
+        client = FakeClient({})
+
+        result = detect_setlist_corrections(
+            band,
+            {"1": upstream},
+            {"1": stored},
+            dry_run=False,
+            client=client,
+        )
+
+        assert result.corrections_applied == 1
+        ((name, params),) = client.rpc_calls
+        assert name == "replace_show_setlist"
+        assert params["p_band"] == band and params["p_show_id"] == "1"
+        sent = params["p_rows"]
+        assert len(sent) == 3
+        for sent_row, upstream_row in zip(sent, upstream):
+            assert not {"id", "created_at", "updated_at"} & set(sent_row)
+            assert sent_row == {
+                k: v
+                for k, v in upstream_row.items()
+                if k not in {"id", "created_at", "updated_at"}
+            }
+        assert sent[1][SETLIST_SCHEMAS[band].song_column] == "Hot Tea"
+
+    def test_non_server_managed_none_values_are_kept(self):
+        upstream = [
+            {
+                "show_id": "1",
+                "set_number": 1,
+                "song_position": 1,
+                "song_name": "Song 1",
+                "song_notes": None,
+            }
+        ]
+        assert _replacement_payload(upstream) == upstream
+
+    def test_nan_values_become_json_safe_none(self):
+        payload = _replacement_payload(
+            [{"show_id": "1", "song_position": float("nan"), "song_name": "A"}]
+        )
+        assert payload == [{"show_id": "1", "song_position": None, "song_name": "A"}]

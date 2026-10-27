@@ -478,6 +478,21 @@ def _jsonable(value: Any) -> Any:
     return value
 
 
+# Columns the table fills itself (identity ``id``, ``created_at``/``updated_at``
+# defaults). Normalizers emit them as None, and the replace_show_setlist RPC
+# inserts every key of the first row explicitly, so a null here violates NOT
+# NULL instead of falling back to the default. They are never sent.
+SERVER_MANAGED_COLUMNS = frozenset({"id", "created_at", "updated_at"})
+
+
+def _replacement_payload(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Build the ``p_rows`` payload: no server-managed keys, JSON-safe values."""
+    return [
+        {k: _jsonable(v) for k, v in row.items() if k not in SERVER_MANAGED_COLUMNS}
+        for row in rows
+    ]
+
+
 # Bands whose show ids are assigned locally at normalization time, so upstream
 # shows carry no stored ``show_id``. They are matched to stored shows by these
 # natural keys, tried in order (mirrors each band's collection reconciliation:
@@ -684,7 +699,11 @@ def detect_setlist_corrections(
             try:
                 client.rpc(
                     REPLACE_RPC,
-                    {"p_band": band, "p_show_id": show_id, "p_rows": upstream_rows},
+                    {
+                        "p_band": band,
+                        "p_show_id": show_id,
+                        "p_rows": _replacement_payload(upstream_rows),
+                    },
                 ).execute()
                 result.corrections_applied += 1
                 detail["action"] = "applied"
