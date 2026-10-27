@@ -20,7 +20,11 @@ import re
 from datetime import date, datetime, timedelta
 from typing import Any, Dict, List, Optional, cast
 
-from scripts.common import ensure_source_reachable
+from scripts.common import (
+    ensure_source_reachable,
+    fetch_setlist_row_counts,
+    select_shows_needing_setlist_fetch,
+)
 from src.jambandnerd.data_collection.billy.collector import BillyCollector
 from src.jambandnerd.data_collection.billy.normalizer import (
     normalize_setlists,
@@ -31,7 +35,6 @@ from src.jambandnerd.data_collection.browser import CloudflareBypass
 from src.jambandnerd.data_collection.utils import CollectionTimer, compute_source_hash
 from src.jambandnerd.db.connection import get_supabase_client
 from src.jambandnerd.db.operations import (
-    fetch_existing_values,
     fetch_rows_by_column_values,
     validate_and_upsert_dataframe,
 )
@@ -306,19 +309,16 @@ def run_billy_collection(
         timer.log("billy")
         return
 
-    existing_setlist_show_ids: set[str] = set()
+    needs_fetch: Optional[set[str]] = None
     if skip_existing_setlists:
         try:
-            candidate_show_ids = [
-                row.get("show_id")
+            show_dates = {
+                str(row["show_id"]): row.get("show_date")
                 for row in shows_requiring_setlists
                 if row.get("show_id") is not None
-            ]
-            existing_setlist_show_ids = fetch_existing_values(
-                "billy_setlists_raw",
-                value_column="show_id",
-                candidate_values=candidate_show_ids,
-            )
+            }
+            counts = fetch_setlist_row_counts("billy_setlists_raw", show_dates)
+            needs_fetch = select_shows_needing_setlist_fetch(show_dates, counts)
         except Exception as exc:  # pragma: no cover - supabase connectivity
             print(f"Warning: could not load existing Billy setlist show IDs ({exc}).")
 
@@ -330,7 +330,7 @@ def run_billy_collection(
             "show_date": row.get("show_date"),
         }
         for row in shows_requiring_setlists
-        if str(row.get("show_id")) not in existing_setlist_show_ids
+        if needs_fetch is None or str(row.get("show_id")) in needs_fetch
     ]
 
     if not shows_to_process:

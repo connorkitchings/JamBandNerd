@@ -54,6 +54,9 @@ jobs:
     needs: setup
     runs-on: ubuntu-24.04
     timeout-minutes: 120
+    concurrency:
+      group: daily-pipeline-${{ matrix.band }}
+      cancel-in-progress: false
     strategy:
       matrix:
         band: ${{ fromJson(needs.setup.outputs.bands) }}

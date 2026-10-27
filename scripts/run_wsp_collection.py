@@ -84,8 +84,15 @@ def _write_github_outputs(status: CollectionStatus) -> None:
             handle.write(f"{key}={value}\n")
 
 
-def _write_failure_github_outputs(reason: str) -> None:
-    """Write explicit failure outputs when the runner exits non-zero."""
+def _write_failure_github_outputs(
+    reason: str, status: CollectionStatus | None = None
+) -> None:
+    """Write explicit failure outputs when the runner exits non-zero.
+
+    When a ``CollectionStatus`` is available, its classification decides whether
+    the workflow should retry. Without one (an unexpected crash before any status
+    exists) the failure is treated as retryable.
+    """
     github_output = os.environ.get("GITHUB_OUTPUT")
     if not github_output:
         return
@@ -93,7 +100,8 @@ def _write_failure_github_outputs(reason: str) -> None:
     with open(github_output, "a", encoding="utf-8") as handle:
         handle.write("workflow_state=failed\n")
         handle.write("outcome_code=failed_internal\n")
-        handle.write("should_retry_collection=true\n")
+        should_retry = status.should_retry_collection() if status else True
+        handle.write(f"should_retry_collection={str(should_retry).lower()}\n")
         handle.write("recent_data_usable=false\n")
         handle.write("prediction_action=skipped\n")
         handle.write(f"failure_reason={reason}\n")

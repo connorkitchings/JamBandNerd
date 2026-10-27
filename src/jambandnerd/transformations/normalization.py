@@ -18,6 +18,7 @@ VENUE_NAME_CANDIDATES = ("venue_name",)
 CITY_CANDIDATES = ("city", "venue_city")
 STATE_CANDIDATES = ("state", "venue_state")
 COUNTRY_CANDIDATES = ("country", "venue_country")
+POSITION_CANDIDATES = ("song_position", "position")
 
 
 def _copy_first_available_column(
@@ -97,6 +98,12 @@ def normalize_prediction_inputs(
         setlists, label="setlists", required_columns=("show_id", "song_name")
     )
 
+    # Drop nulls before astype(str), which would turn them into "nan"/"None".
+    shows = shows.loc[shows["show_id"].notna()].copy()
+    setlists = setlists.loc[
+        setlists["show_id"].notna() & setlists["song_name"].notna()
+    ].copy()
+
     shows["show_date"] = pd.to_datetime(shows["show_date"], errors="coerce").dt.date
     shows["show_id"] = shows["show_id"].astype(str).str.strip()
     setlists["show_id"] = setlists["show_id"].astype(str).str.strip()
@@ -106,6 +113,14 @@ def normalize_prediction_inputs(
     setlists = setlists.loc[
         setlists["show_id"].ne("") & setlists["song_name"].ne("")
     ].copy()
+
+    position_column = next(
+        (c for c in POSITION_CANDIDATES if c in setlists.columns), None
+    )
+    if position_column and "set_number" in setlists.columns:
+        setlists = setlists.drop_duplicates(
+            subset=["show_id", "set_number", position_column], keep="last"
+        ).reset_index(drop=True)
 
     return shows, setlists
 

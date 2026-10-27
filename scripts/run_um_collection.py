@@ -20,7 +20,11 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
-from scripts.common import ensure_source_reachable  # type: ignore  # noqa: E402
+from scripts.common import (  # type: ignore  # noqa: E402
+    ensure_source_reachable,
+    fetch_setlist_row_counts,
+    select_shows_needing_setlist_fetch,
+)
 from src.jambandnerd.data_collection.um.collector import UmCollector  # noqa: E402
 from src.jambandnerd.data_collection.um.normalizer import (  # noqa: E402
     attach_source_hash,
@@ -339,20 +343,22 @@ def _shows_to_process(
         print("Warning: could not resolve UM show IDs for scraped shows.")
         return []
 
+    date_by_url: Dict[str, Any] = {}
+    if "show_date" in shows_df.columns:
+        date_by_url = dict(
+            zip(shows_df["source_url"].astype(str), shows_df["show_date"])
+        )
+
     pending_show_ids: set[str]
     if full_backfill:
         pending_show_ids = {str(show_id) for show_id in show_id_map.values()}
     else:
-        existing_ids = fetch_existing_values(
-            "um_setlists_raw",
-            value_column="show_id",
-            candidate_values=[str(sid) for sid in show_id_map.values()],
-        )
-        pending_show_ids = {
-            str(show_id)
-            for show_id in show_id_map.values()
-            if str(show_id) not in existing_ids
+        show_dates = {
+            str(show_id): date_by_url.get(source_url)
+            for source_url, show_id in show_id_map.items()
         }
+        counts = fetch_setlist_row_counts("um_setlists_raw", show_dates)
+        pending_show_ids = select_shows_needing_setlist_fetch(show_dates, counts)
 
     print(
         f"UM shows pending setlist scrape: {len(pending_show_ids)}/{len(show_id_map)}"
@@ -367,6 +373,26 @@ def _shows_to_process(
             continue
         shows.append({"show_id": show_id, "source_url": source_url})
     return shows
+
+
+def _refresh_upcoming_shows(*, skip_validation: bool) -> None:
+    """Refresh um_upcoming_shows from the Seated widget."""
+    try:
+        upcoming_records = collect_upcoming_shows()
+    except UpcomingShowsError as exc:
+        print(f"Warning: could not fetch upcoming UM shows ({exc}).")
+        return
+    if not upcoming_records:
+        print("No upcoming UM shows found from Seated API.")
+        return
+    upcoming_df = attach_source_hash(pd.DataFrame(upcoming_records))
+    _upsert(
+        "um_upcoming_shows",
+        upcoming_df,
+        conflict_columns=["source_uuid"],
+        skip_validation=skip_validation,
+    )
+    print(f"Upserted {len(upcoming_df)} upcoming shows into um_upcoming_shows.")
 
 
 def run_um_collection(
@@ -403,6 +429,10 @@ def run_um_collection(
         print(f"Upserted {len(venues_df)} venues into um_venues_raw.")
     else:
         print("No UM venues scraped; skipping um_venues_raw upsert.")
+
+    # Upcoming shows (Seated) are refreshed before any early return below so the
+    # table does not go stale on days with nothing new to scrape.
+    _refresh_upcoming_shows(skip_validation=skip_validation)
 
     # Shows -----------------------------------------------------------------
     start_dt = _parse_date(start_date)
@@ -445,25 +475,6 @@ def run_um_collection(
         required_columns=["set_number", "song_position"],
     )
     print(f"Upserted {len(setlists_df)} setlist rows into um_setlists_raw.")
-
-    # Upcoming shows from Seated widget
-    try:
-        upcoming_records = collect_upcoming_shows()
-    except UpcomingShowsError as exc:
-        print(f"Warning: could not fetch upcoming UM shows ({exc}).")
-    else:
-        if upcoming_records:
-            upcoming_df = pd.DataFrame(upcoming_records)
-            upcoming_df = attach_source_hash(upcoming_df)
-            _upsert(
-                "um_upcoming_shows",
-                upcoming_df,
-                conflict_columns=["source_uuid"],
-                skip_validation=skip_validation,
-            )
-            print(f"Upserted {len(upcoming_df)} upcoming shows into um_upcoming_shows.")
-        else:
-            print("No upcoming UM shows found from Seated API.")
 
     timer.log("um")
     print("UM collection complete.")
