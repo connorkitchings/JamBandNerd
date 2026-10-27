@@ -27,11 +27,10 @@ sys.path.insert(0, project_root)
 
 from jambandnerd.models.accuracy import compute_per_show_metrics
 from jambandnerd.models.evaluation import (
-    get_evaluation_reference_date,
+    build_model_data_for_target,
     list_completed_shows,
 )
 from jambandnerd.models.wsp.fast_predictor import WSPFastPredictor
-from jambandnerd.transformations.gaps import generate_model_data
 from scripts.common import fetch_table, prepare_band_data
 
 BAND = "wsp"
@@ -185,13 +184,11 @@ def analyze_show(
     if not actual_songs or len(actual_songs) <= 2:
         return None
 
-    prediction_date = get_evaluation_reference_date(ref_date)
-
     try:
-        model_data = generate_model_data(
+        model_data = build_model_data_for_target(
             shows_df,
             sets_df,
-            prediction_date,
+            ref_date,
             band=BAND,
             target_show_context=show_row,
         )

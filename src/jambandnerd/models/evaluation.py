@@ -6,17 +6,46 @@ from datetime import date, timedelta
 
 import pandas as pd
 
+from jambandnerd.transformations.gaps import ModelData, generate_model_data
 from jambandnerd.transformations.normalization import sort_normalized_shows
 
 
 def get_evaluation_reference_date(target_show_date: date) -> date:
-    """Return the conservative reference date used for historical scoring.
+    """Return the label stored as ``reference_date`` on historical scoring rows.
 
-    We always score a historical show from the prior calendar day so same-day
-    shows and double-headers cannot leak into the feature set.
+    This is a lineage label only (the night before the target show, matching
+    the live path's "as of" date). It is NOT the feature cutoff: build features
+    with ``build_model_data_for_target`` so the previous night's show is kept.
     """
 
     return target_show_date - timedelta(days=1)
+
+
+def build_model_data_for_target(
+    shows_df: pd.DataFrame,
+    sets_df: pd.DataFrame,
+    target_show_date: date,
+    *,
+    band: str,
+    target_show_context: pd.Series | dict | None = None,
+    exclusion_window: int | None = None,
+) -> ModelData:
+    """Build features for scoring one historical show.
+
+    ``generate_model_data`` keeps only shows strictly before its reference
+    date, so passing the target show's own date includes every earlier show
+    (including the previous night) and excludes the target itself. This is the
+    single place that defines the historical evaluation cutoff.
+    """
+
+    return generate_model_data(
+        shows_df,
+        sets_df,
+        target_show_date,
+        exclusion_window=exclusion_window,
+        band=band,
+        target_show_context=target_show_context,
+    )
 
 
 def list_completed_shows(

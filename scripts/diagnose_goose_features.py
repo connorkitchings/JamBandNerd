@@ -39,12 +39,11 @@ sys.path.insert(0, project_root)
 
 from jambandnerd.models.base import PredictionModel
 from jambandnerd.models.evaluation import (
-    get_evaluation_reference_date,
+    build_model_data_for_target,
     list_completed_shows,
     select_target_shows,
 )
 from jambandnerd.models.gbm.predictor import BandGbmPredictor
-from jambandnerd.transformations.gaps import generate_model_data
 from scripts.common import fetch_table, prepare_band_data
 
 try:
@@ -99,17 +98,16 @@ def _collect_training_frames(
         ref_date = show_row["show_date"]
         if not isinstance(ref_date, date):
             ref_date = pd.Timestamp(ref_date).date()
-        prediction_date = get_evaluation_reference_date(ref_date)
         print(
             f"  [{idx}/{total}] {ref_date} (show_id={show_row['show_id']})",
             end="\r",
             flush=True,
         )
         try:
-            model_data = generate_model_data(
+            model_data = build_model_data_for_target(
                 shows_df,
                 sets_df,
-                prediction_date,
+                ref_date,
                 band=band,
                 target_show_context=show_row,
             )
