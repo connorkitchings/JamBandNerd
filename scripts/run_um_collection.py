@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 import sys
 from datetime import date, datetime, timedelta
 from typing import Any, Dict, Iterable, List, Optional, Sequence
@@ -215,6 +216,16 @@ def _sync_um_venues_raw(venues_df: pd.DataFrame, *, skip_validation: bool) -> No
         bulk_insert_dataframe("um_venues_raw", new_df)
 
 
+def normalize_um_show_url(url: str) -> str:
+    """Strip the ``/setlists/`` path segment allthings.umphreys.com added ~2026-05-10.
+
+    Old and new URLs for the same show then compare equal; suffixes such as the
+    ``-2`` of a second same-day show are preserved.
+    """
+
+    return re.sub(r"/setlists/", "/", str(url), count=1)
+
+
 def _sync_um_shows_raw(shows_df: pd.DataFrame, *, skip_validation: bool) -> None:
     """Persist UM shows when production uses a generated show_id primary key."""
 
@@ -227,23 +238,27 @@ def _sync_um_shows_raw(shows_df: pd.DataFrame, *, skip_validation: bool) -> None
         table_name="um_shows_raw",
     ).copy()
     source_urls = deduped["source_url"].dropna().astype(str).tolist()
+    # Stored rows may use either URL style; look up both and match on the
+    # normalised form so a re-scrape updates the existing row.
+    lookup_urls = {url for u in source_urls for url in (u, normalize_um_show_url(u))}
     existing_rows = fetch_rows_by_column_values(
         "um_shows_raw",
         select_columns=["show_id", "source_url"],
         filter_column="source_url",
-        values=source_urls,
+        values=sorted(lookup_urls),
     )
-    existing_ids = {
-        str(row["source_url"]): int(row["show_id"])
-        for row in existing_rows
-        if row.get("source_url") and row.get("show_id") is not None
-    }
+    existing_ids: dict[str, int] = {}
+    for row in sorted(existing_rows, key=lambda r: r.get("show_id") or 0):
+        if row.get("source_url") and row.get("show_id") is not None:
+            existing_ids.setdefault(
+                normalize_um_show_url(row["source_url"]), int(row["show_id"])
+            )
 
     next_show_id = _next_numeric_id("um_shows_raw", "show_id")
     show_ids: list[int] = []
     is_existing: list[bool] = []
     for source_url in source_urls:
-        existing_id = existing_ids.get(str(source_url))
+        existing_id = existing_ids.get(normalize_um_show_url(source_url))
         if existing_id is not None:
             show_ids.append(existing_id)
             is_existing.append(True)
