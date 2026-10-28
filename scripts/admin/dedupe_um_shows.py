@@ -4,13 +4,17 @@ Two groups are removed (deleting a show cascades to um_setlists_raw):
   ghost: a 0-song show whose same-date sibling has >= 3 songs.
   pair:  two shows sharing a normalised URL with identical song sets; the row
          whose URL contains ``/setlists/`` is kept.
-Candidates referenced by ``setlist_accuracy.show_id`` are skipped and reported.
-Dry run by default; with ``--apply`` a JSON backup of every deleted show and its
-setlist rows is written first.
+Candidates referenced by ``setlist_accuracy.show_id`` are skipped and reported,
+unless ``--delete-referenced-pairs`` is given: then referenced *pair* rows are
+deleted along with their accuracy rows (rebuilt by a later forced re-score).
+Referenced ghosts are always skipped.
+Dry run by default; with ``--apply`` a JSON backup of every deleted show, its
+setlist rows and any deleted accuracy rows is written first.
 
 Usage:
   uv run python scripts/admin/dedupe_um_shows.py
   uv run python scripts/admin/dedupe_um_shows.py --apply
+  uv run python scripts/admin/dedupe_um_shows.py --apply --delete-referenced-pairs
 """
 
 from __future__ import annotations
@@ -42,11 +46,15 @@ def select_duplicate_shows(
     show_rows: list[dict[str, Any]],
     setlist_rows: list[dict[str, Any]],
     referenced_show_ids: set[str],
+    delete_referenced_pairs: bool = False,
 ) -> dict[str, Any]:
     """Pick shows to delete.
 
     Returns ``{"ghost": [show_id, ...], "pair": [show_id, ...],
-    "skipped": [(show_id, group), ...]}``. Pure: no I/O.
+    "skipped": [(show_id, group), ...], "accuracy_show_ids": [str, ...]}``.
+    With ``delete_referenced_pairs`` referenced pair rows are selected and listed
+    in ``accuracy_show_ids`` (their accuracy rows must be deleted first);
+    referenced ghosts are always skipped. Pure: no I/O.
     """
     songs: dict[Any, set[str]] = defaultdict(set)
     for row in setlist_rows:
@@ -79,13 +87,21 @@ def select_duplicate_shows(
         if songs[loser] == songs[keepers[0]] and loser not in ghost:
             pair.add(loser)
 
-    result: dict[str, Any] = {"ghost": [], "pair": [], "skipped": []}
+    result: dict[str, Any] = {
+        "ghost": [],
+        "pair": [],
+        "skipped": [],
+        "accuracy_show_ids": [],
+    }
     for group, candidates in (("ghost", ghost), ("pair", pair)):
         for show_id in sorted(candidates):
-            if str(show_id) in referenced_show_ids:
+            referenced = str(show_id) in referenced_show_ids
+            if referenced and not (group == "pair" and delete_referenced_pairs):
                 result["skipped"].append((show_id, group))
-            else:
-                result[group].append(show_id)
+                continue
+            if referenced:
+                result["accuracy_show_ids"].append(str(show_id))
+            result[group].append(show_id)
     return result
 
 
@@ -117,17 +133,25 @@ def main() -> None:
     parser.add_argument(
         "--apply", action="store_true", help="Delete rows (default is a dry run)."
     )
+    parser.add_argument(
+        "--delete-referenced-pairs",
+        action="store_true",
+        help=f"Also delete pair rows referenced by {SETLIST_ACCURACY_TABLE} "
+        "(their accuracy rows are backed up and deleted first).",
+    )
     parser.add_argument("--backup-dir", type=Path, default=Path("./backups"))
     args = parser.parse_args()
 
     client = get_supabase_client()
     show_rows = fetch_all(client, SHOWS_TABLE, "*")
     setlist_rows = fetch_all(client, SETLISTS_TABLE, "*")
-    referenced = {
-        str(r["show_id"])
-        for r in fetch_all(client, SETLIST_ACCURACY_TABLE, "show_id", band=BAND)
-    }
-    selected = select_duplicate_shows(show_rows, setlist_rows, referenced)
+    accuracy_rows = fetch_all(client, SETLIST_ACCURACY_TABLE, "*", band=BAND)
+    referenced = {str(r["show_id"]) for r in accuracy_rows}
+    selected = select_duplicate_shows(
+        show_rows, setlist_rows, referenced, args.delete_referenced_pairs
+    )
+    accuracy_ids = set(selected["accuracy_show_ids"])
+    accuracy_to_delete = [r for r in accuracy_rows if str(r["show_id"]) in accuracy_ids]
     to_delete = selected["ghost"] + selected["pair"]
     print(
         f"ghost: {len(selected['ghost'])} | pair: {len(selected['pair'])} | "
@@ -136,6 +160,7 @@ def main() -> None:
     )
     for show_id, group in selected["skipped"]:
         print(f"  SKIP show_id={show_id} ({group})")
+    print(f"{SETLIST_ACCURACY_TABLE} rows to delete: {len(accuracy_to_delete)}")
     if not args.apply:
         print("Dry run; nothing deleted (pass --apply).")
         return
@@ -149,9 +174,14 @@ def main() -> None:
         {
             "shows": [r for r in show_rows if r["show_id"] in delete_set],
             "setlists": [r for r in setlist_rows if r["show_id"] in delete_set],
+            "accuracy": accuracy_to_delete,
         },
     )
     print(f"Backup written: {backup_path}")
+    for sid in sorted(accuracy_ids):
+        client.table(SETLIST_ACCURACY_TABLE).delete().eq("band", BAND).eq(
+            "show_id", sid
+        ).execute()
     for show_id in to_delete:
         # Explicit child delete first so we do not depend on FK cascade config.
         client.table(SETLISTS_TABLE).delete().eq("show_id", show_id).execute()

@@ -61,3 +61,28 @@ def test_accuracy_referenced_candidate_is_skipped():
     sl = songs(1, "a", "b", "c") + songs(2, "a", "b", "c")
     out = select_duplicate_shows(rows, sl, {"1"})
     assert out["pair"] == [] and out["skipped"] == [(1, "pair")]
+
+
+def test_referenced_pair_selected_when_flag_on():
+    rows = [show(1, OLD), show(2, NEW)]
+    sl = songs(1, "a", "b", "c") + songs(2, "a", "b", "c")
+    out = select_duplicate_shows(rows, sl, {"1"}, delete_referenced_pairs=True)
+    assert out["pair"] == [1]
+    assert out["accuracy_show_ids"] == ["1"]
+    assert out["skipped"] == []
+
+
+def test_referenced_pair_skipped_when_flag_off():
+    rows = [show(1, OLD), show(2, NEW)]
+    sl = songs(1, "a", "b", "c") + songs(2, "a", "b", "c")
+    out = select_duplicate_shows(rows, sl, {"1"})
+    assert out["pair"] == [] and out["accuracy_show_ids"] == []
+
+
+def test_referenced_ghost_still_skipped_when_flag_on():
+    rows = [show(1, "https://x/a"), show(2, "https://x/b")]
+    out = select_duplicate_shows(
+        rows, songs(2, "a", "b", "c"), {"1"}, delete_referenced_pairs=True
+    )
+    assert out["ghost"] == [] and out["skipped"] == [(1, "ghost")]
+    assert out["accuracy_show_ids"] == []
