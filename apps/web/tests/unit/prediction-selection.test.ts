@@ -122,3 +122,43 @@ test("selectLivePredictionSeedRow uses newest generated timestamp for target-dat
 
   assert.equal(selected?.target_show_key, "show-new-write");
 });
+
+const mixedVersionRows = [
+  {
+    reference_date: "2026-04-09",
+    target_show_date: "2026-04-10",
+    target_show_key: "show-old-board",
+    predicted_at: "2026-03-30T16:00:00+00:00",
+    model_version: "notebook_v1",
+  },
+  {
+    reference_date: "2026-04-11",
+    target_show_date: "2026-04-12",
+    target_show_key: "show-current-board",
+    predicted_at: "2026-03-30T15:00:00+00:00",
+    model_version: "notebook_v2",
+  },
+];
+
+test("selectLivePredictionSeedRow returns the current model version's board when versions are mixed", () => {
+  const selected = selectLivePredictionSeedRow(mixedVersionRows, {
+    todayIso: "2026-03-30",
+    modelVersion: "notebook_v2",
+  });
+
+  assert.equal(selected?.target_show_key, "show-current-board");
+});
+
+test("selectLivePredictionSeedRow is unchanged when only one version exists", () => {
+  const onlyOld = mixedVersionRows.filter((row) => row.model_version === "notebook_v1");
+
+  assert.equal(
+    selectLivePredictionSeedRow(onlyOld, { todayIso: "2026-03-30", modelVersion: "notebook_v1" })
+      ?.target_show_key,
+    "show-old-board",
+  );
+  assert.equal(
+    selectLivePredictionSeedRow(onlyOld, { todayIso: "2026-03-30" })?.target_show_key,
+    "show-old-board",
+  );
+});

@@ -16,14 +16,15 @@ function compareNullableStringsDesc(left: string | null, right: string | null): 
 
 export function selectLivePredictionSeedRow(
   rows: PredictionSeedRow[],
-  options: { todayIso: string },
+  options: { todayIso: string; modelVersion?: string | null },
 ): PredictionSeedRow | null {
-  const { todayIso } = options;
+  const { todayIso, modelVersion } = options;
   const validRows = rows.filter(
     (row) =>
       Boolean(row.target_show_date) &&
       Boolean(row.target_show_key) &&
-      Boolean(row.model_version),
+      Boolean(row.model_version) &&
+      (!modelVersion || row.model_version === modelVersion),
   );
 
   if (validRows.length === 0) {

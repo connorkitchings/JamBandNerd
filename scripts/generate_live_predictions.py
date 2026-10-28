@@ -21,6 +21,7 @@ from src.jambandnerd.config import (
     SETLIST_PREDICTIONS_TABLE,
 )
 from src.jambandnerd.db.operations import (
+    delete_other_model_version_boards,
     replace_setlist_prediction_projection,
     upsert_setlist_prediction_run,
 )
@@ -322,6 +323,14 @@ def generate_live_predictions(
         prediction_run_id=run_id,
         table_name=SETLIST_PREDICTION_SONGS_TABLE,
     )
+    removed = delete_other_model_version_boards(
+        band=band,
+        model_version=model_version,
+        predictions_table=SETLIST_PREDICTIONS_TABLE,
+        songs_table=SETLIST_PREDICTION_SONGS_TABLE,
+    )
+    if any(removed.values()):
+        print(f"{log_prefix} Removed boards from other model versions: {removed}")
     print(
         f"{log_prefix} Saved live next-show prediction for {target['target_show_date']}."
     )

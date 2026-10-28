@@ -71,12 +71,19 @@ export const getLatestPredictions = cache(
     }
 
     try {
-      const { data: seedRows, error: seedError } = await client
+      const modelVersion = await getLatestSetlistPredictionModelVersion(client, band);
+      let seedQuery = client
         .from("setlist_predictions")
         .select(
           "reference_date, target_show_date, generated_at, model_version, target_show_key",
         )
-        .eq("band", band)
+        .eq("band", band);
+
+      if (modelVersion) {
+        seedQuery = seedQuery.eq("model_version", modelVersion);
+      }
+
+      const { data: seedRows, error: seedError } = await seedQuery
         .order("generated_at", { ascending: false })
         .limit(100);
 
@@ -86,6 +93,7 @@ export const getLatestPredictions = cache(
 
       const seedRow = selectLivePredictionSeedRow(toSeedRows(seedRows ?? []), {
         todayIso: getEasternTodayIso(),
+        modelVersion,
       });
 
       if (!seedRow?.model_version || !seedRow.target_show_key) {
