@@ -9,6 +9,9 @@ Terms used below: a **ghost row** is a show row with 0 songs. A **duplicate pair
 - Umphreys had duplicate and ghost show rows since about 2026-05-10, when the source site changed its URL format. All were removed, and the collector fix (#225) prevents new ones.
 - The Umphreys duplicates shifted the 50-show window that the model uses. Only 69% of the top-20 songs by `plays_past_50` agreed with and without the duplicates. Umphreys was re-scored afterwards.
 - Billy had 16 ghost rows and 2 real duplicate pairs. Its collector had stopped before the oldest shows, so the gap was never filled until #227. Billy was not material to the duplicate issue (0.00 difference), so it was not re-scored.
+- After the cleanup, the `plays_past_50` re-measure found 0 duplicates and a top-20 overlap of 1.00 with the reference window. Three duplicates had survived the first cleanup; they are removed now (see the re-measure section).
+- Billy 2026-12-09 at Smart Financial Centre had a stray empty duplicate row. It is removed.
+- Two stale agent worktrees and their branches were removed.
 - The 2026-10-27 correction sweep and the orphan prediction boards were also cleaned up.
 
 ## Umphreys: duplicate shows from a URL format change
@@ -25,7 +28,17 @@ Impact: the 169 duplicate shows counted in the step 3.0 check shift the 50-show 
 
 `backfill-predictions.yml` ran with `band=um`: a dry run (run 40716286201) and then a live run (run 40734393345). The result is one model version, `um_fast_gbm_v12_gap_scaled_p50_venuefix`, with 50 accuracy rows evaluated 2026-10-28 17:18 to 17:21 UTC. None of the rows point at a deleted show.
 
-The `plays_past_50` comparison with and without the duplicates was not re-run after the re-score. The only evidence of the impact is the step 3.0 check above.
+## Umphreys: `plays_past_50` re-measure
+
+The comparison was re-run on the cleaned data.
+
+- First re-measure, on cleaned data: 3 duplicate shows remained: 2025-04-05 at the Ryman, 2026-04-30 at Moon Palace and 2026-08-21 at Wooly's. Mean absolute p50 difference 0.15. Top-20 overlap mean 0.81, minimum 0.50. Window start 2026-04-30, against 2026-03-29 for the reference.
+- Cause: the collector matched existing shows by `source_url` alone. A `/setlists/` URL change on 2026-05-10 and an apostrophe slug change (`wooly039s` to `woolys`, 2026-10-13) each created a second row for the same show. #233 fixes this with a date and venue fallback and apostrophe normalisation. #232 adds the `--delete-ids` mode used for this cleanup.
+- Cleanup: deleted show_ids 1743900804, 1773756239 and 1775599432, plus their `setlist_accuracy` rows 2499 and 2471. Kept 1775599289, 1775599384 and 1775599419. Backup: `.claude/backups/2026-10-28/dedupe_um_shows_20261028T175044Z.json`.
+- Re-measure after the cleanup: 0 duplicates, mean absolute p50 difference 0.00, top-20 overlap 1.00. Window start 2026-03-29 in both runs.
+- The 14 Umphreys VIP-set pages (3 to 4 songs beside a 15 to 20 song main show) are correctly not counted as duplicates. Their song-set Jaccard is 0.0, below the 70% duplicate rule.
+
+The step 3.0 check above is the source of the original 69% figure. The re-measure above is the result for the cleaned data.
 
 ## Umphreys: gap checks
 
@@ -64,6 +77,14 @@ Phantom rows: Billy Strings was injured in Charlottesville on 2026-04-18 and pos
 
 Note: bmfsdb rows are never refetched, because bmfsdb was dropped from billy collection in #195, and the setlist parser cannot read bmfsdb pages.
 
+## Billy: 2026-12-09 Smart Financial Centre
+
+Two empty future rows existed for the same show: show_id 30796 (bmfsdb uuid, venue "Smart Financial Centre at Sugar Land") and show_id 31138 (billybase URL, venue "Smart Financial Centre"). Neither had setlist, accuracy or prediction rows.
+
+Kept 31138 and deleted 30796 with #230's allowlist, run with `--delete-show-id 30796`. Backup: `.claude/backups/2026-10-28/dedupe_billy_shows_20261028T174514Z.json`. A dry run afterwards found 0 ghosts and 0 pairs.
+
+Reconcile (#226 and #227) picks the exact venue match, so the next scrape should not add a third row. This is not confirmed yet: it has not been observed on a live scrape.
+
 ## Correction sweep and orphan boards
 
 The correction sweep (#215 to #219, with the `replace_show_setlist` migration applied to hosted Supabase) corrected 35 setlists: wsp 16, um 8, billy 6, goose 1, phish 4.
@@ -75,22 +96,31 @@ The correction sweep (#215 to #219, with the `replace_show_setlist` migration ap
 - #221: stale docs and unused web exports removed.
 - #222: WSP skips future shows.
 - #223: accuracy freshness is correct when every show is already scored.
+- #231: song board search pill left-aligned.
+
+## Worktrees and branches
+
+Stale agent worktrees `agent-aab6f4b6fe6596337` and `agent-aad104f3b92f1db34` were removed. Their PRs #218 and #219 were already merged. The local and remote branches `connorkitchings/fix-sweep-payload-timestamps` and `connorkitchings/fix-sweep-encore-positions` were deleted too.
 
 ## Open items
 
 Not fixed, and not in scope for this session:
 
 - 145 Billy rows with 0 songs and no full sibling. Most are past shows with no upstream setlist.
-- Billy 2026-12-09 at Smart Financial Centre has two 0-song future rows (show_ids 30796 and 31138) that look like a stray duplicate. Untouched.
 - The correction sweep's `match_upstream_shows` uses exact `date_venue` keys, so a show stored under a venue variant goes unmatched. It cannot create duplicates, and it was not changed.
 - In reconcile, when two existing same-date rows both match and both have setlists, the outcome is not fully determined.
 - VIP sets as separate show rows (see above).
 - The step 3.0 duplicate count (169) does not match the cleanup targets (189). Not investigated.
 
-## Pending verification
+## Daily run check
 
-These are not verified and must not be recorded as passed:
+Manual per-band dispatches of `Daily Data Pipeline` on `main` at 17:53 UTC on 2026-10-28, after #222, #223 and #233 were merged:
 
-- The next scheduled WSP daily run has no `DOM fingerprint mismatch` for 2027 shows.
-- Goose `freshness_state` is not stale.
-- `Daily Data Pipeline` is green for all bands.
+- WSP: job succeeded. No `DOM fingerprint mismatch` lines; freshness `fresh`; website audit `ok`.
+- Goose: job succeeded. No `DOM fingerprint mismatch` lines. `freshness_state` is `warning`, not `stale`: the accuracy model `goose_fast_rank_v1_candidate_relaxed_special_nbtop10` was last scored about 545 hours earlier. This is a warning, not a clean pass.
+- Um: job failed in the website table audit with `per_show_accuracy_rows_below_window` and `replay_eligible_rows_below_window` (48 accuracy rows against a window of 50). The duplicate cleanup had deleted accuracy rows 2499 and 2471, which the window had been counting. Re-scoring with `backfill-predictions.yml` (`band=um`) restored 50 rows, and the um audit now reports `state=ok`, 0 blockers.
+- Billy: not re-dispatched. Two manual runs earlier the same day (15:08 and 15:21 UTC) succeeded with freshness `fresh`.
+- Phish: not dispatched.
+- Dedupe dry runs afterwards: billy 0 ghosts and 0 pairs; um 0 ghosts, 0 pairs and 0 accuracy rows to delete.
+
+Not confirmed: the full scheduled `band=all` run (19:00 UTC) has not been observed, so "green for all bands" is verified only for WSP, goose, um and billy individually. The billy reconcile adding no third row has not been seen on a live scrape beyond today's two billy runs.
