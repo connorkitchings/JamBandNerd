@@ -274,3 +274,146 @@ def test_sync_um_shows_updates_existing_and_inserts_new(monkeypatch):
     assert ("eq:show_id", 9) in events
     assert [row["source_url"] for row in inserted] == ["https://example.com/new"]
     assert [row["show_id"] for row in inserted] == [50]
+
+
+def _run_sync_with_existing(monkeypatch, existing_rows, scraped_rows):
+    """Run _sync_um_shows_raw against stubbed rows; return (updated, inserted ids)."""
+    updated: list[int] = []
+    inserted: list[int] = []
+
+    def fake_fetch(_table, *, filter_column, values, **_kwargs):
+        values = set(values)
+        return [r for r in existing_rows if r[filter_column] in values]
+
+    class _Client:
+        def table(self, _):
+            return self
+
+        def update(self, record):
+            updated.append(record["show_id"])
+            return self
+
+        def eq(self, *_a):
+            return self
+
+        def execute(self):
+            return None
+
+    monkeypatch.setattr(run_um_collection, "fetch_rows_by_column_values", fake_fetch)
+    monkeypatch.setattr(run_um_collection, "_next_numeric_id", lambda *a: 100)
+    monkeypatch.setattr(
+        run_um_collection, "prepare_dataframe_for_upsert", lambda t, df, **k: df
+    )
+    monkeypatch.setattr(run_um_collection, "get_supabase_client", lambda: _Client())
+    monkeypatch.setattr(
+        run_um_collection,
+        "bulk_insert_dataframe",
+        lambda table, df: inserted.extend(df["show_id"]),
+    )
+    run_um_collection._sync_um_shows_raw(
+        pd.DataFrame(scraped_rows), skip_validation=True
+    )
+    return updated, inserted
+
+
+def _show(url, date="2026-08-21", venue="Wooly's"):
+    return {"source_url": url, "show_date": date, "venue_name": venue}
+
+
+def test_sync_um_shows_reuses_id_when_url_changes_but_date_and_venue_match(
+    monkeypatch,
+):
+    existing = [
+        {
+            "show_id": 7,
+            "source_url": "https://allthings.umphreys.com/2026-08-21-other-slug",
+            "show_date": "2026-08-21",
+            "venue_name": "Wooly's",
+        }
+    ]
+    updated, inserted = _run_sync_with_existing(
+        monkeypatch,
+        existing,
+        [_show("https://allthings.umphreys.com/setlists/2026-08-21-new-slug")],
+    )
+    assert updated == [7]
+    assert inserted == []
+
+
+def test_sync_um_shows_new_date_creates_new_id(monkeypatch):
+    existing = [
+        {
+            "show_id": 7,
+            "source_url": "https://example.com/a",
+            "show_date": "2026-08-21",
+            "venue_name": "Wooly's",
+        }
+    ]
+    updated, inserted = _run_sync_with_existing(
+        monkeypatch, existing, [_show("https://example.com/b", date="2026-08-22")]
+    )
+    assert updated == []
+    assert inserted == [100]
+
+
+def test_sync_um_shows_keeps_same_day_same_venue_second_show_separate(monkeypatch):
+    base = "https://allthings.umphreys.com/2026-08-21-woolys"
+    existing = [
+        {
+            "show_id": 7,
+            "source_url": base,
+            "show_date": "2026-08-21",
+            "venue_name": "Wooly's",
+        }
+    ]
+    updated, inserted = _run_sync_with_existing(
+        monkeypatch, existing, [_show(base), _show(base + "-2")]
+    )
+    assert updated == [7]
+    assert inserted == [100]
+
+
+def test_sync_um_shows_does_not_merge_dash_two_into_unrelated_row(monkeypatch):
+    existing = [
+        {
+            "show_id": 7,
+            "source_url": "https://example.com/2026-08-21-old",
+            "show_date": "2026-08-21",
+            "venue_name": "Wooly's",
+        }
+    ]
+    updated, inserted = _run_sync_with_existing(
+        monkeypatch, existing, [_show("https://example.com/2026-08-21-new-2")]
+    )
+    assert updated == []
+    assert inserted == [100]
+
+
+def test_sync_um_shows_ambiguous_date_venue_candidates_create_new_row(monkeypatch):
+    existing = [
+        {
+            "show_id": i,
+            "source_url": f"https://example.com/old-{i}",
+            "show_date": "2026-08-21",
+            "venue_name": "Wooly's",
+        }
+        for i in (7, 8)
+    ]
+    updated, inserted = _run_sync_with_existing(
+        monkeypatch, existing, [_show("https://example.com/new")]
+    )
+    assert updated == []
+    assert inserted == [100]
+
+
+def test_normalize_um_show_url_collapses_apostrophe_variants():
+    base = "https://allthings.umphreys.com/2026-08-21-woolys-des-moines-ia"
+    for variant in ("wooly039s", "wooly%27s", "wooly's"):
+        url = base.replace("woolys", variant)
+        assert run_um_collection.normalize_um_show_url(url) == base
+    assert (
+        run_um_collection.normalize_um_show_url(
+            "https://allthings.umphreys.com/setlists/2026-08-21-woolys"
+        )
+        == "https://allthings.umphreys.com/2026-08-21-woolys"
+    )
