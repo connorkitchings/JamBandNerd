@@ -82,14 +82,16 @@ def test_daily_workflow_limits_degraded_accuracy_warning_to_wsp_upstream_lag() -
     )
 
     assert workflow.count(informational_accuracy_condition) == 3
-    assert (
-        workflow.count('if [[ "${ACCURACY_FRESHNESS_IS_INFORMATIONAL}" == "true" ]]')
-        == 1
-    )
-    assert (
+    # Both the freshness audit and the Supabase audit skip accuracy checks
+    # when the incremental backtest found nothing new to score.
+    all_scored_guard = (
         'if [[ "${ACCURACY_FRESHNESS_IS_INFORMATIONAL}" == "true" || '
         '"${BACKTEST_INCREMENTAL_ALL_SCORED}" == "true" ]]'
-    ) in workflow
+    )
+    assert workflow.count(all_scored_guard) == 2
+    assert (
+        workflow.count("BACKTEST_INCREMENTAL_ALL_SCORED: ${{ steps.accuracy_calc") >= 2
+    )
 
 
 def test_active_docs_do_not_reference_retired_storage_contract_terms() -> None:

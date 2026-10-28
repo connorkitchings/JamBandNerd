@@ -325,12 +325,13 @@ jobs:
         id: freshness_audit
         if: always() && steps.preflight.outputs.should_run_collection == 'true'
         env:
+          BACKTEST_INCREMENTAL_ALL_SCORED: ${{ steps.accuracy_calc.outputs.backtest_incremental_all_scored }}
           ACCURACY_FRESHNESS_IS_INFORMATIONAL: ${{ github.event.inputs.skip_accuracy == 'true' || steps.data_check.outputs.missing_data == 'true' || steps.collection.outputs.outcome_code == 'degraded_upstream_lag' }}
         run: |
           echo "::group::Auditing supported-model freshness for ${{ matrix.band }}"
 
           ARGS=(--band ${{ matrix.band }} --max-age-hours 48)
-          if [[ "${ACCURACY_FRESHNESS_IS_INFORMATIONAL}" == "true" ]]; then
+          if [[ "${ACCURACY_FRESHNESS_IS_INFORMATIONAL}" == "true" || "${BACKTEST_INCREMENTAL_ALL_SCORED}" == "true" ]]; then
             ARGS+=(--skip-accuracy)
           fi
 
