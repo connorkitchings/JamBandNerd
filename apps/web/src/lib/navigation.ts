@@ -1,4 +1,4 @@
-export type NavItem = {
+type NavItem = {
   href: string;
   label: string;
   mobileLabel: string;
@@ -39,14 +39,6 @@ export const DESKTOP_NAV_ITEMS: NavItem[] = [
 
 export const MOBILE_NAV_ITEMS: NavItem[] = DESKTOP_NAV_ITEMS;
 
-const DETAIL_ROUTE_PREFIXES = ["/last-show", "/replay"];
-
 export function isActivePath(pathname: string, matches: string[]) {
   return matches.includes(pathname);
-}
-
-export function isDetailPath(pathname: string) {
-  return DETAIL_ROUTE_PREFIXES.some(
-    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
-  );
 }

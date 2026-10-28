@@ -8,7 +8,7 @@ function signTimestamp(secret: string, timestamp: string) {
   return createHmac("sha256", secret).update(timestamp).digest("hex");
 }
 
-export function createAdminSessionToken(secret: string, now = Date.now()): string {
+function createAdminSessionToken(secret: string, now = Date.now()): string {
   const timestamp = Math.floor(now / 1000).toString();
   return `${timestamp}.${signTimestamp(secret, timestamp)}`;
 }

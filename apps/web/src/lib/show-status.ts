@@ -10,7 +10,7 @@ export const TONIGHT_STATUS_LABEL = "Tonight!";
  * Daily ingestion runs via `.github/workflows/daily-pipeline.yml` at 19:00 UTC.
  * 19:15 UTC (1155 minutes) allows 15 minutes for collection + freshness checks.
  */
-export const DAILY_INGESTION_CUTOFF_UTC_MINUTES = 19 * 60 + 15;
+const DAILY_INGESTION_CUTOFF_UTC_MINUTES = 19 * 60 + 15;
 
 export type PredictionDisplayState = "previous" | "tonight" | "next";
 

@@ -84,7 +84,6 @@ nav:
       - Models:
           - Overview: reference/models/index.md
           - Notebook Model: reference/models/notebook.md
-          - CK+ Model: reference/models/ckplus.md
       - Guides:
           - Supabase API Guide: reference/guides/supabase_api_guide.md
           - Supabase Inserts: reference/guides/supabase_inserts.md
