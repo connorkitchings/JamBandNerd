@@ -67,7 +67,7 @@ historical scoring contract as the backtest flow.
 
 - `--candidate-model <registered-backtest-model-slug>`: (Required) Candidate model to evaluate.
 - `--band <slug[,slug...]|all>`: (Optional) Bands to include. Defaults to `all`.
-- `--baseline-model <slug>`: (Optional, repeatable) Override baseline models. Defaults to `ckplus` and `notebook`.
+- `--baseline-model <slug>`: (Optional, repeatable) Override baseline models. Defaults to `notebook`.
 - `--window <N>`: (Optional, repeatable) Comparison windows as positive integer show counts. Defaults to `100`.
 - `--feature-set-label <label>`: (Optional) Human-readable label for the feature set under test.
 - `--fresh-training`: (Optional) Disable persisted artifacts for training-capable candidate models during the comparison run.

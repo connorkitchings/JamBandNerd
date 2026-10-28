@@ -1,6 +1,6 @@
-export type SongBoardTier = "prime" | "likely" | "possible";
+type SongBoardTier = "prime" | "likely" | "possible";
 
-export const SONG_BOARD_TIER_ORDER: SongBoardTier[] = [
+const SONG_BOARD_TIER_ORDER: SongBoardTier[] = [
   "prime",
   "likely",
   "possible",

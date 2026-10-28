@@ -12,10 +12,6 @@ The project employs a modular, pluggable architecture for its prediction models,
 
 - **[Deal Model](./deal.md)**: An explainable logistic ranking model trained on shared cross-band rotation features. It is promoted on the public website alongside Notebook.
 
-### Historical Models
-
-- **[CK+ Model](./ckplus.md)**: A retired gap-based model kept as historical reference because older prediction and accuracy artifacts still exist in Supabase.
-
 ### How to Add a New Model
 
 To add a new prediction model to the project, follow the registry workflow:

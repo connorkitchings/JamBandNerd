@@ -2,13 +2,9 @@
 export type {
   AccuracyRow,
   BandEntry,
-  MissingSetlistShow,
   PredictionRow,
-  PredictionSnapshot,
   RouteState,
   SetlistSong,
-  SetlistSnapshot,
-  ShowDetails,
 } from "./types";
 
 // --- Parsers (pure utilities) ---

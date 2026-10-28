@@ -20,7 +20,7 @@ JamBandNerd has a production-ready website-first product surface and a productio
 - Supabase raw tables plus single-model `setlist_*` prediction and accuracy storage
 - In-memory transforms with `reference_date` protection
 - One registered active model version per Phase A band
-- Legacy Notebook/Deal/CK+ retained for baseline comparison and rollback context
+- Legacy Notebook/Deal retained for baseline comparison and rollback context
 - Backtesting with retained completed-show lineage through `setlist_results`
 - Unified `show_id` convention across all bands (Phish migration complete)
 

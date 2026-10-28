@@ -81,20 +81,6 @@ Current payload entries contain:
 - `current_gap`
 - `last_played_date`
 
-### CK+ payload fields
-
-Current payload entries contain:
-
-- `rank`
-- `song_name`
-- `times_played`
-- `current_gap`
-- `avg_gap`
-- `gap_ratio`
-- `gap_z_score`
-- `ckplus_score`
-- `LTP`
-
 ## Per-Show Accuracy Storage
 
 `setlist_accuracy` stores one row per retained evaluated completed show and

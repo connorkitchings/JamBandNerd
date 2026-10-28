@@ -49,7 +49,7 @@ Key modules:
 
 - `bands.py`: supported bands, display names, excluded-song config
 - `database.py`: prediction and accuracy table names
-- `models.py`: model versions, exclusion windows, top-K values, and legacy CK+ thresholds
+- `models.py`: model versions, exclusion windows, top-K values
 - `pipeline.py`: common retry/backoff defaults
 
 ## Model Configuration
@@ -71,19 +71,6 @@ Relevant controls live in:
 
 Deal is the current promoted second model and participates in pipeline,
 backfill, per-show accuracy, and website surfaces.
-
-### CK+ (Historical)
-
-Relevant controls in `src/jambandnerd/config/models.py`:
-
-- `RETIREMENT_GAPS`
-- `MIN_PLAYS_THRESHOLD_DEFAULT`
-- `CKPLUS_ALPHA_DEFAULT`
-- `MODEL_VERSIONS`
-
-These values should change only with care, because they affect prediction
-behavior and may require a new `model_version`. CK+ is retired and these
-settings remain only for historical reference and old stored outputs.
 
 ## Adding Bands or Models
 

@@ -35,7 +35,6 @@ This documentation is organized into current operating docs first, then historic
 
 ## Historical And Legacy Context
 
-- **Historical model reference**: [CK+ Model](reference/models/ckplus.md)
 - **Historical product/architecture snapshots**: [Technical Overview](reference/specifications/technical_overview.md) · [ADR](overview/project/adr.md) · [Schedule](overview/project/schedule.md)
 - **Historical Streamlit note**: [Streamlit Notes](operations/streamlit_deploy.md)
 - **Pre-launch operations archive**: `docs/archive/` — v1 punch list, frontend strategy, test results, and other one-time operational artifacts.
