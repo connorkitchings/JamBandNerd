@@ -9,6 +9,7 @@ import os
 import re
 from collections import Counter
 from datetime import date, datetime, timedelta
+from zoneinfo import ZoneInfo
 
 import pandas as pd
 import requests
@@ -54,6 +55,14 @@ RECENT_WSP_FALLBACK_SOURCES = (
     ("panicstream", fetch_setlist_from_panicstream),
     ("tourwrangler", fetch_setlist_from_tourwrangler),
 )
+
+
+def _only_past_shows(shows_df: pd.DataFrame, today: date | None = None) -> pd.DataFrame:
+    """Keep shows dated strictly before ``today`` (US Eastern by default)."""
+    if today is None:
+        today = datetime.now(ZoneInfo("America/New_York")).date()
+    show_dates = pd.to_datetime(shows_df["show_date"], errors="coerce").dt.date
+    return shows_df[show_dates < today]
 
 
 def _page_has_setlist_table(page_html: str, show_id: str) -> bool:
@@ -537,6 +546,9 @@ def process_wsp_data(
             logging.warning(
                 f"Could not check existing setlists: {e}. Proceeding with all shows."
             )
+
+    # Future shows have no setlist page yet; scraping them only logs DOM mismatches.
+    shows_to_process_df = _only_past_shows(shows_to_process_df)
 
     # 6. Collect and Upsert Setlists
     if not shows_to_process_df.empty:
