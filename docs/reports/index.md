@@ -2,6 +2,7 @@
 
 This section contains reports on experiments, validation, and other analyses.
 
+- [2026-10-28 System Review Follow-up: Duplicate Shows, Billy Gaps and Cleanup](2026-10-28_system_review_followup.md)
 - [2026-10-27 System Review: Findings Backlog](2026-10-27_system_review.md)
 - [2026-04-13 Comprehensive Alignment Audit](2026-04-13_alignment_audit.md)
 - [2025-12-12 Notebook V2 Experiment](2025-12-12_notebookv2_experiment.md)
