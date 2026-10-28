@@ -223,7 +223,68 @@ def normalize_um_show_url(url: str) -> str:
     ``-2`` of a second same-day show are preserved.
     """
 
-    return re.sub(r"/setlists/", "/", str(url), count=1)
+    url = re.sub(r"/setlists/", "/", str(url), count=1)
+    # The site has emitted apostrophes as ``039``, ``%27`` or a literal ``'``
+    # (``wooly039s`` / ``wooly%27s`` / ``woolys``); collapse to the bare slug.
+    return re.sub(r"(?<=[a-z])(?:039|%27|')(?=s(?:-|/|$))", "", url)
+
+
+def _um_url_suffix(url: str) -> Optional[str]:
+    """Return the trailing ``-N`` of a same-day extra show URL, if any."""
+
+    match = re.search(r"-(\d+)/?$", normalize_um_show_url(url))
+    return match.group(1) if match else None
+
+
+def _normalize_venue_key(name: Any) -> str:
+    return re.sub(r"[^a-z0-9]", "", str(name or "").lower())
+
+
+def _match_existing_ids_by_date_venue(
+    shows_df: pd.DataFrame, unmatched: List[int], claimed_ids: set[int]
+) -> Dict[int, int]:
+    """Map unmatched ``shows_df`` positions to an existing show_id by date+venue.
+
+    Used when the source URL changed (slug or path rewrite) so the show would
+    otherwise be inserted as a duplicate. Only an unambiguous match counts: one
+    unclaimed existing row, one scraped show for that date+venue, and the same
+    ``-N`` suffix on both URLs (otherwise it is a distinct same-day show).
+    """
+
+    if not unmatched or "venue_name" not in shows_df.columns:
+        return {}
+    dates = sorted({str(shows_df.iloc[i]["show_date"]) for i in unmatched})
+    rows = fetch_rows_by_column_values(
+        "um_shows_raw",
+        select_columns=["show_id", "source_url", "show_date", "venue_name"],
+        filter_column="show_date",
+        values=dates,
+    )
+    by_key: Dict[tuple[str, str], List[Dict[str, Any]]] = {}
+    for row in rows:
+        if row.get("show_id") is None or int(row["show_id"]) in claimed_ids:
+            continue
+        key = (str(row.get("show_date")), _normalize_venue_key(row.get("venue_name")))
+        by_key.setdefault(key, []).append(row)
+
+    scraped_per_key: Dict[tuple[str, str], List[int]] = {}
+    for i in unmatched:
+        show = shows_df.iloc[i]
+        key = (str(show["show_date"]), _normalize_venue_key(show["venue_name"]))
+        scraped_per_key.setdefault(key, []).append(i)
+
+    matched: Dict[int, int] = {}
+    for key, positions in scraped_per_key.items():
+        candidates = by_key.get(key, [])
+        if not key[1] or len(candidates) != 1 or len(positions) != 1:
+            continue
+        candidate = candidates[0]
+        scraped_url = str(shows_df.iloc[positions[0]]["source_url"])
+        if _um_url_suffix(scraped_url) == _um_url_suffix(
+            candidate.get("source_url") or ""
+        ):
+            matched[positions[0]] = int(candidate["show_id"])
+    return matched
 
 
 def _sync_um_shows_raw(shows_df: pd.DataFrame, *, skip_validation: bool) -> None:
@@ -254,11 +315,21 @@ def _sync_um_shows_raw(shows_df: pd.DataFrame, *, skip_validation: bool) -> None
                 normalize_um_show_url(row["source_url"]), int(row["show_id"])
             )
 
+    url_matches = [existing_ids.get(normalize_um_show_url(u)) for u in source_urls]
+    unmatched = [i for i, existing_id in enumerate(url_matches) if existing_id is None]
+    claimed_ids = {
+        existing_id for existing_id in url_matches if existing_id is not None
+    }
+    by_date_venue = _match_existing_ids_by_date_venue(
+        deduped.reset_index(drop=True), unmatched, claimed_ids
+    )
+
     next_show_id = _next_numeric_id("um_shows_raw", "show_id")
     show_ids: list[int] = []
     is_existing: list[bool] = []
-    for source_url in source_urls:
-        existing_id = existing_ids.get(normalize_um_show_url(source_url))
+    for position, existing_id in enumerate(url_matches):
+        if existing_id is None:
+            existing_id = by_date_venue.get(position)
         if existing_id is not None:
             show_ids.append(existing_id)
             is_existing.append(True)
