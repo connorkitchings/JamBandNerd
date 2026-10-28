@@ -56,3 +56,6 @@ output/
 .antigravitycli/
 scratch/
 .vercel
+
+# Admin cleanup backups (scripts/admin/prune_old_model_version_rows.py)
+backups/

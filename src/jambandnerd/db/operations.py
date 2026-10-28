@@ -372,6 +372,33 @@ def upsert_setlist_prediction_run(
     return run_id
 
 
+def delete_other_model_version_boards(
+    *,
+    band: str,
+    model_version: str,
+    predictions_table: str = "setlist_predictions",
+    songs_table: str = "setlist_prediction_songs",
+) -> dict[str, int]:
+    """Delete a band's prediction boards written by any other model version.
+
+    Both tables are deleted explicitly: the FK cascade from the run table only
+    reaches projection rows that carry a ``prediction_run_id``. Callers must
+    ensure the current-version board exists before invoking this.
+    """
+    client = get_supabase_client()
+    deleted: dict[str, int] = {}
+    for table in (songs_table, predictions_table):
+        response = (
+            client.table(table)
+            .delete()
+            .eq("band", band)
+            .neq("model_version", model_version)
+            .execute()
+        )
+        deleted[table] = len(response.data or [])
+    return deleted
+
+
 def _prediction_score(prediction: dict[str, Any]) -> float | None:
     for key in ("score", "probability", "predicted_probability"):
         value = prediction.get(key)

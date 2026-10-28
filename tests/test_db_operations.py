@@ -368,3 +368,22 @@ def test_upsert_setlist_accuracy_dataframe_filters_missing_legacy_columns(
     assert captured["conflict_columns"] == ["band", "model_version", "target_show_key"]
     assert "target_show_date" not in written.columns
     assert written.iloc[0]["show_date"] == "2026-04-25"
+
+
+def test_delete_other_model_version_boards_deletes_both_tables_for_band(monkeypatch):
+    client = MagicMock()
+    chain = client.table.return_value.delete.return_value
+    chain.eq.return_value.neq.return_value.execute.return_value.data = [{"id": 1}]
+    monkeypatch.setattr(operations, "get_supabase_client", lambda: client)
+
+    result = operations.delete_other_model_version_boards(
+        band="wsp", model_version="wsp_v2"
+    )
+
+    assert result == {"setlist_prediction_songs": 1, "setlist_predictions": 1}
+    assert [c.args[0] for c in client.table.call_args_list] == [
+        "setlist_prediction_songs",
+        "setlist_predictions",
+    ]
+    chain.eq.assert_called_with("band", "wsp")
+    chain.eq.return_value.neq.assert_called_with("model_version", "wsp_v2")
