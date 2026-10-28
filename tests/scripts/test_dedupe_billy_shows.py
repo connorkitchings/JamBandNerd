@@ -58,3 +58,16 @@ def test_referenced_allowlisted_pair_row_is_selected_with_accuracy_rows():
     out = select_duplicate_shows(rows, [], {"29184", "31152"}, ["29184"])
     assert out["pair"] == [29184] and out["skipped"] == []
     assert out["accuracy_show_ids"] == ["29184"]
+
+
+def test_empty_future_pair_is_selected_only_for_requested_id():
+    rows = [show(30796, "2026-12-09"), show(31138, "2026-12-09")]
+    out = select_duplicate_shows(rows, [], set(), ["30796"])
+    assert out["ghost"] == [] and out["pair"] == [30796]
+
+
+def test_empty_future_pair_rejects_both_ids_and_non_members():
+    with pytest.raises(ValueError, match="both"):
+        select_duplicate_shows([], [], set(), ["30796", "31138"])
+    with pytest.raises(ValueError, match="allowlist"):
+        select_duplicate_shows([show(30797, "2026-12-09")], [], set(), ["30797"])
