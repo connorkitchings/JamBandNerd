@@ -387,3 +387,37 @@ def test_delete_other_model_version_boards_deletes_both_tables_for_band(monkeypa
     ]
     chain.eq.assert_called_with("band", "wsp")
     chain.eq.return_value.neq.assert_called_with("model_version", "wsp_v2")
+
+
+def test_fetch_rows_by_column_values_caps_batch_by_total_value_length(monkeypatch):
+    batches: list[list[str]] = []
+
+    class _Query:
+        def select(self, *_args):
+            return self
+
+        def in_(self, _column, chunk):
+            batches.append(list(chunk))
+            return self
+
+        def execute(self):
+            return MagicMock(data=[{"source_url": url} for url in batches[-1]])
+
+    client = MagicMock()
+    client.table.return_value = _Query()
+    monkeypatch.setattr(operations, "get_supabase_client", lambda: client)
+    urls = [f"https://example.com/shows/{i:04d}/" + "x" * 100 for i in range(300)]
+
+    rows = operations.fetch_rows_by_column_values(
+        "um_shows_raw",
+        select_columns=["source_url"],
+        filter_column="source_url",
+        values=urls,
+    )
+
+    assert len(batches) > 1
+    assert all(len(b) <= 200 for b in batches)
+    assert all(
+        sum(len(u) + 3 for u in b) <= operations._MAX_IN_FILTER_CHARS for b in batches
+    )
+    assert [row["source_url"] for row in rows] == urls

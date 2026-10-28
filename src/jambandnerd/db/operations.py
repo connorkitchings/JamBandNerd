@@ -767,6 +767,29 @@ def get_table_schema(
         return []
 
 
+# PostgREST `in.(...)` filters travel in the GET query string; the gateway rejects
+# requests of roughly 24KB with a non-JSON "400 Bad Request". Keep each batch's
+# combined value length well under that, regardless of how many values it holds.
+_MAX_IN_FILTER_CHARS = 8000
+
+
+def _chunk_in_filter_values(
+    values: Sequence[Any], chunk_size: int, max_chars: int = _MAX_IN_FILTER_CHARS
+) -> Iterable[list[Any]]:
+    chunk: list[Any] = []
+    chars = 0
+    for value in values:
+        # +3 covers the surrounding quotes and comma PostgREST adds per value.
+        value_chars = len(str(value)) + 3
+        if chunk and (len(chunk) >= chunk_size or chars + value_chars > max_chars):
+            yield chunk
+            chunk, chars = [], 0
+        chunk.append(value)
+        chars += value_chars
+    if chunk:
+        yield chunk
+
+
 def fetch_rows_by_column_values(
     table_name: str,
     *,
@@ -775,7 +798,11 @@ def fetch_rows_by_column_values(
     values: Iterable[Any],
     chunk_size: int = 200,
 ) -> list[dict[str, Any]]:
-    """Fetch selected rows for a set of candidate values using batched IN queries."""
+    """Fetch selected rows for a set of candidate values using batched IN queries.
+
+    Batches are capped by both value count and total value length so long values
+    (such as URLs) cannot push the request URL past the gateway limit.
+    """
     client = get_supabase_client()
     unique_values = list(dict.fromkeys(values))
     if not unique_values:
@@ -783,12 +810,11 @@ def fetch_rows_by_column_values(
 
     selected = ",".join(select_columns)
     rows: list[dict[str, Any]] = []
-    for start in range(0, len(unique_values), chunk_size):
-        chunk = unique_values[start : start + chunk_size]
+    for chunk in _chunk_in_filter_values(unique_values, chunk_size):
         response = (
             client.table(table_name)
             .select(selected)
-            .in_(filter_column, list(chunk))
+            .in_(filter_column, chunk)
             .execute()
         )
         rows.extend(response.data or [])
