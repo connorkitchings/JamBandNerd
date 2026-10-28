@@ -242,11 +242,24 @@ def _reconcile_existing_show_uuids_by_date_venue(
     for row in existing_rows:
         existing_by_date.setdefault(row["show_date"], []).append(row)
 
+    scraped_per_date: Dict[str, int] = {}
+    for show in shows_data:
+        scraped_per_date[show["show_date"]] = (
+            scraped_per_date.get(show["show_date"], 0) + 1
+        )
+
     updated = 0
     for show in shows_data:
-        existing_uuid = _pick_existing_source_uuid(
-            show, existing_by_date.get(show["show_date"], []), setlist_counts
-        )
+        same_date_rows = existing_by_date.get(show["show_date"], [])
+        existing_uuid = _pick_existing_source_uuid(show, same_date_rows, setlist_counts)
+        if (
+            not existing_uuid
+            and len(same_date_rows) == 1
+            and scraped_per_date[show["show_date"]] == 1
+        ):
+            # Venue naming differs between sources (e.g. "Town of Bethel ..." vs
+            # "Bethel Woods ..."); a lone show on both sides is the same show.
+            existing_uuid = same_date_rows[0]["source_uuid"]
         if existing_uuid and existing_uuid != show.get("source_uuid"):
             show["source_uuid"] = existing_uuid
             updated += 1

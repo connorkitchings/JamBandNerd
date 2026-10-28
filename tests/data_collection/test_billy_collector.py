@@ -230,3 +230,107 @@ class TestBillyCollector:
             assert setlists[1]["song_name"] == "Song B"
             assert setlists[1]["is_segue"] is False
             assert setlists[1]["song_notes"] == "1"
+
+
+def _card(slug, day):
+    return (
+        f'<article class="ecs-post-loop"><a href="#"></a>'
+        f'<a href="/show/{slug}/">Venue {slug} \u2013 Town, NY</a>'
+        f'<a href="/show/{slug}/">{day}</a></article>'
+    )
+
+
+def _show_page(slug, day, prev_slug=None):
+    from bs4 import BeautifulSoup
+
+    prev = (
+        f'<a href="https://billybase.net/show/{prev_slug}/">&lt; Prev</a>'
+        if prev_slug
+        else ""
+    )
+    return BeautifulSoup(
+        f"""<html>
+        <link rel="canonical" href="https://billybase.net/show/{slug}/">
+        <section><h2>SHOW INFO</h2><h2>SHOW DATE</h2><h2>{day}</h2>
+        <h2>SHOW VENUE</h2><h2>Venue {slug}</h2><h2>CITY</h2><h2>Town</h2>
+        <h2>STATE / COUNTRY</h2><h2>New York</h2></section>{prev}</html>""",
+        "html.parser",
+    )
+
+
+def _walkback_collector(pages):
+    from bs4 import BeautifulSoup
+
+    collector = BillyCollector()
+    fetched = []
+
+    def fake_fetch(url):
+        fetched.append(url)
+        page = pages[url]
+        return BeautifulSoup(page, "html.parser") if isinstance(page, str) else page
+
+    collector._fetch_soup = fake_fetch  # type: ignore[method-assign]
+    return collector, fetched
+
+
+LISTING = "https://billybase.net/past-shows/"
+
+
+def _url(slug):
+    return f"https://billybase.net/show/{slug}/"
+
+
+class TestPastShowsWalkback:
+    def test_walks_back_past_oldest_card_down_to_start_date(self):
+        pages = {
+            LISTING: _card("s-0925", "2026-09-25"),
+            _url("s-0925"): _show_page("s-0925", "2026-09-25", "s-0920"),
+            _url("s-0920"): _show_page("s-0920", "2026-09-20", "s-0801"),
+            _url("s-0801"): _show_page("s-0801", "2026-08-01", "s-0418"),
+            _url("s-0418"): _show_page("s-0418", "2026-04-10", "s-0101"),
+        }
+        collector, fetched = _walkback_collector(pages)
+
+        shows = collector._collect_past_shows(date(2026, 4, 15))
+
+        assert [s["show_date"] for s in shows] == [
+            "2026-09-25",
+            "2026-09-20",
+            "2026-08-01",
+            "2026-04-10",
+        ]
+        assert _url("s-0101") not in fetched
+
+    def test_stops_at_first_show_on_or_before_start_date(self):
+        pages = {
+            LISTING: _card("s-0925", "2026-09-25"),
+            _url("s-0925"): _show_page("s-0925", "2026-09-25", "s-0801"),
+            _url("s-0801"): _show_page("s-0801", "2026-08-01", "s-0701"),
+            _url("s-0701"): _show_page("s-0701", "2026-07-01", "s-0601"),
+        }
+        collector, fetched = _walkback_collector(pages)
+
+        shows = collector._collect_past_shows(date(2026, 8, 1))
+
+        assert [s["show_date"] for s in shows] == ["2026-09-25", "2026-08-01"]
+        assert _url("s-0701") not in fetched
+
+    def test_no_walkback_when_oldest_card_already_covers_start_date(self):
+        pages = {LISTING: _card("s-0925", "2026-09-25") + _card("s-0301", "2026-03-01")}
+        collector, fetched = _walkback_collector(pages)
+
+        shows = collector._collect_past_shows(date(2026, 4, 15))
+
+        assert len(shows) == 2
+        assert fetched == [LISTING]
+
+    def test_no_prev_link_returns_card_shows_only(self):
+        pages = {
+            LISTING: _card("s-0925", "2026-09-25"),
+            _url("s-0925"): _show_page("s-0925", "2026-09-25", None),
+        }
+        collector, _ = _walkback_collector(pages)
+
+        shows = collector._collect_past_shows(date(2026, 4, 15))
+
+        assert [s["show_date"] for s in shows] == ["2026-09-25"]

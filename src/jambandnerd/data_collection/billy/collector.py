@@ -236,8 +236,10 @@ class BillyCollector(BandCollector):
         oldest_date = datetime.fromisoformat(oldest_show["show_date"]).date()
 
         if oldest_date > start_date:
-            prev_url = oldest_show["source_url"]
-            for _ in range(self.MAX_BACKWALK):
+            # The oldest card is already collected; start from its Prev link.
+            oldest_soup = self._fetch_soup(oldest_show["source_url"])
+            prev_url = self._find_prev_show_url(oldest_soup) if oldest_soup else None
+            for _ in range(self.MAX_BACKWALK if prev_url else 0):
                 prev_soup = self._fetch_soup(prev_url)
                 if prev_soup is None:
                     break
