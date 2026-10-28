@@ -73,6 +73,17 @@ def test_daily_workflow_matrix_and_backtest_windows_match_repo_contract() -> Non
     )
 
 
+def test_daily_workflow_collection_args_pass_through_env_not_interpolation() -> None:
+    workflow = WORKFLOW_PATH.read_text()
+
+    assert "collection_args:" in workflow
+    assert "COLLECTION_ARGS: ${{ github.event.inputs.collection_args }}" in workflow
+    # The input must never be interpolated directly into a shell script.
+    assert workflow.count("github.event.inputs.collection_args") == 1
+    assert 'read -r -a EXTRA_ARGS <<< "${COLLECTION_ARGS:-}"' in workflow
+    assert workflow.count('"$SCRIPT_PATH" "${EXTRA_ARGS[@]}"') == 2
+
+
 def test_daily_workflow_limits_degraded_accuracy_warning_to_wsp_upstream_lag() -> None:
     workflow = WORKFLOW_PATH.read_text()
     informational_accuracy_condition = (

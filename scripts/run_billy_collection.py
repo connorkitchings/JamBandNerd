@@ -146,6 +146,49 @@ def _normalize_venue_key(name: Optional[str]) -> str:
     return re.sub(r"[^a-z0-9]", "", (name or "").lower())
 
 
+def _venue_keys_match(left: str, right: str) -> bool:
+    """True when two normalized venue keys are equal or one extends the other."""
+    if not left or not right:
+        return False
+    if left == right:
+        return True
+    shorter, longer = sorted((left, right), key=len)
+    return len(shorter) >= 6 and longer.startswith(shorter)
+
+
+def _venue_tokens_match(left: Optional[str], right: Optional[str]) -> bool:
+    """True when the shorter venue name's words (>= 2) are all in the other."""
+    tokens = [
+        set(re.findall(r"[a-z0-9]+", (name or "").lower())) for name in (left, right)
+    ]
+    shorter, longer = sorted(tokens, key=len)
+    return len(shorter) >= 2 and shorter <= longer
+
+
+def _pick_existing_source_uuid(
+    show: Dict[str, Any],
+    same_date_rows: List[Dict[str, Any]],
+    setlist_counts: Dict[str, int],
+) -> Optional[str]:
+    """Choose the same-date existing row matching the venue, preferring setlists."""
+    show_venue = show.get("venue_name")
+    show_key = _normalize_venue_key(show_venue)
+    matches = []
+    for row in same_date_rows:
+        row_key = _normalize_venue_key(row.get("venue_name"))
+        exact = bool(show_key) and row_key == show_key
+        if (
+            exact
+            or _venue_keys_match(show_key, row_key)
+            or _venue_tokens_match(show_venue, row.get("venue_name"))
+        ):
+            has_setlist = setlist_counts.get(str(row.get("show_id")), 0) > 0
+            matches.append((has_setlist, exact, row["source_uuid"]))
+    if not matches:
+        return None
+    return max(matches, key=lambda m: (m[0], m[1]))[2]
+
+
 def _reconcile_existing_show_uuids_by_date_venue(
     shows_data: List[Dict[str, Any]],
 ) -> List[Dict[str, Any]]:
@@ -181,21 +224,29 @@ def _reconcile_existing_show_uuids_by_date_venue(
         )
         return shows_data
 
-    existing_by_key: Dict[tuple[str, str], str] = {}
-    for row in existing_rows:
-        key = (
-            row["show_date"],
-            _normalize_venue_key(row.get("venue_name")),
+    setlist_counts: Dict[str, int] = {}
+    existing_ids = [
+        row["show_id"] for row in existing_rows if row.get("show_id") is not None
+    ]
+    try:
+        if existing_ids:
+            setlist_counts = fetch_setlist_row_counts(
+                "billy_setlists_raw", existing_ids
+            )
+    except Exception as exc:  # pragma: no cover - supabase connectivity
+        print(
+            f"Warning: could not load Billy setlist counts for reconciliation ({exc})."
         )
-        existing_by_key[key] = row["source_uuid"]
+
+    existing_by_date: Dict[str, List[Dict[str, Any]]] = {}
+    for row in existing_rows:
+        existing_by_date.setdefault(row["show_date"], []).append(row)
 
     updated = 0
     for show in shows_data:
-        key = (
-            show["show_date"],
-            _normalize_venue_key(show.get("venue_name")),
+        existing_uuid = _pick_existing_source_uuid(
+            show, existing_by_date.get(show["show_date"], []), setlist_counts
         )
-        existing_uuid = existing_by_key.get(key)
         if existing_uuid and existing_uuid != show.get("source_uuid"):
             show["source_uuid"] = existing_uuid
             updated += 1
@@ -382,6 +433,11 @@ def _build_cli() -> argparse.ArgumentParser:
         action="store_true",
         help="Scrape the full show history (overrides the default rolling window)",
     )
+    parser.add_argument(
+        "--refetch-existing",
+        action="store_true",
+        help="Re-scrape setlists even for shows that already have stored rows",
+    )
     return parser
 
 
@@ -394,6 +450,7 @@ def main() -> None:
         end_date=args.end_date,
         full_backfill=args.full_backfill,
         skip_setlists=args.skip_setlists,
+        skip_existing_setlists=not args.refetch_existing,
     )
 
 
