@@ -56,8 +56,33 @@ def test_reconcile_matches_venue_token_subset(monkeypatch):
 
 
 def test_reconcile_ignores_unrelated_venue_on_same_date(monkeypatch):
-    _stub(monkeypatch, [_row(1, "old", "Red Rocks Amphitheatre")], {"1": 5})
+    rows = [_row(1, "old", "Red Rocks Amphitheatre"), _row(2, "old2", "Gorge")]
+    _stub(monkeypatch, rows, {"1": 5})
     out = rbc._reconcile_existing_show_uuids_by_date_venue(_scraped("Fillmore"))
+    assert out[0]["source_uuid"] == "slug-uuid"
+
+
+def test_reconcile_reuses_lone_same_date_row_with_different_venue(monkeypatch):
+    _stub(monkeypatch, [_row(1, "old", "Town of Bethel New York White Lake")], {})
+    out = rbc._reconcile_existing_show_uuids_by_date_venue(
+        _scraped("Bethel Woods Center For The Arts")
+    )
+    assert out[0]["source_uuid"] == "old"
+
+
+def test_reconcile_no_fallback_when_two_scraped_shows_same_date(monkeypatch):
+    _stub(monkeypatch, [_row(1, "old", "White Lake")], {})
+    scraped = _scraped("Bethel Woods") + [
+        {"show_date": "2026-05-01", "venue_name": "Late Set", "source_uuid": "s2"}
+    ]
+    out = rbc._reconcile_existing_show_uuids_by_date_venue(scraped)
+    assert [s["source_uuid"] for s in out] == ["slug-uuid", "s2"]
+
+
+def test_reconcile_no_fallback_when_two_existing_rows_same_date(monkeypatch):
+    rows = [_row(1, "old1", "White Lake"), _row(2, "old2", "Other Hall")]
+    _stub(monkeypatch, rows, {})
+    out = rbc._reconcile_existing_show_uuids_by_date_venue(_scraped("Bethel Woods"))
     assert out[0]["source_uuid"] == "slug-uuid"
 
 
