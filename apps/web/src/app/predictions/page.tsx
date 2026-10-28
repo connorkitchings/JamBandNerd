@@ -232,7 +232,7 @@ export default async function PredictionsPage({ searchParams }: Props) {
             </h2>
           </div>
           <div className="mt-5 flex items-center gap-3 md:gap-4">
-            <div className="flex flex-1 justify-center">
+            <div className="flex flex-1">
               <SongSearch songs={searchSongs} />
             </div>
             <div className="shrink-0">
