@@ -47,6 +47,7 @@ PAGE_SIZE = 1000
 DUPLICATE_PAIR_ALLOWLIST: dict[str, frozenset[str]] = {
     "2019-02-24": frozenset({"1201", "1202"}),
     "2026-09-28": frozenset({"31152", "29184"}),
+    "2026-12-09": frozenset({"30796", "31138"}),
 }
 
 
