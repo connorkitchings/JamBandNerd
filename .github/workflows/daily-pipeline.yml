@@ -22,6 +22,11 @@ on:
         required: false
         default: false
         type: boolean
+      collection_args:
+        description: 'Extra CLI args for the collection script (e.g. "--refetch-existing"); use with a single band'
+        required: false
+        default: ''
+        type: string
 
 jobs:
   setup:
@@ -138,6 +143,8 @@ jobs:
       - name: Run Data Collection
         id: collection
         if: steps.preflight.outputs.should_run_collection == 'true'
+        env:
+          COLLECTION_ARGS: ${{ github.event.inputs.collection_args }}
         run: |
           echo "::group::Collecting data for ${{ matrix.band }}"
 
@@ -147,6 +154,9 @@ jobs:
             echo "::error::Collection script not found: $SCRIPT_PATH"
             exit 1
           fi
+
+          # Word-split operator-supplied args into an array (never eval'd).
+          read -r -a EXTRA_ARGS <<< "${COLLECTION_ARGS:-}"
 
           MAX_RETRIES=3
           RETRY_COUNT=0
@@ -164,7 +174,7 @@ jobs:
               : > "$ATTEMPT_OUTPUT"
 
               set +e
-              GITHUB_OUTPUT="$ATTEMPT_OUTPUT" uv run python "$SCRIPT_PATH"
+              GITHUB_OUTPUT="$ATTEMPT_OUTPUT" uv run python "$SCRIPT_PATH" "${EXTRA_ARGS[@]}"
               FINAL_EXIT_CODE=$?
               set -e
 
@@ -206,7 +216,7 @@ jobs:
               echo "Attempt $((RETRY_COUNT + 1)) of $MAX_RETRIES for ${BAND} collection"
 
               set +e
-              uv run python "$SCRIPT_PATH"
+              uv run python "$SCRIPT_PATH" "${EXTRA_ARGS[@]}"
               FINAL_EXIT_CODE=$?
               set -e
 
