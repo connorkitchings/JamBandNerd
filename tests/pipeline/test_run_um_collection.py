@@ -5,6 +5,54 @@ import pandas as pd
 from scripts import run_um_collection
 
 
+def test_sync_um_shows_matches_old_stored_url_to_new_scraped_url(monkeypatch):
+    old = "https://allthings.umphreys.com/2026-05-01"
+    new = "https://allthings.umphreys.com/setlists/2026-05-01"
+    updated, inserted = [], []
+
+    monkeypatch.setattr(
+        run_um_collection,
+        "fetch_rows_by_column_values",
+        lambda *a, **k: [{"show_id": 7, "source_url": old}],
+    )
+    monkeypatch.setattr(run_um_collection, "_next_numeric_id", lambda *a: 100)
+    monkeypatch.setattr(
+        run_um_collection, "prepare_dataframe_for_upsert", lambda t, df, **k: df
+    )
+
+    class _Client:
+        def table(self, _):
+            return self
+
+        def update(self, record):
+            updated.append(record["show_id"])
+            return self
+
+        def eq(self, *a):
+            return self
+
+        def execute(self):
+            return None
+
+    monkeypatch.setattr(run_um_collection, "get_supabase_client", lambda: _Client())
+    monkeypatch.setattr(
+        run_um_collection,
+        "bulk_insert_dataframe",
+        lambda table, df: inserted.extend(df["show_id"]),
+    )
+
+    df = pd.DataFrame(
+        [
+            {"source_url": new, "show_date": "2026-05-01"},
+            {"source_url": new + "-2", "show_date": "2026-05-01"},
+        ]
+    )
+    run_um_collection._sync_um_shows_raw(df, skip_validation=True)
+
+    assert updated == [7]
+    assert inserted == [100]
+
+
 def test_um_upsert_dedupes_duplicate_conflict_keys(monkeypatch):
     captured = {}
 
