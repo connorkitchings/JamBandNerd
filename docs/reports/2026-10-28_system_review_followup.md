@@ -114,12 +114,13 @@ Not fixed, and not in scope for this session:
 
 ## Daily run check
 
-Not confirmed as of this write-up. Each of these stays open until the next scheduled run shows it:
+Manual per-band dispatches of `Daily Data Pipeline` on `main` at 17:53 UTC on 2026-10-28, after #222, #223 and #233 were merged:
 
-- The next scheduled WSP daily run has no `DOM fingerprint mismatch` for 2027 shows.
-- Goose `freshness_state` is not stale.
-- `Daily Data Pipeline` is green for all bands.
+- WSP: job succeeded. No `DOM fingerprint mismatch` lines; freshness `fresh`; website audit `ok`.
+- Goose: job succeeded. No `DOM fingerprint mismatch` lines. `freshness_state` is `warning`, not `stale`: the accuracy model `goose_fast_rank_v1_candidate_relaxed_special_nbtop10` was last scored about 545 hours earlier. This is a warning, not a clean pass.
+- Um: job failed in the website table audit with `per_show_accuracy_rows_below_window` and `replay_eligible_rows_below_window` (48 accuracy rows against a window of 50). The duplicate cleanup had deleted accuracy rows 2499 and 2471, which the window had been counting. Re-scoring with `backfill-predictions.yml` (`band=um`) restored 50 rows, and the um audit now reports `state=ok`, 0 blockers.
+- Billy: not re-dispatched. Two manual runs earlier the same day (15:08 and 15:21 UTC) succeeded with freshness `fresh`.
+- Phish: not dispatched.
+- Dedupe dry runs afterwards: billy 0 ghosts and 0 pairs; um 0 ghosts, 0 pairs and 0 accuracy rows to delete.
 
-Result of the daily run check:
-
-DAILY_RUN_RESULT_PLACEHOLDER
+Not confirmed: the full scheduled `band=all` run (19:00 UTC) has not been observed, so "green for all bands" is verified only for WSP, goose, um and billy individually. The billy reconcile adding no third row has not been seen on a live scrape beyond today's two billy runs.
