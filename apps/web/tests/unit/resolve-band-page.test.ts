@@ -45,3 +45,8 @@ test("unavailable registry trusts the slug so the page can show its data state",
     assert.deepEqual(context.bands, []);
   }
 });
+
+test("missing env rejects slugs outside the launch bands", () => {
+  assert.throws(() => pickBandPage({ status: "missing_env" }, "not-a-band", notFound), NotFoundSignal);
+  assert.throws(() => pickBandPage({ status: "missing_env" }, "compare", notFound), NotFoundSignal);
+});

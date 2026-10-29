@@ -54,7 +54,10 @@ test("desktop routes render the public shell", async ({ page }, testInfo) => {
       .or(page.getByRole("heading", { name: "Band registry unavailable" }))
       .first(),
   ).toBeVisible();
-  await expect(page.locator('main a[href="/phish"]').first()).toBeVisible();
+  // Band links come from the registry; without Supabase env only the unavailable notice renders.
+  if (!(await page.getByRole("heading", { name: "Band registry unavailable" }).isVisible())) {
+    await expect(page.locator('main a[href="/phish"]').first()).toBeVisible();
+  }
 
   for (const route of ["/goose/performance", "/goose/predictions", "/goose/replay"]) {
     await page.goto(route);
