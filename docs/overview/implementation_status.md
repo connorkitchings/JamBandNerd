@@ -51,7 +51,7 @@ JamBandNerd has a production-ready website-first product surface and a productio
 ### Website
 
 - 7 public routes: `/`, `/predictions`, `/performance`, `/last-show`, `/about`, `/contact`, `/data-use`
-- Admin setlist submission at `/admin/setlist`
+- Manual setlist entry via `scripts/admin/add_setlist.py` (no admin UI on the site)
 - Dynamic band discovery from Supabase
 - Vercel deployment with native GitHub integration
 - Mobile-responsive design

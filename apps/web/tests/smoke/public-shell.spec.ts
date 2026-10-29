@@ -89,14 +89,6 @@ test("desktop routes render the public shell", async ({ page }, testInfo) => {
   await page.goto("/contact");
   await expect(page.getByRole("heading", { name: "Contact JamBandNerd" })).toBeVisible();
   await expectSinglePrimaryHeading(page);
-
-  await page.goto("/admin/setlist");
-  await expect(
-    page
-      .getByRole("heading", { name: "Admin Access" })
-      .or(page.getByRole("heading", { name: "Admin Unavailable" }))
-      .or(page.getByRole("heading", { name: "Add Setlist" })),
-  ).toBeVisible();
 });
 
 test("removed multi-model routes are unavailable", async ({ page }, testInfo) => {
