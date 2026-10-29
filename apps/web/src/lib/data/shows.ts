@@ -37,7 +37,7 @@ const DEFAULT_SHOW_DETAILS_COLUMNS =
   "show_date, venue_name, venue_city, venue_state, venue_country";
 const WSP_SHOW_DETAILS_COLUMNS = "show_date, venue_name, city, state";
 const UM_UPCOMING_SHOW_COLUMNS =
-  "starts_at_local, starts_at, show_date, venue_name, venue, venue_city, city, region, venue_state, state, venue_country, country";
+  "starts_at_local, starts_at, venue_name, city, region, country";
 
 function showDetailsColumns(band: BandSlug, idColumn?: string) {
   const columns =
