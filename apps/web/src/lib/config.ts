@@ -1,6 +1,13 @@
-export const DEFAULT_BAND_SLUG = "goose";
+export const DEFAULT_BAND_SLUG = "wsp";
 
 export type BandSlug = string;
+
+/**
+ * Bands the site launched with. Only used to reject unknown slugs while the
+ * band registry is unavailable (e.g. no Supabase credentials); the registry
+ * remains the source of truth whenever it can be read.
+ */
+export const KNOWN_BAND_SLUGS: readonly string[] = ["goose", "eggy", "phish", "wsp", "billy", "um"];
 
 export type LikelihoodTier = "prime" | "likely" | "possible";
 

@@ -106,8 +106,8 @@ export default function TablePreviewPage() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-8">
-      <section className="rounded-xl border border-outline-variant/30 bg-surface-container p-6">
-        <p className="font-label text-[10px] uppercase tracking-[0.2rem] text-on-surface-variant">
+      <section className="rounded-xl border border-line bg-surface-2 p-6">
+        <p className="text-xs font-bold uppercase tracking-[0.08em] text-on-surface-variant">
           Internal Preview
         </p>
         <h1 className="mt-2 font-headline text-3xl font-semibold text-on-surface">

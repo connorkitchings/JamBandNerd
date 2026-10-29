@@ -5,12 +5,14 @@ active product surface and operating path.
 
 Current route split:
 
-- `/` is the public homepage and product entry page
-- `/predictions` is the primary live dashboard for repeat use
-- `/performance` is the historical accuracy surface
-- `/last-show` is the most recent completed-show detail surface
-- `/about`, `/contact`, and `/data-use` are public informational routes
-- `/?band=...` redirects to `/predictions?band=...` for compatibility
+- `/` redirects (307, `Cache-Control: private, no-store`) in `src/proxy.ts` to the last band the visitor viewed, read from the `jbn-band` cookie, and falls back to the default band's overview (`/wsp`) on a first visit or an invalid cookie. A cookie naming a band that no longer exists lands on the band 404 page, which links to the default band
+- The `jbn-band` cookie (set client-side by `src/components/remember-band.tsx`) stores the last viewed band, only on the visitor's device, with no tracking; the theme choice lives in `localStorage` key `jbn-theme`
+- `/<band>` is the band overview and product entry page
+- `/<band>/predictions` is the primary live dashboard for repeat use
+- `/<band>/performance` is the historical accuracy surface (`?k=` and `?metric=` preselect the chart toggles)
+- `/<band>/replay` shows the latest scored show; `/<band>/replay/<YYYY-MM-DD>` shows a specific one. It replaces `/last-show`
+- `/about`, `/contact`, and `/data-use` are public informational routes outside the band segment
+- Old URLs redirect permanently (308) in `src/proxy.ts`: `/?band=x` to `/x`, `/predictions?band=x` to `/x/predictions`, `/performance?band=x&k=..&metric=..` to `/x/performance?k=..&metric=..`, `/replay?band=x&date=D` to `/x/replay/D`, and `/last-show?band=x` to `/x/replay`. A missing band falls back to the default band; malformed band values are not redirected
 
 ## Target Architecture
 
@@ -31,13 +33,13 @@ Current route split:
 - **Safe-area aware**: bottom navigation and page content must respect mobile safe-area insets.
 - **Overflow safe**: data tables and dense views must remain usable on phones through scroll-safe wrappers rather than clipped content.
 - **Shared dense-data pattern**: tables and long data grids should use a single responsive wrapper/padding pattern instead of route-specific one-offs.
-- **Search-param navigation**: prefer URL-driven band state so pages are shareable and hydration stays light.
-- **Cached data, on-demand freshness**: the site uses Next.js Cache Components. Band-scoped Supabase reads in `src/lib/data` are cached with `"use cache"` and tagged `band:<slug>`; the daily pipeline expires a band's tag through `POST /api/revalidate` once new data lands (see [Cache revalidation](#cache-revalidation)). Pages still render per request (they read `searchParams`) but reuse cached data instead of querying Supabase each time.
+- **Path-based band state**: the band is a path segment (`/<band>/...`) so it carries across navigation and pages are shareable. Unknown bands return a real 404 (resolved in the `[band]` layout, above the loading boundary). View toggles that only change presentation (the performance K and measure toggles) are client state mirrored to the URL with `history.replaceState` and never trigger a server render.
+- **Cached data, on-demand freshness**: the site uses Next.js Cache Components. Band-scoped Supabase reads in `src/lib/data` are cached with `"use cache"` and tagged `band:<slug>`; the daily pipeline expires a band's tag through `POST /api/revalidate` once new data lands (see [Cache revalidation](#cache-revalidation)). Band pages are partially prerendered (`generateStaticParams` covers every active band): the shell and navigation are static, and the request-time sections (which depend on today's date) stream in behind `Suspense` while reusing cached data instead of querying Supabase each time.
 - **Hermetic builds**: prefer local assets and system fallbacks over build-time network fetches.
 
 ## Web Module Ownership
 
-- `apps/web/src/app/**`: route composition, metadata, and search-param handling
+- `apps/web/src/app/**`: route composition and metadata; band pages live in the `(data)/[band]` route group and call `resolveBandPage()` (`src/lib/data/resolve-band-page.ts`) in the layout, every page, and every `generateMetadata`
 - `apps/web/src/components/**`: reusable presentation and client islands
 - `apps/web/src/lib/data.ts`: compatibility barrel for existing route imports
 - `apps/web/src/lib/data/bands.ts`: band discovery and selection helpers
@@ -211,9 +213,9 @@ GitHub secret.
 After smoke verification, manually verify:
 
 - `/`
-- `/predictions`
-- `/performance`
-- `/last-show`
+- `/goose/predictions`
+- `/goose/performance`
+- `/goose/replay`
 - `/about`
 - `/contact`
 - `/data-use`

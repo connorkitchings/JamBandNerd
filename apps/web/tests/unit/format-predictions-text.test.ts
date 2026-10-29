@@ -40,7 +40,7 @@ test("formatTop10Text formats full output with venue, location, and top 10 songs
       buildRow("Rockdale", 10),
       buildRow("Slow Stir", 11),
     ],
-    shareUrl: "jambandnerd.com/predictions?band=goose",
+    shareUrl: "jambandnerd.com/goose/predictions",
   });
 
   assert.ok(result.startsWith("Goose Setlist Predictions\n"));
@@ -49,7 +49,7 @@ test("formatTop10Text formats full output with venue, location, and top 10 songs
   assert.ok(result.includes("1. Arrow"));
   assert.ok(result.includes("10. Rockdale"));
   assert.ok(!result.includes("11. Slow Stir"), "should not include songs beyond top 10");
-  assert.ok(result.endsWith("jambandnerd.com/predictions?band=goose"));
+  assert.ok(result.endsWith("jambandnerd.com/goose/predictions"));
 });
 
 test("formatTop10Text handles fewer than 10 predictions gracefully", () => {
@@ -59,7 +59,7 @@ test("formatTop10Text handles fewer than 10 predictions gracefully", () => {
     locationLabel: "",
     venueName: "",
     predictions: [buildRow("Arrow", 1), buildRow("Yeti", 2)],
-    shareUrl: "jambandnerd.com/predictions?band=goose",
+    shareUrl: "jambandnerd.com/goose/predictions",
   });
 
   assert.ok(result.includes("1. Arrow"));
@@ -74,7 +74,7 @@ test("formatTop10Text omits sublabel when venue and location are empty", () => {
     locationLabel: "",
     venueName: "",
     predictions: [buildRow("Tweezer", 1)],
-    shareUrl: "jambandnerd.com/predictions?band=phish",
+    shareUrl: "jambandnerd.com/phish/predictions",
   });
 
   assert.ok(result.includes("Phish Setlist Predictions"));
@@ -89,10 +89,10 @@ test("formatTop10Text handles empty predictions array", () => {
     locationLabel: "New York, NY",
     venueName: "Terminal 5",
     predictions: [],
-    shareUrl: "jambandnerd.com/predictions?band=goose",
+    shareUrl: "jambandnerd.com/goose/predictions",
   });
 
   assert.ok(result.includes("Goose Setlist Predictions"));
-  assert.ok(result.includes("jambandnerd.com/predictions?band=goose"));
+  assert.ok(result.includes("jambandnerd.com/goose/predictions"));
   assert.ok(!result.includes("1."));
 });

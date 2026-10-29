@@ -40,7 +40,7 @@ test.describe("mobile flows", () => {
     );
 
     await bootstrapHostedPreviewBypass(page);
-    await page.goto("/");
+    await page.goto("/goose");
 
     const mobileNav = page.getByRole("navigation", { name: "Mobile navigation" });
     await expect(mobileNav).toBeVisible();
@@ -57,7 +57,7 @@ test.describe("mobile flows", () => {
     );
 
     await bootstrapHostedPreviewBypass(page);
-    await page.goto("/predictions?band=goose");
+    await page.goto("/goose/predictions");
 
     const bandSelect = page.getByRole("combobox", { name: "Band" });
     if ((await bandSelect.count()) === 0) {
@@ -66,11 +66,58 @@ test.describe("mobile flows", () => {
     }
 
     await expect(bandSelect).toBeVisible();
-    await expect(bandSelect).toHaveValue(/\/predictions\?band=goose/);
+    await expect(bandSelect).toHaveValue("/goose/predictions");
 
     const bandBox = await bandSelect.boundingBox();
     expect(bandBox).not.toBeNull();
     expect(bandBox!.height).toBeGreaterThanOrEqual(44);
+  });
+
+  test("overview band switcher is visible in the first viewport", async ({ page }, testInfo) => {
+    test.skip(
+      testInfo.project.name !== "mobile-chromium",
+      "mobile-only test",
+    );
+
+    await bootstrapHostedPreviewBypass(page);
+    await page.goto("/goose");
+
+    const switcher = page.getByRole("navigation", { name: "Band" });
+    if ((await switcher.count()) === 0) {
+      await expectMainHeadingOrDataFallback(page);
+      return;
+    }
+
+    const current = switcher.getByRole("link", { name: "Goose" });
+    await expect(current).toBeInViewport();
+    await expect(current).toHaveAttribute("aria-current", "page");
+    const box = await current.boundingBox();
+    expect(box!.height).toBeGreaterThanOrEqual(44);
+
+    const phish = switcher.getByRole("link", { name: "Phish" });
+    await expect(phish).toBeInViewport();
+    await phish.click();
+    await expect(page).toHaveURL(/\/phish$/);
+  });
+
+  test("switching band keeps the current page", async ({ page }, testInfo) => {
+    test.skip(
+      testInfo.project.name !== "mobile-chromium",
+      "mobile-only test",
+    );
+
+    await bootstrapHostedPreviewBypass(page);
+    await page.goto("/goose/predictions");
+
+    const bandSelect = page.getByRole("combobox", { name: "Band" });
+    if ((await bandSelect.count()) === 0) {
+      await expectMainHeadingOrDataFallback(page);
+      return;
+    }
+
+    await expect(bandSelect).toBeInViewport();
+    await bandSelect.selectOption("/phish/predictions");
+    await expect(page).toHaveURL(/\/phish\/predictions$/);
   });
 
   test("key mobile flows render without page crashes", async ({ page }, testInfo) => {
@@ -88,17 +135,16 @@ test.describe("mobile flows", () => {
     
     const routes = [
       "/",
-      "/predictions",
-      "/performance",
-      "/replay",
-      "/last-show",
+      "/goose",
+      "/goose/predictions",
+      "/goose/performance",
+      "/goose/replay",
       "/about",
       "/contact",
       "/data-use",
     ];
     for (const route of routes) {
       await page.goto(route);
-      await page.waitForLoadState("networkidle");
       await expectMainHeadingOrDataFallback(page);
     }
 

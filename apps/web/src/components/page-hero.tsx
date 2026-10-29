@@ -30,24 +30,22 @@ export function PageHero({
             : ""
         }`}
       >
-        <div className={centered ? "text-center" : "text-center md:text-left"}>
+        <div className={centered ? "text-center" : "text-left"}>
           {kicker ? <span className="editorial-kicker">{kicker}</span> : null}
           {eyebrow ? (
-            <p className="mt-3 font-label text-[10px] font-semibold uppercase tracking-[0.24em] text-on-surface-variant">
+            <p className="mt-3 text-xs font-bold uppercase tracking-[0.08em] text-accent-text">
               {eyebrow}
             </p>
           ) : null}
-          <h1 className="mt-3 max-w-4xl font-headline text-3xl font-bold uppercase tracking-[-0.05em] text-on-surface md:text-6xl">
+          <h1 className="mt-2 max-w-4xl text-2xl font-bold text-on-surface md:text-4xl">
             {title}
           </h1>
           {meta ? (
-            <div className="mt-3 font-headline text-xs uppercase tracking-[0.14em] text-primary md:mt-4 md:text-base">
-              {meta}
-            </div>
+            <div className="mt-3 text-sm font-bold text-accent-text md:text-base">{meta}</div>
           ) : null}
           <p
-            className={`mt-4 max-w-3xl text-sm leading-6 text-on-surface-variant md:mt-5 md:text-[0.95rem] md:leading-7 ${
-              centered ? "mx-auto" : "mx-auto md:mx-0"
+            className={`mt-3 max-w-3xl text-base text-on-surface-variant ${
+              centered ? "mx-auto" : ""
             } ${descriptionClassName ?? ""}`}
           >
             {description}

@@ -3,6 +3,7 @@ import {
   ResponsiveTableFrame,
   TABLE_CELL_CLASS,
   TABLE_HEAD_CLASS,
+  TABLE_ROW_HEAD_CLASS,
 } from "@/components/responsive-table";
 import { formatSetLabel } from "@/lib/format";
 
@@ -25,31 +26,32 @@ export function SetlistTable({ songs }: Props) {
 
   return (
     <ResponsiveTableFrame
-      minWidthClassName="min-w-[520px] divide-y divide-outline-variant/30"
+      caption="Setlist: set, position and song"
+      minWidthClassName="min-w-[320px]"
       testId="setlist-table"
     >
-        <thead className="bg-surface-container-low text-on-surface-variant">
-          <tr>
-            <th className={`${TABLE_HEAD_CLASS} whitespace-nowrap`}>Set</th>
-            <th className={`${TABLE_HEAD_CLASS} whitespace-nowrap`}>Position</th>
-            <th className={TABLE_HEAD_CLASS}>Song</th>
+      <thead className="bg-surface-2">
+        <tr>
+          <th scope="col" className={`${TABLE_HEAD_CLASS} whitespace-nowrap`}>Set</th>
+          <th scope="col" className={`${TABLE_HEAD_CLASS} whitespace-nowrap`}>Position</th>
+          <th scope="col" className={TABLE_HEAD_CLASS}>Song</th>
+        </tr>
+      </thead>
+      <tbody className="text-on-surface">
+        {displayRows.map((song, index) => (
+          <tr key={`${song.setNumber}-${song.position}-${index}`}>
+            <td className={`${TABLE_CELL_CLASS} whitespace-nowrap`}>
+              {formatSetLabel(song.setNumber)}
+            </td>
+            <td className={`${TABLE_CELL_CLASS} whitespace-nowrap text-on-surface-variant`}>
+              {song.displayPosition}
+            </td>
+            <th scope="row" className={TABLE_ROW_HEAD_CLASS}>
+              {song.songName}
+            </th>
           </tr>
-        </thead>
-        <tbody className="divide-y divide-outline-variant/20 bg-surface-container text-on-surface">
-          {displayRows.map((song, index) => (
-            <tr key={`${song.setNumber}-${song.position}-${index}`} className={index % 2 === 1 ? "bg-surface-container-low/40" : ""}>
-              <td className={`${TABLE_CELL_CLASS} whitespace-nowrap`}>
-                {formatSetLabel(song.setNumber)}
-              </td>
-              <td className={`${TABLE_CELL_CLASS} whitespace-nowrap text-on-surface-variant`}>
-                {song.displayPosition}
-              </td>
-              <td className={`${TABLE_CELL_CLASS} font-headline font-medium text-on-surface`}>
-                {song.songName}
-              </td>
-            </tr>
-          ))}
-        </tbody>
+        ))}
+      </tbody>
     </ResponsiveTableFrame>
   );
 }

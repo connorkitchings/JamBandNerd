@@ -1,25 +1,13 @@
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import type { Metadata } from "next";
-import { Space_Grotesk, Inter } from "next/font/google";
 
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
+import { THEME_INIT_SCRIPT } from "@/lib/theme";
 
 import "./globals.css";
-
-const spaceGrotesk = Space_Grotesk({
-  subsets: ["latin"],
-  variable: "--font-space-grotesk",
-  display: "swap",
-});
-
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://jambandnerd.com"),
@@ -34,7 +22,10 @@ export const metadata: Metadata = {
 };
 
 export const viewport = {
-  themeColor: "#111316",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#faf7f2" },
+    { media: "(prefers-color-scheme: dark)", color: "#0b0f17" },
+  ],
 };
 
 export default async function RootLayout({
@@ -43,11 +34,15 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html className={`dark ${spaceGrotesk.variable} ${inter.variable}`} lang="en">
+    // suppressHydrationWarning: the inline script sets data-theme on <html> before hydration.
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+      </head>
       <body className="font-body antialiased">
         <a
           href="#main-content"
-          className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[100] focus:rounded-lg focus:bg-surface-container-high focus:px-4 focus:py-2 focus:text-sm focus:text-primary focus:ring-2 focus:ring-primary"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[100] focus:rounded-md focus:bg-surface-container-high focus:px-4 focus:py-2 focus:text-sm focus:text-primary"
         >
           Skip to main content
         </a>
@@ -55,7 +50,7 @@ export default async function RootLayout({
           <SiteHeader />
           <main
             id="main-content"
-            className="safe-bottom-content w-full flex-1 px-6 pt-24 md:px-8 lg:px-10"
+            className="safe-bottom-content w-full flex-1 px-4 pt-24 md:px-6"
           >
             {children}
           </main>

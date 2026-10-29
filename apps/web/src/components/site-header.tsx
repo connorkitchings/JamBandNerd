@@ -4,74 +4,77 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { DESKTOP_NAV_ITEMS, isActivePath } from "@/lib/navigation";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { buildNavLinks } from "@/lib/navigation";
 import { SITE_NAME } from "@/lib/site";
+import { useCurrentBand } from "@/lib/use-current-band";
 
 export function SiteHeader() {
   const pathname = usePathname();
+  const band = useCurrentBand();
+  const navLinks = buildNavLinks(band, pathname);
 
   return (
     <nav
       aria-label="Primary navigation"
-      className="fixed inset-x-0 top-0 z-50 border-b border-outline-variant/20 bg-background/80 px-4 py-4 backdrop-blur-xl md:px-6"
+      className="fixed inset-x-0 top-0 z-50 border-b border-line bg-background px-4 py-3 md:px-6"
     >
-      <div className="editorial-chip relative mx-auto max-w-7xl rounded-full px-3 py-2 md:px-4 md:py-3">
-        <div className="flex items-center md:hidden">
-          <div className="flex w-12 items-center">
-            <div className="size-10" />
-          </div>
+      <div className="relative mx-auto max-w-7xl">
+        <div className="flex items-center justify-between md:hidden">
+          <div className="size-11" />
 
           <Link
-            href="/"
-            className="absolute inset-y-0 left-12 right-12 flex items-center justify-center gap-2 rounded-full font-headline font-bold tracking-[-0.1em] text-on-background focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
+            href={`/${band}`}
+            className="absolute inset-y-0 left-12 right-12 flex items-center justify-center gap-2 rounded-md font-headline font-bold text-on-background"
           >
             <Image
               src="/logo.png"
               alt="JamBandNerd"
               width={34}
               height={34}
-              className="size-8 shrink-0 rounded-full ring-1 ring-white/10 min-[380px]:size-9"
+              className="size-8 shrink-0 rounded-full"
             />
-            <span className="truncate text-center text-[clamp(1.3rem,6vw,1.9rem)] leading-none">
-              {SITE_NAME}
-            </span>
+            <span className="truncate text-center text-xl leading-none">{SITE_NAME}</span>
           </Link>
+
+          <ThemeToggle />
         </div>
 
         <div className="hidden min-w-0 items-center justify-between gap-6 md:flex">
           <Link
-            href="/"
-            className="flex shrink-0 items-center gap-3 rounded-full font-headline font-bold uppercase tracking-[-0.06em] text-on-background focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
+            href={`/${band}`}
+            className="flex shrink-0 items-center gap-3 rounded-md font-headline font-bold text-on-background"
           >
             <Image
               src="/logo.png"
               alt="JamBandNerd Logo"
-              width={42}
-              height={42}
-              className="rounded-full ring-1 ring-white/10"
+              width={40}
+              height={40}
+              className="size-10 rounded-full"
             />
-            <span className="text-[1.65rem] leading-none">{SITE_NAME}</span>
+            <span className="text-xl leading-none">{SITE_NAME}</span>
           </Link>
 
-          <div className="min-w-0 flex-1 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <div className="flex min-w-max items-center justify-end gap-2">
-              {DESKTOP_NAV_ITEMS.map((link) => {
-                const isActive = isActivePath(pathname, link.matches);
-                return (
+          <div className="flex min-w-0 items-center gap-2">
+            <div className="min-w-0 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <div className="flex min-w-max items-center justify-end gap-1">
+                {navLinks.map((link) => (
                   <Link
                     key={link.href}
                     href={link.href}
-                    className={`inline-flex h-10 items-center justify-center rounded-full border px-4 font-headline text-xs uppercase tracking-[0.16rem] transition duration-200 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none ${
-                      isActive
-                        ? "border-primary/25 bg-primary/12 text-primary shadow-[0_0_0_1px_rgba(255,191,105,0.08)]"
-                        : "border-transparent text-on-background/70 hover:border-outline-variant/25 hover:bg-surface/60 hover:text-on-background"
+                    aria-current={link.active ? "page" : undefined}
+                    className={`inline-flex h-11 items-center justify-center rounded-md px-4 text-sm font-bold transition ${
+                      link.active
+                        ? "bg-surface-2 text-on-surface shadow-[inset_0_-2px_0_var(--accent)]"
+                        : "text-on-surface-variant hover:bg-surface-2 hover:text-on-surface"
                     }`}
                   >
                     {link.label}
                   </Link>
-                );
-              })}
+                ))}
+              </div>
             </div>
+            <ThemeToggle />
           </div>
         </div>
       </div>

@@ -1,7 +1,7 @@
 {
   "name": "@jambandnerd/web",
   "private": true,
-  "version": "1.0.2",
+  "version": "1.1.1",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

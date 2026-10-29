@@ -80,7 +80,8 @@ export function SharePredictionsButton({ text, label = "Share" }: Props) {
     <button
       type="button"
       onClick={handleShare}
-      className="inline-flex items-center gap-2 rounded-full border border-outline-variant/24 bg-surface/75 px-4 py-2 font-headline text-[10px] uppercase tracking-[0.14rem] text-on-surface transition hover:border-primary/35 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
+      aria-live="polite"
+      className="inline-flex min-h-11 items-center gap-2 rounded-full border border-line bg-surface px-4 text-sm font-semibold text-on-surface transition hover:bg-surface-container"
     >
       <ShareIcon />
       {displayLabel}

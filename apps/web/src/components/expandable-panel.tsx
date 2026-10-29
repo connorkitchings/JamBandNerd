@@ -1,6 +1,3 @@
-"use client";
-
-import { useId, useState } from "react";
 import type { ReactNode } from "react";
 
 type Props = {
@@ -12,6 +9,7 @@ type Props = {
   containerClassName?: string;
 };
 
+/** Native disclosure: no client state, keyboard and screen-reader support come from `<details>`. */
 export function ExpandablePanel({
   children,
   collapseLabel = "Collapse",
@@ -20,41 +18,15 @@ export function ExpandablePanel({
   buttonClassName = "",
   containerClassName = "",
 }: Props) {
-  const [isExpanded, setIsExpanded] = useState(false);
-  const bodyId = useId();
-
-  if (!isExpanded) {
-    return (
-      <div className={containerClassName}>
-        <button
-          type="button"
-          className={buttonClassName}
-          aria-controls={bodyId}
-          aria-expanded={false}
-          onClick={() => setIsExpanded(true)}
-        >
-          {expandLabel}
-        </button>
-      </div>
-    );
-  }
-
   return (
-    <div className={containerClassName}>
-      <div className={bodyClassName} id={bodyId}>
-        {children}
-      </div>
-      <div className="px-3 pb-3 pt-1">
-        <button
-          type="button"
-          className={buttonClassName}
-          aria-controls={bodyId}
-          aria-expanded={true}
-          onClick={() => setIsExpanded(false)}
-        >
-          {collapseLabel}
-        </button>
-      </div>
-    </div>
+    <details className={`group ${containerClassName}`}>
+      <summary
+        className={`flex min-h-11 cursor-pointer list-none items-center justify-center [&::-webkit-details-marker]:hidden ${buttonClassName}`}
+      >
+        <span className="group-open:hidden">{expandLabel}</span>
+        <span className="hidden group-open:inline">{collapseLabel}</span>
+      </summary>
+      <div className={bodyClassName}>{children}</div>
+    </details>
   );
 }
