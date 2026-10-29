@@ -29,12 +29,11 @@ import {
 } from "@/lib/format";
 import { formatTop10Text } from "@/lib/format-predictions-text";
 import {
+  getDataClock,
   getPredictionDisplayState,
   getPredictionStatusLabel,
   isShowTonight,
 } from "@/lib/show-status";
-
-export const revalidate = 3600;
 
 type Props = {
   searchParams: Promise<{
@@ -85,7 +84,8 @@ export default async function PredictionsPage({ searchParams }: Props) {
 
   const selectedBand =
     bandsResult.status === "ready" ? bandSelection.bandEntry?.slug : params.band;
-  const predictionState = await getLatestPredictions(selectedBand);
+  const clock = getDataClock();
+  const predictionState = await getLatestPredictions(selectedBand, clock.todayIso);
 
   if (predictionState.status !== "ready") {
     return (
@@ -110,15 +110,16 @@ export default async function PredictionsPage({ searchParams }: Props) {
 
   const [nextShowState, specificShowState, accuracyState, missingSetlistShows] =
     await Promise.all([
-      getNextShowDetails(predictionState.band),
+      getNextShowDetails(predictionState.band, clock.todayIso),
       getShowDetailsByDate(
         predictionState.band,
         predictionState.snapshot.targetShowDate,
       ),
-      getRecentAccuracy(predictionState.band, 50),
+      getRecentAccuracy(predictionState.band, 50, clock.todayIso),
       getRecentMissingSetlistShows(
         predictionState.band,
         predictionState.snapshot.targetShowDate,
+        clock,
       ),
     ]);
   const nextShow = nextShowState.status === "ready" ? nextShowState.show : null;

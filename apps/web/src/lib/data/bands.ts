@@ -4,11 +4,17 @@
 
 import "server-only";
 
-import { cache } from "react";
+import { cacheLife, cacheTag } from "next/cache";
 
-import { DEFAULT_BAND_SLUG, type BandSlug, normalizeBand } from "@/lib/config";
+import {
+  BANDS_CACHE_TAG,
+  DEFAULT_BAND_SLUG,
+  type BandSlug,
+  normalizeBand,
+} from "@/lib/config";
 import { getSupabaseServerClient, hasSupabaseEnv } from "@/lib/supabase/server";
 
+import { applyBandCacheLife } from "./cache-policy";
 import type { BandEntry, RouteState } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -27,50 +33,65 @@ export function getClientOrState<T>(): RouteState<T> | null {
 // Band fetching
 // ---------------------------------------------------------------------------
 
-export const getBands = cache(
-  async (): Promise<RouteState<{ bands: BandEntry[] }>> => {
-    const missingEnv = getClientOrState<{ bands: BandEntry[] }>();
-    if (missingEnv) {
-      return missingEnv;
-    }
+type BandsState = RouteState<{ bands: BandEntry[] }>;
 
-    const client = getSupabaseServerClient();
-    if (!client) {
-      return { status: "missing_env" };
-    }
+export async function getBands(): Promise<BandsState> {
+  "use cache";
+  cacheTag(BANDS_CACHE_TAG);
 
-    try {
-      const { data, error } = await client
-        .from("bands")
-        .select("slug, display_name, shows_table, id_column")
-        .eq("is_active", true)
-        .order("display_name", { ascending: true });
-
-      if (error) {
-        return { status: "error", message: error.message };
-      }
-
-      const bands: BandEntry[] =
-        data?.map((row) => ({
-          slug: String(row.slug),
-          displayName: String(row.display_name),
-          showsTable: typeof row.shows_table === "string" ? row.shows_table : "",
-          idColumn: typeof row.id_column === "string" ? row.id_column : "",
-        })) ?? [];
-
-      if (bands.length === 0) {
-        return { status: "empty" };
-      }
-
-      return { status: "ready", bands };
-    } catch (error) {
-      return {
-        status: "error",
-        message: error instanceof Error ? error.message : "Unknown error",
-      };
-    }
+  const state = await loadBands();
+  if (state.status === "ready") {
+    // The band list changes rarely; keep it shorter-lived than band data so a
+    // newly activated band is recognized without waiting for a revalidation.
+    cacheLife("hours");
+  } else {
+    applyBandCacheLife(state.status);
   }
-);
+  return state;
+}
+
+async function loadBands(): Promise<BandsState> {
+  const missingEnv = getClientOrState<{ bands: BandEntry[] }>();
+  if (missingEnv) {
+    return missingEnv;
+  }
+
+  const client = getSupabaseServerClient();
+  if (!client) {
+    return { status: "missing_env" };
+  }
+
+  try {
+    const { data, error } = await client
+      .from("bands")
+      .select("slug, display_name, shows_table, id_column")
+      .eq("is_active", true)
+      .order("display_name", { ascending: true });
+
+    if (error) {
+      return { status: "error", message: error.message };
+    }
+
+    const bands: BandEntry[] =
+      data?.map((row) => ({
+        slug: String(row.slug),
+        displayName: String(row.display_name),
+        showsTable: typeof row.shows_table === "string" ? row.shows_table : "",
+        idColumn: typeof row.id_column === "string" ? row.id_column : "",
+      })) ?? [];
+
+    if (bands.length === 0) {
+      return { status: "empty" };
+    }
+
+    return { status: "ready", bands };
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Band selection helpers

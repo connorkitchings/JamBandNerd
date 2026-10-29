@@ -27,8 +27,7 @@ import {
   computeTopKRecall,
   normalizeSongName,
 } from "@/lib/song-board-core";
-
-export const revalidate = 3600;
+import { getEasternTodayIso } from "@/lib/show-status";
 
 type Props = {
   searchParams: Promise<{
@@ -73,7 +72,7 @@ export default async function ReplayPage({ searchParams }: Props) {
 
   const selectedBand =
     bandsResult.status === "ready" ? bandSelection.bandEntry?.slug : params.band;
-  const accuracyState = await getRecentAccuracy(selectedBand, 50);
+  const accuracyState = await getRecentAccuracy(selectedBand, 50, getEasternTodayIso());
 
   if (accuracyState.status !== "ready") {
     return (

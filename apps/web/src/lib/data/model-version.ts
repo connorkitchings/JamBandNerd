@@ -1,11 +1,14 @@
 import "server-only";
 
+import { cache } from "react";
+
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-export async function getLatestSetlistPredictionModelVersion(
+// Memoized per render so concurrent fetchers for one band share a single query.
+export const getLatestSetlistPredictionModelVersion = cache(async (
   client: SupabaseClient,
   band: string,
-) {
+) => {
   const { data, error } = await client
     .from("setlist_predictions")
     .select("model_version")
@@ -21,4 +24,4 @@ export async function getLatestSetlistPredictionModelVersion(
   return typeof modelVersion === "string" && modelVersion.length > 0
     ? modelVersion
     : null;
-}
+});

@@ -11,9 +11,8 @@ import { PageHero } from "@/components/page-hero";
 import { RecallChart } from "@/components/recall-chart";
 import { SectionCard } from "@/components/section-card";
 import { getBands, getRecentAccuracy, bandEntryBySlug, resolveBandSelection } from "@/lib/data";
+import { getEasternTodayIso } from "@/lib/show-status";
 import { average, formatAvgHits, formatMMDDYYYY, formatHits, formatPercent } from "@/lib/format";
-
-export const revalidate = 3600;
 
 type Props = {
   searchParams: Promise<{
@@ -170,7 +169,7 @@ export default async function PerformancePage({ searchParams }: Props) {
 
   const selectedBand =
     bandsResult.status === "ready" ? bandSelection.bandEntry?.slug : params.band;
-  const state = await getRecentAccuracy(selectedBand, 50);
+  const state = await getRecentAccuracy(selectedBand, 50, getEasternTodayIso());
 
   if (state.status !== "ready") {
     return (

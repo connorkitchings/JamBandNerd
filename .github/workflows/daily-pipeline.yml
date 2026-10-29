@@ -614,6 +614,30 @@ jobs:
 
           echo "Supported-model freshness reported stale, but no enforced stale surface remained."
 
+      # Last step on purpose: it only tells the website to drop its cached data
+      # for this band, so a failure here is visible without touching the data
+      # steps above (their results are already recorded).
+      - name: Revalidate Website Cache
+        if: always() && steps.preflight.outputs.should_run_collection == 'true'
+        env:
+          BAND: ${{ matrix.band }}
+          SITE_URL: ${{ vars.SITE_URL }}
+          REVALIDATE_SECRET: ${{ secrets.REVALIDATE_SECRET }}
+        run: |
+          if [[ -z "$SITE_URL" || -z "$REVALIDATE_SECRET" ]]; then
+            echo "::error::SITE_URL (repository variable) and REVALIDATE_SECRET (secret) must be set to refresh the website cache"
+            exit 1
+          fi
+
+          echo "Revalidating website cache for ${BAND}"
+          curl --fail-with-body --silent --show-error \
+            --max-time 30 --retry 3 --retry-delay 5 \
+            -X POST "${SITE_URL%/}/api/revalidate" \
+            -H "Authorization: Bearer ${REVALIDATE_SECRET}" \
+            -H "Content-Type: application/json" \
+            -d "{\"band\":\"${BAND}\"}"
+          echo ""
+
   pipeline-summary:
     name: Pipeline Summary
     needs: [setup, daily-pipeline]

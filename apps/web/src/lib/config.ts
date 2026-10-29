@@ -30,6 +30,14 @@ export const TIER_CONFIG: Record<
 
 export const TIER_ORDER: LikelihoodTier[] = ["prime", "likely", "possible"];
 
+/** Cache tag shared by every cached fetcher for a band and the revalidate route. */
+export function bandCacheTag(slug: BandSlug): string {
+  return `band:${slug}`;
+}
+
+/** Cache tag for the active-band list. */
+export const BANDS_CACHE_TAG = "bands";
+
 export function normalizeBand(value?: string): BandSlug {
   const normalized = value?.trim().toLowerCase();
   return normalized && normalized.length > 0 ? normalized : DEFAULT_BAND_SLUG;

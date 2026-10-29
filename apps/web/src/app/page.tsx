@@ -16,8 +16,7 @@ import {
   formatDateLabel,
 } from "@/lib/format";
 import { selectTeaserShow } from "@/lib/show-selection";
-
-export const revalidate = 3600;
+import { getDataClock } from "@/lib/show-status";
 
 const HOME_TEASER_FALLBACK_BANDS = [
   { slug: "phish", label: "Phish", fallbackName: "Phish" },
@@ -84,16 +83,17 @@ export default async function HomePage({ searchParams }: Props) {
     displayName: teaserConfig.fallbackName,
   };
 
+  const clock = getDataClock();
   const [teaserPredictionState, teaserNextShowState] = await Promise.all([
-    getLatestPredictions(teaserBandSlug),
-    getNextShowDetails(teaserBandSlug),
+    getLatestPredictions(teaserBandSlug, clock.todayIso),
+    getNextShowDetails(teaserBandSlug, clock.todayIso),
   ]);
   const teaserTargetDate =
     teaserPredictionState.status === "ready"
       ? teaserPredictionState.snapshot.targetShowDate
       : null;
   const [teaserMissingShows, teaserTargetShowState] = await Promise.all([
-    getRecentMissingSetlistShows(teaserBandSlug, teaserTargetDate),
+    getRecentMissingSetlistShows(teaserBandSlug, teaserTargetDate, clock),
     getShowDetailsByDate(teaserBandSlug, teaserTargetDate),
   ]);
   // The songs come from the latest prediction snapshot, so the header must
