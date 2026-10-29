@@ -1,3 +1,5 @@
+import { useId } from "react";
+
 import type { AccuracyRow } from "@/lib/data";
 import { formatMMDDYYYY } from "@/lib/format";
 import type { ChartMetric } from "@/components/chart-metric-toggle";
@@ -8,159 +10,120 @@ type Props = {
   metric?: ChartMetric;
 };
 
-const CHART_WIDTH = 760;
+type Point = { index: number; date: string | null; value: number };
+
+// Tailwind resolves `stroke-*` / `fill-*` colors to the theme CSS variables, so the
+// chart follows light and dark. Classes must appear as complete strings.
+const SERIES_STYLE = {
+  10: { stroke: "stroke-accent-text", fill: "fill-accent-text" },
+  25: { stroke: "stroke-teal", fill: "fill-teal" },
+  50: { stroke: "stroke-tier-top50", fill: "fill-tier-top50" },
+} as const;
+
 const CHART_HEIGHT = 340;
-const PADDING = { top: 28, right: 76, bottom: 86, left: 48 };
-const MAX_X_AXIS_LABELS = 6;
-const X_AXIS_LABEL_OFFSET = 28;
-
-function clamp(value: number, min: number, max: number) {
-  return Math.max(min, Math.min(max, value));
-}
-
-function getStrokeColor(k: 10 | 25 | 50) {
-  return k === 10 ? "var(--color-primary)" : k === 25 ? "var(--color-tertiary)" : "var(--color-tier-top50)";
-}
+const PADDING = { top: 36, right: 84, bottom: 92, left: 72 };
+/** Horizontal room per show; wider charts scroll instead of crushing labels. */
+const POINT_SPACING = 48;
+const MIN_PLOT_WIDTH = 480;
+const X_LABEL_SPACING = 72;
 
 function formatChartValue(value: number, metric: ChartMetric) {
-  return metric === "coverage"
-    ? `${Math.round(value * 100)}%`
-    : String(Math.round(value));
+  return metric === "coverage" ? `${Math.round(value * 100)}%` : String(Math.round(value));
 }
 
-function averageChartValue(points: Array<{ value: number }>) {
-  return points.reduce((sum, point) => sum + point.value, 0) / points.length;
+function pointValue(row: AccuracyRow, k: 10 | 25 | 50, metric: ChartMetric) {
+  const recall = k === 10 ? row.recall10 : k === 25 ? row.recall25 : row.recall50;
+  const precision = k === 10 ? row.p10 : k === 25 ? row.p25 : row.p50;
+  return metric === "coverage" ? recall : precision === null ? null : precision * k;
 }
 
 export function RecallChart({ rows, k = 10, metric = "coverage" }: Props) {
+  const id = useId();
   const chronological = [...rows].reverse();
   const totalRows = chronological.length;
-  const top10Values: Array<{
-    index: number;
-    date: string | null;
-    venueName: string | null;
-    value: number | null;
-  }> = [];
-  const top25Values: Array<{
-    index: number;
-    date: string | null;
-    venueName: string | null;
-    value: number | null;
-  }> = [];
-  const top50Values: Array<{
-    index: number;
-    date: string | null;
-    venueName: string | null;
-    value: number | null;
-  }> = [];
-
+  const points: Point[] = [];
   chronological.forEach((row, index) => {
-    top10Values.push({
-      index,
-      date: row.showDate,
-      venueName: row.venueName,
-      value: metric === "coverage" ? row.recall10 : row.p10 === null ? null : row.p10 * 10,
-    });
-    top25Values.push({
-      index,
-      date: row.showDate,
-      venueName: row.venueName,
-      value: metric === "coverage" ? row.recall25 : row.p25 === null ? null : row.p25 * 25,
-    });
-    top50Values.push({
-      index,
-      date: row.showDate,
-      venueName: row.venueName,
-      value: metric === "coverage" ? row.recall50 : row.p50 === null ? null : row.p50 * 50,
-    });
+    const value = pointValue(row, k, metric);
+    if (value !== null) points.push({ index, date: row.showDate, value });
   });
 
-  const seriesEntries = [
-    { key: 10 as const, label: "Top 10", color: getStrokeColor(10), values: top10Values },
-    { key: 25 as const, label: "Top 25", color: getStrokeColor(25), values: top25Values },
-    { key: 50 as const, label: "Top 50", color: getStrokeColor(50), values: top50Values },
-  ] as const;
-
-  const visibleSeries = seriesEntries
-    .filter((entry) => entry.key === k)
-    .map((entry) => ({
-      ...entry,
-      points: entry.values.filter(
-        (point): point is {
-          index: number;
-          date: string | null;
-          venueName: string | null;
-          value: number;
-        } => point.value !== null,
-      ),
-    }))
-    .filter((entry) => entry.points.length >= 2);
-
-  if (visibleSeries.length === 0) {
+  if (points.length < 2) {
     return (
-      <div className="flex h-40 items-center justify-center rounded-xl border border-outline-variant/20 bg-surface-container-low">
-        <p className="text-sm text-on-surface-variant">
+      <div className="flex h-40 items-center justify-center rounded-xl border border-line bg-surface-2 px-4">
+        <p className="text-center text-sm text-on-surface-variant">
           Need at least two scored shows to render a chart.
         </p>
       </div>
     );
   }
 
-  const plotWidth = CHART_WIDTH - PADDING.left - PADDING.right;
+  const style = SERIES_STYLE[k];
+  const measureLabel = metric === "coverage" ? "coverage" : "hits";
+  const values = points.map((point) => point.value);
+  const maxValue = Math.max(...values);
+  const averageValue = values.reduce((sum, value) => sum + value, 0) / values.length;
+  const best = points.reduce((top, point) => (point.value > top.value ? point : top));
+  const latest = points[points.length - 1];
+
+  // Coverage is bounded by 100%; hits get headroom above the best show so nothing clips.
+  const tickStep = metric === "coverage" ? 0.2 : Math.max(1, Math.ceil((maxValue + 1) / 5));
+  const tickCount = 5;
+  const yMax = tickStep * tickCount;
+  const yTicks = Array.from({ length: tickCount + 1 }, (_, i) => i * tickStep);
+
+  const plotWidth = Math.max(MIN_PLOT_WIDTH, (totalRows - 1) * POINT_SPACING);
+  const chartWidth = PADDING.left + plotWidth + PADDING.right;
   const plotHeight = CHART_HEIGHT - PADDING.top - PADDING.bottom;
-
-  const yMin = 0;
-  const yMax =
-    metric === "coverage"
-      ? 1
-      : k === 10
-        ? 10
-        : k === 25
-          ? 15
-          : 20;
-
-  const yTicks: number[] = [];
-  const tickStep = metric === "coverage" ? 0.1 : Math.max(1, Math.ceil(yMax / 5));
-  for (let v = 0; v <= yMax; v += tickStep) {
-    yTicks.push(metric === "coverage" ? Math.round(v * 100) / 100 : v);
-  }
-
-  const labelInterval =
-    totalRows <= 1
-      ? 1
-      : Math.max(1, Math.ceil((totalRows - 1) / Math.max(MAX_X_AXIS_LABELS - 1, 1)));
-  const xLabels = chronological
-    .map((row, index) => ({ index, date: row.showDate }))
-    .filter((_, i) => i % labelInterval === 0 || i === totalRows - 1);
+  const baseline = PADDING.top + plotHeight;
   const xPos = (index: number) =>
     PADDING.left + (index / Math.max(totalRows - 1, 1)) * plotWidth;
-  const yPos = (value: number) =>
-    PADDING.top + plotHeight - ((clamp(value, yMin, yMax) - yMin) / (yMax - yMin)) * plotHeight;
+  const yPos = (value: number) => PADDING.top + plotHeight - (value / yMax) * plotHeight;
+
+  const labelInterval = Math.max(
+    1,
+    Math.ceil(X_LABEL_SPACING / (plotWidth / Math.max(totalRows - 1, 1))),
+  );
+  const xLabels = chronological
+    .map((row, index) => ({ index, date: row.showDate }))
+    .filter(({ index }) => (totalRows - 1 - index) % labelInterval === 0);
+
+  const titleId = `${id}-title`;
+  const descId = `${id}-desc`;
+  const title = `Top ${k} ${measureLabel} across the last ${totalRows} shows`;
+  const description = `Line chart, oldest show on the left. ${measureLabel} ranges from ${formatChartValue(
+    Math.min(...values),
+    metric,
+  )} to ${formatChartValue(maxValue, metric)} and ends at ${formatChartValue(latest.value, metric)}. The best show is ${
+    formatMMDDYYYY(best.date) ?? "unknown"
+  } at ${formatChartValue(best.value, metric)}.`;
 
   return (
-    <div className="mx-auto w-full max-w-[960px] overflow-hidden pb-2">
+    <div className="horizontal-scroll-surface mx-auto w-full max-w-[960px] pb-2">
       <svg
-        aria-label={`Show-by-show Top-${k} ${metric === "coverage" ? "coverage" : "hits"}`}
-        className="h-auto w-full"
-        preserveAspectRatio="xMidYMid meet"
+        aria-describedby={descId}
+        aria-labelledby={titleId}
+        className="block h-auto w-full"
         role="img"
-        viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
+        style={{ minWidth: chartWidth }}
+        viewBox={`0 0 ${chartWidth} ${CHART_HEIGHT}`}
       >
+        <title id={titleId}>{title}</title>
+        <desc id={descId}>{description}</desc>
+
         {yTicks.map((tick) => (
           <g key={`grid-${tick}`}>
             <line
-              stroke="var(--color-outline-variant)"
-              strokeDasharray="4 4"
-              strokeOpacity="0.2"
+              className="stroke-line"
+              strokeWidth="1"
               x1={PADDING.left}
-              x2={CHART_WIDTH - PADDING.right}
+              x2={chartWidth - PADDING.right}
               y1={yPos(tick)}
               y2={yPos(tick)}
             />
             <text
+              className="fill-on-surface-variant"
               dominantBaseline="middle"
-              fill="var(--color-on-surface-variant)"
-              fontSize="10"
+              fontSize="12"
               textAnchor="end"
               x={PADDING.left - 8}
               y={yPos(tick)}
@@ -170,69 +133,70 @@ export function RecallChart({ rows, k = 10, metric = "coverage" }: Props) {
           </g>
         ))}
 
-        {visibleSeries.map((series) => {
-          const averageValue = averageChartValue(series.points);
-          const averageY = yPos(averageValue);
+        <line
+          className={style.stroke}
+          strokeDasharray="7 6"
+          strokeLinecap="round"
+          strokeWidth="2"
+          x1={PADDING.left}
+          x2={chartWidth - PADDING.right}
+          y1={yPos(averageValue)}
+          y2={yPos(averageValue)}
+        />
+        <text
+          className={style.fill}
+          dominantBaseline="central"
+          fontSize="12"
+          fontWeight="700"
+          x={chartWidth - PADDING.right + 8}
+          y={yPos(averageValue)}
+        >
+          Avg {formatChartValue(averageValue, metric)}
+        </text>
 
+        <polyline
+          className={`${style.stroke} fill-none`}
+          points={points.map((point) => `${xPos(point.index)},${yPos(point.value)}`).join(" ")}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="3"
+        />
+
+        {points.map((point) => {
+          const isBest = point === best;
           return (
-            <g key={`series-${series.key}`}>
-              <line
-                stroke={series.color}
-                strokeDasharray="7 6"
-                strokeLinecap="round"
-                strokeOpacity="0.9"
-                strokeWidth="2.5"
-                x1={PADDING.left}
-                x2={CHART_WIDTH - PADDING.right}
-                y1={averageY}
-                y2={averageY}
+            <g key={`dot-${point.index}`}>
+              <circle
+                className={`${style.stroke} ${isBest ? style.fill : "fill-background"}`}
+                cx={xPos(point.index)}
+                cy={yPos(point.value)}
+                r={isBest ? 6 : 5}
+                strokeWidth="3"
               />
               <text
-                dominantBaseline="central"
-                fill={series.color}
-                fontSize="10"
+                className="fill-on-surface"
+                fontSize="12"
                 fontWeight="700"
-                textAnchor="start"
-                x={CHART_WIDTH - PADDING.right + 8}
-                y={averageY}
+                textAnchor="middle"
+                x={xPos(point.index)}
+                y={yPos(point.value) - 12}
               >
-                Avg {formatChartValue(averageValue, metric)}
+                {formatChartValue(point.value, metric)}
               </text>
-              {series.points.map((point, index) => (
-                <g key={`dot-${series.key}-${index}`}>
-                  <circle
-                    cx={xPos(point.index)}
-                    cy={yPos(point.value)}
-                    fill="var(--color-surface-container)"
-                    r="5"
-                    stroke={series.color}
-                    strokeWidth="2"
-                  />
-                </g>
-              ))}
             </g>
           );
         })}
 
-        <line
-          stroke="var(--color-outline-variant)"
-          strokeOpacity="0.35"
-          x1={PADDING.left}
-          x2={CHART_WIDTH - PADDING.right}
-          y1={PADDING.top + plotHeight}
-          y2={PADDING.top + plotHeight}
-        />
-
         {xLabels.map((point) => {
-          const labelY = PADDING.top + plotHeight + X_AXIS_LABEL_OFFSET;
+          const labelY = baseline + 16;
           return (
             <text
               key={`xlabel-${point.index}`}
+              className="fill-on-surface-variant"
               dominantBaseline="hanging"
-              fill="var(--color-on-surface-variant)"
-              fontSize="9"
-              textAnchor={point.index === 0 ? "start" : point.index === totalRows - 1 ? "end" : "middle"}
-              transform={`rotate(-30, ${xPos(point.index)}, ${labelY})`}
+              fontSize="12"
+              textAnchor="end"
+              transform={`rotate(-35, ${xPos(point.index)}, ${labelY})`}
               x={xPos(point.index)}
               y={labelY}
             >

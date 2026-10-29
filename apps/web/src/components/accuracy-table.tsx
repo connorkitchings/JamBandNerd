@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Fragment } from "react";
 
 import { bandPath } from "@/lib/band-routes";
 import type { AccuracyRow } from "@/lib/data";
@@ -7,6 +8,7 @@ import {
   ResponsiveTableFrame,
   TABLE_CELL_CLASS,
   TABLE_HEAD_CLASS,
+  TABLE_ROW_HEAD_CLASS,
 } from "@/components/responsive-table";
 
 type Props = {
@@ -23,87 +25,76 @@ function stripLeadingThe(value: string | null) {
   return value.replace(/^The\s+/i, "");
 }
 
+const GROUPS = [
+  { k: 10 as const, label: "Top 10", tone: "text-accent-text", hits: "p10" as const, cov: "recall10" as const },
+  { k: 25 as const, label: "Top 25", tone: "text-teal", hits: "p25" as const, cov: "recall25" as const },
+  { k: 50 as const, label: "Top 50", tone: "text-tier-top50", hits: "p50" as const, cov: "recall50" as const },
+];
+
 export function AccuracyTable({ rows, band }: Props) {
   return (
-    <div>
-      <ResponsiveTableFrame
-        minWidthClassName="min-w-[920px] divide-y divide-outline-variant/30"
-        testId="accuracy-table"
-      >
-        <thead className="bg-surface-container-low text-on-surface-variant">
-          <tr>
-            <th className={`${TABLE_HEAD_CLASS} whitespace-nowrap align-bottom`} rowSpan={2}>Show Date</th>
-            <th className={`${TABLE_HEAD_CLASS} align-bottom`} rowSpan={2}>Venue</th>
-            <th className={`${TABLE_HEAD_CLASS} align-bottom`} rowSpan={2}>Location</th>
+    <ResponsiveTableFrame
+      caption="Prediction accuracy by show: hits and coverage for the top 10, 25 and 50 predicted songs"
+      minWidthClassName="min-w-[860px]"
+      testId="accuracy-table"
+    >
+      <thead className="bg-surface-2">
+        <tr>
+          <th scope="col" className={`${TABLE_HEAD_CLASS} whitespace-nowrap align-bottom`} rowSpan={2}>Show Date</th>
+          <th scope="col" className={`${TABLE_HEAD_CLASS} align-bottom`} rowSpan={2}>Venue</th>
+          <th scope="col" className={`${TABLE_HEAD_CLASS} align-bottom`} rowSpan={2}>Location</th>
+          {GROUPS.map((group) => (
             <th
-              className={`${TABLE_HEAD_CLASS} border-b border-primary/25 text-center text-primary`}
+              key={group.k}
+              scope="colgroup"
               colSpan={2}
+              className={`${TABLE_HEAD_CLASS} text-center ${group.tone}`}
             >
-              Top 10
+              {group.label}
             </th>
-            <th
-              className={`${TABLE_HEAD_CLASS} border-b border-tertiary/25 text-center text-tertiary`}
-              colSpan={2}
-            >
-              Top 25
-            </th>
-            <th
-              className={`${TABLE_HEAD_CLASS} border-b border-tier-top50/25 text-center text-tier-top50`}
-              colSpan={2}
-            >
-              Top 50
-            </th>
-          </tr>
-          <tr>
-            <th className={`${TABLE_HEAD_CLASS} whitespace-nowrap text-center text-tertiary`}>Hits</th>
-            <th className={`${TABLE_HEAD_CLASS} whitespace-nowrap text-center text-primary`}>Cov</th>
-            <th className={`${TABLE_HEAD_CLASS} whitespace-nowrap text-center text-tertiary`}>Hits</th>
-            <th className={`${TABLE_HEAD_CLASS} whitespace-nowrap text-center text-primary`}>Cov</th>
-            <th className={`${TABLE_HEAD_CLASS} whitespace-nowrap text-center text-tertiary`}>Hits</th>
-            <th className={`${TABLE_HEAD_CLASS} whitespace-nowrap text-center text-primary`}>Cov</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-outline-variant/20 bg-surface-container text-on-surface">
-          {rows.map((row, index) => (
-            <tr key={`${row.showDate}-${index}`} className={index % 2 === 1 ? "bg-surface-container-low/40" : ""}>
-              <td className={`${TABLE_CELL_CLASS} whitespace-nowrap`}>
-                {band && row.showDate ? (
-                  <Link
-                    href={bandPath(band, "replay", row.showDate)}
-                    className="text-on-surface underline-offset-4 hover:text-primary hover:underline focus-visible:text-primary focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
-                  >
-                    {formatMMDDYYYY(row.showDate)}
-                  </Link>
-                ) : (
-                  formatMMDDYYYY(row.showDate) ?? "—"
-                )}
-              </td>
-              <td className={`${TABLE_CELL_CLASS} text-on-surface-variant`}>{stripLeadingThe(row.venueName) ?? "—"}</td>
-              <td className={`${TABLE_CELL_CLASS} text-on-surface-variant`}>
-                {buildLocationLabel([row.city, row.state]) || "—"}
-              </td>
-              <td className={`${TABLE_CELL_CLASS} whitespace-nowrap text-center tabular-nums text-tertiary`}>
-                {formatHits(row.p10, 10)}
-              </td>
-              <td className={`${TABLE_CELL_CLASS} whitespace-nowrap text-center font-headline tabular-nums text-primary`}>
-                {formatPercent(row.recall10)}
-              </td>
-              <td className={`${TABLE_CELL_CLASS} whitespace-nowrap text-center tabular-nums text-tertiary`}>
-                {formatHits(row.p25, 25)}
-              </td>
-              <td className={`${TABLE_CELL_CLASS} whitespace-nowrap text-center font-headline tabular-nums text-primary`}>
-                {formatPercent(row.recall25)}
-              </td>
-              <td className={`${TABLE_CELL_CLASS} whitespace-nowrap text-center tabular-nums text-tertiary`}>
-                {formatHits(row.p50, 50)}
-              </td>
-              <td className={`${TABLE_CELL_CLASS} whitespace-nowrap text-center font-headline tabular-nums text-primary`}>
-                {formatPercent(row.recall50)}
-              </td>
-            </tr>
           ))}
-        </tbody>
-      </ResponsiveTableFrame>
-    </div>
+        </tr>
+        <tr>
+          {GROUPS.map((group) => (
+            <Fragment key={group.k}>
+              <th scope="col" className={`${TABLE_HEAD_CLASS} whitespace-nowrap text-center`}>Hits</th>
+              <th scope="col" className={`${TABLE_HEAD_CLASS} whitespace-nowrap text-center`}>Coverage</th>
+            </Fragment>
+          ))}
+        </tr>
+      </thead>
+      <tbody className="text-on-surface">
+        {rows.map((row, index) => (
+          <tr key={`${row.showDate}-${index}`}>
+            <th scope="row" className={`${TABLE_ROW_HEAD_CLASS} whitespace-nowrap`}>
+              {band && row.showDate ? (
+                <Link
+                  href={bandPath(band, "replay", row.showDate)}
+                  className="inline-flex min-h-11 items-center underline underline-offset-4 hover:text-accent-text"
+                >
+                  {formatMMDDYYYY(row.showDate)}
+                </Link>
+              ) : (
+                formatMMDDYYYY(row.showDate) ?? "—"
+              )}
+            </th>
+            <td className={`${TABLE_CELL_CLASS} text-on-surface-variant`}>{stripLeadingThe(row.venueName) ?? "—"}</td>
+            <td className={`${TABLE_CELL_CLASS} text-on-surface-variant`}>
+              {buildLocationLabel([row.city, row.state]) || "—"}
+            </td>
+            {GROUPS.map((group) => (
+              <Fragment key={group.k}>
+                <td className={`${TABLE_CELL_CLASS} whitespace-nowrap text-center`}>
+                  {formatHits(row[group.hits], group.k)}
+                </td>
+                <td className={`${TABLE_CELL_CLASS} whitespace-nowrap text-center font-bold`}>
+                  {formatPercent(row[group.cov])}
+                </td>
+              </Fragment>
+            ))}
+          </tr>
+        ))}
+      </tbody>
+    </ResponsiveTableFrame>
   );
 }

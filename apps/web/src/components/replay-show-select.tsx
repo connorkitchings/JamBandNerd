@@ -19,12 +19,12 @@ export function ReplayShowSelect({ band, selectedDate, options }: Props) {
   const [isPending, startTransition] = useTransition();
 
   return (
-    <label className="flex flex-col gap-2">
-      <span className="text-center font-label text-[10px] font-semibold uppercase tracking-[0.2em] text-on-surface-variant">
+    <label className="flex flex-col gap-1.5">
+      <span className="text-xs font-bold uppercase tracking-[0.08em] text-on-surface-variant">
         Select show
       </span>
       <select
-        className="min-h-14 w-full rounded-xl border border-outline-variant/30 bg-surface px-4 py-3 text-center font-headline text-base font-semibold text-primary outline-none transition focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30 disabled:cursor-wait disabled:opacity-70"
+        className="min-h-11 w-full min-w-[220px] rounded-md border border-line bg-surface-2 px-3 py-2 text-sm font-semibold text-on-surface disabled:cursor-wait disabled:opacity-70"
         disabled={isPending}
         value={selectedDate}
         onChange={(event) => {

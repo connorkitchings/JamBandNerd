@@ -78,16 +78,16 @@ export default function AboutPage() {
       />
 
       <SectionCard title="What The Site Does">
-        <p className="mb-6 text-sm leading-6 text-on-surface-variant">
+        <p className="mb-6 text-sm text-on-surface-variant">
           Pick a band, see what the model thinks they&apos;ll play, and then check
           back after the show to see how it did. No guarantees — just educated
           guesses and honest scorekeeping.
         </p>
-        <div className="editorial-chip rounded-[1.5rem] p-6">
-          <p className="font-label text-[10px] uppercase tracking-[0.2em] text-primary">
+        <div className="editorial-chip rounded-xl p-5">
+          <p className="text-xs font-bold uppercase tracking-[0.08em] text-accent-text">
             In plain terms
           </p>
-          <ul className="mt-3 space-y-3 pl-5 text-sm leading-6 text-on-surface-variant marker:text-primary/75 list-disc">
+          <ul className="mt-3 space-y-3 pl-5 text-sm text-on-surface-variant marker:text-accent-text list-disc">
             <li>The board is an attempt at a crystal ball. It will be correct sometimes and wrong a lot.</li>
             <li>Higher-ranked songs are stronger reads, but surprises happen every tour.</li>
             <li>After the show, check Performance or Replay to see what actually landed.</li>
@@ -100,13 +100,11 @@ export default function AboutPage() {
           {SITE_AREAS.map((item) => (
             <div
               key={item.step}
-              className="editorial-chip rounded-[1.5rem] p-5"
+              className="editorial-chip rounded-xl p-5"
             >
-              <p className="font-headline text-3xl font-bold text-primary/30">{item.step}</p>
-              <p className="mt-2 font-headline text-base font-semibold text-on-surface">
-                {item.title}
-              </p>
-              <p className="mt-2 text-xs leading-5 text-on-surface-variant">{item.description}</p>
+              <span className="inline-flex size-8 items-center justify-center rounded-full border border-line bg-surface text-sm font-bold text-on-surface">{item.step}</span>
+              <h3 className="mt-3 text-lg font-bold text-on-surface">{item.title}</h3>
+              <p className="mt-2 text-sm text-on-surface-variant">{item.description}</p>
             </div>
           ))}
         </div>
@@ -119,9 +117,9 @@ export default function AboutPage() {
             <details
               key={item.question}
               open={index === 0}
-              className="group editorial-chip rounded-[1.5rem]"
+              className="group editorial-chip rounded-xl"
             >
-              <summary className="flex cursor-pointer list-none items-start justify-between gap-3 px-5 py-4 font-headline text-sm font-medium text-on-surface transition group-open:text-primary">
+              <summary className="flex min-h-11 cursor-pointer list-none items-start justify-between gap-3 px-5 py-3 text-base font-semibold text-on-surface transition group-open:text-accent-text">
                 <span className="pr-2">{item.question}</span>
                 <svg
                   aria-hidden="true"
@@ -138,7 +136,7 @@ export default function AboutPage() {
                   />
                 </svg>
               </summary>
-              <p className="whitespace-pre-line px-5 pb-4 text-sm leading-6 text-on-surface-variant">
+              <p className="whitespace-pre-line px-5 pb-4 text-sm text-on-surface-variant">
                 {item.answer}
               </p>
             </details>

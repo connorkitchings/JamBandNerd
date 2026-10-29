@@ -25,23 +25,23 @@ export function MobileControlSelects({ groups }: Props) {
   const baseId = useId();
 
   return (
-    <div className="editorial-chip grid gap-3 rounded-[1.35rem] p-3 min-[430px]:grid-cols-2 md:hidden">
+    <div className="grid gap-3 min-[430px]:grid-cols-2 md:hidden">
       {groups.map((group) => {
         const selectedHref = group.options.find((option) => option.active)?.href ?? group.options[0]?.href ?? "";
         const selectId = `${baseId}-${group.label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
 
         return (
-          <div key={group.label} className="flex flex-col gap-2">
+          <div key={group.label} className="flex flex-col gap-1.5">
             <label
               htmlFor={selectId}
-              className="font-label text-center text-[10px] font-semibold uppercase tracking-[0.24em] text-on-surface-variant"
+              className="text-xs font-bold uppercase tracking-[0.08em] text-on-surface-variant"
             >
               {group.label}
             </label>
             <div className="relative">
               <select
                 id={selectId}
-                className="min-h-12 w-full appearance-none rounded-2xl border border-outline-variant/35 bg-surface/80 px-4 py-3 pr-11 text-center text-sm text-on-surface outline-none transition focus:border-primary/45 focus:bg-surface-container"
+                className="min-h-11 w-full appearance-none rounded-md border border-line bg-surface-2 px-3 py-2 pr-10 text-sm font-semibold text-on-surface disabled:cursor-wait disabled:opacity-70"
                 data-testid={group.testId}
                 value={selectedHref}
                 disabled={isPending || group.options.length === 0}
@@ -64,7 +64,7 @@ export function MobileControlSelects({ groups }: Props) {
               </select>
               <span
                 aria-hidden="true"
-                className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-on-surface-variant"
+                className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-on-surface-variant"
               >
                 ▾
               </span>

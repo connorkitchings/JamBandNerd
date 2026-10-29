@@ -5,15 +5,20 @@ type Props = {
   className?: string;
 };
 
-export function TierBadge({ tier, className }: Props) {
-  const config = TIER_CONFIG[tier];
+// Text, border and fill are paired per tier so each badge stays readable in both themes.
+const TIER_BADGE_CLASS: Record<LikelihoodTier, string> = {
+  prime: "border-accent bg-amber-bg text-accent-text",
+  likely: "border-line bg-surface-2 text-on-surface-variant",
+  possible: "border-teal bg-teal-bg text-teal",
+};
 
+export function TierBadge({ tier, className }: Props) {
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-label text-[10px] font-medium uppercase tracking-[0.14rem] ${config.badgeClassName} ${className ?? ""}`}
+      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold uppercase tracking-[0.06em] ${TIER_BADGE_CLASS[tier]} ${className ?? ""}`}
     >
-      <span className="inline-block size-1.5 rounded-full bg-current" />
-      {config.label}
+      <span aria-hidden="true" className="inline-block size-1.5 rounded-full bg-current" />
+      {TIER_CONFIG[tier].label}
     </span>
   );
 }

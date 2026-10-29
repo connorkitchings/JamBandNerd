@@ -6,6 +6,7 @@ import { AccuracyTable } from "@/components/accuracy-table";
 import { DashboardSideNav } from "@/components/dashboard-side-nav";
 import { DataGate } from "@/components/data-gate";
 import { ExpandablePanel } from "@/components/expandable-panel";
+import { MetricCard } from "@/components/metric-card";
 import { PageHero } from "@/components/page-hero";
 import { PageSkeleton } from "@/components/page-skeleton";
 import { PerformanceChartPanel } from "@/components/performance-chart-panel";
@@ -35,104 +36,27 @@ type PerformanceMetric = {
   k: 10 | 25 | 50;
 };
 
-function PerformanceMetricCard({
+/** Coverage as the headline value, with the hit count as the hint. */
+function CoverageMetricCard({
   metric,
-  active,
-  compact = false,
-  hitsLabel = "Avg. Hits",
+  hitsPrefix = "Avg.",
+  tone,
 }: {
   metric: PerformanceMetric;
-  active?: boolean;
-  compact?: boolean;
-  hitsLabel?: "Avg. Hits" | "Hits";
+  hitsPrefix?: "Avg." | "";
+  tone?: "accent";
 }) {
+  const hits =
+    hitsPrefix === ""
+      ? formatHits(metric.avgHits, metric.k)
+      : formatAvgHits(metric.avgHits, metric.k);
   return (
-    <div
-      className={`rounded-xl border px-3 py-3 text-center md:px-4 ${
-        active
-          ? "border-primary/30 bg-primary/10"
-          : "border-outline-variant/15 bg-surface/35"
-      }`}
-    >
-      <div className="border-b border-outline-variant/15 pb-2">
-        <p className="font-headline text-base font-bold text-on-surface underline decoration-current decoration-2 underline-offset-4 md:text-lg">
-          {metric.label}
-        </p>
-      </div>
-
-      <div className="mt-3 grid grid-cols-2 gap-2 md:gap-3">
-        <div className="rounded-lg bg-surface-container-low/55 px-2.5 py-2.5 md:rounded-xl md:px-3">
-          <p className="font-label text-[9px] font-semibold uppercase tracking-[0.14rem] text-tertiary">
-            {hitsLabel}
-          </p>
-          <p
-            className={`mt-0.5 font-headline font-bold leading-none text-tertiary ${
-              compact ? "text-xl" : "text-2xl md:text-3xl"
-            }`}
-          >
-            {hitsLabel === "Hits"
-              ? formatHits(metric.avgHits, metric.k)
-              : formatAvgHits(metric.avgHits, metric.k)}
-          </p>
-          <p className="mt-1 text-[11px] leading-4 text-on-surface-variant md:text-xs md:leading-5">
-            picks played
-          </p>
-        </div>
-        <div className="rounded-lg bg-surface-container-low/55 px-2.5 py-2.5 md:rounded-xl md:px-3">
-          <p className="font-label text-[9px] font-semibold uppercase tracking-[0.14rem] text-primary">
-            Coverage
-          </p>
-          <p
-            className={`mt-0.5 font-headline font-bold leading-none text-primary ${
-              compact ? "text-xl" : "text-2xl md:text-3xl"
-            }`}
-          >
-            {formatPercent(metric.coverage)}
-          </p>
-          <p className="mt-1 text-[11px] leading-4 text-on-surface-variant md:text-xs md:leading-5">
-            setlist caught
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function LatestMetricSnapshot({
-  metric,
-  active,
-}: {
-  metric: PerformanceMetric;
-  active?: boolean;
-}) {
-  return (
-    <div
-      className={`grid grid-cols-3 items-center gap-3 rounded-xl border px-3 py-2.5 text-center ${
-        active
-          ? "border-primary/30 bg-primary/10"
-          : "border-outline-variant/15 bg-surface/65"
-      }`}
-    >
-      <div>
-        <p className="font-label text-[8px] font-semibold uppercase tracking-[0.12rem] text-tertiary">
-          Hits
-        </p>
-        <p className="mt-0.5 font-headline text-base font-bold text-tertiary">
-          {formatHits(metric.avgHits, metric.k)}
-        </p>
-      </div>
-      <p className="font-headline text-sm font-bold text-on-surface underline decoration-current decoration-2 underline-offset-4">
-        {metric.label}
-      </p>
-      <div>
-        <p className="font-label text-[8px] font-semibold uppercase tracking-[0.12rem] text-primary">
-          Coverage
-        </p>
-        <p className="mt-0.5 font-headline text-base font-bold text-primary">
-          {formatPercent(metric.coverage)}
-        </p>
-      </div>
-    </div>
+    <MetricCard
+      label={`${metric.label} coverage`}
+      value={formatPercent(metric.coverage)}
+      hint={`${hitsPrefix ? `${hitsPrefix} ` : ""}${hits} of ${metric.k} picks played`}
+      tone={tone}
+    />
   );
 }
 
@@ -222,7 +146,7 @@ async function PerformanceContent({ band, bandName }: { band: string; bandName: 
         kicker="Accuracy desk"
         title={
           <>
-            <span className="text-primary">{bandName}</span>
+            <span className="text-accent-text">{bandName}</span>
             <br />
             performance ledger
           </>
@@ -230,53 +154,43 @@ async function PerformanceContent({ band, bandName }: { band: string; bandName: 
         meta={`last ${state.rows.length} scored shows`}
         description="Track how much of each setlist the model's top-ranked groups actually capture."
         aside={
-          <div className="editorial-panel p-5">
-            <div className="space-y-1 text-center">
-              <p className="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">
-                Latest scored show
-              </p>
-              <p className="font-headline text-2xl font-semibold text-on-surface">
-                {formatMMDDYYYY(latestRow?.showDate ?? null)}
-              </p>
-              <p className="text-sm text-on-surface-variant">
-                {latestRow?.venueName ?? "Venue unavailable"}
-              </p>
-            </div>
-
-            <div className="mt-4 grid gap-2 border-t border-outline-variant/15 pt-4">
+          <div className="rounded-xl border border-line bg-surface p-5">
+            <p className="text-xs font-bold uppercase tracking-[0.08em] text-on-surface-variant">
+              Latest scored show
+            </p>
+            <p className="mt-1 text-2xl font-bold tabular-nums text-on-surface">
+              {formatMMDDYYYY(latestRow?.showDate ?? null)}
+            </p>
+            <p className="text-sm text-on-surface-variant">
+              {latestRow?.venueName ?? "Venue unavailable"}
+            </p>
+            <dl className="mt-4 grid gap-2 border-t border-line pt-4">
               {latestMetrics.map((metric) => (
-                <LatestMetricSnapshot
-                  key={metric.label}
-                  metric={metric}
-                />
+                <div key={metric.label} className="flex items-baseline justify-between gap-3">
+                  <dt className="text-sm font-semibold text-on-surface">{metric.label}</dt>
+                  <dd className="text-sm tabular-nums text-on-surface-variant">
+                    <span className="font-bold text-on-surface">{formatPercent(metric.coverage)}</span>{" "}
+                    coverage, {formatHits(metric.avgHits, metric.k)} hits
+                  </dd>
+                </div>
               ))}
-            </div>
+            </dl>
           </div>
         }
       />
 
-      <section className="grid gap-4 md:grid-cols-3">
+      <section aria-label="Average accuracy" className="grid gap-4 md:grid-cols-3">
         {averageMetrics.map((metric) => (
-          <PerformanceMetricCard
-            key={metric.label}
-            metric={metric}
-          />
+          <CoverageMetricCard key={metric.label} metric={metric} tone="accent" />
         ))}
       </section>
 
-
-      <section className="editorial-panel p-5 md:p-7">
-        <div className="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-start">
-          <div className="text-center lg:text-left">
-            <h2 className="font-headline text-[1.35rem] font-semibold uppercase tracking-[-0.03em] text-on-surface md:text-2xl">
-              Accuracy Over Time
-            </h2>
-            <p className="mt-2 text-sm leading-6 text-on-surface-variant">
-              Each dot is one scored show. The dashed line marks the average across the retained window.
-            </p>
-          </div>
-          <PerformanceChartPanel rows={state.rows} />
-        </div>
+      <section className="editorial-panel p-5 md:p-6">
+        <h2 className="text-xl font-bold text-on-surface">Accuracy Over Time</h2>
+        <p className="mb-5 mt-1 text-sm text-on-surface-variant">
+          Each dot is one scored show, oldest on the left. The dashed line marks the average across the retained window.
+        </p>
+        <PerformanceChartPanel rows={state.rows} />
       </section>
 
       <SectionCard title="Recent Show Accuracy">
@@ -285,48 +199,26 @@ async function PerformanceContent({ band, bandName }: { band: string; bandName: 
             {recentRows.map((row, index) => (
               <div
                 key={`${row.showDate}-${index}`}
-                className="rounded-[1.35rem] border border-outline-variant/20 bg-surface-container-low px-4 py-4"
+                className="rounded-xl border border-line bg-surface-2 p-4"
               >
-                <div className="text-center">
-                  <div>
-                    <p className="font-headline text-lg font-semibold text-on-surface">
-                      {formatMMDDYYYY(row.showDate)}
-                    </p>
-                    <p className="mt-1 text-xs leading-5 text-on-surface-variant">
-                      {row.venueName ?? "Venue unavailable"}
-                    </p>
-                  </div>
-                </div>
-                <div className="mt-4 grid gap-2 min-[520px]:grid-cols-3">
-                  <PerformanceMetricCard
-                    metric={{
-                      label: "Top 10",
-                      coverage: row.recall10,
-                      avgHits: row.p10,
-                      k: 10,
-                    }}
-                    compact
-                    hitsLabel="Hits"
+                <p className="text-lg font-bold tabular-nums text-on-surface">
+                  {formatMMDDYYYY(row.showDate)}
+                </p>
+                <p className="text-sm text-on-surface-variant">
+                  {row.venueName ?? "Venue unavailable"}
+                </p>
+                <div className="mt-3 grid gap-3 min-[520px]:grid-cols-3">
+                  <CoverageMetricCard
+                    metric={{ label: "Top 10", coverage: row.recall10, avgHits: row.p10, k: 10 }}
+                    hitsPrefix=""
                   />
-                  <PerformanceMetricCard
-                    metric={{
-                      label: "Top 25",
-                      coverage: row.recall25,
-                      avgHits: row.p25,
-                      k: 25,
-                    }}
-                    compact
-                    hitsLabel="Hits"
+                  <CoverageMetricCard
+                    metric={{ label: "Top 25", coverage: row.recall25, avgHits: row.p25, k: 25 }}
+                    hitsPrefix=""
                   />
-                  <PerformanceMetricCard
-                    metric={{
-                      label: "Top 50",
-                      coverage: row.recall50,
-                      avgHits: row.p50,
-                      k: 50,
-                    }}
-                    compact
-                    hitsLabel="Hits"
+                  <CoverageMetricCard
+                    metric={{ label: "Top 50", coverage: row.recall50, avgHits: row.p50, k: 50 }}
+                    hitsPrefix=""
                   />
                 </div>
               </div>
@@ -336,8 +228,8 @@ async function PerformanceContent({ band, bandName }: { band: string; bandName: 
           <ExpandablePanel
             expandLabel="Open Raw Ledger"
             bodyClassName="px-3 pt-3"
-            buttonClassName="w-full rounded-[1.35rem] border border-outline-variant/20 bg-surface-container-low px-4 py-4 text-center font-headline text-sm uppercase tracking-[0.12em] text-on-surface"
-            containerClassName="rounded-[1.35rem] border border-outline-variant/20 bg-surface-container-low"
+            buttonClassName="w-full px-4 py-3 text-center text-sm font-bold text-on-surface"
+            containerClassName="rounded-xl border border-line bg-surface-2"
           >
             <AccuracyTable rows={state.rows} band={state.band} />
           </ExpandablePanel>

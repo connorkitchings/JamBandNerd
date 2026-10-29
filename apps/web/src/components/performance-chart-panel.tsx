@@ -45,10 +45,10 @@ export function PerformanceChartPanel({ rows }: Props) {
   }
 
   return (
-    <>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-[auto_auto] sm:items-start lg:justify-end">
+    <div className="space-y-5">
+      <div className="grid grid-cols-1 gap-3 min-[430px]:grid-cols-2 md:flex md:flex-wrap md:items-end md:gap-6">
         <div className="space-y-1.5">
-          <p className="font-label text-[9px] font-semibold uppercase tracking-[0.18em] text-on-surface-variant">
+          <p className="text-xs font-bold uppercase tracking-[0.08em] text-on-surface-variant">
             Measure
           </p>
           <ChartMetricToggle
@@ -60,7 +60,7 @@ export function PerformanceChartPanel({ rows }: Props) {
           />
         </div>
         <div className="space-y-1.5">
-          <p className="font-label text-[9px] font-semibold uppercase tracking-[0.18em] text-on-surface-variant">
+          <p className="text-xs font-bold uppercase tracking-[0.08em] text-on-surface-variant">
             Prediction Group
           </p>
           <KToggle
@@ -72,9 +72,7 @@ export function PerformanceChartPanel({ rows }: Props) {
           />
         </div>
       </div>
-      <div className="lg:col-span-2">
-        <RecallChart rows={rows} k={k} metric={metric} />
-      </div>
-    </>
+      <RecallChart rows={rows} k={k} metric={metric} />
+    </div>
   );
 }

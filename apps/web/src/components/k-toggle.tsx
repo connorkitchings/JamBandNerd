@@ -7,30 +7,19 @@ type Props = {
   onChange: (k: KSelection) => void;
 };
 
-function getKTextColor(k: 10 | 25 | 50) {
-  return k === 10 ? "text-primary" : k === 25 ? "text-tertiary" : "text-tier-top50";
-}
+const kOptions: Array<{ value: KSelection; label: string }> = [
+  { value: 10, label: "Top 10" },
+  { value: 25, label: "Top 25" },
+  { value: 50, label: "Top 50" },
+];
 
 export function KToggle({ currentK, onChange: setK }: Props) {
-  const kOptions: Array<{ value: 10 | 25 | 50; label: string }> = [
-    { value: 10, label: "Top 10" },
-    { value: 25, label: "Top 25" },
-    { value: 50, label: "Top 50" },
-  ];
-
-  function handleKeyDown(e: React.KeyboardEvent, k: 10 | 25 | 50) {
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      setK(k);
-    }
-  }
-
   return (
     <>
       <select
         aria-label="Prediction group"
-        className={`h-10 w-full rounded-xl border border-outline-variant/20 bg-surface/55 px-3 font-label text-[10px] uppercase tracking-wider focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none md:hidden ${getKTextColor(currentK)}`}
-        onChange={(event) => setK(Number(event.target.value) as 10 | 25 | 50)}
+        className="min-h-11 w-full rounded-md border border-line bg-surface-2 px-3 text-sm font-semibold text-on-surface md:hidden"
+        onChange={(event) => setK(Number(event.target.value) as KSelection)}
         value={currentK}
       >
         {kOptions.map(({ value, label }) => (
@@ -39,18 +28,22 @@ export function KToggle({ currentK, onChange: setK }: Props) {
           </option>
         ))}
       </select>
-      <div className="hidden rounded-xl border border-outline-variant/15 bg-surface/45 p-1 md:inline-flex">
+      <div
+        aria-label="Prediction group"
+        className="hidden gap-1 rounded-md border border-line bg-surface-2 p-1 md:inline-flex"
+        role="group"
+      >
         {kOptions.map(({ value, label }) => (
           <button
             key={value}
-            onClick={() => setK(value)}
-            onKeyDown={(e) => handleKeyDown(e, value)}
-            className={`touch-manipulation min-h-9 rounded-lg px-3 py-1.5 font-label text-[10px] uppercase tracking-wider transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none ${
-              currentK === value
-                ? `bg-primary/18 ${getKTextColor(value)} ring-1 ring-primary/35`
-                : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
-            }`}
             aria-pressed={currentK === value}
+            className={`touch-manipulation min-h-11 rounded-md px-4 text-sm font-semibold transition-colors ${
+              currentK === value
+                ? "bg-accent text-on-accent"
+                : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
+            }`}
+            onClick={() => setK(value)}
+            type="button"
           >
             {label}
           </button>

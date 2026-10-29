@@ -17,7 +17,7 @@ export function ChartMetricToggle({ currentMetric, onChange: setMetric }: Props)
     <>
       <select
         aria-label="Chart measure"
-        className="h-10 w-full rounded-xl border border-outline-variant/20 bg-surface/55 px-3 font-label text-[10px] uppercase tracking-wider text-on-surface focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none md:hidden"
+        className="min-h-11 w-full rounded-md border border-line bg-surface-2 px-3 text-sm font-semibold text-on-surface md:hidden"
         onChange={(event) => setMetric(event.target.value as ChartMetric)}
         value={currentMetric}
       >
@@ -27,20 +27,22 @@ export function ChartMetricToggle({ currentMetric, onChange: setMetric }: Props)
           </option>
         ))}
       </select>
-      <div className="hidden rounded-xl border border-outline-variant/15 bg-surface/45 p-1 md:inline-flex">
+      <div
+        aria-label="Chart measure"
+        className="hidden gap-1 rounded-md border border-line bg-surface-2 p-1 md:inline-flex"
+        role="group"
+      >
         {metricOptions.map((option) => (
           <button
             key={option.value}
-            type="button"
-            onClick={() => setMetric(option.value)}
-            className={`touch-manipulation min-h-9 rounded-lg px-3 py-1.5 font-label text-[10px] uppercase tracking-wider transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none ${
-              currentMetric === option.value
-                ? option.value === "coverage"
-                  ? "bg-primary/18 text-primary ring-1 ring-primary/35"
-                  : "bg-tertiary/18 text-tertiary ring-1 ring-tertiary/35"
-                : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
-            }`}
             aria-pressed={currentMetric === option.value}
+            className={`touch-manipulation min-h-11 rounded-md px-4 text-sm font-semibold transition-colors ${
+              currentMetric === option.value
+                ? "bg-accent text-on-accent"
+                : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
+            }`}
+            onClick={() => setMetric(option.value)}
+            type="button"
           >
             {option.label}
           </button>

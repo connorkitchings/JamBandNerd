@@ -107,10 +107,19 @@ async function PredictionAccuracyMetrics({ band, todayIso }: { band: string; tod
 
 function AccuracyMetricsFallback() {
   return (
-    <div
-      aria-hidden="true"
-      className="editorial-panel relative z-20 mx-auto -mt-6 mb-5 h-32 w-full max-w-6xl animate-pulse px-1 md:-mt-8 md:mb-6"
-    />
+    <div aria-hidden="true" className="mb-8 grid animate-pulse gap-4 md:grid-cols-3">
+      {[0, 1, 2].map((group) => (
+        <div key={group} className="grid grid-cols-2 gap-3">
+          {[0, 1].map((card) => (
+            <div key={card} className="h-[8.5rem] rounded-xl border border-line bg-surface p-5">
+              <div className="h-3 w-16 rounded-md bg-surface-container-high" />
+              <div className="mt-3 h-7 w-20 rounded-md bg-surface-container-high" />
+              <div className="mt-3 h-3.5 w-24 rounded-md bg-surface-container" />
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -220,17 +229,15 @@ async function PredictionsContent({ band, bandName }: { band: string; bandName: 
         <PredictionAccuracyMetrics band={band} todayIso={clock.todayIso} />
       </Suspense>
 
-      <section className="px-1">
-        <div className="px-3 py-2 sm:px-4 md:px-5">
-          <div className="text-center md:text-left">
-            <p className="font-label text-[10px] uppercase tracking-[0.24em] text-primary">
+      <section>
+        <div>
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.08em] text-accent-text">
               Full ranking
             </p>
-            <h2 className="mt-3 font-headline text-3xl font-bold uppercase tracking-[-0.04em] text-on-surface">
-              Song board
-            </h2>
+            <h2 className="mt-1 text-3xl font-bold text-on-surface">Song board</h2>
           </div>
-          <div className="mt-5 flex items-center gap-3 md:gap-4">
+          <div className="mt-5 flex items-start gap-3 md:gap-4">
             <div className="flex flex-1">
               <SongSearch songs={searchSongs} />
             </div>

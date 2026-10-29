@@ -35,19 +35,15 @@ export function DashboardSideNav({ band, bands, page }: Props) {
   ];
 
   return (
-    <div className="editorial-panel flex flex-col gap-4 p-4 md:p-5">
+    <nav aria-label="Band" className="flex flex-col gap-4">
       <MobileControlSelects groups={mobileGroups} />
 
       <div className="hidden md:block">
-        <div className="editorial-chip flex flex-col rounded-[1.35rem] p-3 md:p-4">
-          <div className="mb-2 flex items-center justify-center text-center">
-            <span className="font-label text-[10px] font-semibold uppercase tracking-[0.24em] text-primary/85">
-              Band
-            </span>
-          </div>
-          <BandPillGrid links={renderedBandLinks} className="grid-cols-2 lg:grid-cols-3" />
-        </div>
+        <p className="mb-2 text-xs font-bold uppercase tracking-[0.08em] text-on-surface-variant">
+          Band
+        </p>
+        <BandPillGrid links={renderedBandLinks} className="grid-cols-2 lg:grid-cols-4" />
       </div>
-    </div>
+    </nav>
   );
 }
