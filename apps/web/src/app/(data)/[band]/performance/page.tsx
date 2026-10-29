@@ -64,7 +64,7 @@ export default async function PerformancePage({ params }: Props) {
   const { band, bandEntry, bands } = await resolveBandPage((await params).band);
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
+    <div className="mx-auto max-w-7xl space-y-6">
       <DashboardSideNav band={band} bands={bands} page="performance" />
       <Suspense fallback={<PageSkeleton />}>
         <PerformanceContent band={band} bandName={bandEntry.displayName} />

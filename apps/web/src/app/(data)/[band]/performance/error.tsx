@@ -13,7 +13,7 @@ export default function Error({ error, reset }: Props) {
   }, [error]);
 
   return (
-    <div className="mx-auto max-w-6xl">
+    <div className="mx-auto max-w-7xl">
       <div className="editorial-panel p-6 md:p-8">
         <p className="text-xs font-bold uppercase tracking-[0.08em] text-accent-text">
           Page error

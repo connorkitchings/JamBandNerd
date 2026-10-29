@@ -1,7 +1,7 @@
 /** Placeholder shown while a band page's request-time content streams in. */
 export function PageSkeleton() {
   return (
-    <div className="mx-auto max-w-6xl space-y-6" aria-live="polite" aria-busy="true">
+    <div className="mx-auto max-w-7xl space-y-6" aria-live="polite" aria-busy="true">
       <section className="editorial-panel animate-pulse px-6 py-8 md:px-8 md:py-10">
         <div className="h-3 w-32 rounded-full bg-surface-container-high" />
         <div className="mt-6 h-10 max-w-xl rounded-xl bg-surface-container-high" />

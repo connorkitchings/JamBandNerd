@@ -62,7 +62,7 @@ export default async function BandOverviewPage({ params }: Props) {
   const { band, bandEntry, bands } = await resolveBandPage((await params).band);
 
   return (
-    <div className="mx-auto max-w-6xl space-y-10 pb-0">
+    <div className="mx-auto max-w-7xl space-y-10 pb-0">
       {bands.length > 0 && (
         <nav aria-label="Band" className="-mb-4 pt-4 lg:pt-8">
           <BandPillGrid

@@ -67,7 +67,7 @@ function PredictionMetricPanel({
   performanceWindowLabel: string;
 }) {
   return (
-    <div className="mb-8">
+    <div>
       <h2 className="text-xl font-bold text-on-surface">How good has this model been?</h2>
       <p className="mt-1 text-sm text-on-surface-variant">Scored over the {performanceWindowLabel}.</p>
       <div className="mt-4 grid gap-4 md:grid-cols-3">
@@ -108,7 +108,7 @@ export function PredictionHero({
   const chip = "inline-flex min-h-7 items-center gap-2 rounded-full border px-3 text-xs font-semibold uppercase tracking-[0.06em]";
 
   return (
-    <section className="mb-8">
+    <section>
       <div className="rounded-xl border border-line bg-surface px-6 py-7 text-center md:px-10 md:py-9">
         <div className="mx-auto max-w-5xl">
           <div className="mb-5 flex flex-wrap items-center justify-center gap-2">

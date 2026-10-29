@@ -60,7 +60,7 @@ export default async function ReplayPage({ params }: Props) {
   const requestedDate = date?.[0];
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
+    <div className="mx-auto max-w-7xl space-y-6">
       <DashboardSideNav band={band} bands={bands} page="replay" />
       <Suspense fallback={<PageSkeleton />}>
         <ReplayContent

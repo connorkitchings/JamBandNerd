@@ -66,7 +66,7 @@ export default async function PredictionsPage({ params }: Props) {
   const { band, bandEntry, bands } = await resolveBandPage((await params).band);
 
   return (
-    <div className="mx-auto w-full max-w-6xl">
+    <div className="mx-auto w-full max-w-7xl space-y-6">
       <DashboardSideNav band={band} bands={bands} page="predictions" />
       <Suspense fallback={<PageSkeleton />}>
         <PredictionsContent band={band} bandName={bandEntry.displayName} />
@@ -107,7 +107,7 @@ async function PredictionAccuracyMetrics({ band, todayIso }: { band: string; tod
 
 function AccuracyMetricsFallback() {
   return (
-    <div aria-hidden="true" className="mb-8 grid animate-pulse gap-4 md:grid-cols-3">
+    <div aria-hidden="true" className="grid animate-pulse gap-4 md:grid-cols-3">
       {[0, 1, 2].map((group) => (
         <div key={group} className="grid grid-cols-2 gap-3">
           {[0, 1].map((card) => (
@@ -133,7 +133,7 @@ async function PredictionsContent({ band, bandName }: { band: string; bandName: 
     return (
       <DataGate
         state={predictionState}
-        className="mx-auto max-w-6xl"
+        className="mx-auto max-w-7xl"
         missingEnvBody="Set SUPABASE_URL and SUPABASE_ANON_KEY to enable server-side prediction reads in the website."
         errorTitle="Prediction query failed"
         emptyTitle="No predictions available"

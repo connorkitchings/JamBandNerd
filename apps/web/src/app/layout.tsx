@@ -50,7 +50,7 @@ export default async function RootLayout({
           <SiteHeader />
           <main
             id="main-content"
-            className="safe-bottom-content w-full flex-1 px-6 pt-24 md:px-8 lg:px-10"
+            className="safe-bottom-content w-full flex-1 px-4 pt-24 md:px-6"
           >
             {children}
           </main>
