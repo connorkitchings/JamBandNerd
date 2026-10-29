@@ -3,6 +3,7 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense, cache } from "react";
 
+import { BandPillGrid } from "@/components/band-pill-grid";
 import { MetricCard } from "@/components/metric-card";
 import { SectionCard } from "@/components/section-card";
 import { bandPath } from "@/lib/band-routes";
@@ -62,6 +63,19 @@ export default async function BandOverviewPage({ params }: Props) {
 
   return (
     <div className="mx-auto max-w-6xl space-y-10 pb-0">
+      {bands.length > 0 && (
+        <nav aria-label="Band" className="-mb-4 pt-4 lg:pt-8">
+          <BandPillGrid
+            layout="row"
+            links={bands.map((item) => ({
+              href: bandPath(item.slug),
+              label: item.displayName,
+              active: item.slug === band,
+            }))}
+          />
+        </nav>
+      )}
+
       <section className="grid gap-8 pt-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(320px,1fr)] lg:items-stretch lg:pt-8">
         <div className="flex flex-col justify-center">
           <p className="text-xs font-bold uppercase tracking-[0.08em] text-accent-text">
@@ -140,33 +154,6 @@ export default async function BandOverviewPage({ params }: Props) {
           ))}
         </div>
       </section>
-
-      {bands.length > 0 && (
-        <section aria-labelledby="who-we-follow">
-          <h2 id="who-we-follow" className="text-2xl font-bold text-on-surface">
-            Who we follow
-          </h2>
-          <div className="mt-4 flex flex-wrap gap-2">
-            {bands.map((item) => {
-              const isCurrent = item.slug === band;
-              return (
-                <Link
-                  key={item.slug}
-                  href={bandPath(item.slug)}
-                  aria-current={isCurrent ? "true" : undefined}
-                  className={`inline-flex min-h-11 items-center rounded-full border px-5 text-sm font-semibold transition ${
-                    isCurrent
-                      ? "border-accent bg-accent text-on-accent"
-                      : "border-line bg-surface text-on-surface hover:bg-surface-2"
-                  }`}
-                >
-                  {item.displayName}
-                </Link>
-              );
-            })}
-          </div>
-        </section>
-      )}
     </div>
   );
 }

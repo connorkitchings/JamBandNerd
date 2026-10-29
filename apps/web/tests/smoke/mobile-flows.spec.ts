@@ -73,6 +73,53 @@ test.describe("mobile flows", () => {
     expect(bandBox!.height).toBeGreaterThanOrEqual(44);
   });
 
+  test("overview band switcher is visible in the first viewport", async ({ page }, testInfo) => {
+    test.skip(
+      testInfo.project.name !== "mobile-chromium",
+      "mobile-only test",
+    );
+
+    await bootstrapHostedPreviewBypass(page);
+    await page.goto("/goose");
+
+    const switcher = page.getByRole("navigation", { name: "Band" });
+    if ((await switcher.count()) === 0) {
+      await expectMainHeadingOrDataFallback(page);
+      return;
+    }
+
+    const current = switcher.getByRole("link", { name: "Goose" });
+    await expect(current).toBeInViewport();
+    await expect(current).toHaveAttribute("aria-current", "page");
+    const box = await current.boundingBox();
+    expect(box!.height).toBeGreaterThanOrEqual(44);
+
+    const phish = switcher.getByRole("link", { name: "Phish" });
+    await expect(phish).toBeInViewport();
+    await phish.click();
+    await expect(page).toHaveURL(/\/phish$/);
+  });
+
+  test("switching band keeps the current page", async ({ page }, testInfo) => {
+    test.skip(
+      testInfo.project.name !== "mobile-chromium",
+      "mobile-only test",
+    );
+
+    await bootstrapHostedPreviewBypass(page);
+    await page.goto("/goose/predictions");
+
+    const bandSelect = page.getByRole("combobox", { name: "Band" });
+    if ((await bandSelect.count()) === 0) {
+      await expectMainHeadingOrDataFallback(page);
+      return;
+    }
+
+    await expect(bandSelect).toBeInViewport();
+    await bandSelect.selectOption("/phish/predictions");
+    await expect(page).toHaveURL(/\/phish\/predictions$/);
+  });
+
   test("key mobile flows render without page crashes", async ({ page }, testInfo) => {
     test.skip(
       testInfo.project.name !== "mobile-chromium",
