@@ -45,4 +45,3 @@ npm run test:web:smoke
 - Preview deployments should come from pull requests and non-`main` branches.
 - The website expects `SUPABASE_URL` and `SUPABASE_ANON_KEY`.
 - Do not use a service-role secret in the website environment.
-- The internal admin setlist flow additionally requires `ADMIN_PASSWORD` and `ADMIN_SESSION_SECRET`, and now authenticates through an httpOnly session cookie.

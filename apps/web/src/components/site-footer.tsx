@@ -34,12 +34,6 @@ export function SiteFooter() {
           >
             Contact
           </Link>
-          <Link
-            className={footerLinkClassName}
-            href="/admin/setlist"
-          >
-            Admin
-          </Link>
         </div>
       </div>
     </footer>
