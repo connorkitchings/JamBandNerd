@@ -12,6 +12,35 @@ export const TONIGHT_STATUS_LABEL = "Tonight!";
  */
 const DAILY_INGESTION_CUTOFF_UTC_MINUTES = 19 * 60 + 15;
 
+/**
+ * Serializable snapshot of the clock inputs the data layer depends on.
+ * Cached fetchers must not read the clock themselves; callers capture it
+ * outside the cache and pass it in, so the cache key changes only when the
+ * Eastern date or the daily-ingestion cutoff state changes.
+ */
+export type DataClock = {
+  todayIso: string;
+  ingestionCutoffPassed: boolean;
+};
+
+export function getDataClock(now: Date = new Date()): DataClock {
+  const utcMinutes = now.getUTCHours() * 60 + now.getUTCMinutes();
+  return {
+    todayIso: getEasternTodayIso(now),
+    ingestionCutoffPassed: utcMinutes >= DAILY_INGESTION_CUTOFF_UTC_MINUTES,
+  };
+}
+
+/**
+ * Rebuilds a representative instant from a `DataClock`. Both instants fall on
+ * `todayIso` in Eastern time and on either side of the ingestion cutoff, so
+ * time-based helpers give the same answers as they would for the real clock.
+ */
+export function nowFromDataClock(clock: DataClock): Date {
+  const time = clock.ingestionCutoffPassed ? "19:15:00" : "12:00:00";
+  return new Date(`${clock.todayIso}T${time}Z`);
+}
+
 export type PredictionDisplayState = "previous" | "tonight" | "next";
 
 export type MissingSetlistShow = {

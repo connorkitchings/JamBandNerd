@@ -18,8 +18,7 @@ import {
 } from "@/lib/data";
 import { buildLocationLabel, formatDateLabel } from "@/lib/format";
 import { computeTopKHits, normalizeSongName } from "@/lib/song-board-core";
-
-export const revalidate = 3600;
+import { getEasternTodayIso } from "@/lib/show-status";
 
 type Props = {
   searchParams: Promise<{
@@ -56,7 +55,7 @@ export default async function LastShowPage({ searchParams }: Props) {
 
   const selectedBand =
     bandsResult.status === "ready" ? bandSelection.bandEntry?.slug : params.band;
-  const state = await getLastShowSetlist(selectedBand);
+  const state = await getLastShowSetlist(selectedBand, getEasternTodayIso());
 
   if (state.status !== "ready") {
     return (

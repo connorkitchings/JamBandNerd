@@ -32,7 +32,7 @@ Current route split:
 - **Overflow safe**: data tables and dense views must remain usable on phones through scroll-safe wrappers rather than clipped content.
 - **Shared dense-data pattern**: tables and long data grids should use a single responsive wrapper/padding pattern instead of route-specific one-offs.
 - **Search-param navigation**: prefer URL-driven band state so pages are shareable and hydration stays light.
-- **Freshness over static caching**: prediction and performance routes should favor dynamic server rendering while the marketing shell can stay static later.
+- **Cached data, on-demand freshness**: the site uses Next.js Cache Components. Band-scoped Supabase reads in `src/lib/data` are cached with `"use cache"` and tagged `band:<slug>`; the daily pipeline expires a band's tag through `POST /api/revalidate` once new data lands (see [Cache revalidation](#cache-revalidation)). Pages still render per request (they read `searchParams`) but reuse cached data instead of querying Supabase each time.
 - **Hermetic builds**: prefer local assets and system fallbacks over build-time network fetches.
 
 ## Web Module Ownership
@@ -130,6 +130,27 @@ For Vercel, add the same variable names to:
 - Production
 
 The site uses the Supabase anon key only. No service-role key is deployed to Vercel. Manual setlist entry is done outside the site with `scripts/admin/add_setlist.py`.
+
+### Cache revalidation
+
+Band data is cached for days and expired on demand. Set on the website (Vercel Production and Preview):
+
+- `REVALIDATE_SECRET` — shared secret for `POST /api/revalidate`. Generate with `openssl rand -hex 32`. When unset, the endpoint rejects every request with 401.
+
+Set in the repository's Actions settings so `.github/workflows/daily-pipeline.yml` can call it:
+
+- Secret `REVALIDATE_SECRET` — the same value as on Vercel.
+- Variable `SITE_URL` — the production origin, e.g. `https://jambandnerd.com` (no path).
+
+The last step of each band's pipeline job (`Revalidate Website Cache`) sends `POST ${SITE_URL}/api/revalidate` with `Authorization: Bearer <REVALIDATE_SECRET>` and body `{ "band": "<slug>" }`. It runs after the data steps and fails visibly (red job) if the call fails, without changing the result of the data steps. If the call fails, the site keeps serving cached data until the entry expires (up to 1 day) or the step is re-run.
+
+Endpoint behavior: only `POST` is accepted (other methods return 405); a missing or wrong token returns 401; an unknown or missing `band` returns 400; on success it expires the `band:<slug>` tag immediately and returns `{ "revalidated": true, "band": "<slug>" }`.
+
+Notes:
+
+- Predictions for a show happening today (Eastern date) are never served from the cache, so the live tracker's `router.refresh()` always sees fresh rows during a show.
+- Failed or empty reads are cached for seconds or hours, not days.
+- Other workflows that write website-facing data (for example backfills) do not call the endpoint; trigger it manually with `curl -X POST -H "Authorization: Bearer $REVALIDATE_SECRET" -d '{"band":"goose"}' "$SITE_URL/api/revalidate"` if the site needs to reflect them before the cache expires.
 
 ## Vercel Project Setup
 
