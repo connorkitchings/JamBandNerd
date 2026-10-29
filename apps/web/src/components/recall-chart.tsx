@@ -1,4 +1,6 @@
-import { useId } from "react";
+"use client";
+
+import { useEffect, useId, useRef } from "react";
 
 import type { AccuracyRow } from "@/lib/data";
 import { formatMMDDYYYY } from "@/lib/format";
@@ -23,7 +25,9 @@ const SERIES_STYLE = {
 const CHART_HEIGHT = 340;
 const PADDING = { top: 36, right: 84, bottom: 92, left: 72 };
 /** Horizontal room per show; wider charts scroll instead of crushing labels. */
-const POINT_SPACING = 48;
+const POINT_SPACING = 40;
+/** Inner offset so the first point clears the y-axis labels. */
+const PLOT_INSET = 16;
 const MIN_PLOT_WIDTH = 480;
 const X_LABEL_SPACING = 72;
 
@@ -39,6 +43,12 @@ function pointValue(row: AccuracyRow, k: 10 | 25 | 50, metric: ChartMetric) {
 
 export function RecallChart({ rows, k = 10, metric = "coverage" }: Props) {
   const id = useId();
+  const scrollRef = useRef<HTMLDivElement>(null);
+  // Start at the newest shows, which sit on the right.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (el) el.scrollLeft = el.scrollWidth;
+  }, [rows, k, metric]);
   const chronological = [...rows].reverse();
   const totalRows = chronological.length;
   const points: Point[] = [];
@@ -76,7 +86,7 @@ export function RecallChart({ rows, k = 10, metric = "coverage" }: Props) {
   const plotHeight = CHART_HEIGHT - PADDING.top - PADDING.bottom;
   const baseline = PADDING.top + plotHeight;
   const xPos = (index: number) =>
-    PADDING.left + (index / Math.max(totalRows - 1, 1)) * plotWidth;
+    PADDING.left + PLOT_INSET + (index / Math.max(totalRows - 1, 1)) * (plotWidth - PLOT_INSET);
   const yPos = (value: number) => PADDING.top + plotHeight - (value / yMax) * plotHeight;
 
   const labelInterval = Math.max(
@@ -98,7 +108,7 @@ export function RecallChart({ rows, k = 10, metric = "coverage" }: Props) {
   } at ${formatChartValue(best.value, metric)}.`;
 
   return (
-    <div className="horizontal-scroll-surface mx-auto w-full max-w-[960px] pb-2">
+    <div ref={scrollRef} className="horizontal-scroll-surface w-full pb-2">
       <svg
         aria-describedby={descId}
         aria-labelledby={titleId}
@@ -174,9 +184,12 @@ export function RecallChart({ rows, k = 10, metric = "coverage" }: Props) {
                 strokeWidth="3"
               />
               <text
-                className="fill-on-surface"
+                className="fill-on-surface stroke-surface"
                 fontSize="12"
                 fontWeight="700"
+                paintOrder="stroke"
+                strokeLinejoin="round"
+                strokeWidth="4"
                 textAnchor="middle"
                 x={xPos(point.index)}
                 y={yPos(point.value) - 12}

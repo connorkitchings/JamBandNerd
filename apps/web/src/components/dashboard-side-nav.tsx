@@ -42,7 +42,7 @@ export function DashboardSideNav({ band, bands, page }: Props) {
         <p className="mb-2 text-xs font-bold uppercase tracking-[0.08em] text-on-surface-variant">
           Band
         </p>
-        <BandPillGrid links={renderedBandLinks} className="grid-cols-2 lg:grid-cols-4" />
+        <BandPillGrid links={renderedBandLinks} />
       </div>
     </nav>
   );

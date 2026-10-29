@@ -258,3 +258,18 @@ test("every active band renders predictions, replay, and performance without que
     ).toBeVisible();
   }
 });
+
+test("band pills share one row on the desktop predictions page", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop-chromium", "desktop-only layout check");
+
+  await bootstrapHostedPreviewBypass(page);
+  await page.goto("/wsp/predictions");
+
+  const pills = page.getByRole("navigation", { name: "Band" }).getByRole("link");
+  test.skip((await pills.count()) < 2, "band registry unavailable in this environment");
+
+  const tops = await pills.evaluateAll((links) =>
+    links.map((link) => Math.round(link.getBoundingClientRect().top)),
+  );
+  expect(new Set(tops).size, `pill tops: ${tops.join(",")}`).toBe(1);
+});
