@@ -70,7 +70,7 @@ function PredictionMetricPanel({
     <div>
       <h2 className="text-xl font-bold text-on-surface">How good has this model been?</h2>
       <p className="mt-1 text-sm text-on-surface-variant">Scored over the {performanceWindowLabel}.</p>
-      <div className="mt-4 grid gap-4 md:grid-cols-3">
+      <div className="mt-4 grid gap-4 lg:grid-cols-3">
         {cards.map((card) => (
           <div key={card.title}>
             <h3 className="mb-2 text-base font-bold text-on-surface">{card.title}</h3>
