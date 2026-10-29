@@ -273,3 +273,38 @@ test("band pills share one row on the desktop predictions page", async ({ page }
   );
   expect(new Set(tops).size, `pill tops: ${tops.join(",")}`).toBe(1);
 });
+
+test("the mobile predictions page does not scroll sideways", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "mobile-chromium", "mobile-only overflow check");
+
+  await bootstrapHostedPreviewBypass(page);
+  await page.goto("/wsp/predictions");
+  await expectPrimaryHeadingOrMissingEnv(page);
+
+  const { scrollWidth, clientWidth } = await page.evaluate(() => ({
+    scrollWidth: document.documentElement.scrollWidth,
+    clientWidth: document.documentElement.clientWidth,
+  }));
+  expect(scrollWidth).toBeLessThanOrEqual(clientWidth);
+});
+
+test("the mobile performance chart starts scrolled to its right end", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "mobile-chromium", "mobile-only chart check");
+
+  await bootstrapHostedPreviewBypass(page);
+  await page.goto("/wsp/performance");
+  await expectPrimaryHeadingOrMissingEnv(page);
+
+  const chart = page.locator(".horizontal-scroll-surface").first();
+  test.skip((await chart.count()) === 0, "performance data unavailable in this environment");
+
+  // The scroll position is applied after hydration, so poll for it.
+  await expect
+    .poll(async () =>
+      chart.evaluate((el) => {
+        const max = el.scrollWidth - el.clientWidth;
+        return max > 0 && Math.abs(el.scrollLeft - max) <= 4;
+      }),
+    )
+    .toBe(true);
+});
