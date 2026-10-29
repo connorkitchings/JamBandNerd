@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { bandPath } from "@/lib/band-routes";
 import type { AccuracyRow } from "@/lib/data";
 import { buildLocationLabel, formatHits, formatMMDDYYYY } from "@/lib/format";
 import {
@@ -68,7 +69,7 @@ export function AccuracyTable({ rows, band }: Props) {
               <td className={`${TABLE_CELL_CLASS} whitespace-nowrap`}>
                 {band && row.showDate ? (
                   <Link
-                    href={`/replay?band=${encodeURIComponent(band)}&date=${encodeURIComponent(row.showDate)}`}
+                    href={bandPath(band, "replay", row.showDate)}
                     className="text-on-surface underline-offset-4 hover:text-primary hover:underline focus-visible:text-primary focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
                   >
                     {formatMMDDYYYY(row.showDate)}

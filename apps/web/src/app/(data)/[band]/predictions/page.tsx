@@ -1,22 +1,23 @@
 import type { Metadata } from "next";
+import { connection } from "next/server";
+import { Suspense } from "react";
 
 import { DashboardSideNav } from "@/components/dashboard-side-nav";
 import { DataGate } from "@/components/data-gate";
-import { DataState } from "@/components/data-state";
 import { LiveTracker } from "@/components/live-tracker";
+import { PageSkeleton } from "@/components/page-skeleton";
 import { PredictionHero, PredictionHeroMetrics } from "@/components/prediction-hero";
 import { SharePredictionsButton } from "@/components/share-predictions-button";
 import { SongBoard } from "@/components/song-board";
 import { SongSearch } from "@/components/song-search";
+import { bandPath } from "@/lib/band-routes";
 import {
-  bandEntryBySlug,
-  getBands,
   getLatestPredictions,
   getNextShowDetails,
+  getRecentAccuracy,
   getRecentMissingSetlistShows,
   getShowDetailsByDate,
-  getRecentAccuracy,
-  resolveBandSelection,
+  resolveBandPage,
 } from "@/lib/data";
 import {
   average,
@@ -36,21 +37,16 @@ import {
 } from "@/lib/show-status";
 
 type Props = {
-  searchParams: Promise<{
-    band?: string;
-  }>;
+  params: Promise<{ band: string }>;
 };
 
-export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
-  const params = await searchParams;
-  const bandsResult = await getBands();
-  const bands = bandsResult.status === "ready" ? bandsResult.bands : [];
-  const bandSelection = resolveBandSelection(bands, params.band);
-  const bandName = bandSelection.bandEntry?.displayName ?? bandSelection.requestedSlug;
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { band, bandEntry } = await resolveBandPage((await params).band);
+  const bandName = bandEntry.displayName;
 
   const title = `${bandName} Setlist Predictions | JamBandNerd`;
   const description = `Latest setlist predictions for ${bandName}, ranked by likelihood tier.`;
-  const url = `https://jambandnerd.com/predictions?band=${params.band ?? "goose"}`;
+  const url = `https://jambandnerd.com${bandPath(band, "predictions")}`;
 
   return {
     title,
@@ -66,26 +62,63 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
   };
 }
 
-export default async function PredictionsPage({ searchParams }: Props) {
-  const params = await searchParams;
-  const bandsResult = await getBands();
-  const bands = bandsResult.status === "ready" ? bandsResult.bands : [];
-  const bandSelection = resolveBandSelection(bands, params.band);
-  if (bandsResult.status === "ready" && bandSelection.isInvalid) {
-    return (
-      <div className="mx-auto max-w-6xl">
-        <DataState
-          title="Band not found"
-          body={`No active band found for slug "${bandSelection.requestedSlug}". Select a supported band from the navigation.`}
-        />
-      </div>
-    );
-  }
+export default async function PredictionsPage({ params }: Props) {
+  const { band, bandEntry, bands } = await resolveBandPage((await params).band);
 
-  const selectedBand =
-    bandsResult.status === "ready" ? bandSelection.bandEntry?.slug : params.band;
+  return (
+    <div className="mx-auto w-full max-w-6xl">
+      <DashboardSideNav band={band} bands={bands} page="predictions" />
+      <Suspense fallback={<PageSkeleton />}>
+        <PredictionsContent band={band} bandName={bandEntry.displayName} />
+      </Suspense>
+    </div>
+  );
+}
+
+/** Hero accuracy cards; streamed in after the prediction hero so they never delay it. */
+async function PredictionAccuracyMetrics({ band, todayIso }: { band: string; todayIso: string }) {
+  const accuracyState = await getRecentAccuracy(band, 50, todayIso);
+  const accuracyRows = accuracyState.status === "ready" ? accuracyState.rows : [];
+  const precisionCards = [
+    {
+      title: "Top 10",
+      avgHits: formatAvgHits(average(accuracyRows.map((row) => row.p10)), 10),
+      coverage: formatPercent(average(accuracyRows.map((row) => row.recall10))),
+    },
+    {
+      title: "Top 25",
+      avgHits: formatAvgHits(average(accuracyRows.map((row) => row.p25)), 25),
+      coverage: formatPercent(average(accuracyRows.map((row) => row.recall25))),
+    },
+    {
+      title: "Top 50",
+      avgHits: formatAvgHits(average(accuracyRows.map((row) => row.p50)), 50),
+      coverage: formatPercent(average(accuracyRows.map((row) => row.recall50))),
+    },
+  ] as const;
+
+  return (
+    <PredictionHeroMetrics
+      performanceWindowLabel="last 50 shows"
+      precisionCards={precisionCards}
+    />
+  );
+}
+
+function AccuracyMetricsFallback() {
+  return (
+    <div
+      aria-hidden="true"
+      className="editorial-panel relative z-20 mx-auto -mt-6 mb-5 h-32 w-full max-w-6xl animate-pulse px-1 md:-mt-8 md:mb-6"
+    />
+  );
+}
+
+async function PredictionsContent({ band, bandName }: { band: string; bandName: string }) {
+  // Show status depends on the current time, so this part renders per request.
+  await connection();
   const clock = getDataClock();
-  const predictionState = await getLatestPredictions(selectedBand, clock.todayIso);
+  const predictionState = await getLatestPredictions(band, clock.todayIso);
 
   if (predictionState.status !== "ready") {
     return (
@@ -100,22 +133,13 @@ export default async function PredictionsPage({ searchParams }: Props) {
     );
   }
 
-  const bandEntry = bandEntryBySlug(bands, predictionState.band) ?? {
-    slug: predictionState.band,
-    displayName: predictionState.band,
-    showsTable: "",
-    idColumn: "",
-  };
-  const bandName = bandEntry.displayName;
-
-  const [nextShowState, specificShowState, accuracyState, missingSetlistShows] =
+  const [nextShowState, specificShowState, missingSetlistShows] =
     await Promise.all([
       getNextShowDetails(predictionState.band, clock.todayIso),
       getShowDetailsByDate(
         predictionState.band,
         predictionState.snapshot.targetShowDate,
       ),
-      getRecentAccuracy(predictionState.band, 50, clock.todayIso),
       getRecentMissingSetlistShows(
         predictionState.band,
         predictionState.snapshot.targetShowDate,
@@ -151,26 +175,6 @@ export default async function PredictionsPage({ searchParams }: Props) {
   const displayState = getPredictionDisplayState(heroDate);
   const statusLabel = getPredictionStatusLabel(heroDate);
   const snapshotLabel = formatTimestampLabel(predictionState.snapshot.predictedAt);
-  const accuracyRows = accuracyState.status === "ready" ? accuracyState.rows : [];
-  const performanceWindowLabel = "last 50 shows";
-  const precisionCards = [
-    {
-      title: "Top 10",
-      avgHits: formatAvgHits(average(accuracyRows.map((row) => row.p10)), 10),
-      coverage: formatPercent(average(accuracyRows.map((row) => row.recall10))),
-    },
-    {
-      title: "Top 25",
-      avgHits: formatAvgHits(average(accuracyRows.map((row) => row.p25)), 25),
-      coverage: formatPercent(average(accuracyRows.map((row) => row.recall25))),
-    },
-    {
-      title: "Top 50",
-      avgHits: formatAvgHits(average(accuracyRows.map((row) => row.p50)), 50),
-      coverage: formatPercent(average(accuracyRows.map((row) => row.recall50))),
-    },
-  ] as const;
-
   const searchSongs = predictionState.snapshot.predictions.map((row) => ({
     rank: row.rank,
     songName: row.songName,
@@ -185,16 +189,11 @@ export default async function PredictionsPage({ searchParams }: Props) {
     locationLabel,
     venueName: targetShow?.venueName ?? "",
     predictions: predictionState.snapshot.predictions,
-    shareUrl: `jambandnerd.com/predictions?band=${predictionState.band}`,
+    shareUrl: `jambandnerd.com${bandPath(band, "predictions")}`,
   });
 
   return (
-    <div className="mx-auto w-full max-w-6xl">
-      <DashboardSideNav
-        band={predictionState.band}
-        bands={bands}
-      />
-
+    <>
       {heroDate &&
         isLiveShow &&
         process.env.NEXT_PUBLIC_SUPABASE_URL &&
@@ -217,10 +216,9 @@ export default async function PredictionsPage({ searchParams }: Props) {
         missingSetlistShows={missingSetlistShows}
         pendingNextShow={pendingNextShow}
       />
-      <PredictionHeroMetrics
-        performanceWindowLabel={performanceWindowLabel}
-        precisionCards={precisionCards}
-      />
+      <Suspense fallback={<AccuracyMetricsFallback />}>
+        <PredictionAccuracyMetrics band={band} todayIso={clock.todayIso} />
+      </Suspense>
 
       <section className="px-1">
         <div className="px-3 py-2 sm:px-4 md:px-5">
@@ -245,6 +243,6 @@ export default async function PredictionsPage({ searchParams }: Props) {
           </div>
         </div>
       </section>
-    </div>
+    </>
   );
 }

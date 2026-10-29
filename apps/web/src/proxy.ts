@@ -1,14 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 
-export function proxy(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+import { getLegacyRedirect } from "@/lib/legacy-redirects";
 
-  // Internal design previews must be a real 404 outside development. The page's
-  // own notFound() cannot set the status because the root loading boundary has
-  // already streamed a 200.
-  if (pathname.startsWith("/preview") && process.env.NODE_ENV !== "development") {
-    return new NextResponse("Not found", { status: 404 });
+// Permanently redirects pre-`/<band>` URLs (`/predictions?band=goose`, ...).
+export function proxy(request: NextRequest) {
+  const { pathname, searchParams } = request.nextUrl;
+  const target = getLegacyRedirect(pathname, searchParams);
+  if (!target) {
+    return NextResponse.next();
   }
 
-  return NextResponse.next();
+  const url = request.nextUrl.clone();
+  url.pathname = target.pathname;
+  url.search = target.search;
+  return NextResponse.redirect(url, 308);
 }
+
+// Must be a literal (statically analyzed); keep in sync with `PAGE_BY_LEGACY_PATH`.
+export const config = {
+  matcher: ["/", "/predictions", "/performance", "/replay", "/last-show"],
+};

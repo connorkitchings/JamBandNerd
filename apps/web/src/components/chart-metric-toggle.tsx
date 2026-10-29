@@ -1,11 +1,10 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
-
 export type ChartMetric = "coverage" | "hits";
 
 type Props = {
   currentMetric: ChartMetric;
+  onChange: (metric: ChartMetric) => void;
 };
 
 const metricOptions: Array<{ value: ChartMetric; label: string }> = [
@@ -13,16 +12,7 @@ const metricOptions: Array<{ value: ChartMetric; label: string }> = [
   { value: "hits", label: "Hits" },
 ];
 
-export function ChartMetricToggle({ currentMetric }: Props) {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-
-  function setMetric(metric: ChartMetric) {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("metric", metric);
-    router.push(`?${params}`, { scroll: false });
-  }
-
+export function ChartMetricToggle({ currentMetric, onChange: setMetric }: Props) {
   return (
     <>
       <select

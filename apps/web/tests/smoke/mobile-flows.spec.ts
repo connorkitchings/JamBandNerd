@@ -40,7 +40,7 @@ test.describe("mobile flows", () => {
     );
 
     await bootstrapHostedPreviewBypass(page);
-    await page.goto("/");
+    await page.goto("/goose");
 
     const mobileNav = page.getByRole("navigation", { name: "Mobile navigation" });
     await expect(mobileNav).toBeVisible();
@@ -57,7 +57,7 @@ test.describe("mobile flows", () => {
     );
 
     await bootstrapHostedPreviewBypass(page);
-    await page.goto("/predictions?band=goose");
+    await page.goto("/goose/predictions");
 
     const bandSelect = page.getByRole("combobox", { name: "Band" });
     if ((await bandSelect.count()) === 0) {
@@ -66,7 +66,7 @@ test.describe("mobile flows", () => {
     }
 
     await expect(bandSelect).toBeVisible();
-    await expect(bandSelect).toHaveValue(/\/predictions\?band=goose/);
+    await expect(bandSelect).toHaveValue("/goose/predictions");
 
     const bandBox = await bandSelect.boundingBox();
     expect(bandBox).not.toBeNull();
@@ -88,17 +88,16 @@ test.describe("mobile flows", () => {
     
     const routes = [
       "/",
-      "/predictions",
-      "/performance",
-      "/replay",
-      "/last-show",
+      "/goose",
+      "/goose/predictions",
+      "/goose/performance",
+      "/goose/replay",
       "/about",
       "/contact",
       "/data-use",
     ];
     for (const route of routes) {
       await page.goto(route);
-      await page.waitForLoadState("networkidle");
       await expectMainHeadingOrDataFallback(page);
     }
 

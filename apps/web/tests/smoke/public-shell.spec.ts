@@ -40,7 +40,7 @@ test("desktop routes render the public shell", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop-chromium", "desktop-only shell check");
 
   await bootstrapHostedPreviewBypass(page);
-  await page.goto("/");
+  await page.goto("/goose");
 
   await expect(page.getByRole("navigation", { name: "Primary navigation" })).toBeVisible();
   await expect(page.getByRole("navigation", { name: "Primary navigation" }).getByRole("link", { name: "Predictions" })).toBeVisible();
@@ -54,27 +54,16 @@ test("desktop routes render the public shell", async ({ page }, testInfo) => {
       .or(page.getByRole("heading", { name: "Band registry unavailable" }))
       .first(),
   ).toBeVisible();
-  await expect(page.locator('main a[href="/?teaser=phish"]')).toBeVisible();
+  await expect(page.locator('main a[href="/phish"]').first()).toBeVisible();
 
-  const bandPredictionLinks = page.locator('main a[href^="/predictions?band="]');
-  if ((await bandPredictionLinks.count()) > 0) {
-    await expect(bandPredictionLinks.first()).toHaveAttribute("href", /\/predictions\?band=/);
+  for (const route of ["/goose/performance", "/goose/predictions", "/goose/replay"]) {
+    await page.goto(route);
+    await expectPrimaryHeadingOrMissingEnv(page);
+    await expectSinglePrimaryHeading(page);
   }
 
-  await page.goto("/performance");
-  await expectPrimaryHeadingOrMissingEnv(page);
-  await expectSinglePrimaryHeading(page);
-
-  await page.goto("/predictions");
-  await expectPrimaryHeadingOrMissingEnv(page);
-  await expectSinglePrimaryHeading(page);
-
-  await page.goto("/replay");
-  await expectPrimaryHeadingOrMissingEnv(page);
-  await expectSinglePrimaryHeading(page);
-
-  await page.goto("/?band=goose");
-  await page.waitForURL(/\/predictions\?band=goose$/);
+  await page.goto("/");
+  await page.waitForURL(/\/[a-z0-9_-]+$/);
   await expectPrimaryHeadingOrMissingEnv(page);
   await expectSinglePrimaryHeading(page);
 
@@ -101,15 +90,93 @@ test("removed multi-model routes are unavailable", async ({ page }, testInfo) =>
     expect(response?.status()).toBe(404);
   }
 
-  await page.goto("/replay?band=goose&date=2026-01-01");
+  await page.goto("/goose/replay/2026-01-01");
   await expectPrimaryHeadingOrMissingEnv(page);
+});
+
+test("unknown bands and malformed replay dates return 404", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop-chromium", "desktop-only route check");
+
+  await bootstrapHostedPreviewBypass(page);
+
+  for (const route of ["/not-a-band", "/not-a-band/predictions", "/goose/replay/not-a-date"]) {
+    const response = await page.goto(route);
+    expect(response?.status(), route).toBe(404);
+  }
+});
+
+test("legacy URLs permanently redirect to band paths", async ({ request }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop-chromium", "desktop-only route check");
+
+  const redirects: Array<[string, RegExp]> = [
+    ["/?band=phish", /\/phish$/],
+    ["/predictions?band=phish", /\/phish\/predictions$/],
+    ["/performance?band=phish&k=25&metric=hits", /\/phish\/performance\?k=25&metric=hits$/],
+    ["/replay?band=phish&date=2026-01-01", /\/phish\/replay\/2026-01-01$/],
+    ["/last-show?band=phish", /\/phish\/replay$/],
+    ["/predictions", /\/goose\/predictions$/],
+  ];
+
+  for (const [legacyUrl, expectedLocation] of redirects) {
+    const response = await request.get(legacyUrl, { maxRedirects: 0 });
+    expect(response.status(), legacyUrl).toBe(308);
+    expect(response.headers()["location"], legacyUrl).toMatch(expectedLocation);
+  }
+});
+
+test("the selected band carries across pages", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop-chromium", "desktop-only navigation check");
+
+  await bootstrapHostedPreviewBypass(page);
+  await page.goto("/goose/predictions");
+
+  const bandLinks = page.locator('main a[href$="/predictions"]');
+  // Without a band registry (e.g. missing env locally) there is no picker to use.
+  test.skip((await bandLinks.count()) < 2, "band registry unavailable in this environment");
+
+  const otherBand = page
+    .locator('main a[href$="/predictions"]:not([aria-current="page"])')
+    .first();
+  const otherHref = (await otherBand.getAttribute("href")) ?? "";
+  const otherSlug = otherHref.split("/")[1];
+  await otherBand.click();
+  await page.waitForURL(`**/${otherSlug}/predictions`);
+
+  const nav = page.getByRole("navigation", { name: "Primary navigation" });
+  await nav.getByRole("link", { name: "Performance" }).click();
+  await page.waitForURL(`**/${otherSlug}/performance`);
+  await expect(nav.getByRole("link", { name: "Performance" })).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
+
+  await nav.getByRole("link", { name: "Replay" }).click();
+  await page.waitForURL(`**/${otherSlug}/replay`);
+});
+
+test("performance toggles update the URL without a navigation", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop-chromium", "desktop-only toggle check");
+
+  await bootstrapHostedPreviewBypass(page);
+  await page.goto("/goose/performance");
+
+  const top25 = page.getByRole("button", { name: "Top 25", pressed: false });
+  test.skip((await top25.count()) === 0, "performance data unavailable in this environment");
+
+  await top25.click();
+  await expect(page.getByRole("button", { name: "Top 25", pressed: true })).toBeVisible();
+  await expect(page).toHaveURL(/\/goose\/performance\?k=25$/);
+
+  await page.goto("/goose/performance?k=50&metric=hits");
+  await expect(page.getByRole("button", { name: "Top 50", pressed: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Hits", pressed: true })).toBeVisible();
 });
 
 test("mobile navigation uses thumb-first ordering", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "mobile-chromium", "mobile-only shell check");
 
   await bootstrapHostedPreviewBypass(page);
-  await page.goto("/");
+  await page.goto("/goose");
 
   const mobileNav = page.getByRole("navigation", { name: "Mobile navigation" });
   await expect(mobileNav).toBeVisible();
@@ -130,42 +197,38 @@ test("internal table preview is hidden outside development", async ({ page }, te
   expect(response?.status()).toBe(404);
 });
 
-test("every active band renders predictions, last show, and replay without query errors", async ({ page }, testInfo) => {
+test("every active band renders predictions, replay, and performance without query errors", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop-chromium", "desktop-only band sweep");
   test.setTimeout(180_000);
 
   await bootstrapHostedPreviewBypass(page);
-  await page.goto("/");
+  await page.goto("/goose");
 
-  // The home page lists every active band as /predictions?band=<slug>.
+  // The overview lists every active band as /<slug>.
   const hrefs = await page
-    .locator('a[href^="/predictions?band="]')
+    .locator('main a[href^="/"]')
     .evaluateAll((links) => links.map((link) => link.getAttribute("href") ?? ""));
   const bandSlugs = [
-    ...new Set(
-      hrefs.map((href) => new URL(href, "http://x").searchParams.get("band") ?? ""),
-    ),
-  ].filter(Boolean);
+    ...new Set(hrefs.filter((href) => /^\/[a-z0-9_-]+$/.test(href)).map((href) => href.slice(1))),
+  ].filter((slug) => !["about", "contact", "data-use"].includes(slug));
 
   // No bands means the registry could not load (e.g. missing env locally).
   test.skip(bandSlugs.length === 0, "band registry unavailable in this environment");
 
   for (const band of bandSlugs) {
-    for (const route of ["/predictions", "/last-show", "/replay"]) {
-      await page.goto(`${route}?band=${encodeURIComponent(band)}`);
+    for (const route of ["predictions", "performance", "replay"]) {
+      await page.goto(`/${encodeURIComponent(band)}/${route}`);
       await expectPrimaryHeadingOrMissingEnv(page);
 
-      const failures = page
-        .getByRole("heading", { name: /query failed/i })
-        .or(page.getByRole("heading", { name: "Band not found" }));
-      await expect(failures, `${band}${route}`).toHaveCount(0);
+      const failures = page.getByRole("heading", { name: /query failed/i });
+      await expect(failures, `${band}/${route}`).toHaveCount(0);
     }
 
-    await page.goto(`/last-show?band=${encodeURIComponent(band)}`);
+    await page.goto(`/${encodeURIComponent(band)}/replay`);
     // Setlist rows render as table rows; the header row is not a song.
     await expect(
       page.locator("main table tbody tr").first(),
-      `${band} /last-show shows at least one song`,
+      `${band} replay shows at least one song`,
     ).toBeVisible();
   }
 });

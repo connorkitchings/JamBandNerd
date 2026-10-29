@@ -4,11 +4,14 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { DESKTOP_NAV_ITEMS, isActivePath } from "@/lib/navigation";
+import { buildNavLinks } from "@/lib/navigation";
 import { SITE_NAME } from "@/lib/site";
+import { useCurrentBand } from "@/lib/use-current-band";
 
 export function SiteHeader() {
   const pathname = usePathname();
+  const band = useCurrentBand();
+  const navLinks = buildNavLinks(band, pathname);
 
   return (
     <nav
@@ -22,7 +25,7 @@ export function SiteHeader() {
           </div>
 
           <Link
-            href="/"
+            href={`/${band}`}
             className="absolute inset-y-0 left-12 right-12 flex items-center justify-center gap-2 rounded-full font-headline font-bold tracking-[-0.1em] text-on-background focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
           >
             <Image
@@ -40,7 +43,7 @@ export function SiteHeader() {
 
         <div className="hidden min-w-0 items-center justify-between gap-6 md:flex">
           <Link
-            href="/"
+            href={`/${band}`}
             className="flex shrink-0 items-center gap-3 rounded-full font-headline font-bold uppercase tracking-[-0.06em] text-on-background focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
           >
             <Image
@@ -55,12 +58,13 @@ export function SiteHeader() {
 
           <div className="min-w-0 flex-1 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <div className="flex min-w-max items-center justify-end gap-2">
-              {DESKTOP_NAV_ITEMS.map((link) => {
-                const isActive = isActivePath(pathname, link.matches);
+              {navLinks.map((link) => {
+                const isActive = link.active;
                 return (
                   <Link
                     key={link.href}
                     href={link.href}
+                    aria-current={isActive ? "page" : undefined}
                     className={`inline-flex h-10 items-center justify-center rounded-full border px-4 font-headline text-xs uppercase tracking-[0.16rem] transition duration-200 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none ${
                       isActive
                         ? "border-primary/25 bg-primary/12 text-primary shadow-[0_0_0_1px_rgba(255,191,105,0.08)]"

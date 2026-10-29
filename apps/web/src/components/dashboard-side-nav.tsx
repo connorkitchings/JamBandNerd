@@ -1,36 +1,26 @@
 import { BandPillGrid } from "@/components/band-pill-grid";
 import { MobileControlSelects } from "@/components/mobile-control-selects";
+import { bandPath, type BandPage } from "@/lib/band-routes";
 import type { BandSlug } from "@/lib/config";
 import type { BandEntry } from "@/lib/data";
 
 type Props = {
   band: BandSlug;
   bands: BandEntry[];
-  pathname?: string;
-  bandLinks?: Array<{
-    href: string;
-    label: string;
-    active: boolean;
-  }>;
+  /** Page the band picker keeps the visitor on when switching bands. */
+  page: BandPage;
 };
 
-function buildHref(pathname: string, band: BandSlug) {
-  return `${pathname}?band=${band}`;
-}
+export function DashboardSideNav({ band, bands, page }: Props) {
+  if (bands.length === 0) {
+    return null;
+  }
 
-export function DashboardSideNav({
-  band,
-  bands,
-  pathname = "/predictions",
-  bandLinks,
-}: Props) {
-  const renderedBandLinks =
-    bandLinks ??
-    bands.map((item) => ({
-      href: buildHref(pathname, item.slug),
-      label: item.displayName,
-      active: item.slug === band,
-    }));
+  const renderedBandLinks = bands.map((item) => ({
+    href: bandPath(item.slug, page),
+    label: item.displayName,
+    active: item.slug === band,
+  }));
 
   const mobileGroups = [
     {

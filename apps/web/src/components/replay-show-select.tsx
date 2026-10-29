@@ -1,8 +1,9 @@
 "use client";
 
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 
+import { bandPath } from "@/lib/band-routes";
 import { formatMMDDYYYY } from "@/lib/format";
 
 type Props = {
@@ -14,7 +15,6 @@ type Props = {
 };
 
 export function ReplayShowSelect({ band, selectedDate, options }: Props) {
-  const pathname = usePathname();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
@@ -34,7 +34,7 @@ export function ReplayShowSelect({ band, selectedDate, options }: Props) {
           }
 
           startTransition(() => {
-            router.push(`${pathname}?band=${band}&date=${nextDate}`, {
+            router.push(bandPath(band, "replay", nextDate), {
               scroll: false,
             });
           });
