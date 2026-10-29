@@ -38,9 +38,9 @@ This repository cannot enforce those remote GitHub settings from code alone, so 
 ## Post-deploy verification
 
 - `/`
-- `/predictions`
-- `/performance`
-- `/last-show`
+- `/goose/predictions`
+- `/goose/performance`
+- `/goose/replay`
 - `/about`
 - `/contact`
 - `/data-use`

@@ -1,26 +1,38 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { DESKTOP_NAV_ITEMS, MOBILE_NAV_ITEMS } from "../../src/lib/navigation.ts";
+import { buildNavLinks, NAV_ITEMS } from "../../src/lib/navigation.ts";
 
-test("desktop navigation exposes only public single-model routes", () => {
+test("navigation exposes only public single-model routes", () => {
   assert.deepEqual(
-    DESKTOP_NAV_ITEMS.map((item) => item.label),
+    NAV_ITEMS.map((item) => item.label),
     ["Home", "Predictions", "Performance", "Replay"],
   );
   assert.equal(
-    DESKTOP_NAV_ITEMS.some((item) => /compare/i.test(item.label) || item.href === "/compare"),
+    NAV_ITEMS.some((item) => /compare/i.test(item.label) || /compare/i.test(item.page)),
     false,
   );
 });
 
-test("mobile navigation matches desktop navigation ordering", () => {
+test("nav links are built from the current band", () => {
+  const links = buildNavLinks("phish", "/phish/predictions");
+
   assert.deepEqual(
-    MOBILE_NAV_ITEMS.map((item) => item.mobileLabel),
-    DESKTOP_NAV_ITEMS.map((item) => item.mobileLabel),
+    links.map((link) => link.href),
+    ["/phish", "/phish/predictions", "/phish/performance", "/phish/replay"],
   );
-  assert.equal(
-    MOBILE_NAV_ITEMS.some((item) => /compare/i.test(item.mobileLabel) || item.href === "/compare"),
-    false,
-  );
+});
+
+test("only the link for the current page is active", () => {
+  const active = (pathname: string) =>
+    buildNavLinks("goose", pathname)
+      .filter((link) => link.active)
+      .map((link) => link.label);
+
+  assert.deepEqual(active("/goose"), ["Home"]);
+  assert.deepEqual(active("/goose/performance"), ["Performance"]);
+  assert.deepEqual(active("/goose/replay"), ["Replay"]);
+  assert.deepEqual(active("/goose/replay/2026-01-01"), ["Replay"]);
+  assert.deepEqual(active("/about"), []);
+  assert.deepEqual(active("/phish/predictions"), []);
 });

@@ -1,29 +1,22 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
+export type KSelection = 10 | 25 | 50;
 
 type Props = {
-  currentK: 10 | 25 | 50;
+  currentK: KSelection;
+  onChange: (k: KSelection) => void;
 };
 
 function getKTextColor(k: 10 | 25 | 50) {
   return k === 10 ? "text-primary" : k === 25 ? "text-tertiary" : "text-tier-top50";
 }
 
-export function KToggle({ currentK }: Props) {
-  const router = useRouter();
-  const searchParams = useSearchParams();
+export function KToggle({ currentK, onChange: setK }: Props) {
   const kOptions: Array<{ value: 10 | 25 | 50; label: string }> = [
     { value: 10, label: "Top 10" },
     { value: 25, label: "Top 25" },
     { value: 50, label: "Top 50" },
   ];
-
-  function setK(k: 10 | 25 | 50) {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("k", String(k));
-    router.push(`?${params}`, { scroll: false });
-  }
 
   function handleKeyDown(e: React.KeyboardEvent, k: 10 | 25 | 50) {
     if (e.key === "Enter" || e.key === " ") {

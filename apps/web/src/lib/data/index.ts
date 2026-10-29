@@ -32,6 +32,9 @@ export {
   resolveBandSelection,
 } from "./bands";
 
+// --- Band page resolution ---
+export { resolveBandPage } from "./resolve-band-page";
+
 // --- Predictions ---
 export {
   getLatestPredictions,

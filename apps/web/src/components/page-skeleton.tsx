@@ -1,4 +1,5 @@
-export default function Loading() {
+/** Placeholder shown while a band page's request-time content streams in. */
+export function PageSkeleton() {
   return (
     <div className="mx-auto max-w-6xl space-y-6" aria-live="polite" aria-busy="true">
       <section className="editorial-panel animate-pulse px-6 py-8 md:px-8 md:py-10">

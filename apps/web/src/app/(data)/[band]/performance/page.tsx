@@ -1,33 +1,26 @@
 import type { Metadata } from "next";
+import { connection } from "next/server";
 import { Suspense } from "react";
+
 import { AccuracyTable } from "@/components/accuracy-table";
-import { ChartMetricToggle, type ChartMetric } from "@/components/chart-metric-toggle";
 import { DashboardSideNav } from "@/components/dashboard-side-nav";
 import { DataGate } from "@/components/data-gate";
-import { DataState } from "@/components/data-state";
 import { ExpandablePanel } from "@/components/expandable-panel";
-import { KToggle } from "@/components/k-toggle";
 import { PageHero } from "@/components/page-hero";
-import { RecallChart } from "@/components/recall-chart";
+import { PageSkeleton } from "@/components/page-skeleton";
+import { PerformanceChartPanel } from "@/components/performance-chart-panel";
 import { SectionCard } from "@/components/section-card";
-import { getBands, getRecentAccuracy, bandEntryBySlug, resolveBandSelection } from "@/lib/data";
+import { getRecentAccuracy, resolveBandPage } from "@/lib/data";
 import { getEasternTodayIso } from "@/lib/show-status";
 import { average, formatAvgHits, formatMMDDYYYY, formatHits, formatPercent } from "@/lib/format";
 
 type Props = {
-  searchParams: Promise<{
-    band?: string;
-    k?: string;
-    metric?: string;
-  }>;
+  params: Promise<{ band: string }>;
 };
 
-export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
-  const params = await searchParams;
-  const bandsResult = await getBands();
-  const bands = bandsResult.status === "ready" ? bandsResult.bands : [];
-  const bandSelection = resolveBandSelection(bands, params.band);
-  const bandName = bandSelection.bandEntry?.displayName ?? bandSelection.requestedSlug;
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { bandEntry } = await resolveBandPage((await params).band);
+  const bandName = bandEntry.displayName;
 
   return {
     title: `${bandName} Performance Ledger | JamBandNerd`,
@@ -35,22 +28,12 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
   };
 }
 
-type KSelection = 10 | 25 | 50;
 type PerformanceMetric = {
   label: string;
   coverage: number | null;
   avgHits: number | null;
   k: 10 | 25 | 50;
 };
-
-function normalizeK(value?: string): KSelection {
-  const n = Number(value);
-  return n === 25 || n === 50 ? n : 10;
-}
-
-function normalizeChartMetric(value?: string): ChartMetric {
-  return value === "hits" ? "hits" : "coverage";
-}
 
 function PerformanceMetricCard({
   metric,
@@ -153,23 +136,23 @@ function LatestMetricSnapshot({
   );
 }
 
-export default async function PerformancePage({ searchParams }: Props) {
-  const params = await searchParams;
-  const bandsResult = await getBands();
-  const bands = bandsResult.status === "ready" ? bandsResult.bands : [];
-  const bandSelection = resolveBandSelection(bands, params.band);
-  if (bandsResult.status === "ready" && bandSelection.isInvalid) {
-    return (
-      <DataState
-        title="Band not found"
-        body={`No active band found for slug "${bandSelection.requestedSlug}". Select a supported band from the navigation.`}
-      />
-    );
-  }
+export default async function PerformancePage({ params }: Props) {
+  const { band, bandEntry, bands } = await resolveBandPage((await params).band);
 
-  const selectedBand =
-    bandsResult.status === "ready" ? bandSelection.bandEntry?.slug : params.band;
-  const state = await getRecentAccuracy(selectedBand, 50, getEasternTodayIso());
+  return (
+    <div className="mx-auto max-w-6xl space-y-6">
+      <DashboardSideNav band={band} bands={bands} page="performance" />
+      <Suspense fallback={<PageSkeleton />}>
+        <PerformanceContent band={band} bandName={bandEntry.displayName} />
+      </Suspense>
+    </div>
+  );
+}
+
+async function PerformanceContent({ band, bandName }: { band: string; bandName: string }) {
+  // The accuracy window is keyed on today's date, so it is resolved per request.
+  await connection();
+  const state = await getRecentAccuracy(band, 50, getEasternTodayIso());
 
   if (state.status !== "ready") {
     return (
@@ -182,11 +165,6 @@ export default async function PerformancePage({ searchParams }: Props) {
       />
     );
   }
-
-  const bandEntry = bandEntryBySlug(bands, state.band);
-  const bandName = bandEntry?.displayName ?? state.band;
-  const k = normalizeK(params.k);
-  const chartMetric = normalizeChartMetric(params.metric);
 
   const recall10Values: Array<number | null> = [];
   const recall25Values: Array<number | null> = [];
@@ -239,13 +217,7 @@ export default async function PerformancePage({ searchParams }: Props) {
   ];
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
-      <DashboardSideNav
-        band={state.band}
-        bands={bands}
-        pathname="/performance"
-      />
-
+    <>
       <PageHero
         kicker="Accuracy desk"
         title={
@@ -303,27 +275,7 @@ export default async function PerformancePage({ searchParams }: Props) {
               Each dot is one scored show. The dashed line marks the average across the retained window.
             </p>
           </div>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-[auto_auto] sm:items-start lg:justify-end">
-            <div className="space-y-1.5">
-              <p className="font-label text-[9px] font-semibold uppercase tracking-[0.18em] text-on-surface-variant">
-                Measure
-              </p>
-              <Suspense fallback={null}>
-                <ChartMetricToggle currentMetric={chartMetric} />
-              </Suspense>
-            </div>
-            <div className="space-y-1.5">
-              <p className="font-label text-[9px] font-semibold uppercase tracking-[0.18em] text-on-surface-variant">
-                Prediction Group
-              </p>
-              <Suspense fallback={null}>
-                <KToggle currentK={k} />
-              </Suspense>
-            </div>
-          </div>
-        </div>
-        <div className="mt-5">
-          <RecallChart rows={state.rows} k={k} metric={chartMetric} />
+          <PerformanceChartPanel rows={state.rows} />
         </div>
       </section>
 
@@ -395,6 +347,6 @@ export default async function PerformancePage({ searchParams }: Props) {
           <AccuracyTable rows={state.rows} band={state.band} />
         </div>
       </SectionCard>
-    </div>
+    </>
   );
 }

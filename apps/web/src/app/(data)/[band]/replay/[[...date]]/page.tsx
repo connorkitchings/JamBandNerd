@@ -1,21 +1,22 @@
 import type { Metadata } from "next";
+import { connection } from "next/server";
+import { Suspense } from "react";
 
 import { DashboardSideNav } from "@/components/dashboard-side-nav";
 import { DataGate } from "@/components/data-gate";
 import { DataState } from "@/components/data-state";
 import { PageHero } from "@/components/page-hero";
+import { PageSkeleton } from "@/components/page-skeleton";
 import { ReplayShowSelect } from "@/components/replay-show-select";
 import { SectionCard } from "@/components/section-card";
 import { SetlistColumns } from "@/components/setlist-columns";
 import { SongBoard } from "@/components/song-board";
 import {
-  bandEntryBySlug,
-  getBands,
   getPredictionsForDate,
   getRecentAccuracy,
   getSetlistForDate,
   getShowDetailsByDate,
-  resolveBandSelection,
+  resolveBandPage,
 } from "@/lib/data";
 import {
   buildLocationLabel,
@@ -30,49 +31,59 @@ import {
 import { getEasternTodayIso } from "@/lib/show-status";
 
 type Props = {
-  searchParams: Promise<{
-    band?: string;
-    date?: string;
-  }>;
+  params: Promise<{ band: string; date?: string[] }>;
 };
 
-export async function generateMetadata({
-  searchParams,
-}: Props): Promise<Metadata> {
-  const params = await searchParams;
-  const bandsResult = await getBands();
-  const bands = bandsResult.status === "ready" ? bandsResult.bands : [];
-  const bandSelection = resolveBandSelection(bands, params.band);
-  const bandName =
-    bandSelection.bandEntry?.displayName ?? bandSelection.requestedSlug;
-  const dateLabel = params.date
-    ? ` (${formatMMDDYYYY(params.date)})`
-    : "";
+// The band segment is prerendered by the parent layout; only the bare
+// `/<band>/replay` (latest show) is prerendered. Dated replays render on demand.
+export async function generateStaticParams() {
+  return [{ date: [] }];
+}
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { band, date } = await params;
+  const { bandEntry } = await resolveBandPage(band);
+  const requestedDate = date?.[0];
+  const dateLabel = requestedDate ? ` (${formatMMDDYYYY(requestedDate)})` : "";
 
   return {
-    title: `${bandName} Replay${dateLabel} | JamBandNerd`,
-    description: `Review a retained ${bandName} prediction board against the actual setlist for a completed show.`,
+    title: `${bandEntry.displayName} Replay${dateLabel} | JamBandNerd`,
+    description: `Review a retained ${bandEntry.displayName} prediction board against the actual setlist for a completed show.`,
   };
 }
 
-export default async function ReplayPage({ searchParams }: Props) {
-  const params = await searchParams;
-  const bandsResult = await getBands();
-  const bands = bandsResult.status === "ready" ? bandsResult.bands : [];
-  const bandSelection = resolveBandSelection(bands, params.band);
+export default async function ReplayPage({ params }: Props) {
+  const { band, date } = await params;
+  const { bandEntry, bands } = await resolveBandPage(band);
+  // The layout has already rejected malformed date segments.
+  const requestedDate = date?.[0];
 
-  if (bandsResult.status === "ready" && bandSelection.isInvalid) {
-    return (
-      <DataState
-        title="Band not found"
-        body={`No active band found for slug "${bandSelection.requestedSlug}". Select a supported band from the navigation.`}
-      />
-    );
-  }
+  return (
+    <div className="mx-auto max-w-6xl space-y-6">
+      <DashboardSideNav band={band} bands={bands} page="replay" />
+      <Suspense fallback={<PageSkeleton />}>
+        <ReplayContent
+          band={band}
+          bandName={bandEntry.displayName}
+          requestedDate={requestedDate}
+        />
+      </Suspense>
+    </div>
+  );
+}
 
-  const selectedBand =
-    bandsResult.status === "ready" ? bandSelection.bandEntry?.slug : params.band;
-  const accuracyState = await getRecentAccuracy(selectedBand, 50, getEasternTodayIso());
+async function ReplayContent({
+  band,
+  bandName,
+  requestedDate,
+}: {
+  band: string;
+  bandName: string;
+  requestedDate: string | undefined;
+}) {
+  // The replay window is keyed on today's date, so it is resolved per request.
+  await connection();
+  const accuracyState = await getRecentAccuracy(band, 50, getEasternTodayIso());
 
   if (accuracyState.status !== "ready") {
     return (
@@ -94,8 +105,8 @@ export default async function ReplayPage({ searchParams }: Props) {
     ),
   ].map((showDate) => ({ showDate }));
   const selectedDate =
-    availableShows.some((show) => show.showDate === params.date)
-      ? params.date
+    availableShows.some((show) => show.showDate === requestedDate)
+      ? requestedDate
       : availableShows[0]?.showDate;
 
   if (!selectedDate) {
@@ -125,8 +136,6 @@ export default async function ReplayPage({ searchParams }: Props) {
     );
   }
 
-  const bandEntry = bandEntryBySlug(bands, accuracyState.band);
-  const bandName = bandEntry?.displayName ?? accuracyState.band;
   const show = showState.status === "ready" ? showState.show : null;
   const actualSongs = new Set(
     (setlist?.songs ?? []).map((song) => normalizeSongName(song.songName)),
@@ -141,13 +150,7 @@ export default async function ReplayPage({ searchParams }: Props) {
   ]);
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
-      <DashboardSideNav
-        band={accuracyState.band}
-        bands={bands}
-        pathname="/replay"
-      />
-
+    <>
       <PageHero
         kicker="Replay"
         title={
@@ -267,6 +270,6 @@ export default async function ReplayPage({ searchParams }: Props) {
           <SongBoard rows={rows} highlightSongs={actualSongs} />
         </SectionCard>
       </div>
-    </div>
+    </>
   );
 }

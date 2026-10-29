@@ -43,7 +43,7 @@ export function MobileControlSelects({ groups }: Props) {
                 id={selectId}
                 className="min-h-12 w-full appearance-none rounded-2xl border border-outline-variant/35 bg-surface/80 px-4 py-3 pr-11 text-center text-sm text-on-surface outline-none transition focus:border-primary/45 focus:bg-surface-container"
                 data-testid={group.testId}
-                defaultValue={selectedHref}
+                value={selectedHref}
                 disabled={isPending || group.options.length === 0}
                 onChange={(event) => {
                   const nextHref = event.target.value;

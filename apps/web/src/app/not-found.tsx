@@ -1,5 +1,8 @@
 import Link from "next/link";
 
+import { bandPath } from "@/lib/band-routes";
+import { DEFAULT_BAND_SLUG } from "@/lib/config";
+
 export default function NotFound() {
   return (
     <div className="mx-auto max-w-6xl">
@@ -15,7 +18,7 @@ export default function NotFound() {
           to the live prediction board.
         </p>
         <Link
-          href="/predictions"
+          href={bandPath(DEFAULT_BAND_SLUG, "predictions")}
           className="mt-6 inline-flex min-h-11 items-center justify-center rounded-full border border-primary/30 bg-primary/12 px-5 py-2.5 font-headline text-xs font-bold uppercase tracking-[0.14rem] text-primary transition hover:border-primary hover:bg-primary/16 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
         >
           View predictions
