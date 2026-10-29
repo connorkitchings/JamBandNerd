@@ -114,7 +114,7 @@ test("legacy URLs permanently redirect to band paths", async ({ request }, testI
     ["/performance?band=phish&k=25&metric=hits", /\/phish\/performance\?k=25&metric=hits$/],
     ["/replay?band=phish&date=2026-01-01", /\/phish\/replay\/2026-01-01$/],
     ["/last-show?band=phish", /\/phish\/replay$/],
-    ["/predictions", /\/goose\/predictions$/],
+    ["/predictions", /\/wsp\/predictions$/],
   ];
 
   for (const [legacyUrl, expectedLocation] of redirects) {
@@ -124,7 +124,33 @@ test("legacy URLs permanently redirect to band paths", async ({ request }, testI
   }
 });
 
-test("the selected band carries across pages", async ({ page }, testInfo) => {
+test("the root redirects to the remembered band, defaulting to WSP", async ({ page, request }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop-chromium", "desktop-only route check");
+
+  const first = await request.get("/", { maxRedirects: 0 });
+  expect(first.status()).toBe(307);
+  expect(first.headers()["location"]).toMatch(/\/wsp$/);
+  expect(first.headers()["cache-control"]).toContain("no-store");
+
+  const garbage = await request.get("/", {
+    headers: { cookie: "jbn-band=../x" },
+    maxRedirects: 0,
+  });
+  expect(garbage.status()).toBe(307);
+  expect(garbage.headers()["location"]).toMatch(/\/wsp$/);
+
+  await bootstrapHostedPreviewBypass(page);
+  await page.goto("/phish");
+  await expect
+    .poll(async () => (await page.context().cookies()).find((c) => c.name === "jbn-band")?.value)
+    .toBe("phish");
+
+  const remembered = await page.context().request.get("/", { maxRedirects: 0 });
+  expect(remembered.status()).toBe(307);
+  expect(remembered.headers()["location"]).toMatch(/\/phish$/);
+});
+
+test("the selected band carries across pages",async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop-chromium", "desktop-only navigation check");
 
   await bootstrapHostedPreviewBypass(page);

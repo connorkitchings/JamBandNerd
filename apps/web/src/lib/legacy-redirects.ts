@@ -26,8 +26,8 @@ const PAGE_BY_LEGACY_PATH: Record<string, BandPage> = {
  * Returns the redirect target for an old-style URL, or `null` when the request
  * is not a legacy URL (or carries an unusable band, which should simply 404).
  *
- * A bare `/` is intentionally not redirected here: the default band can change,
- * and a permanent redirect for the site root would be cached by browsers.
+ * A bare `/` without `?band=` is intentionally not redirected here (see
+ * `getRootRedirect`): its target depends on the visitor, so it is never permanent.
  */
 export function getLegacyRedirect(
   pathname: string,
@@ -73,4 +73,26 @@ export function getLegacyRedirect(
     pathname: bandPath(band, page, showDate),
     search: search ? `?${search}` : "",
   };
+}
+
+export type RootRedirect = LegacyRedirect & { permanent: boolean };
+
+/**
+ * Decides where a request for exactly `/` goes. An explicit `?band=` is a legacy
+ * URL and wins (permanent). Otherwise the visitor's remembered band cookie is used
+ * when well-formed, falling back to the default band (temporary, since the answer
+ * differs per visitor). A cookie naming a band that no longer exists lands on the
+ * band 404 page, which links back to the default band.
+ */
+export function getRootRedirect(
+  searchParams: URLSearchParams,
+  cookieBand: string | undefined,
+  defaultBand: string = DEFAULT_BAND_SLUG,
+): RootRedirect | null {
+  if (searchParams.get("band")?.trim()) {
+    const legacy = getLegacyRedirect("/", searchParams, defaultBand);
+    return legacy && { ...legacy, permanent: true };
+  }
+  const band = cookieBand && isBandSlug(cookieBand) ? cookieBand : defaultBand;
+  return { pathname: bandPath(band), search: "", permanent: false };
 }

@@ -5,7 +5,8 @@ active product surface and operating path.
 
 Current route split:
 
-- `/` redirects to the default band's overview (`/goose`); the default band can change, so this is a temporary (307) redirect
+- `/` redirects (307, `Cache-Control: private, no-store`) in `src/proxy.ts` to the last band the visitor viewed, read from the `jbn-band` cookie, and falls back to the default band's overview (`/wsp`) on a first visit or an invalid cookie. A cookie naming a band that no longer exists lands on the band 404 page, which links to the default band
+- The `jbn-band` cookie (set client-side by `src/components/remember-band.tsx`) stores the last viewed band, only on the visitor's device, with no tracking; the theme choice lives in `localStorage` key `jbn-theme`
 - `/<band>` is the band overview and product entry page
 - `/<band>/predictions` is the primary live dashboard for repeat use
 - `/<band>/performance` is the historical accuracy surface (`?k=` and `?metric=` preselect the chart toggles)

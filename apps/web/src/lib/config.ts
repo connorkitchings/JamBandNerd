@@ -1,4 +1,4 @@
-export const DEFAULT_BAND_SLUG = "goose";
+export const DEFAULT_BAND_SLUG = "wsp";
 
 export type BandSlug = string;
 

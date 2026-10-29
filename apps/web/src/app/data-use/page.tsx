@@ -39,6 +39,15 @@ export default function DataUsePage() {
         </ul>
       </SectionCard>
 
+      <SectionCard title="Preferences On Your Device">
+        <p className="text-sm text-on-surface-variant">
+          A cookie named <code>jbn-band</code> stores the last band you viewed, and your
+          theme choice is kept in browser storage under <code>jbn-theme</code>. Both stay
+          on your device, are used only to restore your preferences, and are not used for
+          tracking.
+        </p>
+      </SectionCard>
+
       <SectionCard title="How The Product Is Positioned">
         <div className="space-y-4 text-sm text-on-surface-variant">
           <p>

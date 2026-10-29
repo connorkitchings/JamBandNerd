@@ -1,3 +1,4 @@
+import { RememberBand } from "@/components/remember-band";
 import { DEFAULT_BAND_SLUG } from "@/lib/config";
 import { getBands, resolveBandPage } from "@/lib/data";
 
@@ -21,7 +22,13 @@ export default async function BandLayout({
 }) {
   // Resolving here, above the pages' Suspense boundaries, makes an unknown band a
   // real 404 response; once a fallback has streamed, the status is already 200.
-  await resolveBandPage((await params).band);
+  const { band } = await params;
+  await resolveBandPage(band);
 
-  return children;
+  return (
+    <>
+      <RememberBand band={band} />
+      {children}
+    </>
+  );
 }
