@@ -363,3 +363,88 @@ def test_transport_failures_redact_key_in_downstream_logs_and_terminal_trace(
     assert "apikey=REDACTED" in str(sanitized)
     assert sanitized.__cause__ is None
     assert sanitized.__suppress_context__ is True
+
+
+@pytest.mark.parametrize("band", ["goose", "phish"])
+@pytest.mark.parametrize("missing", ["empty", "no-show"])
+def test_failed_publication_followed_by_missing_data_cannot_finish_successfully(
+    polling, band, missing
+):
+    options = (
+        {"shows": [[show_payload(band)], []]}
+        if missing == "no-show"
+        else {"setlists": [[setlist_payload(band)], []]}
+    )
+    upsert, predict, _, _ = polling(band, **options)
+    predict.return_value = False
+    with pytest.raises(RuntimeError, match="pending live prediction publication"):
+        tracker.run_live_tracker(band, TARGET_DATE, interval=0, max_iterations=2)
+    upsert.assert_called_once()
+    predict.assert_called_once_with(band=band)
+
+
+@pytest.mark.parametrize("band", ["goose", "phish"])
+@pytest.mark.parametrize("failed_polls", [1, 2])
+def test_failed_publications_at_exhaustion_fail_after_earlier_success(
+    polling, band, failed_polls
+):
+    first = [setlist_payload(band)]
+    changed = [setlist_payload(band, "Corrected Song")]
+    upsert, predict, _, _ = polling(band, setlists=[first] + [changed] * failed_polls)
+    predict.side_effect = [True] + [False] * failed_polls
+    with pytest.raises(RuntimeError, match="pending live prediction publication"):
+        tracker.run_live_tracker(
+            band, TARGET_DATE, interval=0, max_iterations=1 + failed_polls
+        )
+    assert upsert.call_count == predict.call_count == 1 + failed_polls
+
+
+@pytest.mark.parametrize("band", ["goose", "phish"])
+def test_later_publication_recovery_clears_pending_obligation(polling, band):
+    first = [setlist_payload(band)]
+    upsert, predict, _, _ = polling(band, setlists=[first, [], first, []])
+    predict.side_effect = [False, True]
+    tracker.run_live_tracker(band, TARGET_DATE, interval=0, max_iterations=4)
+    assert upsert.call_count == predict.call_count == 2
+
+
+@pytest.mark.parametrize("band", ["goose", "phish"])
+@pytest.mark.parametrize("missing", ["empty", "no-show"])
+def test_missing_data_does_not_reset_pending_publication_errors(polling, band, missing):
+    options = (
+        {"shows": [[show_payload(band)], [], [], [show_payload(band)]]}
+        if missing == "no-show"
+        else {"setlists": [[setlist_payload(band)], [], [], [setlist_payload(band)]]}
+    )
+    upsert, predict, sleep, _ = polling(band, **options)
+    predict.return_value = False
+    with pytest.raises(RuntimeError, match="three consecutive polling errors"):
+        tracker.run_live_tracker(band, TARGET_DATE, interval=0, max_iterations=4)
+    upsert.assert_called_once()
+    predict.assert_called_once()
+    assert sleep.call_count == 2
+
+
+@pytest.mark.parametrize("band", ["goose", "phish"])
+def test_uncertain_raw_write_retains_publication_obligation_through_empty_poll(
+    polling, band
+):
+    upsert, predict, _, _ = polling(band, setlists=[[setlist_payload(band)], []])
+    upsert.side_effect = RuntimeError("Database commit status unknown")
+    with pytest.raises(RuntimeError, match="pending live prediction publication"):
+        tracker.run_live_tracker(band, TARGET_DATE, interval=0, max_iterations=2)
+    upsert.assert_called_once()
+    predict.assert_not_called()
+
+
+@pytest.mark.parametrize("band", ["goose", "phish"])
+def test_pending_publication_retries_even_if_payload_returns_to_last_acknowledged_snapshot(
+    polling, band
+):
+    first = [setlist_payload(band)]
+    changed = [setlist_payload(band, "Corrected Song")]
+    upsert, predict, _, _ = polling(band, setlists=[first, changed, first])
+    predict.side_effect = [True, False, True]
+    tracker.run_live_tracker(band, TARGET_DATE, interval=0, max_iterations=3)
+    assert upsert.call_count == predict.call_count == 3
+    assert upsert.call_args.kwargs["df"].iloc[0]["song_name"] == "First Song"

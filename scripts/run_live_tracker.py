@@ -99,6 +99,7 @@ def run_live_tracker(
 
     last_setlist = None
     observed_keys = set()
+    publication_pending = False
     consecutive_errors = 0
     successful_polls = 0
     for iteration in range(max_iterations):
@@ -121,7 +122,14 @@ def run_live_tracker(
                     .sort_values(conflict_cols)
                     .reset_index(drop=True)
                 )
-                if last_setlist is None or not current_setlist.equals(last_setlist):
+                if (
+                    publication_pending
+                    or last_setlist is None
+                    or not current_setlist.equals(last_setlist)
+                ):
+                    # An interrupted write may have committed; retain the obligation
+                    # until the prediction board is successfully published.
+                    publication_pending = True
                     validate_and_upsert_dataframe(
                         table_name=table_name,
                         df=setlists_df,
@@ -136,8 +144,13 @@ def run_live_tracker(
                         raise RuntimeError(
                             "Live prediction generation did not complete"
                         )
+                    publication_pending = False
                     last_setlist = current_setlist.copy()
                     logger.info("Predictions updated for the changed setlist.")
+            if publication_pending:
+                raise RuntimeError(
+                    "Setlist unavailable while live prediction publication remains pending"
+                )
             consecutive_errors = 0
             successful_polls += 1
         except Exception as exc:
@@ -152,6 +165,10 @@ def run_live_tracker(
             logger.info("Sleeping for %ss...", interval)
             time.sleep(interval)
 
+    if publication_pending:
+        raise RuntimeError(
+            "Live tracker finished with pending live prediction publication"
+        )
     if max_iterations > 0 and successful_polls == 0:
         raise RuntimeError("Live tracker finished without a successful poll")
     logger.info("Live tracker finished (max iterations reached).")
