@@ -131,6 +131,7 @@ Collection is driven by recent activity (recent completed shows, missing recent 
   - the signal uses default-true semantics: the workflow writes `true` before running backtest, and the scorer writes `false` when it finds new shows
   - prediction freshness is always enforced regardless of backtest state
   - missing supported-model rows count as stale, not as pass
+- Daily and correction cache delivery use `scripts/revalidate_website_cache.py`: a verified HTTPS origin, no redirects, and HTTP 200 JSON confirming `revalidated=true` for the exact band are required. Only transport, HTTP 429, and HTTP 5xx failures retry (four attempts, five-second waits); rejected acknowledgements fail final delivery health without logging bodies or credentials.
 - Final status keeps `collection_workflow_state` and `collection_outcome_code` separate from overall `workflow_state` and `outcome_code`. Required generation, validation, freshness, audit, or cache failures make overall status failed even if collection succeeded. Missing required decision/audit outputs also fail. `prediction_validation_outcome` and `cache_revalidation_outcome` expose delivery health directly.
 - The workflow summary shows final per-band health, execution mode, missing-setlist counts, prediction handling, and supported-model freshness.
 - GitHub Actions YAML is the canonical daily workflow contract. Local Python helpers mirror it for operator convenience, but do not override it.
@@ -229,7 +230,7 @@ Daily smoke test against the live deployed website.
   - `workflow_dispatch` with input: `base_url` (default `https://jambandnerd.com`)
 - **Steps**: Runs `npm run test:web:smoke:hosted` with Playwright Chromium. Hosted mode requires the real active-band registry and populated prediction, performance, and replay surfaces; missing environment, query errors, empty registry/data, and page runtime failures fail verification. Only device-specific test skips remain. Local mode may skip unavailable data.
 - Browser binaries are cached in `~/.cache/ms-playwright`; OS dependencies are installed per run.
-- **Preview authentication**: The shared browser/API fixture bootstraps an origin-scoped cookie using an automation bypass token. Development OIDC does not issue that cookie, so its token is attached only to requests whose origin exactly matches the configured preview. Both paths prevent automatic credential-bearing redirects; cross-origin redirect targets are rejected. Credentials never appear in URLs or global request headers, and hosted traces are disabled. CI preview runs use the existing `VERCEL_PROTECTION_BYPASS_TOKEN` secret; local same-project previews can use `vercel env run` with `VERCEL_OIDC_TOKEN`.
+- **Preview authentication**: The shared browser/API fixture sends the existing automation bypass token to one verified preview origin without following redirects, then uses a host-scoped cookie for browser navigation and API redirect checks. Cross-origin bootstrap redirects are rejected. Credentials never appear in URLs or global request headers, and hosted traces are disabled. Protected previews require `VERCEL_PROTECTION_BYPASS_TOKEN`; use the workflow's configured GitHub secret rather than retrieving it locally. Development OIDC is not supported by this browser harness because Playwright route interception does not cover later HTTP redirect hops.
 
 ---
 

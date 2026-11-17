@@ -146,13 +146,15 @@ Set in the repository's Actions settings so `.github/workflows/daily-pipeline.ym
 
 Each collecting band's pipeline job (`Revalidate Website Cache`) sends `POST ${SITE_URL}/api/revalidate` with `Authorization: Bearer <REVALIDATE_SECRET>` and body `{ "band": "<slug>" }`. It runs after data/freshness steps, including failure paths where raw rows may already have changed. A failed call makes final band status fail while preserving the collection diagnostics. Final status artifacts are written after this delivery step. If the call fails, the site keeps serving cached data until the entry expires (up to 1 day) or the step is re-run.
 
+Both daily and correction workflows call `scripts/revalidate_website_cache.py` with step-scoped `BAND`, `SITE_URL`, and `REVALIDATE_SECRET`. The helper accepts an HTTPS origin only, disables redirects, and requires HTTP 200 JSON with `revalidated=true` and the exact requested band. It retries transport failures, HTTP 429, and HTTP 5xx up to four total attempts with five-second waits. Redirects, other statuses, invalid JSON, or a mismatched acknowledgement fail without logging response bodies, URLs, or credentials.
+
 Endpoint behavior: only `POST` is accepted (other methods return 405); a missing or wrong token returns 401; an unknown or missing `band` returns 400; on success it expires the `band:<slug>` tag immediately and returns `{ "revalidated": true, "band": "<slug>" }`.
 
 Notes:
 
 - Predictions for a show happening today (Eastern date) are never served from the cache, so the live tracker's `router.refresh()` always sees fresh rows during a show.
 - Failed or empty reads are cached for seconds or hours, not days.
-- Manual correction applies invalidate the band cache after successful retained-corpus/live refresh and validation. A direct correction CLI run reports `cache_invalidation_required=true` but leaves that request to the operator. Other writers (for example backfills) still require manual revalidation with `curl -X POST -H "Authorization: Bearer $REVALIDATE_SECRET" -d '{"band":"goose"}' "$SITE_URL/api/revalidate"` if the site needs to reflect them before the cache expires.
+- Manual correction applies invalidate the band cache after successful retained-corpus/live refresh and validation. A direct correction CLI run reports `cache_invalidation_required=true` but leaves that request to the operator. Other writers (for example backfills) still require manual revalidation with `BAND=goose uv run python scripts/revalidate_website_cache.py` after configuring `SITE_URL` and `REVALIDATE_SECRET` in the process environment if the site needs to reflect them before the cache expires.
 
 ## Vercel Project Setup
 
@@ -178,9 +180,9 @@ This keeps deployment triggering in Vercel while GitHub Actions acts as the veri
 
 Hosted verification requires real Supabase configuration and data. It fails on missing environment, unavailable/empty registry, visible query failures, page runtime errors, or absent prediction rows, accuracy charts, or replay rows for any active band. Local runs retain a missing-environment mode; hosted runs never treat it as success. Device-specific checks still skip on the opposite device project.
 
-Protected previews use one shared browser/API context. An existing automation bypass token authenticates one request to the verified preview origin, with redirects disabled; the fixture validates status and same-origin redirects before using an origin-scoped cookie. Development OIDC tokens do not issue bypass cookies, so the fixture attaches that token only to browser and API requests whose origin exactly matches the preview. Browser interception uses `route.fetch({ maxRedirects: 0 })` and fulfills the response so credentials cannot follow a redirect to another origin. Cross-origin redirect targets fail verification. Tokens never enter URLs or global headers; hosted trace recording is disabled.
+Protected previews use one shared browser/API context. The existing automation bypass token authenticates one request to the verified preview origin, with redirects disabled; the fixture validates status and same-origin redirects before using a host-scoped cookie. Browser routes and API redirect assertions share that cookie jar. Tokens never enter URLs or global headers; hosted trace recording is disabled.
 
-See Vercel's [Protection Bypass for Automation](https://vercel.com/docs/deployment-protection/methods-to-bypass-deployment-protection/protection-bypass-automation) and [Trusted Sources](https://vercel.com/docs/deployment-protection/methods-to-bypass-deployment-protection/trusted-sources) documentation for the two authentication paths. Do not disable Deployment Protection to run smoke tests.
+This uses Vercel's documented [Protection Bypass for Automation](https://vercel.com/docs/deployment-protection/methods-to-bypass-deployment-protection/protection-bypass-automation) cookie flow. Development OIDC is not a supported browser-harness mode: it does not issue the bypass cookie, and Playwright route interception only authenticates the first request in an HTTP redirect chain. Keep Deployment Protection enabled and use the existing workflow secret for protected preview verification.
 
 ## Deployment Expectations
 
@@ -198,15 +200,15 @@ After a preview or production deploy, run hosted smoke verification against the 
 SMOKE_BASE_URL=https://jambandnerd.com npm run test:web:smoke:hosted
 ```
 
-For a protected preview from a locally linked Vercel project, use short-lived development OIDC credentials without printing or persisting the token:
+For a protected preview, dispatch the existing GitHub workflow on the branch being verified so its configured secret stays in GitHub Actions:
 
 ```bash
-vercel env run -- env SMOKE_BASE_URL=https://your-preview-url.vercel.app npm run test:web:smoke:hosted
+gh workflow run hosted-web-smoke.yml --ref YOUR_BRANCH -f base_url=https://your-preview-url.vercel.app
 ```
 
-The fixture reads `VERCEL_OIDC_TOKEN` from that child process. The target preview must belong to the linked project. An existing `VERCEL_PROTECTION_BYPASS_TOKEN` supplied through the process environment takes precedence. Automation bypass authentication must establish an origin-scoped cookie. The development OIDC path authenticates each origin-matched request instead. Authentication errors, external redirects, or a missing automation bypass cookie fail verification.
+Local operators who already have their own automation bypass token may supply it through `VERCEL_PROTECTION_BYPASS_TOKEN` in the process environment and run `SMOKE_BASE_URL=https://your-preview-url.vercel.app npm run test:web:smoke:hosted`. Do not print the token, embed it in a URL, retrieve the workflow secret, or persist it in tracked files. Authentication must establish a host-scoped cookie; an error response, external redirect, or missing cookie fails before browser navigation.
 
-Use `Hosted Website Smoke` for scheduled production checks (22:00 UTC, 5 PM EST / 6 PM EDT) or ad hoc verification through its `base_url` input. Protected preview workflow runs use the existing `VERCEL_PROTECTION_BYPASS_TOKEN` GitHub secret. Public production checks need no bypass credential.
+`Hosted Website Smoke` also checks public production daily at 22:00 UTC (5 PM EST / 6 PM EDT). Its `base_url` input selects ad hoc targets. Public production checks need no bypass credential.
 
 After smoke verification, manually verify:
 
