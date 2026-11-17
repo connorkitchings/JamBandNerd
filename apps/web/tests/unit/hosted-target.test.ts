@@ -19,19 +19,16 @@ test("hosted targets normalize to an origin and reject embedded credentials or p
   }
 });
 
-test("preview bootstrap uses one selected header, never a credential URL", () => {
-  assert.deepEqual(getHostedAuthHeaders(preview, "bypass", "oidc"), {
+test("preview bootstrap uses a header and requires the automation bypass token", () => {
+  assert.deepEqual(getHostedAuthHeaders(preview, "bypass"), {
     "x-vercel-protection-bypass": "bypass", "x-vercel-set-bypass-cookie": "true",
-  });
-  assert.deepEqual(getHostedAuthHeaders(preview, undefined, "oidc"), {
-    "x-vercel-trusted-oidc-idp-token": "oidc",
   });
   assert.throws(() => getHostedAuthHeaders(preview), /Protected preview smoke requires/);
 });
 
 test("preview credentials are withheld from production and lookalike origins", () => {
   for (const target of [undefined, "https://jambandnerd.com", "https://preview.vercel.app.attacker.test"]) {
-    assert.equal(getHostedAuthHeaders(target, "bypass", "oidc"), undefined);
+    assert.equal(getHostedAuthHeaders(target, "bypass"), undefined);
   }
 });
 

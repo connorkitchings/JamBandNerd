@@ -20,28 +20,22 @@ export function requiresVercelProtectionBypass(baseUrl?: string): boolean {
 export function getHostedAuthHeaders(
   baseUrl?: string,
   bypassToken?: string,
-  oidcToken?: string,
 ): Record<string, string> | undefined {
   if (!requiresVercelProtectionBypass(baseUrl)) return undefined;
-  const header: Record<string, string> | undefined = bypassToken
-    ? { "x-vercel-protection-bypass": bypassToken }
-    : oidcToken
-      ? { "x-vercel-trusted-oidc-idp-token": oidcToken }
-      : undefined;
-  if (!header) {
-    throw new Error("Protected preview smoke requires VERCEL_PROTECTION_BYPASS_TOKEN or local VERCEL_OIDC_TOKEN from vercel env run.");
+  if (!bypassToken) {
+    throw new Error("Protected preview smoke requires VERCEL_PROTECTION_BYPASS_TOKEN; use the Hosted Website Smoke workflow with its configured secret.");
   }
-  return bypassToken ? { ...header, "x-vercel-set-bypass-cookie": "true" } : header;
+  return {
+    "x-vercel-protection-bypass": bypassToken,
+    "x-vercel-set-bypass-cookie": "true",
+  };
 }
 
 export function validateHostedAuthResponse(origin: string, status: number, location?: string) {
   if (status < 200 || status >= 400) {
     throw new Error(`Preview authentication failed with HTTP ${status}.`);
   }
-  validateHostedRedirect(origin, location);
-}
 
-export function validateHostedRedirect(origin: string, location?: string) {
   if (location && new URL(location, origin).origin !== origin) {
     throw new Error("Preview authentication redirected outside the configured origin.");
   }

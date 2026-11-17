@@ -1,5 +1,5 @@
-import { expect, test as base, type APIRequestContext, type Locator, type Page } from "@playwright/test";
-import { getHostedAuthHeaders, normalizeHostedBaseUrl, validateHostedAuthResponse, validateHostedRedirect } from "./hosted-target";
+import { expect, test as base, type Locator, type Page } from "@playwright/test";
+import { getHostedAuthHeaders, normalizeHostedBaseUrl, validateHostedAuthResponse } from "./hosted-target";
 
 export const hostedBaseUrl = normalizeHostedBaseUrl(process.env.SMOKE_BASE_URL);
 const unavailableHeading = /Supabase environment required|Band registry unavailable|query failed|^No (predictions|accuracy rows|replay history|replay dates|prediction snapshot) available$/i;
@@ -24,33 +24,11 @@ export async function requireData(page: Page, locator: Locator, reason: string, 
 const authHeaders = getHostedAuthHeaders(
   hostedBaseUrl,
   process.env.VERCEL_PROTECTION_BYPASS_TOKEN,
-  process.env.VERCEL_OIDC_TOKEN,
 );
-const usesOidc = Boolean(authHeaders?.["x-vercel-trusted-oidc-idp-token"]);
 
 export const test = base.extend({
   context: async ({ context }, runTest) => {
-    if (hostedBaseUrl && authHeaders && usesOidc) {
-      // OIDC authenticates each request; unlike bypass secrets it does not issue
-      // a cookie. Fetch without following redirects so no header crosses origins.
-      await context.route("**/*", async (route) => {
-        if (new URL(route.request().url()).origin !== hostedBaseUrl) {
-          await route.continue();
-          return;
-        }
-        let response;
-        try {
-          response = await route.fetch({
-            headers: { ...route.request().headers(), ...authHeaders },
-            maxRedirects: 0,
-          });
-        } catch {
-          throw new Error("Origin-scoped preview browser request failed.");
-        }
-        validateHostedRedirect(hostedBaseUrl, response.headers().location);
-        await route.fulfill({ response });
-      });
-    } else if (hostedBaseUrl && authHeaders) {
+    if (hostedBaseUrl && authHeaders) {
       // Bypass secrets support one bootstrap request and an origin-scoped cookie.
       let response;
       try {
@@ -73,40 +51,7 @@ export const test = base.extend({
     await runTest(context);
   },
   request: async ({ context }, runTest) => {
-    if (!hostedBaseUrl || !authHeaders || !usesOidc) {
-      await runTest(context.request);
-      return;
-    }
-    // Route handlers do not intercept APIRequestContext. Current smoke API
-    // assertions use GET only; keep the same cookie jar and scope each GET too.
-    const request = new Proxy(context.request, {
-      get(target, key) {
-        if (key === "get") {
-          const get: APIRequestContext["get"] = async (url, options = {}) => {
-            const targetUrl = new URL(url, hostedBaseUrl);
-            if (targetUrl.origin !== hostedBaseUrl) {
-              throw new Error("Preview API request is outside the configured origin.");
-            }
-            let response;
-            try {
-              response = await target.get(targetUrl.toString(), {
-                ...options,
-                headers: { ...options.headers, ...authHeaders },
-                maxRedirects: 0,
-              });
-            } catch {
-              throw new Error("Origin-scoped preview API request failed.");
-            }
-            validateHostedRedirect(hostedBaseUrl, response.headers().location);
-            return response;
-          };
-          return get;
-        }
-        const value = Reflect.get(target, key);
-        return typeof value === "function" ? value.bind(target) : value;
-      },
-    });
-    await runTest(request);
+    await runTest(context.request);
   },
   page: async ({ page }, runTest) => {
     const errors: string[] = [];
