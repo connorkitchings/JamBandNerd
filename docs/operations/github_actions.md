@@ -1,6 +1,6 @@
 # GitHub Actions
 
-This repository uses 10 GitHub Actions workflows for pipeline automation, CI quality gates, and operational monitoring.
+This repository uses 10 GitHub Actions workflows for pipeline automation, CI quality gates, and operational monitoring. Schedules below use fixed UTC times; their Eastern local times shift with daylight saving time.
 
 ## Workflow Summary
 
@@ -10,11 +10,11 @@ This repository uses 10 GitHub Actions workflows for pipeline automation, CI qua
 | Weekly Correction Sweep | `weekly-correction-sweep.yml` | Tue 13:00-18:00 UTC staggered | Yes | -- | goose, phish, eggy, billy, wsp, um |
 | Fantasy Goose | `fantasy-goose.yml` | After daily pipeline | Yes | -- | goose |
 | Backfill Predictions | `backfill-predictions.yml` | -- | Yes | -- | Active model bands |
-| Live Show Tracker | `live-tracker.yml` | -- | Yes | -- | goose, phish, wsp, billy, um |
+| Live Show Tracker | `live-tracker.yml` | -- | Yes | -- | goose, phish |
 | Repo Quality | `repo-quality.yml` | -- | -- | PR + push main | -- |
 | Website Quality | `web-quality.yml` | -- | -- | PR + push main | -- |
 | Hosted Website Smoke | `hosted-web-smoke.yml` | 22:00 UTC daily | Yes | -- | -- |
-| Dependency Audit | `dependency-audit.yml` | Mon 14:00 UTC | Yes | -- | -- |
+| Dependency Audit | `dependency-audit.yml` | Mon 14:00 UTC | Yes | Dependency paths on PR + push main | -- |
 | Test Secrets | `test_secrets.yml` | -- | Yes | -- | -- |
 
 ---
@@ -22,15 +22,19 @@ This repository uses 10 GitHub Actions workflows for pipeline automation, CI qua
 ## Weekly Correction Sweep
 
 The weekly correction sweep runs automatically on Tuesdays staggered hourly by band:
-- 13:00 UTC (9:00 AM ET) - Goose
-- 14:00 UTC (10:00 AM ET) - Phish
-- 15:00 UTC (11:00 AM ET) - Eggy
-- 16:00 UTC (12:00 PM ET) - Billy Strings
-- 17:00 UTC (1:00 PM ET) - Widespread Panic
-- 18:00 UTC (2:00 PM ET) - Umphrey's McGee
+- 13:00 UTC (8:00 AM EST / 9:00 AM EDT) - Goose
+- 14:00 UTC (9:00 AM EST / 10:00 AM EDT) - Phish
+- 15:00 UTC (10:00 AM EST / 11:00 AM EDT) - Eggy
+- 16:00 UTC (11:00 AM EST / 12:00 PM EDT) - Billy Strings
+- 17:00 UTC (12:00 PM EST / 1:00 PM EDT) - Widespread Panic
+- 18:00 UTC (1:00 PM EST / 2:00 PM EDT) - Umphrey's McGee
 
-The sweep completes by 19:00 UTC, avoiding queue contention with the daily pipeline at 19:00 UTC.
+Staggering reduces queue contention. The last scheduled band starts at 18:00 UTC and jobs allow 90 minutes, so a long sweep can overlap the daily pipeline at 19:00 UTC.
 Band selection for scheduled runs uses the cron expression (`github.event.schedule`) rather than the current wall-clock time, so runner startup delays do not misroute bands.
+
+Scheduled sweeps always detect without applying. Only a manual dispatch with `dry_run=false` writes corrections. After confirmed raw writes for an active model band, the script rebuilds its retained last-50 corpus with `incremental=False`, regenerates live predictions when an upcoming show exists, then validates predictions and exact retained accuracy/replay coverage. The manual workflow invalidates the band cache only after successful refresh. A refresh failure exits nonzero and leaves the report with explicit recovery instructions; raw writes are not rolled back.
+
+The report's `post_correction_refresh` includes `status`, per-stage `stages`, `corrections_applied`, `retained_rows_refreshed`, `cache_invalidation_required`, and, when applicable, `error` and `recovery_commands`. Dry-runs, zero-applies, and inactive model bands skip derived refresh. A direct CLI apply must complete the reported cache invalidation separately.
 
 It uses the `correction_detector.py` module to compare each stored show's setlist (canonicalized set, position, song, segue) with a fresh upstream fetch over a 730-day lookback window. Bands that assign their own show ids (billy, um, wsp) are matched to stored shows by natural key (`source_url`, `source_uuid`, or date plus normalized venue). Song names are compared in a canonical form (NFKC, casefolded, only letters and digits kept, trailing `>`/`->` folded into the segue flag) so apostrophe style, case, punctuation and spacing never count as corrections; replacement payloads always use the raw upstream values. Set labels are canonicalized too (numeric sets as `1`/`2`; every encore spelling, including `E`, `E2`, `Encore 1` and the `99` that the wsp and eggy normalizers store, as `E`). Each `changed` entry in the report lists the compared `fields` that differ. Billy is declared `LIMITED_UPSTREAM_HISTORY` in `correction_detector.py` because BillyBase only lists roughly 11 of its 152 stored shows: for billy the >50% `not_in_upstream` check is a `::warning::` and the job still fails if zero shows could be compared. The JSON report carries a per-table `summary` of compared vs skipped shows by reason, and the job fails with an `::error::` annotation when more than 50% of a table's stored shows are `not_in_upstream`. Use `workflow_dispatch` for manual runs or repair validation.
 
@@ -41,20 +45,19 @@ It uses the `correction_detector.py` module to compare each stored show's setlis
 The primary production workflow. Collects raw data, generates predictions, runs backtests, and validates freshness for the daily publishing bands.
 
 - **Triggers**:
-  - `schedule`: `0 19 * * *` (daily at 19:00 UTC / 3:00 PM ET during DST)
+  - `schedule`: `0 19 * * *` (daily at 19:00 UTC / 2:00 PM EST / 3:00 PM EDT)
   - `workflow_dispatch` with inputs: `band` (`all` or a single band), `skip_accuracy` (boolean)
 
 - **Steps per band** (parallel matrix):
-  1. Compute collection preflight via `scripts/collection_preflight.py`
-  2. Run data collection via `scripts/run_{band}_collection.py` (with retry logic)
-  3. Verify data freshness via `scripts/verify_data_freshness.py`
-  4. Generate live next-show predictions via `scripts/generate_live_predictions.py`
-  5. Validate live prediction tables via `scripts/validate_prediction_tables.py`
-   6. Sync the retained completed-show corpus via `scripts/sync_retained_prediction_corpus.py --window 50` (skippable via `skip_accuracy`; emits `backtest_incremental_all_scored` output through the underlying scorer)
-  8. Validate accuracy tables via `scripts/validate_accuracy_tables.py` (passes `--skip-freshness` when all shows already scored)
-  9. Audit supported-model freshness via `scripts/check_supported_model_freshness.py`
-  10. Audit website Supabase tables via `scripts/audit_supabase_tables.py` (passes `--skip-accuracy` when all shows already scored)
-  11. Write per-band status summary and enforce stale-freshness escalation after artifacts are uploaded
+  1. Compute collection preflight via `scripts/collection_preflight.py`.
+  2. Run data collection via `scripts/run_{band}_collection.py` with retry logic, or select verify-only mode.
+  3. Verify data freshness via `scripts/verify_data_freshness.py`.
+  4. Refresh the upcoming target from post-collection state via `scripts/validate_prediction_tables.py --check-upcoming-only`.
+  5. Generate and validate the active live board when regeneration is allowed and a target exists.
+  6. Sync the retained last-50 completed-show corpus unless accuracy was explicitly skipped or upstream lag prevents safe regeneration.
+  7. Validate accuracy, audit supported-model freshness and website Supabase tables, then enforce freshness.
+  8. Revalidate the website band cache for collection runs, including failure paths where raw writes may already have landed.
+  9. Write and upload final per-band status after all required stages, including cache delivery.
 
 - **Band matrix**: Built by `scripts/get_all_bands.py`, which reads `get_daily_pipeline_bands()` from repo config. Eggy remains collectable but excluded from default daily publishing until promoted.
 - **Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`; `PHISH_API_KEY` for Phish only.
@@ -65,7 +68,7 @@ Collection is driven by recent activity (recent completed shows, missing recent 
 
 - The preflight emits two distinct upcoming signals:
   - `has_upcoming_show_soon`: a show exists inside the `CollectionPolicy.upcoming_lookahead_days` window (default 14 days). Used for the **collection** execution-mode decision.
-  - `has_upcoming_show`: a show exists on record **anywhere in the future**. Used to gate prediction generation.
+  - `has_upcoming_show`: a show exists on record **anywhere in the future**. Prediction gating refreshes this value after collection so newly discovered tours can publish in the same run.
 - `Generate Predictions` and `Validate Prediction Tables` gate on `has_upcoming_show`. When a band has no future show on record, those two steps are **skipped** rather than failed. `scripts/generate_live_predictions.py --require-output` is never invoked without a target show, so it cannot raise `No upcoming show found`.
 - UM's future shows live in the dedicated `um_upcoming_shows` table (Seated), since allthings.umphreys.com only archives played shows. The preflight's `has_upcoming_show` falls back to `um_upcoming_shows` for UM, mirroring `scripts/validate_prediction_tables.py` and `scripts/generate_live_predictions.py`.
 - The `Run Backtest and Save Per-Show Accuracy` step is intentionally **not** gated on upcoming shows, so per-show accuracy for completed shows is still regenerated and stays within the freshness window.
@@ -128,7 +131,8 @@ Collection is driven by recent activity (recent completed shows, missing recent 
   - the signal uses default-true semantics: the workflow writes `true` before running backtest, and the scorer writes `false` when it finds new shows
   - prediction freshness is always enforced regardless of backtest state
   - missing supported-model rows count as stale, not as pass
-- The workflow summary shows per-band health, execution mode, missing-setlist counts, prediction handling, and supported-model freshness.
+- Final status keeps `collection_workflow_state` and `collection_outcome_code` separate from overall `workflow_state` and `outcome_code`. Required generation, validation, freshness, audit, or cache failures make overall status failed even if collection succeeded. Missing required decision/audit outputs also fail. `prediction_validation_outcome` and `cache_revalidation_outcome` expose delivery health directly.
+- The workflow summary shows final per-band health, execution mode, missing-setlist counts, prediction handling, and supported-model freshness.
 - GitHub Actions YAML is the canonical daily workflow contract. Local Python helpers mirror it for operator convenience, but do not override it.
 
 ---
@@ -138,7 +142,7 @@ Collection is driven by recent activity (recent completed shows, missing recent 
 Automatically plays Fantasy Goose using JamBandNerd's Goose prediction board.
 
 - **Triggers**:
-  - `workflow_run`: After a `Daily Data Pipeline` run on `main` completes (any conclusion). A gate job downloads the `band-status-goose` artifact and checks that Goose predictions were freshly generated (`prediction_action == "generated"`) before proceeding.
+  - `workflow_run`: After a `Daily Data Pipeline` run on `main` completes (any conclusion). A gate job downloads the `band-status-goose` artifact and requires final `workflow_state == "success"`, `prediction_action == "generated"`, `prediction_validation_outcome == "success"`, and `supabase_audit_state` of `ok` or `warning`. Automatic runs are restricted to the production `main` pipeline; manual dispatch remains available.
   - `workflow_dispatch` with inputs: `date` (YYYY-MM-DD), `dry_run` (boolean)
 
 - **Behavior**:
@@ -175,14 +179,17 @@ Regenerates the retained completed-show corpus for one or more active model band
 
 ## Live Show Tracker
 
-Tracks live shows by polling for setlist updates during a performance.
+Polls Goose and Phish during performances; other bands, including WSP, are unavailable in both the workflow input and CLI.
 
-- **Triggers**: `workflow_dispatch` only
-- **Inputs**: `band` (goose, phish, wsp, billy, um), `date` (YYYY-MM-DD), `interval` (default 60s), `max_iterations` (default 300), `bsky_handle` (WSP only)
-- **Behavior**: Runs `scripts/run_live_tracker.py`, which polls upstream sources for setlist updates and publishes them. WSP polling uses the in-repo WSP parser directly (`src/jambandnerd/data_collection/wsp/parser.py`); the daily pipeline's Playwright-backed EC scraper is not invoked here, so the live tracker does not require a Playwright install step.
-- **Concurrency**: One tracker per band+date combo; cancels in-progress runs.
-- **Timeout**: 360 minutes (6 hours)
-- **Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`; `PHISH_API_KEY` for Phish only
+- **Triggers**: `workflow_dispatch` only.
+- **Inputs**: `band` (`goose` or `phish`), `date` (`YYYY-MM-DD`), `interval` (default 60 seconds), `max_iterations` (default 300).
+- **Behavior**: `scripts/run_live_tracker.py` disables collector response caching for each tracker instance and bounds HTTP requests to 30 seconds. It normalizes and compares stable setlist content in key order, ignoring generated timestamps, and only writes changed content before refreshing live predictions. A shrinking snapshot is refused rather than silently retaining removed songs or deleting stored rows.
+- **Failure handling**: failed HTTP, malformed responses, failed persistence, or failed regeneration count as polling failures; three consecutive failures exit nonzero. Successful empty polls remain valid before a show starts. Daily collection keeps its separate caching and timeout settings.
+- **Concurrency**: One tracker per band/date; a new run cancels its predecessor.
+- **Timeout**: Workflow limit is 360 minutes; the default polling budget is about five hours plus request work.
+- **Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`; `PHISH_API_KEY` for Phish.
+
+Disabling WSP live polling does not affect its daily Playwright-backed Everyday Companion collection or recent completed-show fallback chain (PanicStream, then TourWrangler).
 
 ---
 
@@ -220,21 +227,23 @@ Daily smoke test against the live deployed website.
 - **Triggers**:
   - `schedule`: `0 22 * * *` (daily at 22:00 UTC)
   - `workflow_dispatch` with input: `base_url` (default `https://jambandnerd.com`)
-- **Steps**: Runs `npm run test:web:smoke:hosted` with Playwright Chromium
+- **Steps**: Runs `npm run test:web:smoke:hosted` with Playwright Chromium. Hosted mode requires the real active-band registry and populated prediction, performance, and replay surfaces; missing environment, query errors, empty registry/data, and page runtime failures fail verification. Only device-specific test skips remain. Local mode may skip unavailable data.
 - Browser binaries are cached in `~/.cache/ms-playwright`; OS dependencies are installed per run.
-- **Secrets**: `VERCEL_PROTECTION_BYPASS_TOKEN` (for preview URLs)
+- **Preview authentication**: The shared browser/API fixture bootstraps an origin-scoped cookie using an automation bypass token. Development OIDC does not issue that cookie, so its token is attached only to requests whose origin exactly matches the configured preview. Both paths prevent automatic credential-bearing redirects; cross-origin redirect targets are rejected. Credentials never appear in URLs or global request headers, and hosted traces are disabled. CI preview runs use the existing `VERCEL_PROTECTION_BYPASS_TOKEN` secret; local same-project previews can use `vercel env run` with `VERCEL_OIDC_TOKEN`.
 
 ---
 
 ## Dependency Audit
 
-Weekly security audit of locked Python dependencies.
+Independent security audits cover locked Python runtime, development, and documentation dependencies and every npm workspace dependency.
 
-- **Triggers**:
-  - `schedule`: `0 14 * * 1` (Mondays at 14:00 UTC)
-  - `workflow_dispatch`
-- **Steps**: Exports locked requirements via `uv export`, then runs `pip-audit` against them
-- **Timeout**: 20 minutes
+- **Triggers**: dependency-changing pull requests and pushes to `main`, Mondays at 14:00 UTC, and manual dispatch. Paths include `pyproject.toml`, `uv.lock`, root/workspace npm manifests, `package-lock.json`, and this audit workflow.
+- **Python job**: `uv export --all-extras --locked` emits pinned requirements for `pip-audit`; advisories fail the job.
+- **npm job**: `npm ci --ignore-scripts` followed by `npm audit`; advisories of any severity fail the job.
+- **Timeout**: 20 minutes per independent job. Neither is part of the daily collection pipeline.
+- **Update coverage**: Dependabot covers `uv`, npm at the workspace root, and GitHub Actions; Next.js and `eslint-config-next` updates are grouped.
+
+The 2026-11-16 repaired baseline reports no known vulnerabilities across 100 locked Python packages (all extras) and the npm lockfile. Rerun audits against the latest advisory database when assessing current safety.
 
 ---
 

@@ -126,16 +126,20 @@ npm run verify:clean
 
 The repo now has two separate dependency-safety controls:
 
-- **Dependabot** watches the `uv` lockfile and GitHub Actions versions, with the Supabase Python packages grouped into a single update PR.
-- **Dependency Audit** is a standalone GitHub Actions workflow that exports the locked Python dependency set and audits it with `pip-audit`.
+- **Dependabot** watches Python (`uv`), npm workspaces, and GitHub Actions. Supabase Python packages are grouped together, and `next` updates are grouped with `eslint-config-next`.
+- **Dependency Audit** runs independent Python and npm jobs on dependency-changing pull requests and pushes to `main`, every Monday at 14:00 UTC, and manually. Python exports all locked extras (runtime, development, and docs) for `pip-audit`; npm runs `npm ci --ignore-scripts` and `npm audit`. Either job fails on known advisories at any severity.
 
 Manual local audit command:
 
 ```bash
 tmpfile=$(mktemp /tmp/jbn-audit.XXXXXX)
-uv export --format requirements-txt --locked --no-hashes --no-emit-project --output-file "$tmpfile"
+uv export --all-extras --format requirements-txt --locked --no-hashes --no-emit-project --output-file "$tmpfile"
 uv run --with pip-audit python -m pip_audit -r "$tmpfile" --cache-dir /tmp/pip-audit-cache --no-deps --disable-pip
+npm ci --ignore-scripts
+npm audit
 ```
+
+The 2026-11-16 repaired baseline has zero known advisories across the 100-package Python all-extras export and the npm lockfile. Advisory databases change, so rerun both audits for current results.
 
 This audit is intentionally separate from the daily pipeline so dependency findings do not block data collection and publishing.
 
@@ -203,10 +207,11 @@ The WSP data collector scrapes `everydaycompanion.com`. This process is enhanced
 
 The platform features comprehensive automation through GitHub Actions:
 
-- **Daily Pipeline**: Runs automatically at 3 PM ET every day.
-- **Fantasy Goose**: A dedicated GitHub Actions workflow can auto-submit Goose notebook picks when Fantasy Goose exposes an eligible show and the required secrets are configured.
+- **Daily Pipeline**: Runs at 19:00 UTC daily (2 PM EST / 3 PM EDT), with final per-band status recorded after validation, freshness enforcement, and cache revalidation.
+- **Fantasy Goose**: A dedicated workflow can auto-submit Goose picks only after the production `main` pipeline reports a freshly generated, validated Goose board and acceptable Supabase audit state.
 - **Dynamic Matrix**: The pipeline runs a repo-authoritative band list (goose, phish, wsp, billy, um) defined in the daily workflow setup job.
-- **Manual Triggers**: On-demand execution with band selection via the GitHub UI.
+- **Live tracking**: Manual Goose and Phish trackers use bounded requests and changed-content polling. WSP live tracking is disabled; daily WSP collection retains Everyday Companion with recent-gap fallback sources.
+- **Manual Triggers**: On-demand execution with band selection via the GitHub UI. Correction sweeps stay dry-run on schedules; manual applies rebuild and validate the active retained corpus before refreshing website cache.
 - **Error Resilience**: Parallel matrix execution with graceful failure handling and explicit degraded-mode reporting for volatile upstreams such as WSP.
 - **Secret Management**: Secure API key and database credential handling.
 

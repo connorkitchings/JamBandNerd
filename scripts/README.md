@@ -19,6 +19,7 @@ These are the canonical scripts used by docs and GitHub Actions:
 - `audit_supabase_tables.py` — canonical website-facing Supabase audit that combines live prediction completeness, replay/history coverage, supported-model freshness, and recent raw setlist completeness into one read-only report
 - `collection_preflight.py` — classify collection mode and execution mode before the collector starts
 - `get_last_completed_show_date.py` — resolve the most recent completed show date for a band
+- `pipeline_status.py` — finalize band status from actual step outcomes after freshness/cache steps, preserving collection diagnostics and requiring a validated Goose board for automated Fantasy Goose
 
 Band collection scripts (kept at top-level so GitHub Actions and local tooling can address them directly):
 
@@ -28,9 +29,11 @@ Band collection scripts (kept at top-level so GitHub Actions and local tooling c
 ## Integrations
 
 - `play_fantasy_goose.py` — auto-play Fantasy Goose using the active Goose prediction board
-- `run_live_tracker.py` — poll for live setlist updates during a show; triggers single-model prediction regeneration
+- `run_live_tracker.py` — Goose/Phish live polling only; uncached 30-second HTTP requests compare stable changed content before writing and regenerating predictions. Three consecutive polling/write/regeneration failures fail the command; shrinking snapshots are refused. WSP live polling is disabled, with daily EC/fallback collection preserved.
 
 ## Recovery and rebuild
+
+- `run_correction_sweep.py` — detect corrections with `--dry-run` (default), or apply reviewed changes with `--no-dry-run`. Active-band writes trigger `sync_retained_prediction_corpus(..., window=50, incremental=False)`, live regeneration when a future show exists, and prediction/exact retained accuracy validation. Inspect the JSON `post_correction_refresh` stages and recovery commands; CLI users must revalidate website cache after success. Scheduled workflow runs stay dry-run; manual apply workflows perform cache revalidation.
 
 - `export_backtest_snapshots.py` — export raw show/setlist tables into local JSON or Parquet snapshots for offline historical scoring
 

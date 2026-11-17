@@ -66,3 +66,29 @@ For debugging or more granular control, you can run individual pipeline componen
   - To backtest across all historical shows: add `--all-history` (implies full recompute)
 
 Refer to the source code of these scripts for their specific command-line arguments.
+
+
+## Live Tracking
+
+Manual live tracking supports Goose and Phish only:
+
+```bash
+uv run python scripts/run_live_tracker.py --band goose --date 2026-11-16 --interval 60 --max-iterations 300
+```
+
+Each tracker disables response caching, uses 30-second HTTP timeouts, and writes only changed stable setlist content before regenerating predictions. Three consecutive polling, persistence, or regeneration failures exit nonzero. Shrinking snapshots are refused for manual investigation. WSP live tracking is disabled; daily WSP collection still uses Everyday Companion and its completed-show fallback chain.
+
+## Applying Reviewed Corrections
+
+Scheduled correction sweeps remain dry-run. Review detected changes before manually dispatching `Weekly Correction Sweep` with `dry_run=false`, or running the existing CLI:
+
+```bash
+uv run python scripts/run_correction_sweep.py --band goose --dry-run
+uv run python scripts/run_correction_sweep.py --band goose --no-dry-run
+```
+
+For active model bands, a successful raw apply forces a rebuild of the retained last-50 completed-show corpus (`incremental=False`), generates the live board if a future target exists, and validates prediction tables and exact retained accuracy/replay coverage. It does not require an all-history backtest. Zero-applies, dry-runs, and inactive model bands skip derived refresh.
+
+Inspect `post_correction_refresh` in the JSON report. If derived refresh fails after raw writes, the command exits nonzero and reports the failed stage and recovery commands; raw writes remain applied. After successful CLI refresh, invalidate the website band cache as described in [Website Delivery](../operations/website_delivery.md#cache-revalidation). The manual workflow performs that cache request after successful refresh and preserves reports on failure.
+
+The daily workflow refreshes its future-show target after collection and records final band status only after validation, audits, freshness enforcement, and cache delivery. Collection success alone does not authorize automated Fantasy Goose submission.
