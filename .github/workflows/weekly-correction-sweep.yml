@@ -217,18 +217,7 @@ jobs:
           BAND: ${{ matrix.band }}
           SITE_URL: ${{ vars.SITE_URL }}
           REVALIDATE_SECRET: ${{ secrets.REVALIDATE_SECRET }}
-        run: |
-          if [[ -z "$SITE_URL" || -z "$REVALIDATE_SECRET" ]]; then
-            echo "::error::SITE_URL (repository variable) and REVALIDATE_SECRET (secret) must be set to refresh the website cache"
-            exit 1
-          fi
-          curl --fail-with-body --silent --show-error \
-            --max-time 30 --retry 3 --retry-delay 5 \
-            -X POST "${SITE_URL%/}/api/revalidate" \
-            -H "Authorization: Bearer ${REVALIDATE_SECRET}" \
-            -H "Content-Type: application/json" \
-            -d "{\"band\":\"${BAND}\"}"
-          echo ""
+        run: uv run python scripts/revalidate_website_cache.py
 
       - name: Upload Sweep Report
         if: always()

@@ -253,7 +253,7 @@ def test_workflow_gates_cache_from_report_and_scopes_cache_credentials(
     assert workflow.count("${{ secrets.REVALIDATE_SECRET }}") == 1
     assert "${{ vars.SITE_URL }}" in cache
     assert "${{ secrets.REVALIDATE_SECRET }}" in cache
-    assert "--max-time 30" in cache
+    assert "run: uv run python scripts/revalidate_website_cache.py" in cache
     assert '"${{ github.event_name }}" != "schedule"' in workflow
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("BAND", "goose")
