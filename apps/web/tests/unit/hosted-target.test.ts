@@ -24,7 +24,7 @@ test("preview bootstrap uses one selected header, never a credential URL", () =>
     "x-vercel-protection-bypass": "bypass", "x-vercel-set-bypass-cookie": "true",
   });
   assert.deepEqual(getHostedAuthHeaders(preview, undefined, "oidc"), {
-    "x-vercel-trusted-oidc-idp-token": "oidc", "x-vercel-set-bypass-cookie": "true",
+    "x-vercel-trusted-oidc-idp-token": "oidc",
   });
   assert.throws(() => getHostedAuthHeaders(preview), /Protected preview smoke requires/);
 });

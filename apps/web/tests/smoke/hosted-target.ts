@@ -31,13 +31,17 @@ export function getHostedAuthHeaders(
   if (!header) {
     throw new Error("Protected preview smoke requires VERCEL_PROTECTION_BYPASS_TOKEN or local VERCEL_OIDC_TOKEN from vercel env run.");
   }
-  return { ...header, "x-vercel-set-bypass-cookie": "true" };
+  return bypassToken ? { ...header, "x-vercel-set-bypass-cookie": "true" } : header;
 }
 
 export function validateHostedAuthResponse(origin: string, status: number, location?: string) {
   if (status < 200 || status >= 400) {
     throw new Error(`Preview authentication failed with HTTP ${status}.`);
   }
+  validateHostedRedirect(origin, location);
+}
+
+export function validateHostedRedirect(origin: string, location?: string) {
   if (location && new URL(location, origin).origin !== origin) {
     throw new Error("Preview authentication redirected outside the configured origin.");
   }

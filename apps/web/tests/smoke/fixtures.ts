@@ -1,5 +1,5 @@
-import { expect, test as base, type Locator, type Page } from "@playwright/test";
-import { getHostedAuthHeaders, normalizeHostedBaseUrl, validateHostedAuthResponse } from "./hosted-target";
+import { expect, test as base, type APIRequestContext, type Locator, type Page } from "@playwright/test";
+import { getHostedAuthHeaders, normalizeHostedBaseUrl, validateHostedAuthResponse, validateHostedRedirect } from "./hosted-target";
 
 export const hostedBaseUrl = normalizeHostedBaseUrl(process.env.SMOKE_BASE_URL);
 const unavailableHeading = /Supabase environment required|Band registry unavailable|query failed|^No (predictions|accuracy rows|replay history|replay dates|prediction snapshot) available$/i;
@@ -21,21 +21,42 @@ export async function requireData(page: Page, locator: Locator, reason: string, 
   await expectHealthyHostedPage(page);
 }
 
+const authHeaders = getHostedAuthHeaders(
+  hostedBaseUrl,
+  process.env.VERCEL_PROTECTION_BYPASS_TOKEN,
+  process.env.VERCEL_OIDC_TOKEN,
+);
+const usesOidc = Boolean(authHeaders?.["x-vercel-trusted-oidc-idp-token"]);
+
 export const test = base.extend({
   context: async ({ context }, runTest) => {
-    const headers = getHostedAuthHeaders(
-      hostedBaseUrl,
-      process.env.VERCEL_PROTECTION_BYPASS_TOKEN,
-      process.env.VERCEL_OIDC_TOKEN,
-    );
-    if (hostedBaseUrl && headers) {
-      // APIRequestContext shares this browser context's cookie jar. Only this
-      // single origin-checked request receives credentials; redirects are off.
+    if (hostedBaseUrl && authHeaders && usesOidc) {
+      // OIDC authenticates each request; unlike bypass secrets it does not issue
+      // a cookie. Fetch without following redirects so no header crosses origins.
+      await context.route("**/*", async (route) => {
+        if (new URL(route.request().url()).origin !== hostedBaseUrl) {
+          await route.continue();
+          return;
+        }
+        let response;
+        try {
+          response = await route.fetch({
+            headers: { ...route.request().headers(), ...authHeaders },
+            maxRedirects: 0,
+          });
+        } catch {
+          throw new Error("Origin-scoped preview browser request failed.");
+        }
+        validateHostedRedirect(hostedBaseUrl, response.headers().location);
+        await route.fulfill({ response });
+      });
+    } else if (hostedBaseUrl && authHeaders) {
+      // Bypass secrets support one bootstrap request and an origin-scoped cookie.
       let response;
       try {
-        response = await context.request.get(hostedBaseUrl, { headers, maxRedirects: 0 });
+        response = await context.request.get(hostedBaseUrl, { headers: authHeaders, maxRedirects: 0 });
       } catch {
-        // Playwright's request error can include headers. Keep tokens out of logs.
+        // Playwright request errors can include headers; never log credentials.
         throw new Error("Preview authentication request failed before navigation.");
       }
       validateHostedAuthResponse(hostedBaseUrl, response.status(), response.headers().location);
@@ -52,7 +73,40 @@ export const test = base.extend({
     await runTest(context);
   },
   request: async ({ context }, runTest) => {
-    await runTest(context.request);
+    if (!hostedBaseUrl || !authHeaders || !usesOidc) {
+      await runTest(context.request);
+      return;
+    }
+    // Route handlers do not intercept APIRequestContext. Current smoke API
+    // assertions use GET only; keep the same cookie jar and scope each GET too.
+    const request = new Proxy(context.request, {
+      get(target, key) {
+        if (key === "get") {
+          const get: APIRequestContext["get"] = async (url, options = {}) => {
+            const targetUrl = new URL(url, hostedBaseUrl);
+            if (targetUrl.origin !== hostedBaseUrl) {
+              throw new Error("Preview API request is outside the configured origin.");
+            }
+            let response;
+            try {
+              response = await target.get(targetUrl.toString(), {
+                ...options,
+                headers: { ...options.headers, ...authHeaders },
+                maxRedirects: 0,
+              });
+            } catch {
+              throw new Error("Origin-scoped preview API request failed.");
+            }
+            validateHostedRedirect(hostedBaseUrl, response.headers().location);
+            return response;
+          };
+          return get;
+        }
+        const value = Reflect.get(target, key);
+        return typeof value === "function" ? value.bind(target) : value;
+      },
+    });
+    await runTest(request);
   },
   page: async ({ page }, runTest) => {
     const errors: string[] = [];

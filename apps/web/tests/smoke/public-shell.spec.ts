@@ -122,7 +122,7 @@ test("the root redirects to the remembered band, defaulting to WSP", async ({ pa
     .poll(async () => (await page.context().cookies()).find((c) => c.name === "jbn-band")?.value)
     .toBe("phish");
 
-  const remembered = await page.context().request.get("/", { maxRedirects: 0 });
+  const remembered = await request.get("/", { maxRedirects: 0 });
   expect(remembered.status()).toBe(307);
   expect(remembered.headers()["location"]).toMatch(/\/phish$/);
 });
