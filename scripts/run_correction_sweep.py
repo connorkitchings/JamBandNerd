@@ -28,11 +28,103 @@ from pathlib import Path
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, project_root)
 
+from scripts.generate_live_predictions import generate_live_predictions
+from scripts.sync_retained_prediction_corpus import sync_retained_prediction_corpus
+from scripts.validate_accuracy_tables import validate_accuracy
+from scripts.validate_prediction_tables import _has_upcoming_show, validate_predictions
 from src.jambandnerd.data_collection.correction_detector import (  # noqa: E402
     format_correction_report,
     run_correction_sweep,
 )
 from src.jambandnerd.db.connection import get_supabase_client  # noqa: E402
+from src.jambandnerd.models.registry import list_active_bands
+
+
+def refresh_corrected_band(*, band: str, client, applied: int, dry_run: bool) -> dict:
+    """Rebuild derived data after raw writes, retaining explicit recovery state."""
+    outcome = {
+        "status": "skipped",
+        "corrections_applied": applied,
+        "cache_invalidation_required": False,
+        "stages": dict.fromkeys(
+            (
+                "retained_corpus",
+                "live_predictions",
+                "prediction_validation",
+                "accuracy_validation",
+            ),
+            "not_run",
+        ),
+    }
+    if dry_run:
+        outcome["reason"] = "dry_run"
+    elif not applied:
+        outcome["reason"] = "no_corrections_applied"
+    elif band not in list_active_bands():
+        outcome["reason"] = "inactive_model"
+    if "reason" in outcome:
+        return outcome
+
+    outcome["recovery_commands"] = [
+        f"uv run python scripts/sync_retained_prediction_corpus.py --band {band} --window 50 --no-incremental --require-results",
+        f"uv run python scripts/generate_live_predictions.py --band {band}",
+        f"uv run python scripts/validate_prediction_tables.py --band {band}",
+        f"uv run python scripts/validate_accuracy_tables.py --band {band} --replay-window 50 --require-exact-retained-window",
+    ]
+    stages = outcome["stages"]
+    stage = "retained_corpus"
+    try:
+        stages[stage] = "running"
+        rows = sync_retained_prediction_corpus(
+            band=band, window=50, incremental=False, require_results=True
+        )
+        if rows <= 0:
+            raise RuntimeError("Retained corpus refresh wrote no results")
+        stages[stage] = "success"
+        outcome["retained_rows_refreshed"] = rows
+
+        stage = "live_predictions"
+        stages[stage] = "running"
+        if _has_upcoming_show(client, band=band):
+            if not generate_live_predictions(band=band, require_output=True):
+                raise RuntimeError("Live prediction generation did not complete")
+            stages[stage] = "success"
+        else:
+            stages[stage] = "skipped_no_upcoming_show"
+
+        stage = "prediction_validation"
+        stages[stage] = "running"
+        if validate_predictions(bands=[band], max_age_hours=48):
+            raise RuntimeError("Prediction table validation failed")
+        stages[stage] = "success"
+
+        stage = "accuracy_validation"
+        stages[stage] = "running"
+        if validate_accuracy(
+            bands=[band],
+            max_age_hours=72,
+            replay_window=50,
+            require_exact_retained_window=True,
+        ):
+            raise RuntimeError("Accuracy table validation failed")
+        stages[stage] = "success"
+    except Exception as exc:
+        stages[stage] = "failed"
+        outcome["status"] = "failed"
+        outcome["error"] = f"{stage}: {exc}"
+        print(
+            f"::error::Raw corrections were applied, but derived-data refresh failed: {outcome['error']}"
+        )
+        print(
+            "Recover derived data with these existing commands, then revalidate the website band cache:"
+        )
+        for command in outcome["recovery_commands"]:
+            print(command)
+        return outcome
+
+    outcome["status"] = "success"
+    outcome["cache_invalidation_required"] = True
+    return outcome
 
 
 def main():
@@ -103,6 +195,11 @@ def main():
         client=client,
     )
 
+    applied = sum(result.corrections_applied for result in results.values())
+    refresh = refresh_corrected_band(
+        band=args.band, client=client, applied=applied, dry_run=dry_run
+    )
+
     # Generate and print report
     report = format_correction_report(results)
     print(report)
@@ -116,6 +213,7 @@ def main():
         "tables": args.tables,
         "summary": {name: result.summary() for name, result in results.items()},
         "results": {name: result.to_dict() for name, result in results.items()},
+        "post_correction_refresh": refresh,
     }
 
     output_path = Path(args.output)
@@ -130,6 +228,8 @@ def main():
 
     # Exit non-zero on any error (fetch failures, refused or failed applies)
     total_errors = sum(len(r.errors) for r in results.values())
+    if refresh["status"] == "failed":
+        total_errors += 1
     if total_errors > 0 or not results:
         for result in results.values():
             for error in result.errors:
