@@ -3,6 +3,7 @@
 import importlib
 import re
 import sys
+import traceback
 from dataclasses import replace
 from pathlib import Path
 from unittest.mock import Mock
@@ -338,3 +339,27 @@ def test_nonempty_shrinking_snapshots_fail_without_acknowledging_removed_rows(
     assert caplog.text.count("Predictions updated for the changed setlist") == int(
         published
     )
+
+
+@pytest.mark.parametrize("failure", [requests.Timeout, requests.ConnectionError])
+@pytest.mark.parametrize("source", ["shows", "setlists"])
+def test_transport_failures_redact_key_in_downstream_logs_and_terminal_trace(
+    polling, failure, source, caplog
+):
+    keyed_url = "https://api.phish.net/v5/setlists/showid/101.json?apikey=mock-key"
+    error = failure(f"Request failed for {keyed_url}")
+    error.__cause__ = RuntimeError(f"Underlying connection failed at {keyed_url}")
+    upsert, predict, _, _ = polling("phish", **{source: [error] * 3})
+    with pytest.raises(
+        RuntimeError, match="three consecutive polling errors"
+    ) as terminal:
+        tracker.run_live_tracker("phish", TARGET_DATE, interval=0, max_iterations=3)
+    upsert.assert_not_called()
+    predict.assert_not_called()
+    assert "mock-key" not in caplog.text
+    assert "mock-key" not in "".join(traceback.format_exception(terminal.value))
+    sanitized = terminal.value.__cause__
+    assert isinstance(sanitized, failure)
+    assert "apikey=REDACTED" in str(sanitized)
+    assert sanitized.__cause__ is None
+    assert sanitized.__suppress_context__ is True

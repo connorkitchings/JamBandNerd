@@ -19,6 +19,19 @@ from .cache import HttpCache
 logger = logging.getLogger(__name__)
 
 
+def _redact_api_key(message: str) -> str:
+    return re.sub(r"apikey=[^&\s]+", "apikey=REDACTED", message, flags=re.IGNORECASE)
+
+
+def _sanitized_request_error(
+    error: requests.RequestException,
+) -> requests.RequestException:
+    """Keep request semantics while excluding secret-bearing exception chains."""
+    return type(error)(
+        _redact_api_key(str(error)), request=error.request, response=error.response
+    )
+
+
 @dataclass
 class CollectorConfig:
     """Configuration for data collectors."""
@@ -242,7 +255,7 @@ class BandCollector(ABC):
             List of dictionaries from the API response
         """
         url = f"{self.config.base_url.rstrip('/')}/{endpoint.lstrip('/')}"
-        log_url = re.sub(r"apikey=[^&]*", "apikey=REDACTED", url)
+        log_url = _redact_api_key(url)
 
         # Check circuit breaker
         if self._circuit_open:
@@ -309,22 +322,22 @@ class BandCollector(ABC):
 
             except ValueError as e:
                 logger.error(
-                    f"Failed to parse JSON response from {log_url}: {str(e).replace(url, log_url)}"
+                    f"Failed to parse JSON response from {log_url}: {_redact_api_key(str(e))}"
                 )
                 self.record_failure()
                 return []
 
-        except requests.exceptions.Timeout:
+        except requests.exceptions.Timeout as e:
             logger.error(f"Request timeout ({self.config.timeout}s) for {log_url}")
             self.record_failure()
-            raise
-        except requests.exceptions.ConnectionError:
+            raise _sanitized_request_error(e) from None
+        except requests.exceptions.ConnectionError as e:
             logger.error(f"Connection error for {log_url}")
             self.record_failure()
-            raise
+            raise _sanitized_request_error(e) from None
         except requests.exceptions.HTTPError as e:
             logger.error(
-                f"HTTP error {e.response.status_code} for {log_url}: {str(e).replace(url, log_url)}"
+                f"HTTP error {e.response.status_code} for {log_url}: {_redact_api_key(str(e))}"
             )
             self.record_failure()
             if e.response is not None and e.response.status_code == 403:
@@ -333,13 +346,11 @@ class BandCollector(ABC):
                 )
                 self.record_failure()
                 return []
-            raise
+            raise _sanitized_request_error(e) from None
         except requests.exceptions.RequestException as e:
-            logger.error(
-                f"Request failed for {log_url}: {str(e).replace(url, log_url)}"
-            )
+            logger.error(f"Request failed for {log_url}: {_redact_api_key(str(e))}")
             self.record_failure()
-            raise
+            raise _sanitized_request_error(e) from None
 
     @abstractmethod
     def collect_shows(

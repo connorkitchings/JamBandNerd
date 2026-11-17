@@ -1,5 +1,6 @@
 """Shared HTTP response contracts, without network requests or cache writes."""
 
+import traceback
 from dataclasses import replace
 from unittest.mock import Mock
 
@@ -96,3 +97,34 @@ def test_failure_logs_redact_key_in_url_and_exception_text(collector, caplog, fa
         pass
     assert "mock-key" not in caplog.text
     assert "apikey=REDACTED" in caplog.text
+
+
+@pytest.mark.parametrize(
+    "failure",
+    [
+        requests.Timeout,
+        requests.ConnectionError,
+        requests.HTTPError,
+        requests.RequestException,
+    ],
+)
+def test_rethrown_request_errors_preserve_type_and_response_without_keyed_trace(
+    collector, failure
+):
+    endpoint = "records?apikey=mock-key"
+    url = f"{collector.config.base_url}/{endpoint}"
+    request = requests.Request("GET", url).prepare()
+    response = requests.Response()
+    response.status_code = 503
+    error = failure(f"Failed at {url}", request=request, response=response)
+    error.__cause__ = RuntimeError(f"Original failure at {url}")
+    collector.session.get.side_effect = error
+    with pytest.raises(failure) as caught:
+        collector._fetch_from_endpoint(endpoint)
+    assert type(caught.value) is failure
+    assert caught.value.response is response
+    assert caught.value.response.status_code == 503
+    assert caught.value.request is request
+    assert "mock-key" not in str(caught.value)
+    assert "mock-key" not in "".join(traceback.format_exception(caught.value))
+    assert collector._consecutive_failures == 1
