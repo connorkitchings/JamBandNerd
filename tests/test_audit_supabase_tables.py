@@ -4,6 +4,8 @@ import json
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 
+import pytest
+
 from scripts import audit_supabase_tables as module
 from scripts.check_supported_model_freshness import SupportedModelFreshnessResult
 from scripts.verify_data_freshness import RecentSetlistCompletenessResult
@@ -21,7 +23,12 @@ def _prediction_row(
 ) -> dict[str, object]:
     value = predictions
     if value is None:
-        value = json.dumps([{"song_name": song_name}] * top_k)
+        value = json.dumps(
+            [
+                {"song_name": song_name if index == 0 else f"Song {index + 1}"}
+                for index in range(top_k)
+            ]
+        )
     timestamp = generated_at or NOW
     return {
         "band": "goose",
@@ -81,12 +88,15 @@ def _freshness_result(
     )
 
 
-def _raw_result(*, missing_show_count: int = 0) -> RecentSetlistCompletenessResult:
+def _raw_result(
+    *, missing_show_count: int = 0, partial_show_count: int = 0
+) -> RecentSetlistCompletenessResult:
     return RecentSetlistCompletenessResult(
         band="goose",
         cutoff="2026-04-08",
         end_date="2026-04-14",
         recent_show_count=3,
+        partial_show_count=partial_show_count,
         missing_show_count=missing_show_count,
         missing_show_ids=tuple(f"show-{index}" for index in range(missing_show_count)),
     )
@@ -385,3 +395,46 @@ def test_run_supabase_audit_warns_on_recent_missing_setlists(monkeypatch):
 
     assert report.state == "warning"
     assert "goose:recent_completed_shows_missing_setlists" in report.warnings
+
+
+@pytest.mark.parametrize(
+    "corruption", ["later_song", "swapped_songs", "duplicate_rank", "missing_rank"]
+)
+def test_audit_rejects_projection_corruption_beyond_first_song(monkeypatch, corruption):
+    projection = _projection_rows()
+    if corruption == "later_song":
+        projection[1]["song_name"] = "Wrong Song"
+    elif corruption == "swapped_songs":
+        projection[1]["song_name"], projection[2]["song_name"] = (
+            projection[2]["song_name"],
+            projection[1]["song_name"],
+        )
+    elif corruption == "duplicate_rank":
+        projection[2]["rank"] = 2
+    else:
+        projection[2]["rank"] = 99
+    _install_audit_stubs(
+        monkeypatch, latest_row=_prediction_row(), projection_rows=projection
+    )
+
+    report = module.run_supabase_audit(bands=["goose"])
+
+    assert report.state == "failed"
+    assert (
+        f"goose:{MODEL_VERSION}:prediction_projection_rank_song_mismatch"
+        in report.blockers
+    )
+
+
+def test_audit_warns_when_only_partial_recent_setlists_exist(monkeypatch):
+    _install_audit_stubs(
+        monkeypatch,
+        latest_row=_prediction_row(),
+        raw_result=_raw_result(partial_show_count=1),
+    )
+
+    report = module.run_supabase_audit(bands=["goose"])
+
+    assert report.state == "warning"
+    assert report.bands[0].raw_data["ok"] is False
+    assert "goose:recent_completed_shows_partial_setlists" in report.warnings

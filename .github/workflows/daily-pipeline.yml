@@ -282,9 +282,13 @@ jobs:
           echo "::warning::${{ matrix.band }} degraded (upstream lag): ${COUNT} missing and ${PARTIAL} partial recent completed show setlist(s)."
           echo "Holding off on new prediction board and backtest generation so existing predictions are preserved until upstream updates."
           
+      - name: Refresh Upcoming Show Target
+        id: show_target
+        run: uv run python scripts/validate_prediction_tables.py --band ${{ matrix.band }} --check-upcoming-only
+
       - name: Generate Predictions
         id: predictions
-        if: steps.preflight.outputs.should_run_collection == 'true' && steps.preflight.outputs.has_upcoming_show == 'true' && steps.collection.outputs.workflow_state != 'degraded' && steps.data_check.outputs.missing_data != 'true'
+        if: steps.preflight.outputs.should_run_collection == 'true' && steps.show_target.outputs.has_upcoming_show == 'true' && steps.collection.outputs.workflow_state == 'success' && steps.data_check.outputs.missing_data == 'false'
         run: |
           echo "::group::Generating live next-show predictions for ${{ matrix.band }}"
 
@@ -294,7 +298,7 @@ jobs:
 
       - name: Validate Prediction Tables
         id: prediction_validation
-        if: steps.preflight.outputs.should_run_collection == 'true' && steps.preflight.outputs.has_upcoming_show == 'true' && steps.collection.outputs.workflow_state != 'degraded' && steps.data_check.outputs.missing_data != 'true'
+        if: steps.preflight.outputs.should_run_collection == 'true' && steps.show_target.outputs.has_upcoming_show == 'true' && steps.collection.outputs.workflow_state == 'success' && steps.data_check.outputs.missing_data == 'false'
         run: |
           echo "::group::Validating prediction table freshness for ${{ matrix.band }}"
           uv run python scripts/validate_prediction_tables.py --band ${{ matrix.band }} --max-age-hours 72
@@ -302,7 +306,7 @@ jobs:
 
       - name: Run Backtest and Save Per-Show Accuracy
         id: accuracy_calc
-        if: github.event.inputs.skip_accuracy != 'true' && steps.preflight.outputs.should_run_collection == 'true' && steps.collection.outputs.workflow_state != 'degraded' && steps.data_check.outputs.missing_data != 'true'
+        if: github.event.inputs.skip_accuracy != 'true' && steps.preflight.outputs.should_run_collection == 'true' && steps.collection.outputs.workflow_state == 'success' && steps.data_check.outputs.missing_data == 'false'
         run: |
           echo "::group::Running backtest for ${{ matrix.band }}"
           
@@ -319,7 +323,7 @@ jobs:
 
       - name: Validate Accuracy Tables
         id: accuracy_validation
-        if: github.event.inputs.skip_accuracy != 'true' && steps.preflight.outputs.should_run_collection == 'true' && steps.collection.outputs.workflow_state != 'degraded' && steps.data_check.outputs.missing_data != 'true'
+        if: github.event.inputs.skip_accuracy != 'true' && steps.preflight.outputs.should_run_collection == 'true' && steps.collection.outputs.workflow_state == 'success' && steps.data_check.outputs.missing_data == 'false'
         env:
           BACKTEST_INCREMENTAL_ALL_SCORED: ${{ steps.accuracy_calc.outputs.backtest_incremental_all_scored }}
         run: |
@@ -396,178 +400,8 @@ jobs:
           echo "::endgroup::"
           exit $AUDIT_EXIT
 
-      - name: Write Band Status
-        if: always()
-        env:
-          BAND: ${{ matrix.band }}
-          WORKFLOW_STATE: ${{ steps.collection.outputs.workflow_state || steps.collection_idle.outputs.workflow_state || (job.status == 'success' && 'success' || 'failed') }}
-          OUTCOME_CODE: ${{ steps.collection.outputs.outcome_code || steps.collection_idle.outputs.outcome_code || (job.status == 'success' && 'success' || 'failed_internal') }}
-          RECENT_DATA_USABLE: ${{ steps.collection.outputs.recent_data_usable || steps.collection_idle.outputs.recent_data_usable || 'false' }}
-          FALLBACK_SHOWS_FILLED: ${{ steps.collection.outputs.fallback_shows_filled || '0' }}
-          FALLBACK_SETLISTS_COLLECTED: ${{ steps.collection.outputs.fallback_setlists_collected || '0' }}
-          COLLECTOR_MISSING_SETLISTS: ${{ steps.collection.outputs.collector_missing_setlists || '0' }}
-          REQUEST_BLOCKED_MISSING_SETLISTS: ${{ steps.collection.outputs.request_blocked_missing_setlists || '0' }}
-          UPSTREAM_MISSING_SETLISTS: ${{ steps.collection.outputs.upstream_missing_setlists || '0' }}
-          FALLBACK_AVAILABLE_MISSING_SETLISTS: ${{ steps.collection.outputs.fallback_available_missing_setlists || '0' }}
-          FAILURE_REASON: ${{ steps.collection.outputs.failure_reason || '' }}
-          MISSING_DATA: ${{ steps.data_check.outputs.missing_data || 'false' }}
-          MISSING_COUNT: ${{ steps.data_check.outputs.missing_count || '0' }}
-          PREDICTIONS_OUTCOME: ${{ steps.predictions.outcome || '' }}
-          ACCURACY_SKIPPED: ${{ github.event.inputs.skip_accuracy == 'true' }}
-          COLLECTION_MODE: ${{ steps.preflight.outputs.collection_mode || 'unknown' }}
-          EXECUTION_MODE: ${{ steps.preflight.outputs.execution_mode || 'unknown' }}
-          SHOULD_RUN_COLLECTION: ${{ steps.preflight.outputs.should_run_collection || 'false' }}
-          RECENT_COMPLETED_SHOW_COUNT: ${{ steps.preflight.outputs.recent_completed_show_count || '0' }}
-          MISSING_RECENT_SETLIST_COUNT: ${{ steps.preflight.outputs.missing_recent_setlist_count || '0' }}
-          UPCOMING_SHOW_COUNT: ${{ steps.preflight.outputs.upcoming_show_count || '0' }}
-          LAST_SUCCESSFUL_COLLECTION_AT: ${{ steps.preflight.outputs.last_successful_collection_at || '' }}
-          FRESHNESS_STATE: ${{ steps.freshness_audit.outputs.freshness_state || 'unknown' }}
-          STALE_PREDICTION_MODELS: ${{ steps.freshness_audit.outputs.stale_prediction_models || '' }}
-          STALE_ACCURACY_MODELS: ${{ steps.freshness_audit.outputs.stale_accuracy_models || '' }}
-          MAX_PREDICTION_AGE_HOURS: ${{ steps.freshness_audit.outputs.max_prediction_age_hours || '' }}
-          MAX_ACCURACY_AGE_HOURS: ${{ steps.freshness_audit.outputs.max_accuracy_age_hours || '' }}
-          FRESHNESS_REASON: ${{ steps.freshness_audit.outputs.freshness_reason || '' }}
-          SUPABASE_AUDIT_STATE: ${{ steps.supabase_audit.outputs.audit_state || 'unknown' }}
-          SUPABASE_AUDIT_BLOCKER_COUNT: ${{ steps.supabase_audit.outputs.audit_blocker_count || '0' }}
-          SUPABASE_AUDIT_WARNING_COUNT: ${{ steps.supabase_audit.outputs.audit_warning_count || '0' }}
-        run: |
-          mkdir -p .github/workflow-status
-          python - <<'PY'
-          import json
-          import os
-
-          workflow_state = os.environ.get("WORKFLOW_STATE", "failed")
-          outcome_code = os.environ.get("OUTCOME_CODE", "failed_internal")
-          missing_data = os.environ.get("MISSING_DATA", "false") == "true"
-          recent_data_usable = os.environ.get("RECENT_DATA_USABLE", "false") == "true"
-
-          if missing_data and workflow_state != "failed":
-              workflow_state = "degraded"
-              if outcome_code == "success":
-                  outcome_code = "degraded_upstream_lag"
-              recent_data_usable = False
-
-          if workflow_state == "degraded":
-              prediction_action = (
-                  "reused_existing"
-                  if outcome_code == "degraded_upstream_lag" or (recent_data_usable and not missing_data)
-                  else "skipped"
-              )
-          elif os.environ.get("PREDICTIONS_OUTCOME") == "success":
-              prediction_action = "generated"
-          elif workflow_state == "failed":
-              prediction_action = "skipped"
-          else:
-              prediction_action = os.environ.get("prediction_action", "pending")
-
-          def parse_model_list(value: str | None) -> list[str]:
-              if not value:
-                  return []
-              return [item.strip() for item in value.split(",") if item.strip()]
-
-          def parse_optional_float(value: str | None):
-              if value in (None, ""):
-                  return None
-              try:
-                  return float(value)
-              except ValueError:
-                  return None
-
-          payload = {
-              "band": os.environ["BAND"],
-              "workflow_state": workflow_state,
-              "outcome_code": outcome_code,
-              "recent_data_usable": recent_data_usable,
-              "missing_data": missing_data,
-              "missing_count": int(os.environ.get("MISSING_COUNT", "0") or 0),
-              "prediction_action": prediction_action,
-              "collection_mode": os.environ.get("COLLECTION_MODE", "unknown"),
-              "execution_mode": os.environ.get("EXECUTION_MODE", "unknown"),
-              "should_run_collection": os.environ.get("SHOULD_RUN_COLLECTION", "false") == "true",
-              "recent_completed_show_count": int(os.environ.get("RECENT_COMPLETED_SHOW_COUNT", "0") or 0),
-              "missing_recent_setlist_count": int(os.environ.get("MISSING_RECENT_SETLIST_COUNT", "0") or 0),
-              "upcoming_show_count": int(os.environ.get("UPCOMING_SHOW_COUNT", "0") or 0),
-              "last_successful_collection_at": os.environ.get("LAST_SUCCESSFUL_COLLECTION_AT", ""),
-              "fallback_shows_filled": int(os.environ.get("FALLBACK_SHOWS_FILLED", "0") or 0),
-              "fallback_setlists_collected": int(os.environ.get("FALLBACK_SETLISTS_COLLECTED", "0") or 0),
-              "collector_missing_setlists": int(os.environ.get("COLLECTOR_MISSING_SETLISTS", "0") or 0),
-              "request_blocked_missing_setlists": int(os.environ.get("REQUEST_BLOCKED_MISSING_SETLISTS", "0") or 0),
-              "upstream_missing_setlists": int(os.environ.get("UPSTREAM_MISSING_SETLISTS", "0") or 0),
-              "fallback_available_missing_setlists": int(os.environ.get("FALLBACK_AVAILABLE_MISSING_SETLISTS", "0") or 0),
-              "failure_reason": os.environ.get("FAILURE_REASON", ""),
-              "accuracy_skipped": os.environ.get("ACCURACY_SKIPPED", "false") == "true",
-              "freshness_state": os.environ.get("FRESHNESS_STATE", "unknown"),
-              "stale_prediction_models": parse_model_list(os.environ.get("STALE_PREDICTION_MODELS")),
-              "stale_accuracy_models": parse_model_list(os.environ.get("STALE_ACCURACY_MODELS")),
-              "max_prediction_age_hours": parse_optional_float(os.environ.get("MAX_PREDICTION_AGE_HOURS")),
-              "max_accuracy_age_hours": parse_optional_float(os.environ.get("MAX_ACCURACY_AGE_HOURS")),
-              "freshness_reason": os.environ.get("FRESHNESS_REASON", ""),
-              "supabase_audit_state": os.environ.get("SUPABASE_AUDIT_STATE", "unknown"),
-              "supabase_audit_blocker_count": int(os.environ.get("SUPABASE_AUDIT_BLOCKER_COUNT", "0") or 0),
-              "supabase_audit_warning_count": int(os.environ.get("SUPABASE_AUDIT_WARNING_COUNT", "0") or 0),
-          }
-
-          path = f".github/workflow-status/{payload['band']}.json"
-          with open(path, "w", encoding="utf-8") as handle:
-              json.dump(payload, handle)
-          print(f"Wrote {path}")
-          PY
-
-      - name: Upload Band Status
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: band-status-${{ matrix.band }}
-          path: .github/workflow-status/${{ matrix.band }}.json
-          if-no-files-found: error
-
-      - name: Upload Supabase Audit
-        if: always() && steps.preflight.outputs.should_run_collection == 'true'
-        uses: actions/upload-artifact@v7
-        with:
-          name: supabase-audit-${{ matrix.band }}
-          path: .github/workflow-audits/${{ matrix.band }}.json
-          if-no-files-found: error
-
-      - name: Append Band Summary
-        if: always()
-        env:
-          BAND: ${{ matrix.band }}
-          WORKFLOW_STATE: ${{ (steps.data_check.outputs.missing_data == 'true' && steps.collection.outputs.workflow_state != 'failed' && 'degraded') || steps.collection.outputs.workflow_state || steps.collection_idle.outputs.workflow_state || (job.status == 'success' && 'success' || 'failed') }}
-          OUTCOME_CODE: ${{ (steps.data_check.outputs.missing_data == 'true' && steps.collection.outputs.workflow_state != 'failed' && 'degraded_upstream_lag') || steps.collection.outputs.outcome_code || steps.collection_idle.outputs.outcome_code || (job.status == 'success' && 'success' || 'failed_internal') }}
-          MISSING_COUNT: ${{ steps.data_check.outputs.missing_count || '0' }}
-          EXECUTION_MODE: ${{ steps.preflight.outputs.execution_mode || 'unknown' }}
-          FRESHNESS_STATE: ${{ steps.freshness_audit.outputs.freshness_state || 'unknown' }}
-          STALE_PREDICTION_MODELS: ${{ steps.freshness_audit.outputs.stale_prediction_models || '' }}
-          STALE_ACCURACY_MODELS: ${{ steps.freshness_audit.outputs.stale_accuracy_models || '' }}
-          MAX_PREDICTION_AGE_HOURS: ${{ steps.freshness_audit.outputs.max_prediction_age_hours || '' }}
-          MAX_ACCURACY_AGE_HOURS: ${{ steps.freshness_audit.outputs.max_accuracy_age_hours || '' }}
-          SUPABASE_AUDIT_STATE: ${{ steps.supabase_audit.outputs.audit_state || 'unknown' }}
-          SUPABASE_AUDIT_BLOCKER_COUNT: ${{ steps.supabase_audit.outputs.audit_blocker_count || '0' }}
-          SUPABASE_AUDIT_WARNING_COUNT: ${{ steps.supabase_audit.outputs.audit_warning_count || '0' }}
-        run: |
-          echo "### ${BAND^^}" >> $GITHUB_STEP_SUMMARY
-          echo "- Execution mode: ${EXECUTION_MODE}" >> $GITHUB_STEP_SUMMARY
-          echo "- State: ${WORKFLOW_STATE}" >> $GITHUB_STEP_SUMMARY
-          echo "- Outcome: ${OUTCOME_CODE}" >> $GITHUB_STEP_SUMMARY
-          echo "- Missing recent setlists: ${MISSING_COUNT}" >> $GITHUB_STEP_SUMMARY
-          echo "- Supported model freshness: ${FRESHNESS_STATE}" >> $GITHUB_STEP_SUMMARY
-          if [[ -n "${STALE_PREDICTION_MODELS}" ]]; then
-            echo "- Stale supported-model predictions: ${STALE_PREDICTION_MODELS}" >> $GITHUB_STEP_SUMMARY
-          fi
-          if [[ -n "${STALE_ACCURACY_MODELS}" ]]; then
-            echo "- Stale supported-model accuracy: ${STALE_ACCURACY_MODELS}" >> $GITHUB_STEP_SUMMARY
-          fi
-          if [[ -n "${MAX_PREDICTION_AGE_HOURS}" ]]; then
-            echo "- Max prediction age: ${MAX_PREDICTION_AGE_HOURS}h" >> $GITHUB_STEP_SUMMARY
-          fi
-          if [[ -n "${MAX_ACCURACY_AGE_HOURS}" ]]; then
-            echo "- Max accuracy age: ${MAX_ACCURACY_AGE_HOURS}h" >> $GITHUB_STEP_SUMMARY
-          fi
-          echo "- Website Supabase audit: ${SUPABASE_AUDIT_STATE} (blockers=${SUPABASE_AUDIT_BLOCKER_COUNT}, warnings=${SUPABASE_AUDIT_WARNING_COUNT})" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-
       - name: Enforce Supported Model Freshness
+        id: freshness_enforcement
         if: always() && steps.preflight.outputs.should_run_collection == 'true'
         env:
           BAND: ${{ matrix.band }}
@@ -579,6 +413,11 @@ jobs:
           ACCURACY_SKIPPED: ${{ github.event.inputs.skip_accuracy == 'true' || steps.data_check.outputs.missing_data == 'true' || steps.collection.outputs.outcome_code == 'degraded_upstream_lag' }}
           BACKTEST_INCREMENTAL_ALL_SCORED: ${{ steps.accuracy_calc.outputs.backtest_incremental_all_scored }}
         run: |
+          if [[ "${FRESHNESS_STATE}" != "fresh" && "${FRESHNESS_STATE}" != "warning" && "${FRESHNESS_STATE}" != "stale" ]]; then
+            echo "::error::Supported-model freshness audit did not produce a valid result for ${BAND}"
+            exit 1
+          fi
+
           if [[ "${FRESHNESS_STATE}" != "stale" ]]; then
             echo "Supported-model freshness state for ${BAND}: ${FRESHNESS_STATE}"
             exit 0
@@ -614,10 +453,8 @@ jobs:
 
           echo "Supported-model freshness reported stale, but no enforced stale surface remained."
 
-      # Last step on purpose: it only tells the website to drop its cached data
-      # for this band, so a failure here is visible without touching the data
-      # steps above (their results are already recorded).
       - name: Revalidate Website Cache
+        id: cache_revalidation
         if: always() && steps.preflight.outputs.should_run_collection == 'true'
         env:
           BAND: ${{ matrix.band }}
@@ -637,6 +474,32 @@ jobs:
             -H "Content-Type: application/json" \
             -d "{\"band\":\"${BAND}\"}"
           echo ""
+
+      # Record the final result after freshness enforcement and cache delivery.
+      - name: Write Band Status
+        if: always()
+        env:
+          BAND: ${{ matrix.band }}
+          STEPS_JSON: ${{ toJSON(steps) }}
+          JOB_STATUS: ${{ job.status }}
+          ACCURACY_SKIPPED: ${{ github.event.inputs.skip_accuracy == 'true' }}
+        run: python scripts/pipeline_status.py
+
+      - name: Upload Band Status
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: band-status-${{ matrix.band }}
+          path: .github/workflow-status/${{ matrix.band }}.json
+          if-no-files-found: error
+
+      - name: Upload Supabase Audit
+        if: always() && steps.preflight.outputs.should_run_collection == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: supabase-audit-${{ matrix.band }}
+          path: .github/workflow-audits/${{ matrix.band }}.json
+          if-no-files-found: error
 
   pipeline-summary:
     name: Pipeline Summary

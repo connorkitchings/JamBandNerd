@@ -29,6 +29,7 @@ from scripts.validate_accuracy_tables import (
 from scripts.validate_prediction_tables import (
     _has_upcoming_show,
     _latest_prediction_row,
+    projection_matches_predictions,
 )
 from scripts.validate_prediction_tables import (
     _parse_timestamp as _parse_prediction_timestamp,
@@ -279,6 +280,9 @@ def _derive_setlist_model_audit(
         ):
             _append_unique(blockers, "prediction_projection_top_song_mismatch")
 
+        if not projection_matches_predictions(projection_rows, parsed_predictions):
+            _append_unique(blockers, "prediction_projection_rank_song_mismatch")
+
     replay_rows = _recent_replay_eligible_rows(
         client,
         table=SETLIST_ACCURACY_TABLE,
@@ -383,6 +387,8 @@ def run_supabase_audit(
         band_warnings: list[str] = []
         if raw_result.missing_show_count > 0:
             _append_unique(band_warnings, "recent_completed_shows_missing_setlists")
+        if raw_result.partial_show_count > 0:
+            _append_unique(band_warnings, "recent_completed_shows_partial_setlists")
 
         for model_result in model_results:
             for blocker in model_result.blockers:

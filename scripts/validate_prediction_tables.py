@@ -122,7 +122,32 @@ def _validate_projection(
         )
         return 1
 
+    if not projection_matches_predictions(projection_rows, parsed_predictions):
+        print(
+            f"[FAIL] {band}: projection rank/song order does not match canonical predictions"
+        )
+        return 1
+
     return 0
+
+
+def projection_matches_predictions(
+    projection_rows: list[dict], parsed_predictions: list[dict]
+) -> bool:
+    """Check every projected rank and song against canonical list order."""
+    expected = [
+        (prediction.get("rank", rank), prediction.get("song_name"))
+        for rank, prediction in enumerate(parsed_predictions, start=1)
+    ]
+    return (
+        bool(expected)
+        and all(
+            rank == index and song
+            for index, (rank, song) in enumerate(expected, start=1)
+        )
+        and [(row.get("rank"), row.get("song_name")) for row in projection_rows]
+        == expected
+    )
 
 
 def validate_predictions(
@@ -234,7 +259,22 @@ def main() -> None:
         action="store_true",
         help="Skip validation of the derived setlist_prediction_songs projection.",
     )
+    parser.add_argument(
+        "--check-upcoming-only",
+        action="store_true",
+        help="Refresh the upcoming-show signal after collection without validating predictions.",
+    )
     args = parser.parse_args()
+    if args.check_upcoming_only:
+        if not args.bands or len(args.bands) != 1:
+            parser.error("--check-upcoming-only requires exactly one --band")
+        has_upcoming = _has_upcoming_show(get_supabase_client(), band=args.bands[0])
+        output = f"has_upcoming_show={str(has_upcoming).lower()}"
+        print(output)
+        if github_output := os.environ.get("GITHUB_OUTPUT"):
+            with open(github_output, "a", encoding="utf-8") as handle:
+                handle.write(output + "\n")
+        return
 
     failures = validate_predictions(
         bands=args.bands or [],
