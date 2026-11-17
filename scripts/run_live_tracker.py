@@ -1,17 +1,12 @@
 #!/usr/bin/env python3
-"""
-Live Tracker for in-progress shows.
-
-Continually polls the band's API for the setlist of a specific date,
-bypassing the cache. When a new song is detected, it upserts the setlist
-and triggers a fresh prediction run.
-"""
+"""Poll Goose or Phish for changed live setlists and refresh predictions."""
 
 import argparse
 import logging
 import os
 import sys
 import time
+from dataclasses import replace
 
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, project_root)
@@ -32,146 +27,91 @@ def run_live_tracker(
     target_date: str,
     interval: int = 60,
     max_iterations: int = 300,
-    bsky_handle: str = "widespreadpanic.com",
 ):
-    """Poll API for live setlist updates and trigger pipeline."""
+    """Poll without caching; raise after three consecutive failed polls."""
     logger.info(
-        f"Starting live tracker for {band.upper()} on {target_date} (interval: {interval}s)"
+        "Starting live tracker for %s on %s (interval: %ss)",
+        band.upper(),
+        target_date,
+        interval,
     )
 
-    collector = None
-    client = None
-
     if band == "phish":
-        from scripts.run_phish_collection import _normalize_setlists, _normalize_shows
         from src.jambandnerd.data_collection.phish.collector import (
             PhishCollector as Collector,
+        )
+        from src.jambandnerd.data_collection.phish.normalizer import (
+            normalize_setlists,
+            normalize_shows,
         )
 
         table_name = "phish_setlists_raw"
         conflict_cols = ["api_unique_id"]
         required_cols = ["set_number", "position"]
-        collector = Collector()
     elif band == "goose":
-        from scripts.run_goose_collection import _normalize_setlists, _normalize_shows
         from src.jambandnerd.data_collection.goose.collector import (
             GooseCollector as Collector,
+        )
+        from src.jambandnerd.data_collection.goose.normalizer import (
+            normalize_setlists,
+            normalize_shows,
         )
 
         table_name = "goose_setlists_raw"
         conflict_cols = ["show_id", "set_number", "song_position"]
         required_cols = ["set_number", "song_position"]
-        collector = Collector()
-    elif band == "wsp":
-        import pandas as pd
-        import requests
-        from bs4 import BeautifulSoup
-
-        from src.jambandnerd.data_collection.wsp.parser import parse_setlist_from_text
-        from src.jambandnerd.db.connection import get_supabase_client
-
-        table_name = "wsp_setlists_raw"
-        conflict_cols = ["show_id", "set_number", "song_position"]
-        required_cols = ["set_number", "song_position"]
-        client = get_supabase_client()
     else:
         raise ValueError(f"Live tracking not currently supported for band: {band}")
 
-    if collector:
-        collector.cache = None
+    collector = Collector()
+    collector.cache = None
+    # Config objects are shared with daily collectors; change only this instance.
+    collector.config = replace(collector.config, timeout=30)
 
-    last_song_count = -1
-    iterations = 0
+    def poll_setlist():
+        raw_shows = collector.collect_shows()
+        if collector._consecutive_failures:
+            raise RuntimeError("Collector failed to fetch shows")
+        shows_df = normalize_shows(raw_shows)
+        if shows_df.empty:
+            logger.info("No shows fetched.")
+            return None
 
-    while iterations < max_iterations:
-        iterations += 1
+        target_show = shows_df[shows_df["show_date"] == target_date]
+        if target_show.empty:
+            logger.info("No show found for date %s.", target_date)
+            return None
+
+        show_id = str(target_show.iloc[0]["show_id"])
+        if band == "phish":
+            # The bulk collect_setlists method suppresses per-show failures.
+            # Fetch this one show through the same adapter so failures propagate.
+            raw_setlists = collector._fetch_phish_endpoint(f"setlists/showid/{show_id}")
+        else:
+            raw_setlists = collector.collect_setlists()
+        # The shared collector returns [] for HTTP 403 and malformed JSON.
+        if collector._consecutive_failures:
+            raise RuntimeError("Collector failed to fetch setlists")
+        setlists_df = normalize_setlists(raw_setlists)
+        if setlists_df.empty:
+            return None
+        return setlists_df[setlists_df["show_id"].astype(str) == show_id]
+
+    last_setlist = None
+    consecutive_errors = 0
+    successful_polls = 0
+    for iteration in range(max_iterations):
         try:
-            if band == "wsp":
-                assert client is not None
-                resp = (
-                    client.table("wsp_shows_raw")
-                    .select("show_id")
-                    .eq("show_date", target_date)
-                    .limit(1)
-                    .execute()
+            setlists_df = poll_setlist()
+            if setlists_df is not None and not setlists_df.empty:
+                # Phish generates created_at on every normalization. Compare stable
+                # payloads in key order so response ordering cannot cause updates.
+                current_setlist = (
+                    setlists_df.drop(columns=["created_at"], errors="ignore")
+                    .sort_values(conflict_cols)
+                    .reset_index(drop=True)
                 )
-                if not resp.data:
-                    logger.warning(
-                        f"No WSP show found in DB for {target_date}. Retrying in {interval}s..."
-                    )
-                    time.sleep(interval)
-                    continue
-                show_id = str(resp.data[0]["show_id"])
-            else:
-                assert collector is not None
-                raw_shows = collector.collect_shows()
-                shows_df = _normalize_shows(raw_shows)
-
-                if shows_df.empty:
-                    logger.warning("No shows fetched.")
-                    time.sleep(interval)
-                    continue
-
-                target_show = shows_df[shows_df["show_date"] == target_date]
-
-                if target_show.empty:
-                    logger.warning(
-                        f"No show found for date {target_date}. Retrying in {interval}s..."
-                    )
-                    time.sleep(interval)
-                    continue
-
-                show_id_col = "show_id"
-
-                show_id = str(target_show.iloc[0][show_id_col])
-
-            if band == "wsp":
-                logger.debug(f"Fetching Bluesky feed for {bsky_handle}...")
-                r = requests.get(
-                    f"https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed?actor={bsky_handle}&limit=10"
-                )
-                r.raise_for_status()
-                feed = r.json().get("feed", [])
-
-                texts = []
-                for item in reversed(feed):
-                    post = item.get("post", {}).get("record", {})
-                    text = post.get("text", "")
-                    if text:
-                        texts.append(text)
-
-                combined_text = "\\n".join(texts)
-
-                soup = BeautifulSoup(combined_text, "html.parser")
-                raw_setlists = parse_setlist_from_text(soup, show_id)
-                setlists_df = pd.DataFrame(raw_setlists)
-            else:
-                assert collector is not None
-                if band == "phish":
-                    raw_setlists = collector.collect_setlists(show_ids=[show_id])
-                    setlists_df = _normalize_setlists(raw_setlists)
-                else:
-                    raw_setlists = collector.collect_setlists()
-                    setlists_df = _normalize_setlists(raw_setlists)
-                    setlists_df = setlists_df[setlists_df["show_id"] == show_id]
-
-            current_song_count = len(setlists_df)
-
-            if current_song_count > last_song_count:
-                logger.info(
-                    f"🚨 New song detected! Count increased from {last_song_count} to {current_song_count}."
-                )
-
-                if not setlists_df.empty:
-                    if (
-                        band == "phish"
-                        and "position" in setlists_df.columns
-                        and "song_position" not in setlists_df.columns
-                    ):
-                        setlists_df.rename(
-                            columns={"position": "song_position"}, inplace=True
-                        )
-
+                if last_setlist is None or not current_setlist.equals(last_setlist):
                     validate_and_upsert_dataframe(
                         table_name=table_name,
                         df=setlists_df,
@@ -180,36 +120,39 @@ def run_live_tracker(
                         skip_validation=True,
                     )
                     logger.info(
-                        f"Upserted {current_song_count} rows into {table_name}."
+                        "Upserted %s rows into %s.", len(setlists_df), table_name
                     )
+                    if not generate_live_predictions(band=band):
+                        raise RuntimeError(
+                            "Live prediction generation did not complete"
+                        )
+                    last_setlist = current_setlist.copy()
+                    logger.info("Predictions updated for the changed setlist.")
+            consecutive_errors = 0
+            successful_polls += 1
+        except Exception as exc:
+            consecutive_errors += 1
+            logger.error("Polling failed (%s/3): %s", consecutive_errors, exc)
+            if consecutive_errors >= 3:
+                raise RuntimeError(
+                    "Live tracker failed after three consecutive polling errors"
+                ) from exc
 
-                logger.info("Regenerating predictions...")
-                generate_live_predictions(band=band)
+        if iteration + 1 < max_iterations:
+            logger.info("Sleeping for %ss...", interval)
+            time.sleep(interval)
 
-                last_song_count = current_song_count
-                logger.info(
-                    f"Predictions successfully updated for {current_song_count}-song setlist."
-                )
-            else:
-                logger.debug(
-                    f"No changes detected (current count: {current_song_count})."
-                )
-
-        except Exception as e:
-            logger.error(f"Error during polling loop: {e}")
-
-        logger.info(f"Sleeping for {interval}s...")
-        time.sleep(interval)
-
+    if max_iterations > 0 and successful_polls == 0:
+        raise RuntimeError("Live tracker finished without a successful poll")
     logger.info("Live tracker finished (max iterations reached).")
 
 
-if __name__ == "__main__":
+def main() -> None:
     parser = argparse.ArgumentParser(
         description="Run the live show tracker for real-time predictions."
     )
     parser.add_argument(
-        "--band", required=True, choices=["phish", "goose", "wsp"], help="Band to track"
+        "--band", required=True, choices=["phish", "goose"], help="Band to track"
     )
     parser.add_argument("--date", required=True, help="Target show date (YYYY-MM-DD)")
     parser.add_argument(
@@ -224,17 +167,14 @@ if __name__ == "__main__":
         default=300,
         help="Maximum number of polling attempts before stopping (default 300, ~5 hours)",
     )
-    parser.add_argument(
-        "--bsky-handle",
-        default="widespreadpanic.com",
-        help="Bluesky handle to track for WSP (e.g., widespreadpanic.com)",
-    )
     args = parser.parse_args()
-
     run_live_tracker(
         band=args.band,
         target_date=args.date,
         interval=args.interval,
         max_iterations=args.max_iterations,
-        bsky_handle=args.bsky_handle,
     )
+
+
+if __name__ == "__main__":
+    main()

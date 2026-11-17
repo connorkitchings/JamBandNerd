@@ -10,17 +10,9 @@ on:
         options:
           - goose
           - phish
-          - wsp
-          - billy
-          - um
       date:
         description: "Target show date (YYYY-MM-DD)"
         required: true
-        type: string
-      bsky_handle:
-        description: "Bluesky Handle (for WSP only, default: widespreadpanic.com)"
-        required: false
-        default: "widespreadpanic.com"
         type: string
       interval:
         description: "Polling interval in seconds"
@@ -92,10 +84,13 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           PHISH_API_KEY: ${{ secrets.PHISH_API_KEY }}
+          TRACKER_BAND: ${{ inputs.band }}
+          TRACKER_DATE: ${{ inputs.date }}
+          TRACKER_INTERVAL: ${{ inputs.interval }}
+          TRACKER_MAX_ITERATIONS: ${{ inputs.max_iterations }}
         run: |
           uv run python scripts/run_live_tracker.py \
-            --band ${{ inputs.band }} \
-            --date ${{ inputs.date }} \
-            --interval ${{ inputs.interval }} \
-            --max-iterations ${{ inputs.max_iterations }} \
-            --bsky-handle ${{ inputs.bsky_handle }}
+            --band "$TRACKER_BAND" \
+            --date "$TRACKER_DATE" \
+            --interval "$TRACKER_INTERVAL" \
+            --max-iterations "$TRACKER_MAX_ITERATIONS"
