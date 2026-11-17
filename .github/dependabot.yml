@@ -18,6 +18,19 @@ updates:
           - "supabase-auth"
           - "supabase-functions"
 
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "daily"
+      time: "09:00"
+      timezone: "America/New_York"
+    open-pull-requests-limit: 5
+    groups:
+      next:
+        patterns:
+          - "next"
+          - "eslint-config-next"
+
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
