@@ -292,3 +292,49 @@ def test_suppressed_collector_failures_count_as_failed_polls(
         tracker.run_live_tracker(band, TARGET_DATE, interval=0, max_iterations=10)
     upsert.assert_not_called()
     predict.assert_not_called()
+
+
+@pytest.mark.parametrize("band", ["goose", "phish"])
+@pytest.mark.parametrize("source", ["shows", "setlists"])
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"message": "schema changed"},
+        {"data": {"unexpected": "object"}},
+        {"data": None},
+        {"data": ["not a record"]},
+    ],
+)
+def test_invalid_api_shapes_fail_without_writes_or_key_disclosure(
+    polling, band, source, payload, caplog
+):
+    response = Mock()
+    response.json.return_value = payload
+    upsert, predict, _, _ = polling(band, **{source: [response] * 3})
+    with pytest.raises(RuntimeError, match="three consecutive polling errors"):
+        tracker.run_live_tracker(band, TARGET_DATE, interval=0, max_iterations=10)
+    upsert.assert_not_called()
+    predict.assert_not_called()
+    assert "mock-key" not in caplog.text
+    assert "Failed to parse JSON response" in caplog.text
+
+
+@pytest.mark.parametrize("band", ["goose", "phish"])
+@pytest.mark.parametrize("published", [True, False])
+def test_nonempty_shrinking_snapshots_fail_without_acknowledging_removed_rows(
+    polling, band, published, caplog
+):
+    caplog.set_level("INFO")
+    first = [setlist_payload(band), setlist_payload(band, "Second Song", position=2)]
+    smaller = first[:1]
+    upsert, predict, _, _ = polling(band, setlists=[first, smaller, smaller, smaller])
+    predict.return_value = published
+    with pytest.raises(RuntimeError, match="three consecutive polling errors"):
+        tracker.run_live_tracker(band, TARGET_DATE, interval=0, max_iterations=4)
+    upsert.assert_called_once()
+    assert len(upsert.call_args.kwargs["df"]) == 2
+    predict.assert_called_once_with(band=band)
+    assert "snapshot removed previously observed rows" in caplog.text
+    assert caplog.text.count("Predictions updated for the changed setlist") == int(
+        published
+    )

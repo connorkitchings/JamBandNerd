@@ -242,12 +242,13 @@ class BandCollector(ABC):
             List of dictionaries from the API response
         """
         url = f"{self.config.base_url.rstrip('/')}/{endpoint.lstrip('/')}"
+        log_url = re.sub(r"apikey=[^&]*", "apikey=REDACTED", url)
 
         # Check circuit breaker
         if self._circuit_open:
             logger.warning(
                 f"Circuit breaker is OPEN for {self.__class__.__name__}, "
-                "skipping request to {url}"
+                f"skipping request to {log_url}"
             )
             return []
 
@@ -265,8 +266,6 @@ class BandCollector(ABC):
         # Set default timeout if not provided
         kwargs.setdefault("timeout", self.config.timeout)
 
-        # Redact API key from URL for logging
-        log_url = re.sub(r"apikey=[^&]*", "apikey=REDACTED", url)
         logger.info(f"Fetching data from {log_url}")
 
         try:
@@ -289,14 +288,17 @@ class BandCollector(ABC):
 
                 # Extract data array if wrapped
                 if isinstance(data, dict) and "data" in data:
-                    result = data["data"] or []
+                    result = data["data"]
                 elif isinstance(data, list):
                     result = data
                 else:
-                    logger.warning(
-                        f"Unexpected response format from {url}, returning empty list"
+                    raise ValueError(
+                        "Expected a records array or an object with a data array"
                     )
-                    result = []
+                if not isinstance(result, list) or any(
+                    not isinstance(record, dict) for record in result
+                ):
+                    raise ValueError("Expected a list of record objects")
 
                 # Cache successful response
                 if use_cache and self.cache and result:
@@ -306,30 +308,36 @@ class BandCollector(ABC):
                 return result
 
             except ValueError as e:
-                logger.error(f"Failed to parse JSON response from {url}: {e}")
+                logger.error(
+                    f"Failed to parse JSON response from {log_url}: {str(e).replace(url, log_url)}"
+                )
                 self.record_failure()
                 return []
 
         except requests.exceptions.Timeout:
-            logger.error(f"Request timeout ({self.config.timeout}s) for {url}")
+            logger.error(f"Request timeout ({self.config.timeout}s) for {log_url}")
             self.record_failure()
             raise
         except requests.exceptions.ConnectionError:
-            logger.error(f"Connection error for {url}")
+            logger.error(f"Connection error for {log_url}")
             self.record_failure()
             raise
         except requests.exceptions.HTTPError as e:
-            logger.error(f"HTTP error {e.response.status_code} for {url}: {e}")
+            logger.error(
+                f"HTTP error {e.response.status_code} for {log_url}: {str(e).replace(url, log_url)}"
+            )
             self.record_failure()
             if e.response is not None and e.response.status_code == 403:
                 logger.warning(
-                    f"Access denied (403) for {url} — upstream API may be blocking requests"
+                    f"Access denied (403) for {log_url} — upstream API may be blocking requests"
                 )
                 self.record_failure()
                 return []
             raise
         except requests.exceptions.RequestException as e:
-            logger.error(f"Request failed for {url}: {e}")
+            logger.error(
+                f"Request failed for {log_url}: {str(e).replace(url, log_url)}"
+            )
             self.record_failure()
             raise
 

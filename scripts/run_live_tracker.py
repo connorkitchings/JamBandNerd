@@ -98,12 +98,22 @@ def run_live_tracker(
         return setlists_df[setlists_df["show_id"].astype(str) == show_id]
 
     last_setlist = None
+    observed_keys = set()
     consecutive_errors = 0
     successful_polls = 0
     for iteration in range(max_iterations):
         try:
             setlists_df = poll_setlist()
             if setlists_df is not None and not setlists_df.empty:
+                current_keys = set(
+                    setlists_df[conflict_cols].itertuples(index=False, name=None)
+                )
+                if not observed_keys.issubset(current_keys):
+                    raise RuntimeError(
+                        "Setlist snapshot removed previously observed rows; "
+                        "refusing an upsert-only refresh that would retain stale rows"
+                    )
+                observed_keys = current_keys
                 # Phish generates created_at on every normalization. Compare stable
                 # payloads in key order so response ordering cannot cause updates.
                 current_setlist = (
