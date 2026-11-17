@@ -19,6 +19,9 @@ This file stores persistent lessons and operating patterns that should survive a
 
 ## Success Patterns
 
+- Cache delivery requires an acknowledgement, not just a successful HTTP command: disable redirects and require HTTP 200 JSON with `revalidated=true` and the exact requested band. Retry only bounded transient failures; a redirect or mismatched body is a delivery failure.
+- Requests failures can expose credential-bearing URLs through exception propagation as well as logging. Sanitize both boundaries, suppress raw exception chaining where needed, and test captured logs plus formatted tracebacks without printing request details.
+- Playwright routing does not intercept every HTTP redirect hop. Development OIDC does not mint Vercel's automation bypass cookie; use the existing managed automation secret for one verified-origin, no-redirect bootstrap, then share a host-scoped cookie between browser and API checks. Keep authenticated traces off and avoid global secret headers.
 - Start from `.agent/CONTEXT.md`, not from broad repo search.
 - Use `scripts/README.md` when reconciling which scripts are canonical vs manual/admin.
 - When guidance drifts, fix the root entrypoints first and update downstream docs second.
