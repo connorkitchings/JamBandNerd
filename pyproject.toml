@@ -21,6 +21,7 @@ dependencies = [
     "lxml==6.1.1",
     "supabase",
     "beautifulsoup4",
+    "soupsieve>=4.1.1",
     "psycopg2-binary",
     "typer",
     "tqdm",
@@ -39,7 +40,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
   "ruff",
-  "black",
+  "black>=26.10.1",
   "pytest>=9.1.1",
   "mypy",
   "pytest-cov",
@@ -47,9 +48,9 @@ dev = [
 ]
 docs = [
   "mkdocs",
-  "mkdocs-material",
+  "mkdocs-material>=9.7.7",
   "mkdocstrings[python]",
-  "pymdown-extensions",
+  "pymdown-extensions>=11.0.1",
 ]
 
 [project.scripts]

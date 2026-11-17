@@ -1,6 +1,24 @@
 name: Dependency Audit
 
 on:
+  pull_request:
+    paths:
+      - "pyproject.toml"
+      - "uv.lock"
+      - "package.json"
+      - "package-lock.json"
+      - "apps/*/package.json"
+      - ".github/workflows/dependency-audit.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "pyproject.toml"
+      - "uv.lock"
+      - "package.json"
+      - "package-lock.json"
+      - "apps/*/package.json"
+      - ".github/workflows/dependency-audit.yml"
   schedule:
     - cron: "0 14 * * 1"
   workflow_dispatch:
@@ -31,6 +49,7 @@ jobs:
       - name: Export locked requirements
         run: |
           uv export \
+            --all-extras \
             --format requirements-txt \
             --locked \
             --no-hashes \
@@ -44,3 +63,24 @@ jobs:
             --cache-dir .cache/pip-audit \
             --no-deps \
             --disable-pip
+
+  npm-audit:
+    name: Audit Locked npm Dependencies
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Install locked dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Audit locked dependencies
+        run: npm audit
