@@ -1,28 +1,7 @@
-import { expect, test } from "@playwright/test";
-import {
-  getVercelProtectionBypassToken,
-  getVercelProtectionBypassUrl,
-  normalizeHostedBaseUrl,
-} from "./hosted-target";
+import type { Page } from "@playwright/test";
+import { expect, test, requireData, expectHealthyHostedPage } from "./fixtures";
 
-const hostedBaseUrl = normalizeHostedBaseUrl(process.env.SMOKE_BASE_URL);
-const vercelProtectionBypassToken = getVercelProtectionBypassToken(
-  hostedBaseUrl,
-  process.env.VERCEL_PROTECTION_BYPASS_TOKEN,
-);
-
-async function bootstrapHostedPreviewBypass(page: import("@playwright/test").Page) {
-  if (!hostedBaseUrl || !vercelProtectionBypassToken) {
-    return;
-  }
-
-  await page.goto(
-    getVercelProtectionBypassUrl(hostedBaseUrl, vercelProtectionBypassToken),
-    { waitUntil: "domcontentloaded" },
-  );
-}
-
-async function expectMainHeadingOrDataFallback(page: import("@playwright/test").Page) {
+async function expectMainHeadingOrDataFallback(page: Page) {
   await expect(
     page
       .locator("main h1")
@@ -30,6 +9,7 @@ async function expectMainHeadingOrDataFallback(page: import("@playwright/test").
       .or(page.locator("main h2"))
       .first(),
   ).toBeVisible();
+  await expectHealthyHostedPage(page);
 }
 
 test.describe("mobile flows", () => {
@@ -39,8 +19,7 @@ test.describe("mobile flows", () => {
       "mobile-only test",
     );
 
-    await bootstrapHostedPreviewBypass(page);
-    await page.goto("/goose");
+      await page.goto("/goose");
 
     const mobileNav = page.getByRole("navigation", { name: "Mobile navigation" });
     await expect(mobileNav).toBeVisible();
@@ -56,14 +35,10 @@ test.describe("mobile flows", () => {
       "mobile-only test",
     );
 
-    await bootstrapHostedPreviewBypass(page);
-    await page.goto("/goose/predictions");
+      await page.goto("/goose/predictions");
 
     const bandSelect = page.getByRole("combobox", { name: "Band" });
-    if ((await bandSelect.count()) === 0) {
-      await expectMainHeadingOrDataFallback(page);
-      return;
-    }
+    await requireData(page, bandSelect, "mobile band selector requires the registry");
 
     await expect(bandSelect).toBeVisible();
     await expect(bandSelect).toHaveValue("/goose/predictions");
@@ -79,14 +54,10 @@ test.describe("mobile flows", () => {
       "mobile-only test",
     );
 
-    await bootstrapHostedPreviewBypass(page);
-    await page.goto("/goose");
+      await page.goto("/goose");
 
     const switcher = page.getByRole("navigation", { name: "Band" });
-    if ((await switcher.count()) === 0) {
-      await expectMainHeadingOrDataFallback(page);
-      return;
-    }
+    await requireData(page, switcher, "overview band switcher requires the registry");
 
     const current = switcher.getByRole("link", { name: "Goose" });
     await expect(current).toBeInViewport();
@@ -106,14 +77,10 @@ test.describe("mobile flows", () => {
       "mobile-only test",
     );
 
-    await bootstrapHostedPreviewBypass(page);
-    await page.goto("/goose/predictions");
+      await page.goto("/goose/predictions");
 
     const bandSelect = page.getByRole("combobox", { name: "Band" });
-    if ((await bandSelect.count()) === 0) {
-      await expectMainHeadingOrDataFallback(page);
-      return;
-    }
+    await requireData(page, bandSelect, "mobile band selector requires the registry");
 
     await expect(bandSelect).toBeInViewport();
     await bandSelect.selectOption("/phish/predictions");
@@ -131,8 +98,6 @@ test.describe("mobile flows", () => {
       pageErrors.push(error.message);
     });
 
-    await bootstrapHostedPreviewBypass(page);
-    
     const routes = [
       "/",
       "/goose",
@@ -148,13 +113,8 @@ test.describe("mobile flows", () => {
       await expectMainHeadingOrDataFallback(page);
     }
 
-    const criticalPageErrors = pageErrors.filter(
-      (message) => !message.includes("Failed to load chunk"),
-    );
-    expect(criticalPageErrors).toHaveLength(0);
+    expect(pageErrors).toHaveLength(0);
   });
-
-
 
   test("internal table preview is hidden outside development", async ({ page }, testInfo) => {
     test.skip(
@@ -162,8 +122,7 @@ test.describe("mobile flows", () => {
       "mobile-only test",
     );
 
-    await bootstrapHostedPreviewBypass(page);
-    const response = await page.goto("/preview/tables");
+      const response = await page.goto("/preview/tables");
 
     expect(response?.status()).toBe(404);
   });

@@ -17,7 +17,8 @@ export default defineConfig({
   },
   use: {
     baseURL: hostedBaseUrl ?? `http://127.0.0.1:${PORT}`,
-    trace: "on-first-retry",
+    // Authentication headers and cookies must never enter trace artifacts.
+    trace: useHostedBaseUrl ? "off" : "on-first-retry",
   },
   webServer: useHostedBaseUrl
     ? undefined

@@ -1,26 +1,5 @@
-import { expect, test, type Page } from "@playwright/test";
-import {
-  getVercelProtectionBypassToken,
-  getVercelProtectionBypassUrl,
-  normalizeHostedBaseUrl,
-} from "./hosted-target";
-
-const hostedBaseUrl = normalizeHostedBaseUrl(process.env.SMOKE_BASE_URL);
-const vercelProtectionBypassToken = getVercelProtectionBypassToken(
-  hostedBaseUrl,
-  process.env.VERCEL_PROTECTION_BYPASS_TOKEN,
-);
-
-async function bootstrapHostedPreviewBypass(page: Page) {
-  if (!hostedBaseUrl || !vercelProtectionBypassToken) {
-    return;
-  }
-
-  await page.goto(
-    getVercelProtectionBypassUrl(hostedBaseUrl, vercelProtectionBypassToken),
-    { waitUntil: "domcontentloaded" },
-  );
-}
+import type { Page } from "@playwright/test";
+import { expect, test, hostedBaseUrl, requireData, expectHealthyHostedPage } from "./fixtures";
 
 async function expectPrimaryHeadingOrMissingEnv(page: Page) {
   await expect(
@@ -30,6 +9,7 @@ async function expectPrimaryHeadingOrMissingEnv(page: Page) {
       .or(page.locator("main h2"))
       .first(),
   ).toBeVisible();
+  await expectHealthyHostedPage(page);
 }
 
 async function expectSinglePrimaryHeading(page: Page) {
@@ -39,7 +19,6 @@ async function expectSinglePrimaryHeading(page: Page) {
 test("desktop routes render the public shell", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop-chromium", "desktop-only shell check");
 
-  await bootstrapHostedPreviewBypass(page);
   await page.goto("/goose");
 
   await expect(page.getByRole("navigation", { name: "Primary navigation" })).toBeVisible();
@@ -54,7 +33,8 @@ test("desktop routes render the public shell", async ({ page }, testInfo) => {
       .or(page.getByRole("heading", { name: "Band registry unavailable" }))
       .first(),
   ).toBeVisible();
-  // Band links come from the registry; without Supabase env only the unavailable notice renders.
+  await expectHealthyHostedPage(page);
+  // Band links come from the registry; local runs may lack Supabase.
   if (!(await page.getByRole("heading", { name: "Band registry unavailable" }).isVisible())) {
     await expect(page.locator('main a[href="/phish"]').first()).toBeVisible();
   }
@@ -86,21 +66,17 @@ test("desktop routes render the public shell", async ({ page }, testInfo) => {
 test("removed multi-model routes are unavailable", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop-chromium", "desktop-only route check");
 
-  await bootstrapHostedPreviewBypass(page);
-
   for (const route of ["/compare", "/explorer"]) {
     const response = await page.goto(route);
     expect(response?.status()).toBe(404);
   }
 
-  await page.goto("/goose/replay/2026-01-01");
+  await page.goto("/goose/replay");
   await expectPrimaryHeadingOrMissingEnv(page);
 });
 
 test("unknown bands and malformed replay dates return 404", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop-chromium", "desktop-only route check");
-
-  await bootstrapHostedPreviewBypass(page);
 
   for (const route of ["/not-a-band", "/not-a-band/predictions", "/goose/replay/not-a-date"]) {
     const response = await page.goto(route);
@@ -127,7 +103,7 @@ test("legacy URLs permanently redirect to band paths", async ({ request }, testI
   }
 });
 
-test("the root redirects to the remembered band, defaulting to WSP", async ({ page, request }, testInfo) => {
+test("the root redirects to the remembered band, defaulting to WSP", async ({ page, request, context, baseURL }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop-chromium", "desktop-only route check");
 
   const first = await request.get("/", { maxRedirects: 0 });
@@ -135,14 +111,12 @@ test("the root redirects to the remembered band, defaulting to WSP", async ({ pa
   expect(first.headers()["location"]).toMatch(/\/wsp$/);
   expect(first.headers()["cache-control"]).toContain("no-store");
 
-  const garbage = await request.get("/", {
-    headers: { cookie: "jbn-band=../x" },
-    maxRedirects: 0,
-  });
+  await context.addCookies([{ name: "jbn-band", value: "../x", url: baseURL! }]);
+  const garbage = await request.get("/", { maxRedirects: 0 });
   expect(garbage.status()).toBe(307);
   expect(garbage.headers()["location"]).toMatch(/\/wsp$/);
+  await context.clearCookies({ name: "jbn-band" });
 
-  await bootstrapHostedPreviewBypass(page);
   await page.goto("/phish");
   await expect
     .poll(async () => (await page.context().cookies()).find((c) => c.name === "jbn-band")?.value)
@@ -156,12 +130,11 @@ test("the root redirects to the remembered band, defaulting to WSP", async ({ pa
 test("the selected band carries across pages",async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop-chromium", "desktop-only navigation check");
 
-  await bootstrapHostedPreviewBypass(page);
   await page.goto("/goose/predictions");
 
   const bandLinks = page.locator('main a[href$="/predictions"]');
   // Without a band registry (e.g. missing env locally) there is no picker to use.
-  test.skip((await bandLinks.count()) < 2, "band registry unavailable in this environment");
+  await requireData(page, bandLinks, "band registry must expose multiple bands", 2);
 
   const otherBand = page
     .locator('main a[href$="/predictions"]:not([aria-current="page"])')
@@ -186,11 +159,10 @@ test("the selected band carries across pages",async ({ page }, testInfo) => {
 test("performance toggles update the URL without a navigation", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop-chromium", "desktop-only toggle check");
 
-  await bootstrapHostedPreviewBypass(page);
   await page.goto("/goose/performance");
 
   const top25 = page.getByRole("button", { name: "Top 25", pressed: false });
-  test.skip((await top25.count()) === 0, "performance data unavailable in this environment");
+  await requireData(page, top25, "performance controls require accuracy data");
 
   await top25.click();
   await expect(page.getByRole("button", { name: "Top 25", pressed: true })).toBeVisible();
@@ -204,7 +176,6 @@ test("performance toggles update the URL without a navigation", async ({ page },
 test("mobile navigation uses thumb-first ordering", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "mobile-chromium", "mobile-only shell check");
 
-  await bootstrapHostedPreviewBypass(page);
   await page.goto("/goose");
 
   const mobileNav = page.getByRole("navigation", { name: "Mobile navigation" });
@@ -215,12 +186,9 @@ test("mobile navigation uses thumb-first ordering", async ({ page }, testInfo) =
   expect(labels).not.toContain("Compare");
 });
 
-
-
 test("internal table preview is hidden outside development", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "mobile-chromium", "mobile-only table check");
 
-  await bootstrapHostedPreviewBypass(page);
   const response = await page.goto("/preview/tables");
 
   expect(response?.status()).toBe(404);
@@ -230,8 +198,9 @@ test("every active band renders predictions, replay, and performance without que
   test.skip(testInfo.project.name !== "desktop-chromium", "desktop-only band sweep");
   test.setTimeout(180_000);
 
-  await bootstrapHostedPreviewBypass(page);
   await page.goto("/goose");
+
+  await requireData(page, page.getByRole("navigation", { name: "Band", exact: true }).getByRole("link"), "active band registry must load");
 
   // The overview lists every active band as /<slug>.
   const hrefs = await page
@@ -242,7 +211,8 @@ test("every active band renders predictions, replay, and performance without que
   ].filter((slug) => !["about", "contact", "data-use"].includes(slug));
 
   // No bands means the registry could not load (e.g. missing env locally).
-  test.skip(bandSlugs.length === 0, "band registry unavailable in this environment");
+  test.skip(!hostedBaseUrl && bandSlugs.length === 0, "band registry unavailable locally");
+  expect(bandSlugs.length, "hosted registry must contain active bands").toBeGreaterThan(0);
 
   for (const band of bandSlugs) {
     for (const route of ["predictions", "performance", "replay"]) {
@@ -251,6 +221,12 @@ test("every active band renders predictions, replay, and performance without que
 
       const failures = page.getByRole("heading", { name: /query failed/i });
       await expect(failures, `${band}/${route}`).toHaveCount(0);
+      const data = route === "predictions"
+        ? page.locator("main details summary")
+        : route === "performance"
+          ? page.locator(".horizontal-scroll-surface")
+          : page.locator("main table tbody tr");
+      await requireData(page, data, `${band}/${route} must contain real rows or a chart`);
     }
 
     await page.goto(`/${encodeURIComponent(band)}/replay`);
@@ -265,11 +241,10 @@ test("every active band renders predictions, replay, and performance without que
 test("band pills share one row on the desktop predictions page", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop-chromium", "desktop-only layout check");
 
-  await bootstrapHostedPreviewBypass(page);
   await page.goto("/wsp/predictions");
 
   const pills = page.getByRole("navigation", { name: "Band" }).getByRole("link");
-  test.skip((await pills.count()) < 2, "band registry unavailable in this environment");
+  await requireData(page, pills, "band registry must expose multiple bands", 2);
 
   const tops = await pills.evaluateAll((links) =>
     links.map((link) => Math.round(link.getBoundingClientRect().top)),
@@ -280,7 +255,6 @@ test("band pills share one row on the desktop predictions page", async ({ page }
 test("the mobile predictions page does not scroll sideways", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "mobile-chromium", "mobile-only overflow check");
 
-  await bootstrapHostedPreviewBypass(page);
   await page.goto("/wsp/predictions");
   await expectPrimaryHeadingOrMissingEnv(page);
 
@@ -294,12 +268,11 @@ test("the mobile predictions page does not scroll sideways", async ({ page }, te
 test("the mobile performance chart starts scrolled to its right end", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "mobile-chromium", "mobile-only chart check");
 
-  await bootstrapHostedPreviewBypass(page);
   await page.goto("/wsp/performance");
   await expectPrimaryHeadingOrMissingEnv(page);
 
   const chart = page.locator(".horizontal-scroll-surface").first();
-  test.skip((await chart.count()) === 0, "performance data unavailable in this environment");
+  await requireData(page, chart, "performance chart requires accuracy data");
 
   // The scroll position is applied after hydration, so poll for it.
   await expect

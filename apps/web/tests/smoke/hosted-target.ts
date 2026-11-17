@@ -1,56 +1,44 @@
 const VERCEL_PREVIEW_HOST_SUFFIX = ".vercel.app";
-const PRODUCTION_HOSTS = new Set(["jambandnerd.com", "www.jambandnerd.com"]);
-
-function parseHostedUrl(baseUrl?: string): URL | undefined {
-  if (!baseUrl) {
-    return undefined;
-  }
-
-  return new URL(baseUrl);
-}
 
 export function normalizeHostedBaseUrl(baseUrl?: string): string | undefined {
-  return baseUrl?.replace(/\/+$/, "");
+  if (!baseUrl) return undefined;
+  const url = new URL(baseUrl);
+  if (
+    (url.protocol !== "https:" && !(url.protocol === "http:" && ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname))) ||
+    url.username || url.password || url.search || url.hash || url.pathname !== "/"
+  ) {
+    throw new Error("SMOKE_BASE_URL must be an HTTPS origin (HTTP allowed for loopback) without credentials, path, query, or fragment.");
+  }
+  return url.origin;
 }
 
 export function requiresVercelProtectionBypass(baseUrl?: string): boolean {
-  const parsedUrl = parseHostedUrl(baseUrl);
-
-  if (!parsedUrl) {
-    return false;
-  }
-
-  return (
-    parsedUrl.hostname.endsWith(VERCEL_PREVIEW_HOST_SUFFIX) &&
-    !PRODUCTION_HOSTS.has(parsedUrl.hostname)
-  );
+  const origin = normalizeHostedBaseUrl(baseUrl);
+  return Boolean(origin && new URL(origin).hostname.endsWith(VERCEL_PREVIEW_HOST_SUFFIX));
 }
 
-export function getVercelProtectionBypassToken(
-  baseUrl: string | undefined,
-  bypassToken: string | undefined,
-): string | undefined {
-  if (!requiresVercelProtectionBypass(baseUrl)) {
-    return undefined;
+export function getHostedAuthHeaders(
+  baseUrl?: string,
+  bypassToken?: string,
+  oidcToken?: string,
+): Record<string, string> | undefined {
+  if (!requiresVercelProtectionBypass(baseUrl)) return undefined;
+  const header: Record<string, string> | undefined = bypassToken
+    ? { "x-vercel-protection-bypass": bypassToken }
+    : oidcToken
+      ? { "x-vercel-trusted-oidc-idp-token": oidcToken }
+      : undefined;
+  if (!header) {
+    throw new Error("Protected preview smoke requires VERCEL_PROTECTION_BYPASS_TOKEN or local VERCEL_OIDC_TOKEN from vercel env run.");
   }
-
-  if (!bypassToken) {
-    throw new Error(
-      "Hosted smoke against Vercel preview deployments requires VERCEL_PROTECTION_BYPASS_TOKEN.",
-    );
-  }
-
-  return bypassToken;
+  return { ...header, "x-vercel-set-bypass-cookie": "true" };
 }
 
-export function getVercelProtectionBypassUrl(
-  baseUrl: string,
-  bypassToken: string,
-): string {
-  const parsedUrl = new URL(baseUrl);
-
-  parsedUrl.searchParams.set("x-vercel-protection-bypass", bypassToken);
-  parsedUrl.searchParams.set("x-vercel-set-bypass-cookie", "true");
-
-  return parsedUrl.toString();
+export function validateHostedAuthResponse(origin: string, status: number, location?: string) {
+  if (status < 200 || status >= 400) {
+    throw new Error(`Preview authentication failed with HTTP ${status}.`);
+  }
+  if (location && new URL(location, origin).origin !== origin) {
+    throw new Error("Preview authentication redirected outside the configured origin.");
+  }
 }
