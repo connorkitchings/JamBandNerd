@@ -329,3 +329,13 @@ def test_fantasy_workflow_downloads_triggering_run_and_uses_validated_board_gate
         in workflow
     )
     assert "github.event.workflow_run.conclusion == 'success'" not in workflow
+
+
+def test_fantasy_automatic_trigger_is_limited_to_production_branch():
+    workflow = (ROOT / ".github/workflows/fantasy-goose.yml").read_text()
+    automatic_trigger = workflow.split("  workflow_run:", 1)[1].split(
+        "  workflow_dispatch:", 1
+    )[0]
+    assert "    branches:\n      - main\n" in automatic_trigger
+    assert "  workflow_dispatch:" in workflow
+    assert "github.event.workflow_run.head_branch == 'main'" in workflow
