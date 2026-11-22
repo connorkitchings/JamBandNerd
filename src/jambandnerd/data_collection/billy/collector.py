@@ -13,6 +13,8 @@ from bs4 import BeautifulSoup
 from requests import RequestException
 from tqdm import tqdm
 
+from jambandnerd.utils.dates import current_show_date
+
 from ..base import BandCollector
 from ..config import get_collector_config
 
@@ -66,7 +68,7 @@ class BillyCollector(BandCollector):
         all_shows.extend(past_shows)
 
         # Future shows from the dedicated upcoming page.
-        upcoming_cutoff = end_date or start_date or date.today()
+        upcoming_cutoff = end_date or start_date or current_show_date()
         upcoming_shows = self._collect_upcoming_shows(min_date=upcoming_cutoff)
         all_shows.extend(upcoming_shows)
 
@@ -507,7 +509,7 @@ class BillyCollector(BandCollector):
                     parsed_date = datetime.fromisoformat(show_date).date()
                 except ValueError:
                     parsed_date = None
-            if not parsed_date or parsed_date < date.today():
+            if not parsed_date or parsed_date < current_show_date():
                 logger.warning(
                     "No setlist rows parsed for show_id=%s (%s)", show_id, source_url
                 )

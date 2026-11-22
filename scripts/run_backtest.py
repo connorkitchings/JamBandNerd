@@ -23,7 +23,7 @@ import pandas as pd
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, project_root)
 
-from scripts.common import fetch_table, prepare_band_data
+from scripts.common import current_show_date, fetch_table, prepare_band_data
 from src.jambandnerd.config import (
     SETLIST_ACCURACY_TABLE,
     SETLIST_RESULTS_TABLE,
@@ -400,12 +400,13 @@ def run_backtest(
             f"{log_prefix} Backtesting on last {len(target_shows)} completed shows from {window_start} to {window_end}"
         )
     else:
+        today = current_show_date()
         start_d = (
             pd.to_datetime(start).date()
             if start
-            else (date.today() - timedelta(days=365 * 10))
+            else (today - timedelta(days=365 * 10))
         )
-        end_d = pd.to_datetime(end).date() if end else date.today()
+        end_d = pd.to_datetime(end).date() if end else today
         target_shows = select_target_shows(completed_shows, start=start, end=end)
         print(
             f"{log_prefix} Backtesting on {len(target_shows)} completed shows from {start_d} to {end_d}"
@@ -427,7 +428,7 @@ def run_backtest(
             candidate_target_show_keys=candidate_ids,
             table_name=SETLIST_ACCURACY_TABLE,
         )
-        rescore_cutoff = date.today() - timedelta(days=RESCORE_WINDOW_DAYS)
+        rescore_cutoff = current_show_date() - timedelta(days=RESCORE_WINDOW_DAYS)
         recent_ids = set(
             target_shows.loc[
                 pd.to_datetime(target_shows["show_date"]).dt.date >= rescore_cutoff,

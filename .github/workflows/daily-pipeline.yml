@@ -2,7 +2,7 @@ name: Daily Data Pipeline
 
 on:
   schedule:
-    - cron: '0 19 * * *' # Runs daily at 19:00 UTC (3 PM ET during DST, 2 PM ET otherwise)
+    - cron: '23 18 * * *' # Runs daily at 18:23 UTC (2:23 PM ET during DST, 1:23 PM ET otherwise); off :00 to avoid GitHub Actions top-of-hour queue delays
   workflow_dispatch:
     inputs:
       band:

@@ -6,7 +6,7 @@ This repository uses 10 GitHub Actions workflows for pipeline automation, CI qua
 
 | Workflow | File | Schedule | Manual | PR/Push | Bands |
 |----------|------|----------|--------|---------|-------|
-| Daily Data Pipeline | `daily-pipeline.yml` | 19:00 UTC daily | Yes | -- | Daily publishing bands |
+| Daily Data Pipeline | `daily-pipeline.yml` | 18:23 UTC daily | Yes | -- | Daily publishing bands |
 | Weekly Correction Sweep | `weekly-correction-sweep.yml` | Tue 13:00-18:00 UTC staggered | Yes | -- | goose, phish, eggy, billy, wsp, um |
 | Fantasy Goose | `fantasy-goose.yml` | After daily pipeline | Yes | -- | goose |
 | Backfill Predictions | `backfill-predictions.yml` | -- | Yes | -- | Active model bands |
@@ -41,7 +41,7 @@ It uses the `correction_detector.py` module to compare each stored show's setlis
 The primary production workflow. Collects raw data, generates predictions, runs backtests, and validates freshness for the daily publishing bands.
 
 - **Triggers**:
-  - `schedule`: `0 19 * * *` (daily at 19:00 UTC / 3:00 PM ET during DST)
+  - `schedule`: `23 18 * * *` (daily at 18:23 UTC / 2:23 PM ET during DST, 1:23 PM ET otherwise; scheduled off `:00` to reduce GitHub Actions top-of-hour queue delays, and all show-date boundaries use US Eastern time via `current_show_date()` so delayed runs after 00:00 UTC never misclassify same-day US shows as completed)
   - `workflow_dispatch` with inputs: `band` (`all` or a single band), `skip_accuracy` (boolean)
 
 - **Steps per band** (parallel matrix):

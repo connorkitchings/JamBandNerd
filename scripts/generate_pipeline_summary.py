@@ -16,6 +16,7 @@ sys.path.insert(0, project_root)
 
 from scripts.common import (
     completed_show_window,
+    current_show_date,
     fetch_column_values_for_ids,
     fetch_table_rows,
 )
@@ -54,7 +55,7 @@ def _load_band_statuses(status_files: Iterable[str] | None) -> list[dict[str, ob
 
 
 def _completed_show_end_date(*, today: date | None = None) -> str:
-    today = today or date.today()
+    today = today or current_show_date()
     return (today - timedelta(days=1)).isoformat()
 
 
