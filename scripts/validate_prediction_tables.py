@@ -6,7 +6,7 @@ import argparse
 import json
 import os
 import sys
-from datetime import date, datetime, timezone
+from datetime import datetime, timezone
 from typing import Dict, Iterable, List
 
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -18,6 +18,7 @@ from jambandnerd.models.registry import (
     get_band_metadata,
     list_active_bands,
 )
+from jambandnerd.utils.dates import current_show_date
 
 
 def _parse_timestamp(value: str | None) -> datetime | None:
@@ -49,7 +50,7 @@ def _latest_prediction_row(client, *, table: str, band: str, model_version: str)
 
 
 def _has_upcoming_show(client, *, band: str) -> bool:
-    today_iso = date.today().isoformat()
+    today_iso = current_show_date().isoformat()
     try:
         response = (
             client.table(f"{band}_shows_raw")

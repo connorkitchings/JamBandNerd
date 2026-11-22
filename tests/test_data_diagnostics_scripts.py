@@ -1,7 +1,9 @@
-from datetime import date
+from datetime import date, datetime, timezone
 
 import pytest
 
+from jambandnerd.utils.dates import current_show_date
+from scripts import common as scripts_common
 from scripts.common import (
     _source_health_url,
     completed_show_window,
@@ -63,6 +65,32 @@ def test_completed_show_window_excludes_today():
     cutoff, end_date = completed_show_window(today=date(2026, 3, 17), days=7)
     assert cutoff == "2026-03-10"
     assert end_date == "2026-03-16"
+
+
+def test_current_show_date_uses_us_eastern_after_utc_midnight():
+    # 2026-11-21T00:31Z is 2026-11-20 19:31 EST (show in progress, not completed)
+    assert current_show_date(
+        datetime(2026, 11, 21, 0, 31, tzinfo=timezone.utc)
+    ) == date(2026, 11, 20)
+    # 2026-07-15T01:30Z is 2026-07-14 21:30 EDT
+    assert current_show_date(datetime(2026, 7, 15, 1, 30, tzinfo=timezone.utc)) == date(
+        2026, 7, 14
+    )
+    # 2026-11-21T05:00Z is 2026-11-21 00:00 EST
+    assert current_show_date(datetime(2026, 11, 21, 5, 0, tzinfo=timezone.utc)) == date(
+        2026, 11, 21
+    )
+
+
+def test_completed_show_window_defaults_to_us_eastern_date(monkeypatch):
+    monkeypatch.setattr(
+        scripts_common,
+        "current_show_date",
+        lambda: current_show_date(datetime(2026, 11, 21, 0, 31, tzinfo=timezone.utc)),
+    )
+    cutoff, end_date = completed_show_window(days=7)
+    assert cutoff == "2026-11-13"
+    assert end_date == "2026-11-19"
 
 
 def test_source_health_url_uses_concrete_um_api_endpoint():

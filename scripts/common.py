@@ -11,6 +11,8 @@ from urllib.parse import urlparse
 
 import pandas as pd
 
+from jambandnerd.utils.dates import current_show_date
+
 logger = logging.getLogger(__name__)
 
 
@@ -20,13 +22,13 @@ def completed_show_window(
     """Return the recent completed-show window, excluding today.
 
     Args:
-        today: The reference date to calculate from (defaults to today).
+        today: The reference date to calculate from (defaults to today in US Eastern).
         days: The number of days to look back for completed shows.
 
     Returns:
         A tuple of (cutoff_date_iso, end_date_iso) representing the window.
     """
-    today = today or date.today()
+    today = today or current_show_date()
     cutoff = today - timedelta(days=days)
     end_date = today - timedelta(days=1)
     return cutoff.isoformat(), end_date.isoformat()
@@ -106,7 +108,7 @@ def _source_health_url(band: str, config, *, today: date | None = None) -> str:
 
     parsed = urlparse(config.base_url)
     root = f"{parsed.scheme}://{parsed.netloc}" if parsed.netloc else config.base_url
-    year = (today or date.today()).year
+    year = (today or current_show_date()).year
     return f"{root}/api/v2/setlists/showyear/{year}.json?order_by=showdate"
 
 
@@ -222,7 +224,7 @@ def resolve_reference_date(
     - If no date is provided or if the provided date is today, the function
       finds the date of the next upcoming show in the dataset.
     """
-    today = date.today()
+    today = current_show_date()
     target_date = today
     is_today = True
 

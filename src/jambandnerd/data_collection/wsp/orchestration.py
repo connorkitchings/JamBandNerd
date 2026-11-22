@@ -9,7 +9,6 @@ import os
 import re
 from collections import Counter
 from datetime import date, datetime, timedelta
-from zoneinfo import ZoneInfo
 
 import pandas as pd
 import requests
@@ -22,6 +21,7 @@ from jambandnerd.db.operations import (
     get_table_schema,
     validate_and_upsert_dataframe,
 )
+from jambandnerd.utils.dates import current_show_date
 from scripts.common import ensure_source_reachable, fetch_table
 
 from .collector import WSPCollector
@@ -60,7 +60,7 @@ RECENT_WSP_FALLBACK_SOURCES = (
 def _only_past_shows(shows_df: pd.DataFrame, today: date | None = None) -> pd.DataFrame:
     """Keep shows dated strictly before ``today`` (US Eastern by default)."""
     if today is None:
-        today = datetime.now(ZoneInfo("America/New_York")).date()
+        today = current_show_date()
     show_dates = pd.to_datetime(shows_df["show_date"], errors="coerce").dt.date
     return shows_df[show_dates < today]
 
@@ -574,7 +574,7 @@ def process_wsp_data(
 
     # 7. Promote EC over TW for recent shows
     try:
-        today = date.today()
+        today = current_show_date()
         window_days = int(os.environ.get("WSP_BACKUP_WINDOW_DAYS", "3"))
         window_start = today - timedelta(days=window_days)
         has_source_col = _setlist_table_has_source_column()
@@ -627,7 +627,7 @@ def process_wsp_data(
     status.setlists_collected += fallback_rows
 
     try:
-        today = date.today()
+        today = current_show_date()
         window_days = int(os.environ.get("WSP_BACKUP_WINDOW_DAYS", "3"))
         window_start = today - timedelta(days=window_days)
         recent_resp = (
@@ -722,7 +722,7 @@ def tourwrangler_fallback(client) -> tuple[int, int]:
         client: Supabase client instance.
     """
     try:
-        today = date.today()
+        today = current_show_date()
         window_days = int(os.environ.get("WSP_BACKUP_WINDOW_DAYS", "3"))
         window_start = today - timedelta(days=window_days)
         logging.info(

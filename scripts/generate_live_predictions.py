@@ -15,7 +15,12 @@ import pandas as pd
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, project_root)
 
-from scripts.common import completed_show_window, fetch_table, prepare_band_data
+from scripts.common import (
+    completed_show_window,
+    current_show_date,
+    fetch_table,
+    prepare_band_data,
+)
 from src.jambandnerd.config import (
     SETLIST_PREDICTION_SONGS_TABLE,
     SETLIST_PREDICTIONS_TABLE,
@@ -66,7 +71,7 @@ def _resolve_next_show(
     today: date | None = None,
 ) -> dict[str, Any] | None:
     """Return the next show target, or None when no future show is known."""
-    today = today or date.today()
+    today = today or current_show_date()
     shows = shows_df.copy()
     shows["_show_date_dt"] = pd.to_datetime(shows["show_date"], errors="coerce").dt.date
     future = shows[shows["_show_date_dt"] >= today].sort_values(

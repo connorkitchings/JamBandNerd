@@ -14,6 +14,7 @@ sys.path.insert(0, project_root)
 
 from scripts.common import (
     completed_show_window,
+    current_show_date,
     fetch_column_values_for_ids,
     fetch_table_rows,
 )
@@ -114,7 +115,7 @@ def compute_band_preflight(
     client=None,
 ) -> CollectionPreflight:
     """Compute the per-band ingestion preflight decision."""
-    today = today or date.today()
+    today = today or current_show_date()
     client = client or get_supabase_client()
     policy = get_collection_policy(band)
     id_column = get_runtime_band_id_column(band)
