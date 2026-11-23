@@ -97,10 +97,13 @@ The correction sweep (#215 to #219, with the `replace_show_setlist` migration ap
 - #222: WSP skips future shows.
 - #223: accuracy freshness is correct when every show is already scored.
 - #231: song board search pill left-aligned.
+- #235: cap IN-filter batches by total value length (um collection 400 error).
 
 ## Worktrees and branches
 
 Stale agent worktrees `agent-aab6f4b6fe6596337` and `agent-aad104f3b92f1db34` were removed. Their PRs #218 and #219 were already merged. The local and remote branches `connorkitchings/fix-sweep-payload-timestamps` and `connorkitchings/fix-sweep-encore-positions` were deleted too.
+
+Merged remote branches were deleted. The `dev` branch (28 commits behind and 13 ahead of `main`, all of its content already in `main`; PRs go directly to `main`) was deleted locally and on the remote after its branch protection rule was removed. The `docs/session-log-2026-07-27` branch was deleted at the owner's request; it was never merged and had no PR. Remaining remote branches: `main` and five dependabot branches.
 
 ## Open items
 
@@ -114,13 +117,19 @@ Not fixed, and not in scope for this session:
 
 ## Daily run check
 
-Manual per-band dispatches of `Daily Data Pipeline` on `main` at 17:53 UTC on 2026-10-28, after #222, #223 and #233 were merged:
+Manual dispatches of `Daily Data Pipeline` on `main`, one per band, on 2026-10-28. No run logged a `DOM fingerprint mismatch`.
 
-- WSP: job succeeded. No `DOM fingerprint mismatch` lines; freshness `fresh`; website audit `ok`.
-- Goose: job succeeded. No `DOM fingerprint mismatch` lines. `freshness_state` is `warning`, not `stale`: the accuracy model `goose_fast_rank_v1_candidate_relaxed_special_nbtop10` was last scored about 545 hours earlier. This is a warning, not a clean pass.
-- Um: job failed in the website table audit with `per_show_accuracy_rows_below_window` and `replay_eligible_rows_below_window` (48 accuracy rows against a window of 50). The duplicate cleanup had deleted accuracy rows 2499 and 2471, which the window had been counting. Re-scoring with `backfill-predictions.yml` (`band=um`) restored 50 rows, and the um audit now reports `state=ok`, 0 blockers.
-- Billy: not re-dispatched. Two manual runs earlier the same day (15:08 and 15:21 UTC) succeeded with freshness `fresh`.
-- Phish: not dispatched.
-- Dedupe dry runs afterwards: billy 0 ghosts and 0 pairs; um 0 ghosts, 0 pairs and 0 accuracy rows to delete.
+- WSP, Phish and Billy: succeeded. Freshness `fresh`.
+- Goose: succeeded with freshness `warning`. This is the intended off-tour state, not a failure: all 50 shows in the scoring window are already scored, the last completed show was 2026-10-03, and the accuracy `evaluated_at` is about 545 hours old. The pipeline tolerates this through `--skip-accuracy` (#223).
+- Um: failed twice; both failures are fixed.
+  1. Website table audit failed with `per_show_accuracy_rows_below_window` and `replay_eligible_rows_below_window` (48 accuracy rows against a window of 50). The duplicate cleanup had deleted accuracy rows 2499 and 2471, which the window counted. Re-scoring with `backfill-predictions.yml` (`band=um`) restored 50 rows, and the audit then reported `ok`.
+  2. Collection failed in `_sync_um_shows_raw` with a Supabase `400 Bad Request` ("JSON could not be generated"). The batched `.in_()` URL lookup in `fetch_rows_by_column_values` sent a request of about 25.8 KB for its first batch of 200 URLs, over the gateway limit of roughly 24-25 KB. The bug was latent; #233 doubled the lookup by adding normalised URLs, which exposed it. #235 caps batches by total value length (8000 characters) in `src/jambandnerd/db/operations.py`. Other callers of the same helper (Billy, `scripts/common.py`, and WSP through `fetch_existing_values`) share the exposure whenever values are long. Their value lengths were not checked.
+  After #235 the um job succeeded end to end: collection upserted 181 shows, freshness `fresh`, audit `ok`, 50 accuracy rows.
+- Dedupe dry runs afterwards: Billy 0 ghosts and 0 pairs; um 0 accuracy rows to delete.
 
-Not confirmed: the full scheduled `band=all` run (19:00 UTC) has not been observed, so "green for all bands" is verified only for WSP, goose, um and billy individually. The billy reconcile adding no third row has not been seen on a live scrape beyond today's two billy runs.
+GitHub's scheduled run for `0 19 * * *` consistently starts 2 to 4 hours late (recent starts 21:19 to 22:57 UTC), so the scheduled run could not be observed on the same afternoon.
+
+Not confirmed:
+
+- The full scheduled `band=all` run has not been observed after these fixes. "Green for all bands together" is verified only per band.
+- On a live scrape, that Billy reconcile adds no third row beyond today's runs.
